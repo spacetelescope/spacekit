@@ -1,0 +1,25 @@
+Metadata-Version: 2.1
+Name: spacekit
+Version: 0.0.1
+Summary: Python package for Astronomical Data Science
+Home-page: https://github.com/hakkeray/spacekit
+Author: Ru Keïn
+Author-email: hakkeray@gmail.com
+License: UNKNOWN
+Description: # spacekit
+        Python package for astronomical machine learning and data science
+        
+        spacekit
+        ├── LICENSE
+        ├── README.md
+        ├── spacekit_pkg
+        │   └── __init__.py
+        ├── setup.py
+        └── tests
+        
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown

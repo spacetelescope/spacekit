@@ -1,0 +1,7 @@
+README.md
+setup.py
+spacekit.egg-info/PKG-INFO
+spacekit.egg-info/SOURCES.txt
+spacekit.egg-info/dependency_links.txt
+spacekit.egg-info/top_level.txt
+spacekit_pkg/__init__.py
