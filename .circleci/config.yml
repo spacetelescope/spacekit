@@ -41,21 +41,21 @@ jobs:
           key: v1-dependency-cache-{{ checksum "setup.py" }}-{{ checksum "Makefile" }}
       - run: echo "hello world" # run the `echo` command
       - run:
-	 name: install python dependencies
-	 command: |
-	   python3 -m venv venv
-	   . venv/bin/activate
-	   make dev
+          name: install python dependencies
+          command: |
+            python3 -m venv venv
+            . venv/bin/activate
+            make dev
       - save_cache:
-	 key: v1-dependency-cache-{{ checksum "setup.py" }}-{{ checksum "Makefile" }}
-	 paths:
-	   - "venv"
+          key: v1-dependency-cache-{{ checksum "setup.py" }}-{{ checksum "Makefile" }}
+          paths:
+            - "venv"
       - run:
-	  name: run tests
-	  command: |
-	    . venv/bin/activate
-	    make test
-	    codecov
+          name: run tests
+            command: |
+            . venv/bin/activate
+            make test
+            codecov
       - store_artifacts:
           path: htmlcov/
   test-python-install:
