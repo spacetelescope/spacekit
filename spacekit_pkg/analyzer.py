@@ -43,16 +43,17 @@ class Flux:
         
         Ex1: Labeled timeseries passing 1st row of pandas dataframe
         > first create the signal:
-        star_signal_alpha = x_train.iloc[0, :]
+        signal = x_train.iloc[0, :]
         > then plot:
-        star_signals(star_signal_alpha, label_col='LABEL',classes=[1,2], 
+        atomic_vector_plotter(signal, label_col='LABEL',classes=[1,2], 
                     class_names=['No Planet', 'Planet']), figsize=(15,5))
         
         Ex2: numpy array without any labels
         > first create the signal:
-        
+        signal = x_train.iloc[0, :]
+
         >then plot:
-        star_signals(signal, figsize=(15,5))
+        atomic_vector_plotter(signal, figsize=(15,5))
         
         ######
         TODO: 
@@ -60,7 +61,10 @@ class Flux:
         -could allow either array or series to be passed, conv to array if series 
         ######
         """
-        
+        import pandas as pd
+        import numpy as np
+
+        ### LABELS
         # pass None to label_col if unlabeled data, creates generic title
         if label_col is None:
             label = None
@@ -79,6 +83,7 @@ class Flux:
             elif label == 2:
                 cn = class_names[1] 
                 color='blue'
+            ## TITLES
         #create appropriate title acc to class_names    
             title_scatter = f"Scatterplot for Star Flux Signal: {cn}"
             title_line = f"Line Plot for Star Flux Signal: {cn}"
@@ -95,7 +100,13 @@ class Flux:
         else:
             x_units = x_units
         
-        # Scatter Plot 
+        # Scatter Plot
+        
+        if type(signal) == array:
+            series_index=list(range(len(signal)))
+
+            converted_array = pd.Series(signal.ravel(), index=series_index)
+            signal = converted_array 
         
         plt.figure(figsize=figsize)
         plt.scatter(pd.Series([i for i in range(1, len(signal))]), 
@@ -170,40 +181,69 @@ class Flux:
 # --> BoxCox
 # --> Lomb-Scargle
 
-    @staticmethod
-    def phase_bin(time,flux,per,tmid=0,cadence=16,offset=0.25):
-        '''
-            Phase fold data and bin according to time cadence
-            time - [days]
-            flux - arbitrary unit
-            per - period in [days]
-            tmid - value in days
-            cadence - spacing to bin data to [minutes] 
-        '''
-        phase = ((time-tmid)/per + offset)%1
+        def planet_hunter(f=files[9], fmt='kepler.fits'):
+        """
+        args:
+        - fits_files = takes array or single .fits file
+        
+        kwargs:
+        - format : 'kepler.fits' or  'tess.fits'
+        """
+        from astropy.timeseries import TimeSeries
+        import numpy as np
+        from astropy import units as u
+        from astropy.timeseries import BoxLeastSquares
+        from astropy.stats import sigma_clipped_stats
+        from astropy.timeseries import aggregate_downsample
 
-        sortidx = np.argsort(phase)
-        sortflux = flux[sortidx]
-        sortphase = phase[sortidx]
+        # read in file
+        ts = TimeSeries.read(f, format=fmt)
+        
+    #     print(f'mjd: {ts.time.mjd[0]}, {ts.time.mjd [-1]}')
+    #     # tdb = Barycentric Dynamical Time scale
+    #     print(f'time_scale: {ts.time.scale}')
+    #     print(ts['time', 'sap_flux'])
+        
+        
+        # original ts plot
+        #fig, ax = plt.figure()
+    #    plt.plot(ts.time.jd, ts['sap_flux'], 'k.', markersize=1)
+        
+    #     plt.xlabel('Julian Date')
+    #     plt.ylabel('SAP Flux (e-/s)')
+        
+        # use box least squares to estimate period
+        periodogram = BoxLeastSquares.from_timeseries(ts, 'sap_flux')
+        results = periodogram.autopower(0.2 * u.day)  
+        best = np.argmax(results.power)  
+        period = results.period[best]  
+        transit_time = results.transit_time[best]  
+        print(f'transit_time: {transit_time}')
+        
+        # fold the time series using the period 
+        ts_folded = ts.fold(period=period, epoch_time=transit_time) 
+        
+    #     # folded time series plot
+    #     plt.plot(ts_folded.time.jd, ts_folded['sap_flux'], 'k.', markersize=1)
+    #     plt.xlabel('Time (days)')
+    #     plt.ylabel('SAP Flux (e-/s)')
+        
+        #normalize the flux by sigma-clipping the data to determine the baseline flux:
+        
+        mean, median, stddev = sigma_clipped_stats(ts_folded['sap_flux'])  
+        ts_folded['sap_flux_norm'] = ts_folded['sap_flux'] / median  
 
-        cad = cadence/60./24/per # phase cadence according to kepler cadence
-        pbins = np.arange(0,1+cad,cad) # phase bins
-        bindata = np.zeros(pbins.shape[0]-1)
-        for i in range(pbins.shape[0]-1):
-            pidx = (sortphase > pbins[i]) & (sortphase < pbins[i+1])
+        # downsample the time series by binning the points into bins of equal time 
+        # - this returns a BinnedTimeSeries:
+        ts_binned = aggregate_downsample(ts_folded, time_bin_size=0.03 * u.day)  
 
-            if pidx.sum() == 0 or np.isnan(sortflux[pidx]).all():
-                bindata[i] = np.nan
-                continue
+    #     # final result
+        fig = plt.figure(figsize=(11,5))
+        plt.plot(ts_folded.time.jd, ts_folded['sap_flux_norm'], 'k.', markersize=1)
+        plt.plot(ts_binned.time_bin_start.jd, ts_binned['sap_flux_norm'], 'r-', drawstyle='steps-post')
+        plt.xlabel('Time (days)')
+        plt.ylabel('Normalized flux')
 
-            bindata[i] = np.nanmean(sortflux[pidx])
-
-        phases = pbins[:-1]+np.diff(pbins)*0.5
-
-        # remove nans
-        #nonans = ~np.isnan(bindata)
-        #return phases[nonans],bindata[nonans]
-        return phases, bindata
 
 
 

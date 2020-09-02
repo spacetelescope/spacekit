@@ -29,7 +29,7 @@ class Keras:
                     learning_rate=None, loss=None, 
                     metrics=None):
         """
-        Builds, compiles and fits a linear CNN using Keras API
+        Builds and compiles linear CNN using Keras
 
         """
         import keras
@@ -105,7 +105,10 @@ class Keras:
     @staticmethod
     def fit_cnn(X_train,y_train, X_test, y_test, model, validation_data=None, 
                 verbose=None, epochs=None, steps_per_epoch=None, batch_size=None):
-        
+        """
+        Fits cnn and returns keras history
+        Gives equal number of positive and negative samples rotating randomly  
+        """
         if verbose is None:
             verbose=2
         if epochs is None:
@@ -176,3 +179,88 @@ class Keras:
         model.summary()
 
         return history
+
+
+######## Bidirectional CNN #####
+# predicts a probability of each type of class
+class Bidirectional
+
+    @staticmethod
+    def build_lstm(X_train, X_test, y_train, y_test, kernel_size=None, activation=None, input_shape=None, strides=None, optimizer=Adam, 
+                    learning_rate=None, loss=None, 
+                    metrics=None):
+        """
+        Builds and compiles a bidirectional RNN using Keras
+
+        """
+        import pandas as pd
+        import numpy as np
+        np.random.seed(0)
+        import matplotlib.pyplot as plt
+        %matplotlib inline
+        import keras
+        from keras.preprocessing.sequence import pad_sequences
+        from keras.layers import Input, Dense, LSTM, Embedding
+        from keras.layers import Dropout, Activation, Bidirectional, GlobalMaxPool1D
+        from keras.models import Model
+        from keras import initializers, regularizers, constraints, optimizers, layers
+        from keras.preprocessing import text, sequence
+        from keras.callbacks import ModelCheckpoint
+        from keras.callbacks import EarlyStopping
+        
+        embedding_size = 128
+
+        model = Sequential()
+        model.add(Bidirectional(LSTM(10, return_sequences=True), 
+                                input_shape=(100,)))
+        # model.add(Bidirectional(LSTM(10, return_sequences=True),
+        #                         input_shape=(5, 10)))
+        # model.add(Bidirectional(LSTM(10)))
+        # model.add(Dense(5))
+        # model.add(Activation('softmax'))
+        #model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
+  
+
+        return model
+
+    @staticmethod
+    def fit_lstm(X_train,y_train, X_test, y_test, model, validation_data=None, 
+                verbose=None, epochs=None, steps_per_epoch=None, batch_size=None):
+        #     * `X_t`
+        #     * `y`
+        #     * `batch_size=32`
+        #     * `epochs=1`
+        #     * `validation_split=0.1`
+        #     * `callbacks=callbacks`
+
+        # checkpoints_path = 'weights_base.best.hdf5'
+        # checkpoint = ModelCheckpoint(checkpoints_path, monitor='val_loss', verbose=1, save_best_only=True, mode='min')
+
+        # early_stopping = EarlyStopping(monitor='val_loss', mode='min', patience=25)
+        # callbacks = [checkpoint, early_stopping]
+
+        history = model.fit_generator(batch_maker(X_train, y_train, batch_size),
+                                        validation_data=validation_data, 
+                                        verbose=verbose, epochs=epochs, 
+                                        steps_per_epoch=steps_per_epoch)
+        print("TRAINING COMPLETE")
+        model.summary()
+        
+        return history
+        
+        
+        # stellar_properties = np.array('solar_mass','solar_radius','solar_metallicity','temp_k')
+        # stellar_classes = np.array('red_giant', 'hot_jupiter', 'mini_neptune','super_earth','earth_habitable'
+        # tce_classes = np.array('possible_planet', 'eclipsing_binary','artifact')
+
+        # y = 
+        # # slice `list_classes` from train, and then chain it with `.values`). Store this in `y`.
+        # stellar_properties = np.array('solar_mass','solar_radius','solar_metallicity','temp_k')
+        # Store the `.values` of `train['comment_text]` in `list_sentences_train`
+
+        #tokenizer = None
+        #list_tokenized_train = None
+        #X_t = None
+
+        # inputs = known_planets
+        # validation = candidates
