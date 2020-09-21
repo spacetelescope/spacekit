@@ -1,6 +1,7 @@
 
 
 class Transformer:
+
     
     @staticmethod
     def hypersonic_pliers(path_to_train, path_to_test):

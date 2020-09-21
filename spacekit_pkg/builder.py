@@ -22,7 +22,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.base import clone
 # ********* /\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ ********* #
 
-class Keras:
+class Builder:
 
     @staticmethod
     def build_cnn(X_train, X_test, y_train, y_test, kernel_size=None, activation=None, input_shape=None, strides=None, optimizer=Adam, 
@@ -183,7 +183,6 @@ class Keras:
 
 ######## Bidirectional CNN #####
 # predicts a probability of each type of class
-class Bidirectional
 
     @staticmethod
     def build_lstm(X_train, X_test, y_train, y_test, kernel_size=None, activation=None, input_shape=None, strides=None, optimizer=Adam, 
