@@ -1,4 +1,5 @@
-
+import numpy as np
+from scipy.ndimage.filters import uniform_filter1d
 
 class Transformer:
 
@@ -15,7 +16,6 @@ class Transformer:
         #TODO: option for `y` to already be 0 or 1 (don't subtract 1)
         #TODO: allow option for `y` to be categorical (convert via binarizer)
         """
-        import numpy as np
         
         Train = np.loadtxt(path_to_train, skiprows=1, delimiter=',')
         X_train = Train[:, 1:]
@@ -43,9 +43,7 @@ class Transformer:
             example: matrix1=X_train, matrix2=X_test
             
             """
-            import numpy as np
-            
-                
+ 
             matrix1 = ((matrix1 - np.mean(matrix1, axis=1).reshape(-1,1)) / 
                 np.std(matrix1, axis=1).reshape(-1,1))
             
@@ -77,9 +75,6 @@ class Transformer:
             ex:
             babel_fish_dispenser(matrix1=X_train, matrix2=X_test, step_size=200)
             """
-            import numpy as np
-            from scipy.ndimage.filters import uniform_filter1d
-            
             if step_size is None:
                 step_size=200
                 
@@ -104,7 +99,6 @@ class Transformer:
         takes in array and rotates #bins to the left as a fourier transform
         returns vector of length equal to input array
         """
-        import numpy as np
 
         shape = matrix.shape
         fourier_matrix = np.zeros(shape, dtype=float)
