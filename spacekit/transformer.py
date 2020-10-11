@@ -2,7 +2,6 @@ import numpy as np
 from scipy.ndimage.filters import uniform_filter1d
 
 class Transformer:
-
     
     @staticmethod
     def hypersonic_pliers(path_to_train, path_to_test):

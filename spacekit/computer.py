@@ -35,15 +35,6 @@ from sklearn.metrics import confusion_matrix, roc_curve
 
 class Computer:
 
-    def __init__(self):
-        self.get_preds = get_preds()
-        self.fnfp = fnfp()
-        self.keras_history = keras_history()
-        self.fusion_matrix = fusion_matrix()
-        self.roc_plots = roc_plots()
-        self.compute = Compute()
-
-
     @staticmethod
     def get_preds(X,y,model=None,verbose=False):
         if model is None:

@@ -186,13 +186,16 @@ class Analyzer:
 # --> BoxCox
 # --> Lomb-Scargle
 
-    def planet_hunter(f=files[9], fmt='kepler.fits'):
+    def planet_hunter(f, fmt='kepler.fits'):
         """
         args:
         - fits_files = takes array or single .fits file
         
         kwargs:
         - format : 'kepler.fits' or  'tess.fits'
+
+        ex:
+        planet_hunter(f=files[9], fmt='kepler.fits')
         """
         from astropy.timeseries import TimeSeries
         import numpy as np

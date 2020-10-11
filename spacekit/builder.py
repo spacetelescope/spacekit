@@ -34,10 +34,6 @@ from sklearn.base import clone
 
 class Builder:
 
-    def __init__(self:
-        self.build_cnn = build_cnn()
-        self.fit_cnn = fit_cnn()
-
     @staticmethod
     def build_cnn(X_train, X_test, y_train, y_test, kernel_size=None, activation=None, input_shape=None, strides=None, optimizer=Adam, 
                     learning_rate=None, loss=None, 
