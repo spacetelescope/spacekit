@@ -24,11 +24,6 @@ import matplotlib.pyplot as plt
 ### 
 class Analyzer:
 
-    def __init__(self):
-        self.atomic_vector_plotter = atomic_vector_plotter()
-        self.make_specgram = make_specgram()
-        self.planet_hunter = planet_hunter()
-
     @staticmethod
     def atomic_vector_plotter(signal, label_col=None, classes=None, class_names=None, figsize=(15,5), 
     y_units=None, x_units=None):
