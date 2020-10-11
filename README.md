@@ -15,15 +15,31 @@ spacekit
 └── LICENSE
 └── README.md
 ```
+
 - Radio: downloading data from MAST s3 bucket on AWS
     - mast_aws: downlaods fits files for list of kepler/TESS targets
+
 - Analyzer: flux-timeseries signal analysis
     - atomic_vector_plotter: Plots scatter and line plots of time series signal values.
     - make_specgram: generate and save spectographs of flux signal frequencies
-    - planet_hunter: 
+    - planet_hunter: calculate period, plot folded lightcurve from .fits files
 
 - Transformer: tools for converting and preprocessing signals as numpy arrays
+    - hypersonic_pliers: 
+    - thermo_fusion_chisel: 
+    - babel_fish_dispenser: adds a 1D uniform noise filter using timesteps
+    - fast_fourier: fast fourier transform utility function
+
 - Builder: building and fitting convolutional neural networks
+    - build_cnn: builds keras 1D CNN architecture
+    - fit_cnn: trains keras CNN
+
+- Computer: gets model predictions and evaluates metrics
+    - get_preds
+    - fnfp
+    - keras_history
+    - roc_plots
+    - compute
 
 
 ## spacekit.Radio()
@@ -83,6 +99,7 @@ A.planet_hunter(f9, fmt='kepler.fits')
 ```
 
 ## spacekit.Transformer()
+tools for converting and preprocessing signals as numpy arrays
 
 ### hypersonic_pliers
 
@@ -93,17 +110,24 @@ A.planet_hunter(f9, fmt='kepler.fits')
 ### fast_fourier
 
 ## spacekit.Builder()
+building and fitting convolutional neural networks
 
 ### build_cnn
 
 ### fit_cnn
 
 ## spacekit.Computer()
+gets model predictions and evaluates metrics
 
 ### get_preds
+
 ### fnfp
+
 ### keras_history
+
 ### fusion_matrix
+
 ### roc_plots
+
 ### compute
 
