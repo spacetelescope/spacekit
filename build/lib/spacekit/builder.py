@@ -46,7 +46,7 @@ class Builder:
         Builds and compiles linear CNN using Keras
 
         """
-        import keras
+        from tensorflow import keras
         from keras.utils.np_utils import to_categorical
         # from keras.preprocessing.text import Tokenizer
         from keras import models, layers, optimizers
