@@ -143,8 +143,7 @@ Description: # spacekit
 Keywords: spacekit spkt ml ai api sdk
 Platform: UNKNOWN
 Classifier: Development Status :: 5 - Production/Stable
-Classifier: Intended Audience :: Data Scientists
-Classifier: Intended Audience :: Astronomers
+Classifier: Intended Audience :: Astronomical Data Scientists
 Classifier: License :: OSI Approved :: MIT License
 Classifier: Operating System :: OS Independent
 Classifier: Topic :: Data Science :: Machine Learning Tools
