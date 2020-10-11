@@ -1,6 +1,6 @@
 Metadata-Version: 1.2
 Name: circleci
-Version: 1.0.0
+Version: 0.0.1
 Summary: Python wrapper for the CircleCI API
 Home-page: https://github.com/hakkeray/spacekit
 Author: Ru Keïn
@@ -142,15 +142,4 @@ Description: # spacekit
         
 Keywords: spacekit spkt ml ai api sdk
 Platform: UNKNOWN
-Classifier: Development Status :: 5 - Production/Stable
-Classifier: Intended Audience :: Astronomical Data Scientists
-Classifier: License :: OSI Approved :: MIT License
-Classifier: Operating System :: OS Independent
-Classifier: Topic :: Data Science :: Machine Learning Tools
-Classifier: Topic :: Software Development :: Libraries :: Python Modules
-Classifier: Topic :: Astronomy
-Classifier: Topic :: Astrophysics
-Classifier: Programming Language :: Python :: 3
-Classifier: Programming Language :: Python :: 3.6
-Classifier: Programming Language :: Python :: 3 :: Only
 Requires-Python: >=3
