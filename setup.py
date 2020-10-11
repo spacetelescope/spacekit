@@ -12,7 +12,7 @@ from setuptools import setup
 from setuptools.command.install import install
 
 # circleci.py version
-VERSION = "0.0.3"
+VERSION = "0.0.4"
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
@@ -49,12 +49,12 @@ setup(
         "Operating System :: OS Independent",
     ],
     install_requires=[
-        'requests==2.18.4',
-        'pandas==0.25.1',
-        'numpy==1.16.5',
+        'requests==2.23.0',
+        'pandas==1.1.2',
+        'numpy==1.18.5',
         'scikit-learn==0.23.2',
-        'scipy==1.3.1',
-        'tensorflow==2.2.0'
+        'scipy==1.4.1',
+        'tensorflow==2.3.0'
     ],
     python_requires='>=3.6',
     cmdclass={
