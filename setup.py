@@ -14,10 +14,8 @@ from setuptools.command.install import install
 # circleci.py version
 VERSION = "0.0.1"
 
-def readme():
-    """print long description"""
-    with open('README.rst') as f:
-        return f.read()
+with open("README.md", "r") as fh:
+    long_description = fh.read()
 
 class VerifyVersionCommand(install):
     """Custom command to verify that the git tag matches our version"""
@@ -37,13 +35,19 @@ setup(
     name="circleci",
     version=VERSION,
     description="Python wrapper for the CircleCI API",
-    long_description=readme(),
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     url="https://github.com/hakkeray/spacekit",
     author="Ru Keïn",
     author_email="hakkeray@gmail.com",
     license="MIT",
     keywords='spacekit spkt ml ai api sdk',
     packages=['spacekit'],
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
+    ],
     install_requires=[
         'requests==2.18.4',
     ],

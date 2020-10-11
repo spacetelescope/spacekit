@@ -1,4 +1,4 @@
-Metadata-Version: 1.2
+Metadata-Version: 2.1
 Name: circleci
 Version: 0.0.1
 Summary: Python wrapper for the CircleCI API
@@ -143,3 +143,4 @@ Description: # spacekit
 Keywords: spacekit spkt ml ai api sdk
 Platform: UNKNOWN
 Requires-Python: >=3
+Description-Content-Type: text/markdown
