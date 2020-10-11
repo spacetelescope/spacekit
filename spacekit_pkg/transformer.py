@@ -75,7 +75,7 @@ class Transformer:
             axis: which axis to stack the arrays
             
             ex:
-            noise_filter(matrix1=X_train, matrix2=X_test, step_size=200)
+            babel_fish_dispenser(matrix1=X_train, matrix2=X_test, step_size=200)
             """
             import numpy as np
             from scipy.ndimage.filters import uniform_filter1d

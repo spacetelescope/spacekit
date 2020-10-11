@@ -35,6 +35,15 @@ from sklearn.metrics import confusion_matrix, roc_curve
 
 class Computer:
 
+    def __init__(self):
+        self.get_preds = get_preds()
+        self.fnfp = fnfp()
+        self.keras_history = keras_history()
+        self.fusion_matrix = fusion_matrix()
+        self.roc_plots = roc_plots()
+        self.compute = Compute()
+
+
     @staticmethod
     def get_preds(X,y,model=None,verbose=False):
         if model is None:
@@ -74,9 +83,6 @@ class Computer:
             print(f"FN Rate (Test): {round(fn*100,4)}%")
             print(f"FP Rate (Test): {round(fp*100,4)}%")
 
-
-
-
     @staticmethod
     def keras_history(history, figsize=(10,4)):
         """
@@ -104,7 +110,6 @@ class Computer:
         ax.set_xlabel('Epoch')
         ax.legend(['Train', 'Test'], loc='upper left')
         plt.show()
-
 
     # FUSION_MATRIX()
     @staticmethod 
@@ -184,7 +189,6 @@ class Computer:
         plt.show() 
         return fusion, fig
 
-
     @staticmethod
     def roc_plots(X,y,model):
         """Calculates ROC_AUC score and plots Receiver Operator Characteristics (ROC)
@@ -229,6 +233,7 @@ class Computer:
 
 
         ### COMPUTE SCORES ###
+
     @staticmethod
     def compute(X, y, model, hist=None, preds=True, summary=True, fusion=True, 
                 classes=None, report=True, roc=True):

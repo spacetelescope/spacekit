@@ -22,7 +22,12 @@ import matplotlib.pyplot as plt
 
 ### Flux Signals
 ### 
-class Flux:
+class Analyzer:
+
+    def __init__(self):
+        self.atomic_vector_plotter = atomic_vector_plotter()
+        self.make_specgram = make_specgram()
+        self.planet_hunter = planet_hunter()
 
     @staticmethod
     def atomic_vector_plotter(signal, label_col=None, classes=None, class_names=None, figsize=(15,5), 
@@ -128,7 +133,7 @@ class Flux:
 
 
     ### MAKE_SPECGRAM
-    # create function for generating and saving spectograph figs
+    # generate and save spectographs of flux signal frequencies
     @staticmethod
     def make_specgram(signal, Fs=None, NFFT=None, noverlap=None, mode=None,
                     cmap=None, units=None, colorbar=False, 
@@ -181,7 +186,7 @@ class Flux:
 # --> BoxCox
 # --> Lomb-Scargle
 
-        def planet_hunter(f=files[9], fmt='kepler.fits'):
+    def planet_hunter(f=files[9], fmt='kepler.fits'):
         """
         args:
         - fits_files = takes array or single .fits file

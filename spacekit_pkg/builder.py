@@ -1,4 +1,14 @@
 # ********* starskøpe.spacekit.builder ********* #
+"""
+* Builder
+    - Builder.build_cnn()
+    - Builder.fit_cnn()
+
+#TODO:
+    * build_lstm()
+    * fit_lstm
+    * class RBM
+"""
 
 import numpy as np
 from sklearn.preprocessing import FunctionTransformer
@@ -23,6 +33,10 @@ from sklearn.base import clone
 # ********* /\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ ********* #
 
 class Builder:
+
+    def __init__(self:
+        self.build_cnn = build_cnn()
+        self.fit_cnn = fit_cnn()
 
     @staticmethod
     def build_cnn(X_train, X_test, y_train, y_test, kernel_size=None, activation=None, input_shape=None, strides=None, optimizer=Adam, 
@@ -184,34 +198,34 @@ class Builder:
 ######## Bidirectional CNN #####
 # predicts a probability of each type of class
 
-    @staticmethod
-    def build_lstm(X_train, X_test, y_train, y_test, kernel_size=None, activation=None, input_shape=None, strides=None, optimizer=Adam, 
-                    learning_rate=None, loss=None, 
-                    metrics=None):
-        """
-        Builds and compiles a bidirectional RNN using Keras
+    # @staticmethod
+    # def build_lstm(X_train, X_test, y_train, y_test, kernel_size=None, activation=None, input_shape=None, strides=None, optimizer=Adam, 
+    #                 learning_rate=None, loss=None, 
+    #                 metrics=None):
+    #     """
+    #     Builds and compiles a bidirectional RNN using Keras
 
-        """
-        import pandas as pd
-        import numpy as np
-        np.random.seed(0)
-        import matplotlib.pyplot as plt
-        %matplotlib inline
-        import keras
-        from keras.preprocessing.sequence import pad_sequences
-        from keras.layers import Input, Dense, LSTM, Embedding
-        from keras.layers import Dropout, Activation, Bidirectional, GlobalMaxPool1D
-        from keras.models import Model
-        from keras import initializers, regularizers, constraints, optimizers, layers
-        from keras.preprocessing import text, sequence
-        from keras.callbacks import ModelCheckpoint
-        from keras.callbacks import EarlyStopping
+    #     """
+    #     import pandas as pd
+    #     import numpy as np
+    #     np.random.seed(0)
+    #     import matplotlib.pyplot as plt
+    #     %matplotlib inline
+    #     import keras
+    #     from keras.preprocessing.sequence import pad_sequences
+    #     from keras.layers import Input, Dense, LSTM, Embedding
+    #     from keras.layers import Dropout, Activation, Bidirectional, GlobalMaxPool1D
+    #     from keras.models import Model
+    #     from keras import initializers, regularizers, constraints, optimizers, layers
+    #     from keras.preprocessing import text, sequence
+    #     from keras.callbacks import ModelCheckpoint
+    #     from keras.callbacks import EarlyStopping
         
-        embedding_size = 128
+    #     embedding_size = 128
 
-        model = Sequential()
-        model.add(Bidirectional(LSTM(10, return_sequences=True), 
-                                input_shape=(100,)))
+    #     model = Sequential()
+    #     model.add(Bidirectional(LSTM(10, return_sequences=True), 
+    #                             input_shape=(100,)))
         # model.add(Bidirectional(LSTM(10, return_sequences=True),
         #                         input_shape=(5, 10)))
         # model.add(Bidirectional(LSTM(10)))
@@ -220,32 +234,32 @@ class Builder:
         #model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
   
 
-        return model
+        # return model
 
-    @staticmethod
-    def fit_lstm(X_train,y_train, X_test, y_test, model, validation_data=None, 
-                verbose=None, epochs=None, steps_per_epoch=None, batch_size=None):
-        #     * `X_t`
-        #     * `y`
-        #     * `batch_size=32`
-        #     * `epochs=1`
-        #     * `validation_split=0.1`
-        #     * `callbacks=callbacks`
+    # @staticmethod
+    # def fit_lstm(X_train,y_train, X_test, y_test, model, validation_data=None, 
+    #             verbose=None, epochs=None, steps_per_epoch=None, batch_size=None):
+    #     #     * `X_t`
+    #     #     * `y`
+    #     #     * `batch_size=32`
+    #     #     * `epochs=1`
+    #     #     * `validation_split=0.1`
+    #     #     * `callbacks=callbacks`
 
-        # checkpoints_path = 'weights_base.best.hdf5'
-        # checkpoint = ModelCheckpoint(checkpoints_path, monitor='val_loss', verbose=1, save_best_only=True, mode='min')
+    #     # checkpoints_path = 'weights_base.best.hdf5'
+    #     # checkpoint = ModelCheckpoint(checkpoints_path, monitor='val_loss', verbose=1, save_best_only=True, mode='min')
 
-        # early_stopping = EarlyStopping(monitor='val_loss', mode='min', patience=25)
-        # callbacks = [checkpoint, early_stopping]
+    #     # early_stopping = EarlyStopping(monitor='val_loss', mode='min', patience=25)
+    #     # callbacks = [checkpoint, early_stopping]
 
-        history = model.fit_generator(batch_maker(X_train, y_train, batch_size),
-                                        validation_data=validation_data, 
-                                        verbose=verbose, epochs=epochs, 
-                                        steps_per_epoch=steps_per_epoch)
-        print("TRAINING COMPLETE")
-        model.summary()
+    #     history = model.fit_generator(batch_maker(X_train, y_train, batch_size),
+    #                                     validation_data=validation_data, 
+    #                                     verbose=verbose, epochs=epochs, 
+    #                                     steps_per_epoch=steps_per_epoch)
+    #     print("TRAINING COMPLETE")
+    #     model.summary()
         
-        return history
+    #     return history
         
         
         # stellar_properties = np.array('solar_mass','solar_radius','solar_metallicity','temp_k')
@@ -263,3 +277,37 @@ class Builder:
 
         # inputs = known_planets
         # validation = candidates
+
+# class RBM():
+#     def __init__(self, nv, nh):
+#         self.W = torch.randn(nh, nv)
+#         self.a = torch.randn(1, nh)
+#         self.b = torch.randn(1, nv)
+#     def sample_h(self, x):
+#         wx =torch.mm(x, self.W.t())
+#         activation = wx + self.a.expand_as(wx)
+#         p_h_given_v = torch.sigmoid(activation)
+#         return p_h_given_v, torch.bernouilli(p_h_given_v)
+#     def sample_v(self, y):
+#         wy = torch.mm(y, self.W)
+#         activation = wy + self.b.expand_as(wy)
+#         p_v_given_h = torch.sigmoid(activation)
+#         return p_v_given_h, torch.bernouilli(p_v_given_h)
+#     def train(self, v0, vk, ph0, phk):
+#         self.W += torch.mm(v0.t(), ph0) - torch.mm(vk.t(), phk)
+#         self.b += torch.sum((v0 - vk), 0)
+#         self.a += torch.sum((ph0 - phk), 0)
+
+    # nv = len(training_set[0])
+    # nh = 100
+    # batch_size = 100
+    # rbm = RBM(nv, nh)
+
+## Training the RBM
+# nb_epoch = 10
+# for epoch in range(1, nb_epoch +1):
+#     train_loss = 0
+#     s = 0.
+#     for user_id in range(0, nb_users - batch_size, batch_size):
+#         vk = training_set[user_id:user_id+batch_size]
+#         v0 = training_set[user_id:user_id+batch_size]
