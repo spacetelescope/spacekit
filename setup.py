@@ -32,7 +32,7 @@ class VerifyVersionCommand(install):
 
 
 setup(
-    name="circleci",
+    name="spacekit",
     version=VERSION,
     description="Python wrapper for the CircleCI API",
     long_description=long_description,
@@ -51,7 +51,7 @@ setup(
     install_requires=[
         'requests==2.18.4',
     ],
-    python_requires='>=3',
+    python_requires='>=3.6',
     cmdclass={
         'verify': VerifyVersionCommand,
     }
