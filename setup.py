@@ -44,8 +44,7 @@ setup(
     license="MIT",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
-        "Intended Audience :: Data Scientists",
-        "Intended Audience :: Astronomers",
+        "Intended Audience :: Astronomical Data Scientists",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
         "Topic :: Data Science :: Machine Learning Tools",
