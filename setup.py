@@ -52,7 +52,7 @@ setup(
         'requests==2.18.4',
         'pandas==0.25.1',
         'numpy=1.16.5',
-        'scikit-learn=0.21.2'
+        'scikit-learn=0.21.2',
         'scipy=1.3.1',
         'tensorflow==2.2.0'
     ],
