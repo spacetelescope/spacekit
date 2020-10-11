@@ -1,19 +1,20 @@
 # spacekit
 PyPi Machine Learning Utility Package for Astrophysical Data Science
 
-* spacekit
-* ├── LICENSE
-* ├── README.md
-* ├── spacekit_pkg
-* │   └── __init__.py
-* │   └── analyzer.py
-* │   └── builder.py
-* │   └── computer.py
-* │   └── radio.py
-* │   └── transformer.py
-* ├── setup.py
-* └── tests
-
+```python
+spacekit
+└── spacekit_pkg
+    └── __init__.py
+    └── analyzer.py
+    └── builder.py
+    └── computer.py
+    └── radio.py
+    └── transformer.py
+└── setup.py
+└── tests
+└── LICENSE
+└── README.md
+```
 - Radio: downloading data from MAST s3 bucket on AWS
     - mast_aws: downlaods fits files for list of kepler/TESS targets
 - Analyzer: flux-timeseries signal analysis
