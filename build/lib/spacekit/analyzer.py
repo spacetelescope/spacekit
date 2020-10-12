@@ -102,7 +102,7 @@ class Analyzer:
         
         # Scatter Plot
         
-        if type(signal) == array:
+        if type(signal) == np.array:
             series_index=list(range(len(signal)))
 
             converted_array = pd.Series(signal.ravel(), index=series_index)
@@ -130,11 +130,12 @@ class Analyzer:
     ### MAKE_SPECGRAM
     # generate and save spectographs of flux signal frequencies
     @staticmethod
-    def make_specgram(signal, Fs=None, NFFT=None, noverlap=None, mode=None,
+    def make_specgram(signal, Fs=2, NFFT=256, noverlap=128, mode=None,
                     cmap=None, units=None, colorbar=False, 
                     save_for_ML=False, fname=None,num=None,**kwargs):
         import matplotlib
         import matplotlib.pyplot as plt
+        
         if mode:
             mode=mode
         if cmap is None:
@@ -167,9 +168,9 @@ class Analyzer:
             plt.xlabel(units[0])
             plt.ylabel(units[1])
             if num:
-                title=f'Spectogram_{num}'
+                title=f'Spectrogram_{num}'
             else:
-                title='Spectogram'
+                title='Spectrogram'
             plt.title(title)
             plt.show()
 
