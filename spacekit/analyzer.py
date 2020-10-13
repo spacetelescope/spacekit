@@ -123,21 +123,19 @@ class Analyzer:
         plt.ylabel(y_units)
         plt.xlabel(x_units)
         plt.title(title_line)
-        plt.show()
+        plt.show();
 
 
 
     ### MAKE_SPECGRAM
     # generate and save spectographs of flux signal frequencies
     @staticmethod
-    def make_specgram(signal, Fs=2, NFFT=256, noverlap=128, mode=None,
+    def make_specgram(signal, Fs=2, NFFT=256, noverlap=128, mode='psd',
                     cmap=None, units=None, colorbar=False, 
                     save_for_ML=False, fname=None,num=None,**kwargs):
         import matplotlib
         import matplotlib.pyplot as plt
-        
-        if mode:
-            mode=mode
+
         if cmap is None:
             cmap='binary'
 
@@ -172,16 +170,11 @@ class Analyzer:
             else:
                 title='Spectrogram'
             plt.title(title)
-            plt.show()
+            plt.show();
 
         return fig, freqs, t, m
 
-
-# todo
-# estimate_period
-# --> BoxCox
-# --> Lomb-Scargle
-
+    @staticmethod
     def planet_hunter(f, fmt='kepler.fits'):
         """
         args:

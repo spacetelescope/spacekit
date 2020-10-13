@@ -12,7 +12,7 @@ from setuptools import setup
 from setuptools.command.install import install
 
 # circleci.py version
-VERSION = "0.0.9"
+VERSION = "0.1.0"
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
