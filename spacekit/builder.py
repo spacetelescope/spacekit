@@ -11,10 +11,8 @@
 """
 
 import numpy as np
-from sklearn.preprocessing import FunctionTransformer
-from sklearn.model_selection import train_test_split
-
-import keras
+import tensorflow as tf
+from tensorflow import keras
 from keras.utils.np_utils import to_categorical
 from keras.preprocessing.text import Tokenizer
 from keras import models, layers, optimizers
@@ -30,6 +28,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.neural_network import BernoulliRBM
 from sklearn.pipeline import Pipeline
 from sklearn.base import clone
+
 # ********* /\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ ********* #
 
 class Builder:
@@ -42,16 +41,6 @@ class Builder:
         Builds and compiles linear CNN using Keras
 
         """
-        from tensorflow import keras
-        from keras.utils.np_utils import to_categorical
-        # from keras.preprocessing.text import Tokenizer
-        from keras import models, layers, optimizers
-        from keras.models import Sequential, Model
-        from keras.layers import Conv1D, MaxPool1D, Dense, Dropout, Flatten, \
-        BatchNormalization, Input, concatenate, Activation
-        from keras.optimizers import Adam
-        from keras.wrappers.scikit_learn import KerasClassifier
-        from sklearn.model_selection import cross_val_score
 
         if input_shape is None:
             input_shape = X_train.shape[1:]
