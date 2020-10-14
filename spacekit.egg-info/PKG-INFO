@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: spacekit
-Version: 0.1.5
+Version: 0.1.6
 Summary: Python wrapper for the CircleCI API
 Home-page: https://github.com/hakkeray/spacekit
 Author: Ru Keïn
