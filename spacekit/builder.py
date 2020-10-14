@@ -137,7 +137,7 @@ class Builder:
         
             yield xb, yb
 
-    def fit_cnn(self, model, validation_data=(X_test, y_test), verbose=2, epochs=5, batch_size=32):
+    def fit_cnn(self, model, verbose=2, epochs=5, batch_size=32):
         """
         Fits cnn and returns keras history
         Gives equal number of positive and negative samples rotating randomly  
@@ -146,6 +146,7 @@ class Builder:
         X_test = self.X_test
         y_train = self.y_train
         y_test = self.y_test
+        validation_data = (X_test, y_test)
         make_batches = self.batch_maker()
 
         print("FITTING MODEL...")
