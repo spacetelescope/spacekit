@@ -10,11 +10,8 @@
     * class RBM
 """
 
-import numpy as np
-import random
 import tensorflow as tf
-from tensorflow import keras
-# from keras.preprocessing.text import Tokenizer
+import tensorflow.keras as keras
 from keras import models, layers, optimizers
 from keras.models import Sequential, Model
 from keras.layers import Conv1D, MaxPool1D, Dense, Dropout, Flatten, \
@@ -22,6 +19,7 @@ BatchNormalization, Input, concatenate, Activation
 from keras.optimizers import Adam
 from keras.wrappers.scikit_learn import KerasClassifier
 from sklearn.model_selection import cross_val_score
+# from keras.preprocessing.text import Tokenizer
 #from scipy.ndimage import convolve
 #from sklearn.neural_network import BernoulliRBM
 #from sklearn.pipeline import Pipeline
@@ -37,7 +35,9 @@ class Builder:
         self.y_train = y_train
         self.y_test = y_test
 
-    def build_cnn(self, kernel_size=11, activation='relu', strides=4, optimizer=Adam, learning_rate=1e-5, loss='binary_crossentropy', metrics=['accuracy']):
+    def build_cnn(self, kernel_size=11, activation='relu', strides=4, 
+                  optimizer=Adam, learning_rate=1e-5, 
+                  loss='binary_crossentropy', metrics=['accuracy']):
         """
         Builds and compiles linear CNN using Keras
 
@@ -137,7 +137,7 @@ class Builder:
         
             yield xb, yb
 
-    def fit_cnn(model, validation_data=None, verbose=2, epochs=5, batch_size=32, steps_per_epoch=(X_train.shape[1]//batch_size)):
+    def fit_cnn(self, model, validation_data=(X_test, y_test), verbose=2, epochs=5, batch_size=32):
         """
         Fits cnn and returns keras history
         Gives equal number of positive and negative samples rotating randomly  
@@ -146,13 +146,15 @@ class Builder:
         X_test = self.X_test
         y_train = self.y_train
         y_test = self.y_test
+        make_batches = self.batch_maker()
 
         print("FITTING MODEL...")
+
+        steps_per_epoch = (X_train.shape[1]//batch_size)
         
-        history = model.fit_generator(batch_maker(X_train, y_train, batch_size),
-                                        validation_data=validation_data, 
-                                        verbose=verbose, epochs=epochs, 
-                                        steps_per_epoch=steps_per_epoch)
+        history = model.fit(make_batches, validation_data=validation_data, 
+                            verbose=verbose, epochs=epochs, 
+                            steps_per_epoch=steps_per_epoch)
         print("TRAINING COMPLETE")
         model.summary()
 
