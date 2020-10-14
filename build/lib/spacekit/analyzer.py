@@ -25,7 +25,7 @@ import matplotlib.pyplot as plt
 class Analyzer:
 
     @staticmethod
-    def atomic_vector_plotter(signal, label_col=None, classes=None, class_names=None, figsize=(15,5), 
+    def atomic_vector_plotter(self, signal, label_col=None, classes=None, class_names=None, figsize=(15,5), 
     y_units=None, x_units=None):
         """
         Plots scatter and line plots of time series signal values.  
