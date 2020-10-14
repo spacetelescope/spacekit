@@ -114,61 +114,62 @@ class Builder:
             epochs = 5
         if validation_data is None:
             validation_data=(X_test, y_test)
-        if steps_per_epoch is None:
-            steps_per_epoch = (X_train.shape[1]//batch_size)
         if batch_size is None:
             batch_size = 32
+        if steps_per_epoch is None:
+            steps_per_epoch = (X_train.shape[1]//batch_size) # 99
+
 
         print("FITTING MODEL...")
         
         def batch_maker(X_train, y_train, batch_size=batch_size):
-                """
-                Gives equal number of positive and negative samples rotating randomly                
-                The output of the generator must be either
-                - a tuple `(inputs, targets)`
-                - a tuple `(inputs, targets, sample_weights)`.
+            """
+            Gives equal number of positive and negative samples rotating randomly                
+            The output of the generator must be either
+            - a tuple `(inputs, targets)`
+            - a tuple `(inputs, targets, sample_weights)`.
 
-                This tuple (a single output of the generator) makes a single
-                batch. Therefore, all arrays in this tuple must have the same
-                length (equal to the size of this batch). Different batches may have 
-                different sizes. 
+            This tuple (a single output of the generator) makes a single
+            batch. Therefore, all arrays in this tuple must have the same
+            length (equal to the size of this batch). Different batches may have 
+            different sizes. 
 
-                For example, the last batch of the epoch is commonly smaller than the others, 
-                if the size of the dataset is not divisible by the batch size.
-                The generator is expected to loop over its data indefinitely. 
-                An epoch finishes when `steps_per_epoch` batches have been seen by the model.
-                
-                """
-                import numpy
-                import random
-                # hb: half-batch
-                hb = batch_size // 2
-                
-                # Returns a new array of given shape and type, without initializing.
-                # x_train.shape = (5087, 3197, 2)
-                xb = np.empty((batch_size, X_train.shape[1], X_train.shape[2]), dtype='float32')
-                
-                #y_train.shape = (5087, 1)
-                yb = np.empty((batch_size, y_train.shape[1]), dtype='float32')
-                
-                pos = np.where(y_train[:,0] == 1.)[0]
-                neg = np.where(y_train[:,0] == 0.)[0]
+            For example, the last batch of the epoch is commonly smaller than the others, 
+            if the size of the dataset is not divisible by the batch size.
+            The generator is expected to loop over its data indefinitely. 
+            An epoch finishes when `steps_per_epoch` batches have been seen by the model.
+            
+            """
+            import numpy
+            import random
+            # hb: half-batch
+            hb = batch_size // 2
+            
+            # Returns a new array of given shape and type, without initializing.
+            # x_train.shape = (5087, 3197, 2)
+            xb = np.empty((batch_size, X_train.shape[1], X_train.shape[2]), dtype='float32')
+            
+            #y_train.shape = (5087, 1)
+            yb = np.empty((batch_size, y_train.shape[1]), dtype='float32')
+            
+            pos = np.where(y_train[:,0] == 1.)[0]
+            neg = np.where(y_train[:,0] == 0.)[0]
 
-                # rotating each of the samples randomly
-                while True:
-                    np.random.shuffle(pos)
-                    np.random.shuffle(neg)
-                
-                    xb[:hb] = X_train[pos[:hb]]
-                    xb[hb:] = X_train[neg[hb:batch_size]]
-                    yb[:hb] = y_train[pos[:hb]]
-                    yb[hb:] = y_train[neg[hb:batch_size]]
-                
-                    for i in range(batch_size):
-                        size = np.random.randint(xb.shape[1])
-                        xb[i] = np.roll(xb[i], size, axis=0)
-                
-                    yield xb, yb
+            # rotating each of the samples randomly
+            while True:
+                np.random.shuffle(pos)
+                np.random.shuffle(neg)
+            
+                xb[:hb] = X_train[pos[:hb]]
+                xb[hb:] = X_train[neg[hb:batch_size]]
+                yb[:hb] = y_train[pos[:hb]]
+                yb[hb:] = y_train[neg[hb:batch_size]]
+            
+                for i in range(batch_size):
+                    size = np.random.randint(xb.shape[1])
+                    xb[i] = np.roll(xb[i], size, axis=0)
+            
+                yield xb, yb
         
         history = model.fit_generator(batch_maker(X_train, y_train, batch_size),
                                         validation_data=validation_data, 
