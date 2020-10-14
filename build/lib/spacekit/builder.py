@@ -11,7 +11,6 @@
 """
 
 import tensorflow as tf
-import Keras as keras
 from tensorflow import keras
 from keras import models, layers, optimizers
 from keras.models import Sequential, Model
