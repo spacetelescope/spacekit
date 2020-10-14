@@ -12,7 +12,7 @@ from setuptools import setup
 from setuptools.command.install import install
 
 # circleci.py version
-VERSION = "0.1.4"
+VERSION = "0.1.5"
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
@@ -56,6 +56,7 @@ setup(
         'scikit-learn==0.23.2',
         'scipy==1.4.1',
         'tensorflow==2.3.0',
+        'Keras==2.4.3'
         'astropy==4.0.1',
         'boto3==1.15.16',
         'astroquery==0.4.1'

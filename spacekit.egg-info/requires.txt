@@ -5,6 +5,6 @@ numpy==1.16.5
 scikit-learn==0.23.2
 scipy==1.4.1
 tensorflow==2.3.0
-astropy==4.0.1
+Keras==2.4.3astropy==4.0.1
 boto3==1.15.16
 astroquery==0.4.1

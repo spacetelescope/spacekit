@@ -11,7 +11,8 @@
 """
 
 import tensorflow as tf
-import tensorflow.keras as keras
+import Keras as keras
+from tensorflow import keras
 from keras import models, layers, optimizers
 from keras.models import Sequential, Model
 from keras.layers import Conv1D, MaxPool1D, Dense, Dropout, Flatten, \
