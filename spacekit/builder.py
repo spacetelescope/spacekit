@@ -42,8 +42,7 @@ class Builder:
         Builds and compiles linear CNN using Keras
 
         """
-        X_train = self.X_train
-        input_shape = X_train.shape[1:]
+        input_shape = self.X_train.shape[1:]
 
         print("BUILDING MODEL...")
         model=Sequential()
@@ -106,30 +105,29 @@ class Builder:
         An epoch finishes when `steps_per_epoch` batches have been seen by the model.
         
         """
-        X_train = self.X_train
-        y_train = self.y_train
+
         # hb: half-batch
         hb = batch_size // 2
         
         # Returns a new array of given shape and type, without initializing.
         # x_train.shape = (5087, 3197, 2)
-        xb = np.empty((batch_size, X_train.shape[1], X_train.shape[2]), dtype='float32')
+        xb = np.empty((batch_size, self.X_train.shape[1], self.X_train.shape[2]), dtype='float32')
         
         #y_train.shape = (5087, 1)
-        yb = np.empty((batch_size, y_train.shape[1]), dtype='float32')
+        yb = np.empty((batch_size, self.y_train.shape[1]), dtype='float32')
         
-        pos = np.where(y_train[:,0] == 1.)[0]
-        neg = np.where(y_train[:,0] == 0.)[0]
+        pos = np.where(self.y_train[:,0] == 1.)[0]
+        neg = np.where(self.y_train[:,0] == 0.)[0]
 
         # rotating each of the samples randomly
         while True:
             np.random.shuffle(pos)
             np.random.shuffle(neg)
         
-            xb[:hb] = X_train[pos[:hb]]
-            xb[hb:] = X_train[neg[hb:batch_size]]
-            yb[:hb] = y_train[pos[:hb]]
-            yb[hb:] = y_train[neg[hb:batch_size]]
+            xb[:hb] = self.X_train[pos[:hb]]
+            xb[hb:] = self.X_train[neg[hb:batch_size]]
+            yb[:hb] = self.y_train[pos[:hb]]
+            yb[hb:] = self.y_train[neg[hb:batch_size]]
         
             for i in range(batch_size):
                 size = np.random.randint(xb.shape[1])
@@ -142,16 +140,12 @@ class Builder:
         Fits cnn and returns keras history
         Gives equal number of positive and negative samples rotating randomly  
         """
-        X_train = self.X_train
-        X_test = self.X_test
-        y_train = self.y_train
-        y_test = self.y_test
-        validation_data = (X_test, y_test)
+        validation_data = (self.X_test, self.y_test)
         make_batches = self.batch_maker()
 
         print("FITTING MODEL...")
 
-        steps_per_epoch = (X_train.shape[1]//batch_size)
+        steps_per_epoch = (self.X_train.shape[1]//batch_size)
         
         history = model.fit(make_batches, validation_data=validation_data, 
                             verbose=verbose, epochs=epochs, 
