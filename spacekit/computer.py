@@ -20,9 +20,8 @@ calculating scores, and evaluating a machine learning model.
 #
 #
 TODO       
-- save metriks to textfile/pickle objs and/or dictionaries
-#
-# ********* /\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ ********* #
+- save metrics to textfile/pickle objs and/or dictionaries
+
 """
 import pandas as pd
 import numpy as np
