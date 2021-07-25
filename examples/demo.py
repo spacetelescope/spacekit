@@ -129,6 +129,6 @@ if __name__ == '__main__':
     X_train, X_test = prep.add_filter(X_train, X_test)
 
     learning_rate, epochs = set_params(sys.argv)
-    launch = Launch(X_train, X_test,  y_train, y_test)
+    launch = Launch(X_train, X_test, y_train, y_test)
     cnn = launch.deploy()
     history = launch.takeoff(cnn)
