@@ -1,1 +1,5 @@
 setup.py-bak
+*.pyc
+__pycache__
+.vscode
+.DS_store

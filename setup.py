@@ -11,8 +11,8 @@ import sys
 from setuptools import setup
 from setuptools.command.install import install
 
-# circleci.py version
-VERSION = "0.2.0"
+# spacekit version
+VERSION = "0.2.1"
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
@@ -34,7 +34,7 @@ class VerifyVersionCommand(install):
 setup(
     name="spacekit",
     version=VERSION,
-    description="Python wrapper for the CircleCI API",
+    description="Machine Learning Tools for Astronomical Data Science",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/alphasentaurii/spacekit",
@@ -49,19 +49,18 @@ setup(
         "Operating System :: OS Independent",
     ],
     install_requires=[
-        'requests==2.23.0',
-        'pandas==1.1.2',
+        'pandas>=1.1.2',
         'matplotlib==3.2.2',
-        'numpy==1.16.5',
-        'scikit-learn==0.23.2',
-        'scipy==1.4.1',
-        'tensorflow==2.3.0',
+        'numpy>=1.16.5',
+        'sklearn',
+        'tensorflow>=2.3.0',
         'keras==2.4.3',
-        'astropy==4.0.1',
-        'boto3==1.15.16',
-        'astroquery==0.4.1'
+        'astropy>=4.0.1',
+        'boto3>=1.15.16',
+        'astroquery>=0.4.1',
+        'wget==3.2'
     ],
-    python_requires='>=3.6',
+    python_requires='>=3.7',
     cmdclass={
         'verify': VerifyVersionCommand,
     }
