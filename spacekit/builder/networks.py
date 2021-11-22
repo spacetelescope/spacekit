@@ -6,6 +6,10 @@ from tensorflow.keras.models import Sequential, Model, load_model
 from tensorflow.keras import layers, optimizers, callbacks
 from tensorflow.keras.layers import Dense, Input, concatenate
 from keras.layers import Dense
+from keras.models import Sequential, Model
+from keras.layers import Conv1D, MaxPool1D, Dense, Dropout, Flatten, BatchNormalization
+#, Input, concatenate, Activation
+from keras.optimizers import Adam
 # from preprocessor.transform import apply_power_transform, power_transform_matrix
 from preprocessor.augment import augment_data, augment_image
 from tracker.stopwatch import clocklog
@@ -373,3 +377,129 @@ class Ensemble(Builder):
                 xb[i] = augment_image(xb[i])
 
             yield [xa, xb], yb
+
+
+class LinearCNN1D(Builder):
+
+    def __init__(self, X_train, X_test, y_train, y_test):
+        super().__init__(self, X_train, X_test, y_train, y_test)
+
+    def build_cnn(self, kernel_size=11, activation='relu', strides=4, 
+                  optimizer=Adam, learning_rate=1e-5, 
+                  loss='binary_crossentropy', metrics=['accuracy']):
+        """
+        Builds and compiles linear CNN using Keras
+
+        """
+        input_shape = self.X_train.shape[1:]
+
+        print("BUILDING MODEL...")
+        model=Sequential()
+        
+        print("LAYER 1")
+        model.add(Conv1D(filters=8, kernel_size=kernel_size, 
+                        activation=activation, input_shape=input_shape))
+        model.add(MaxPool1D(strides=strides))
+        model.add(BatchNormalization())
+        
+        print("LAYER 2")
+        model.add(Conv1D(filters=16, kernel_size=kernel_size, 
+                        activation=activation))
+        model.add(MaxPool1D(strides=strides))
+        model.add(BatchNormalization())
+        
+        print("LAYER 3")
+        model.add(Conv1D(filters=32, kernel_size=kernel_size, 
+                        activation=activation))
+        model.add(MaxPool1D(strides=strides))
+        model.add(BatchNormalization())
+        
+        print("LAYER 4")
+        model.add(Conv1D(filters=64, kernel_size=kernel_size, 
+                        activation=activation))
+        model.add(MaxPool1D(strides=strides))
+        model.add(Flatten())
+        
+        print("FULL CONNECTION")
+        model.add(Dropout(0.5))
+        model.add(Dense(64, activation=activation))
+        model.add(Dropout(0.25))
+        model.add(Dense(64, activation=activation))
+
+        print("ADDING COST FUNCTION")
+        model.add(Dense(1, activation='sigmoid'))
+ 
+        ##### COMPILE #####
+        model.compile(optimizer=optimizer(learning_rate), loss=loss, 
+                    metrics=metrics)
+        print("COMPILED")  
+        
+        return model 
+
+    def batch_maker(self, batch_size=32):
+        """
+        Gives equal number of positive and negative samples rotating randomly                
+        The output of the generator must be either
+        - a tuple `(inputs, targets)`
+        - a tuple `(inputs, targets, sample_weights)`.
+
+        This tuple (a single output of the generator) makes a single
+        batch. Therefore, all arrays in this tuple must have the same
+        length (equal to the size of this batch). Different batches may have 
+        different sizes. 
+
+        For example, the last batch of the epoch is commonly smaller than the others, 
+        if the size of the dataset is not divisible by the batch size.
+        The generator is expected to loop over its data indefinitely. 
+        An epoch finishes when `steps_per_epoch` batches have been seen by the model.
+        
+        """
+
+        # hb: half-batch
+        hb = batch_size // 2
+        
+        # Returns a new array of given shape and type, without initializing.
+        # x_train.shape = (5087, 3197, 2)
+        xb = np.empty((batch_size, self.X_train.shape[1], self.X_train.shape[2]), dtype='float32')
+        
+        #y_train.shape = (5087, 1)
+        yb = np.empty((batch_size, self.y_train.shape[1]), dtype='float32')
+        
+        pos = np.where(self.y_train[:,0] == 1.)[0]
+        neg = np.where(self.y_train[:,0] == 0.)[0]
+
+        # rotating each of the samples randomly
+        while True:
+            np.random.shuffle(pos)
+            np.random.shuffle(neg)
+        
+            xb[:hb] = self.X_train[pos[:hb]]
+            xb[hb:] = self.X_train[neg[hb:batch_size]]
+            yb[:hb] = self.y_train[pos[:hb]]
+            yb[hb:] = self.y_train[neg[hb:batch_size]]
+        
+            for i in range(batch_size):
+                size = np.random.randint(xb.shape[1])
+                xb[i] = np.roll(xb[i], size, axis=0)
+        
+            yield xb, yb
+
+    def fit_cnn(self, model, verbose=2, epochs=5, batch_size=32):
+        """
+        Fits cnn and returns keras history
+        Gives equal number of positive and negative samples rotating randomly  
+        """
+        validation_data = (self.X_test, self.y_test)
+        make_batches = self.batch_maker()
+
+        print("FITTING MODEL...")
+
+        steps_per_epoch = (self.X_train.shape[1]//batch_size)
+        
+        history = model.fit(make_batches, validation_data=validation_data, 
+                            verbose=verbose, epochs=epochs, 
+                            steps_per_epoch=steps_per_epoch)
+        print("TRAINING COMPLETE")
+        model.summary()
+
+        return history

@@ -1,10 +1,8 @@
 import os, sys
-import wget # wget-3.2
 from wget import bar_thermometer
 import zipfile
-import numpy as np
-import spacekit
-from spacekit.transformer import Transformer
+# import spacekit
+from spacekit.preprocesser.transform import hypersonic_pliers, thermo_fusion_chisel, babel_fish_dispenser
 from spacekit.builder import Builder
 
 def download_data():
@@ -37,12 +35,9 @@ def set_params(argv):
 
 class Prep:
     def __init__(self):
-        HOME = os.path.curdir
-        DATA = os.path.abspath(HOME+'/data/')
-        self.HOME = HOME
-        self.DATA = DATA
-        T = Transformer()
-        self.T = T
+        self.HOME = os.path.curdir
+        self.DATA = os.path.abspath(self.HOME+'/data/')
+        os.makedirs(self.DATA, exist_ok=True)
 
     def unzip(self, train_zip, test_zip):
         DATA = self.DATA
@@ -58,22 +53,18 @@ class Prep:
         return
 
     def split_data(self, train, test):
-        DATA = self.DATA
-        T = self.T
         print('Train-Test Split Successful')
-        X_train, X_test, y_train, y_test = T.hypersonic_pliers(DATA+train, DATA+test)
+        X_train, X_test, y_train, y_test = hypersonic_pliers(self.DATA+train, self.DATA+test)
         return X_train, X_test, y_train, y_test
 
     def scale_data(self, X_train, X_test):
-        T = self.T
         print('Data Scaled to Zero Mean and Unit Variance')
-        X_train, X_test = T.thermo_fusion_chisel(X_train, X_test)
+        X_train, X_test = thermo_fusion_chisel(X_train, X_test)
         return X_train, X_test
 
     def add_filter(self, X_train, X_test):
-        T = self.T
         print('Noise filter added!')
-        X_train, X_test = T.babel_fish_dispenser(X_train, X_test)
+        X_train, X_test = babel_fish_dispenser(X_train, X_test)
         return X_train, X_test
 
 class Launch:
