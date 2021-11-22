@@ -1,5 +1,5 @@
 # spacekit
-PyPi Machine Learning Utility Package for Astrophysical Data Science
+Astronomical Data Science and Machine Learning Toolkit
 
 ```python
 spacekit

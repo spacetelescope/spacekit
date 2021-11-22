@@ -1,28 +1,4 @@
-
-# if __name__ == '__main__':
-#     radio = Radio()
-#     radio.mast_aws()
-#     analyzer = Analyzer()
-#     analyzer.atomic_vector_plotter()
-#     analyzer.make_specgram()
-#     analyzer.planet_hunter()
-#     transformer = Transformer()
-#     transformer.hypersonic_pliers()
-#     transformer.thermo_fusion_chisel()
-#     transformer.babel_fish_dispenser()
-#     transformer.fast_fourier()
-#     builder = Builder()
-#     builder.build_cnn()
-#     builder.fit_cnn()
-#     computer = Computer()
-#     computer.get_preds()
-#     computer.fnfp()
-#     computer.keras_history()
-#     computer.fusion_matrix()
-#     computer.roc_plots()
-#     computer.compute()
-
-import os,sys
+import os, sys
 import wget # wget-3.2
 from wget import bar_thermometer
 import zipfile
@@ -40,9 +16,9 @@ def download_data():
     except:
         print('Found existing DATA path.')
     DATA = os.path.abspath(HOME+'/data/')
-    TRAIN_FILE = wget.download(TRAIN_URL, out=DATA, bar=bar_thermometer)
+    wget.download(TRAIN_URL, out=DATA, bar=bar_thermometer)
     print('\n')
-    TEST_FILE = wget.download(TEST_URL, out=DATA, bar=bar_thermometer)
+    wget.download(TEST_URL, out=DATA, bar=bar_thermometer)
     print('\n')
     files = os.listdir(DATA)
     train_zip = os.path.join(DATA,files[0])
