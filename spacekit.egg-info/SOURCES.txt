@@ -31,6 +31,7 @@ spacekit.egg-info/top_level.txt
 spacekit/analyzer/__init__.py
 spacekit/analyzer/compute.py
 spacekit/analyzer/explore.py
+spacekit/analyzer/track.py
 spacekit/builder/__init__.py
 spacekit/builder/cnn.py
 spacekit/extractor/__init__.py
@@ -42,10 +43,9 @@ spacekit/preprocessor/__init__.py
 spacekit/preprocessor/augment.py
 spacekit/preprocessor/radio.py
 spacekit/preprocessor/transform.py
+spacekit/specialist/hst/mosaic_cnn/__init__.py
 spacekit/specialist/hst/mosaic_cnn/mosaic_corrupt.py
 spacekit/specialist/hst/mosaic_cnn/mosaic_predict.py
 spacekit/specialist/hst/mosaic_cnn/mosaic_train.py
-spacekit/tracker/__init__.py
-spacekit/tracker/stopwatch.py
 tests/__init__.py
 tests/test_example.py
