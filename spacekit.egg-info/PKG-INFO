@@ -25,6 +25,11 @@ Provides-Extra: dev
 License-File: LICENSE
 
 # spacekit
+
+[![Powered by Astropy](http://img.shields.io/badge/powered%20by-AstroPy-orange.svg?style=flat)](http://www.astropy.org)
+![GitHub repo size](https://img.shields.io/github/repo-size/alphasentaurii/spacekit)
+![GitHub license](https://img.shields.io/github/license/alphasentaurii/spacekit?color=black)
+
 Astronomical Data Science and Machine Learning Toolkit
 
 ```python

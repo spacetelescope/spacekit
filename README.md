@@ -1,4 +1,9 @@
 # spacekit
+
+[![Powered by Astropy](http://img.shields.io/badge/powered%20by-AstroPy-orange.svg?style=flat)](http://www.astropy.org)
+![GitHub repo size](https://img.shields.io/github/repo-size/alphasentaurii/spacekit)
+![GitHub license](https://img.shields.io/github/license/alphasentaurii/spacekit?color=black)
+
 Astronomical Data Science and Machine Learning Toolkit
 
 ```python
@@ -77,5 +82,5 @@ $ python -m spacekit.skopes.hst.mosaic.svm_predict ./mydata.csv ./img -m=./model
 Run steps 1 and 2 above, then:
 
 ```bash
-$ python -m spacekit.skopes.hst.mosaic.svm_predict ./mydata.csv ./img
+$ python -m spacekit.skopes.hst.mosaic.svm_train ./mydata.csv ./img
 ```
