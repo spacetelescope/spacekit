@@ -129,10 +129,11 @@ def save_preds(X_data, y_pred, y_proba, output_path):
     preds = X_data.join(pred_proba)
     preds["index"] = preds.index
     output_file = f"{output_path}/predictions.csv"
+    os.makedirs(output_path, exist_ok=True)
     preds.to_csv(output_file, index=False)
     print("Y_PRED + Probabilities added. Dataframe saved to: ", output_file)
+    return preds
     
-
 
 def main(model_path, data_file, img_path, output_path):
     ens_clf = get_model(model_path)
