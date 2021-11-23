@@ -133,7 +133,7 @@ def save_preds(X_data, y_pred, y_proba, output_path):
     preds.to_csv(output_file, index=False)
     print("Y_PRED + Probabilities added. Dataframe saved to: ", output_file)
     return preds
-    
+
 
 def main(model_path, data_file, img_path, output_path):
     ens_clf = get_model(model_path)

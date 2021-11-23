@@ -55,33 +55,6 @@ def flatten_dict(dd, separator=".", prefix=""):
     )
 
 
-# def dict_to_astropy_table(in_dict):
-#     """Converts an astropy table stored as a dictionary back to astropy table format.
-
-#     Parameters
-#     ----------
-#     in_dict : dictionary
-#         dataset to convert back to astropy table format
-
-#     Returns
-#     -------
-#     out_table : astropy.table.table.Table
-#         astropy table generated in_data
-#     """
-#     colname_list = []
-#     dtype_list = []
-#     data_list = []
-#     for colname in in_dict.keys():  # load up lists by dictionary item type in preparation for table generation
-#         colname_list.append(colname)
-#         dtype_list.append(in_dict[colname]['dtype'])
-#         data_list.append(in_dict[colname]['data'])
-#     out_table = Table(data_list, names=colname_list, dtype=dtype_list)  # generate table, but without units or format details
-#     for colname in colname_list:  # add units and format details
-#         out_table[colname].unit = in_dict[colname]['unit']
-#         out_table[colname].format = in_dict[colname]['format']
-#     return out_table
-
-
 def read_json_file(json_filename):
     """extracts header and data sections from specified json file and returns the header and data (in it's original
     pre-json format) as a nested ordered dictionary
@@ -118,13 +91,7 @@ def read_json_file(json_filename):
         ]  # copy over the 'header' section directly.
         out_dict["general information"] = json_data["general information"]
         out_dict["data"] = collections.OrderedDict()  # set up blank data section
-        # out_dict['descriptions'] = collections.OrderedDict()
-        # out_dict['units'] = collections.OrderedDict()
         for datakey in json_data["data"].keys():
-            out_dict["descriptions"][datakey] = json_data["data"][datakey][
-                "descriptions"
-            ]
-            out_dict["units"][datakey] = json_data["data"][datakey]["units"]
             if (
                 json_data["data"][datakey]["original format"]
                 == "<class 'numpy.ndarray'>"
@@ -140,10 +107,6 @@ def read_json_file(json_filename):
                     json_data["data"][datakey]["data"],
                     dtype=json_data["data"][datakey]["dtype"],
                 )
-            # elif json_data['data'][datakey]['original format'] == "<class 'astropy.table.table.Table'>":  # Extract astropy tables
-            #     log.info("Converting dataset '{}' back to format '{}'".format(datakey,
-            #                                                                   json_data['data'][datakey]['original format']))
-            #     out_dict['data'][datakey] = dict_to_astropy_table(json_data['data'][datakey]['data'])
             elif (
                 json_data["data"][datakey]["original format"] == "<class 'tuple'>"
             ):  # Extract tuples

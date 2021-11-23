@@ -15,6 +15,7 @@ def proc_time(start, end, prcname=""):
     print(f"\nProcess [{prcname}] : {t}\n")
 
 
+# TODO: record laps (eg. for loading train test val image sets)
 def stopwatch(prcname, t0=None, t1=None, out=".", log=True):
     lap = 0
     if t1 is not None:

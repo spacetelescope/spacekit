@@ -191,6 +191,7 @@ def encode_categories(df, sep=";"):
             CAT[idx] = category_keys[c]
     df_cat = pd.DataFrame.from_dict(CAT, orient="index", columns={"cat"})
     print("\nCategory encoding complete.")
+    print(df_cat["cat"].value_counts())
     df = df.join(df_cat, how="left")
     return df
 
@@ -307,7 +308,7 @@ def main(hdf5_file, data_path, output_file, pattern, make, crpt):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         prog="mosaic_ml",
-        usage="python make_dataset.py ml_train -d=singlevisits -o=svm.csv",
+        usage="python frame_data.py singlevisits -d=ml_train -o=svm.csv",
     )
     parser.add_argument(
         "source_datapath", type=str, help="path to SVM dataset directory"

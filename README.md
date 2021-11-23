@@ -50,14 +50,14 @@ $ pip install -e .
 
 ## Run
 
-**Example: HST Mosaic Alignment Classification**
+**Example: HST Single Visit Mosaic Alignment Classification**
 
 ### Classify new data using pre-trained model (from the command line):
 
 1. Preprocess data (scrape from regression test json and fits files)
 
 ```bash
-$ python -m spacekit.extractor.frame_data h5filename -d=path/to/svmdata -o=./newdata.csv
+$ python -m spacekit.extractor.frame_data path/to/svmdata -o=./newdata.csv
 ```
 
 2. Preprocess images (generate png preview files)
@@ -70,4 +70,12 @@ python -m spacekit.extractor.draw_mosaics path/to/svmdata -o=./img -d=./mydata.c
 
 ```bash
 $ python -m spacekit.skopes.hst.mosaic.svm_predict ./mydata.csv ./img -m=./models/ensembleSVM -o=./results
+```
+
+### Build, train, evaluate new classifier from labeled data
+
+Run steps 1 and 2 above, then:
+
+```bash
+$ python -m spacekit.skopes.hst.mosaic.svm_predict ./mydata.csv ./img
 ```

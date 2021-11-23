@@ -11,7 +11,7 @@ def reload(mod):
     # mf.reload(mf)"""
     from importlib import reload
 
-    print(f"Reloading...\n")
+    print("Reloading...\n")
 
     ##
     if isinstance(mod, list):

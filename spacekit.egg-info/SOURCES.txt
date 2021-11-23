@@ -15,6 +15,8 @@ tox.ini
 .github/ci_workflows.yml
 .vscode/settings.json
 dist/.DS_Store
+dist/spacekit-0.2.2.dev8+g2ec5594.d20211123-py3-none-any.whl
+dist/spacekit-0.2.2.dev8+g2ec5594.d20211123.tar.gz
 docs/Makefile
 docs/conf.py
 docs/make.bat

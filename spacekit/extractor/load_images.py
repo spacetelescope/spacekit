@@ -75,7 +75,7 @@ class SVMImages:
         idx = list(X_data.index)
         files, labels = [], []
         for i in idx:
-            neg, pos = self.get_labeled_image_paths(i, self.img_path)
+            neg, pos = self.get_labeled_image_paths(i)
             if os.path.exists(neg[0]):
                 files.append(neg)
                 labels.append(0)

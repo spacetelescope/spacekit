@@ -1,8 +1,6 @@
-import os
 import pandas as pd
 import numpy as np
 import tensorflow as tf
-from zipfile import ZipFile
 
 # TODO: avoid using hardcoded settings (set for HST single visit mosaics)
 SIZE = 128
@@ -91,26 +89,6 @@ def training_data_aug(X_train, X_test, X_val, y_train, y_test, y_val):
 """***IMAGE DATA PREP FOR 3DCNN***"""
 
 
-def unzip_images(zip_file):
-    basedir = os.path.dirname(zip_file)
-    key = os.path.basename(zip_file).split(".")[0]
-    image_folder = os.path.join(basedir, key + "/")
-    os.makedirs(image_folder, exist_ok=True)
-    with ZipFile(zip_file, "r") as zip_ref:
-        zip_ref.extractall(basedir)
-    print(len(os.listdir(image_folder)))
-    return image_folder
-
-
-def extract_images(path_to_zip, extract_to="."):
-    subfolder = os.path.basename(path_to_zip).replace(".zip", "")
-    with ZipFile(path_to_zip, "r") as zip_ref:
-        zip_ref.extractall(extract_to)
-    image_path = os.path.join(extract_to, subfolder)
-    print(len(os.listdir(image_path)))
-    return image_path
-
-
 def flip_horizontal(x):
     x = tf.image.flip_left_right(x)
     return x
@@ -144,8 +122,8 @@ def color_jitter(x, strength=[0.4, 0.4, 0.4, 0.1]):
 
 
 def augment_image(x, c=None):
-    # As discussed in the SimCLR paper, the series of augmentation
-    # transformations (except for random crops) need to be applied
+    # the series of augmentation transformations
+    # (except for random crops) need to be applied
     # randomly to impose translational invariance.
     from tensorflow.python.ops.numpy_ops import np_config
 
@@ -194,8 +172,10 @@ def training_img_aug(train, test, val):
     y_tr = np.concatenate([y_tr, y_tr, y_ts, y_vl])
     X_tr, X_ts, X_vl = expand_dims(X_tr, X_ts, X_vl, DIM, SIZE, SIZE, CH)
     train_idx = pd.Index(np.concatenate([train[0], train[0], test[0], val[0]]))
-    train_Y = pd.Series(np.concatenate(y_tr, y_tr, y_ts, y_vl), index=train_idx)
-    indX = (train_idx, test[0], val[0])
-    indY = (train_Y, y_ts, y_vl)
+    test_idx, val_idx = pd.Index(test[0]), pd.Index(val[0])
+    train_Y = pd.Series(y_tr, index=train_idx)
+    test_Y, val_Y = pd.Series(y_ts, index=test_idx), pd.Series(y_vl, index=val_idx)
+    indX = (train_idx, test_idx, val_idx)
+    indY = (train_Y, test_Y, val_Y)
     img_idx = [indX, indY]
     return img_idx, X_tr, y_tr, X_ts, y_ts, X_vl, y_vl

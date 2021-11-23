@@ -176,8 +176,9 @@ class Builder:
 
 
 class MultiLayerPerceptron(Builder):
-    def __init__(self, X_train, X_test, y_train, y_test):
-        super().__init__(self, X_train, X_test, y_train, y_test)
+    def __init__(self, X_train, X_test, y_train, y_test, blueprint="mlp"):
+        super().__init__(X_train, X_test, y_train, y_test)
+        self.blueprint = blueprint
 
     def build_mlp(self, input_shape=None, lr_sched=True, layers=[18, 32, 64, 32, 18]):
         if input_shape is None:
@@ -285,8 +286,9 @@ class MultiLayerPerceptron(Builder):
 
 
 class ImageCNN3D(Builder):
-    def __init__(self, X_train, X_test, y_train, y_test):
-        super().__init__(self, X_train, X_test, y_train, y_test)
+    def __init__(self, X_train, X_test, y_train, y_test, blueprint="cnn3d"):
+        super().__init__(X_train, X_test, y_train, y_test)
+        self.blueprint = blueprint
 
     def build_3D(self, input_shape=None, lr_sched=True):
         """Build a 3D convolutional neural network for RGB image triplets"""
@@ -437,12 +439,19 @@ class ImageCNN3D(Builder):
 
 
 class Ensemble(Builder):
-    def __init__(self, X_train, X_test, y_train, y_test):
-        super().__init__(self, X_train, X_test, y_train, y_test)
+    def __init__(self, X_train, X_test, y_train, y_test, params=None):
+        super().__init__(X_train, X_test, y_train, y_test)
         self.name = "ensemble4d"
         self.ensemble = True
-        self.mlp = MultiLayerPerceptron(X_train, X_test, y_train, y_test)
-        self.cnn = ImageCNN3D(X_train, X_test, y_train, y_test)
+        self.mlp = MultiLayerPerceptron(
+            X_train, X_test, y_train, y_test, blueprint="ensemble"
+        )
+        self.cnn = ImageCNN3D(X_train, X_test, y_train, y_test, blueprint="ensemble")
+        self.params = params
+        if params is not None:
+            self.set_parameters(**params)
+        else:
+            self.params = None
 
     def build_ensemble(self, lr_sched=True):
         self.mlp = self.mlp.build_mlp(input_shape=self.X_train[0].shape[1])

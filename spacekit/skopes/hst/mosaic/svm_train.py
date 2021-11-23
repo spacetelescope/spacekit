@@ -4,12 +4,10 @@ import pandas as pd
 import time
 import datetime as dt
 from sklearn.model_selection import train_test_split
-
-from spacekit.preprocessor.augment import (
+from spacekit.preprocessor.augment import training_data_aug, training_img_aug
+from spacekit.preprocessor.transform import (
     apply_power_transform,
     power_transform_matrix,
-    training_data_aug,
-    training_img_aug,
 )
 from spacekit.builder.cnn import Ensemble
 from spacekit.analyzer.compute import ComputeTest, ComputeVal
@@ -59,7 +57,7 @@ def make_image_sets(X_train, X_test, X_val, img_path=".", w=128, h=128, d=9, exp
 
     print("\n*** Training Set ***")
     svm_img = SVMImages(img_path, w, h, d)
-    train = svm_img.detector_training_images(X_train, exp=exp)
+    train = svm_img.detector_training_images(X_train, exp=exp)  # (idx, X, y)
     print("\n*** Test Set ***")
     test = svm_img.detector_training_images(X_test, exp=exp)
     print("\n*** Validation Set ***")
@@ -95,7 +93,7 @@ def make_ensembles(
     return XTR, YTR, XTS, YTS, XVL, YVL
 
 
-def prep_ensemble_data(filename, img_path, synth=None, norm=False):
+def prep_ensemble_data(filename, img_path, synth=None, norm=False, aug=True):
     print("[i] Importing Regression Test Data")
     df = pd.read_csv(filename, index_col="index")
     print("\tREG DATA: ", df.shape)
@@ -108,6 +106,7 @@ def prep_ensemble_data(filename, img_path, synth=None, norm=False):
     print(f"\nClass Labels (0=Aligned, 1=Misaligned)\n{df['label'].value_counts()}")
 
     X_train, X_test, X_val, y_train, y_test, y_val = split_datasets(df)
+
     # IMG DATA
     image_sets = [X_train, X_test, X_val]
     train, test, val = make_image_sets(
@@ -127,7 +126,7 @@ def prep_ensemble_data(filename, img_path, synth=None, norm=False):
     return tv_idx, XTR, YTR, XTS, YTS, XVL, YVL
 
 
-def train_model(XTR, YTR, XTS, YTS, name, params=None):
+def train_model(XTR, YTR, XTS, YTS, model_name, params=None):
     if params is None:
         params = dict(
             batch_size=32,
@@ -138,11 +137,11 @@ def train_model(XTR, YTR, XTS, YTS, name, params=None):
             verbose=1,
             ensemble=True,
         )
-    ens = Ensemble(XTR, YTR, XTS, YTS, **params)
-    name, path = os.path.basename(name), os.path.dirname(name)
+    ens = Ensemble(XTR, YTR, XTS, YTS, params=params)
+    name, path = os.path.basename(model_name), os.path.dirname(model_name)
     ens.name = name
     ens.build_ensemble(lr_sched=True)
-    ens.fit_generator()
+    ens.fit_cnn()
     ens.save_model(weights=True, path=path)
     return ens.model, ens.history
 
@@ -198,7 +197,7 @@ def main(training_data, img_path, synth_data, norm, model_name, params, output_p
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        usage="python mosaic_train.py training_data.csv path/to/img -m=svm_ensemble"
+        usage="python svm_train.py training_data.csv path/to/img -m=svm_ensemble"
     )
     parser.add_argument(
         "training_data", type=str, help="path to training data csv file(s)"

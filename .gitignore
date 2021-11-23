@@ -3,4 +3,4 @@ setup.py-bak
 __pycache__
 .vscode*
 .DS_store
-*/examples/*
+*k2_lightcurve_cnn.py
