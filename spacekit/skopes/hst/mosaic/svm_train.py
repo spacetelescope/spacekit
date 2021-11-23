@@ -93,7 +93,7 @@ def make_ensembles(
     return XTR, YTR, XTS, YTS, XVL, YVL
 
 
-def prep_ensemble_data(filename, img_path, synth=None, norm=False, aug=True):
+def prep_ensemble_data(filename, img_path, synth=None, norm=False):
     print("[i] Importing Regression Test Data")
     df = pd.read_csv(filename, index_col="index")
     print("\tREG DATA: ", df.shape)
@@ -138,11 +138,11 @@ def train_model(XTR, YTR, XTS, YTS, model_name, params=None):
             ensemble=True,
         )
     ens = Ensemble(XTR, YTR, XTS, YTS, params=params)
-    name, path = os.path.basename(model_name), os.path.dirname(model_name)
+    name, outpath = os.path.basename(model_name), os.path.dirname(model_name)
     ens.name = name
     ens.build_ensemble(lr_sched=True)
     ens.fit_cnn()
-    ens.save_model(weights=True, path=path)
+    ens.save_model(weights=True, output_path=outpath)
     return ens.model, ens.history
 
 

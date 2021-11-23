@@ -123,7 +123,7 @@ class Builder:
         self.callbacks = [checkpoint_cb, early_stopping_cb]
         return self.callbacks
 
-    def save_model(self, weights=True, output_path="./models"):
+    def save_model(self, weights=True, output_path="."):
         """The model architecture, and training configuration (including the optimizer, losses, and metrics)
         are stored in saved_model.pb. The weights are saved in the variables/ directory."""
         if self.name is None:

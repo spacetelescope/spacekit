@@ -26,10 +26,11 @@ mpl.rc("font", **font_dict)
 
 
 class Computer:
-    def __init__(self, model_name, computation, classes):
+    def __init__(self, model_name, computation, classes, show=False):
         self.model_name = model_name
         self.computation = computation
         self.classes = classes
+        self.show = show
         self.res_path = None
         self.model = None
         self.history = None
@@ -234,7 +235,7 @@ class Computer:
         self.cm_fig, self.cmx_norm = self.fusion_matrix(self.cm, self.classes)
         return self
 
-    def fusion_matrix(self, cm, classes, normalize=True, cmap="Blues", show=True):
+    def fusion_matrix(self, cm, classes, normalize=True, cmap="Blues"):
         """
         FUSION MATRIX!
         -------------
@@ -296,7 +297,7 @@ class Computer:
 
         # Add a legend
         plt.colorbar()
-        if show:
+        if self.show:
             fig.show()
 
         return fig, fusion
@@ -341,11 +342,12 @@ class Computer:
         ax.set_title(
             "ROC area under curve: {0:.2f}".format(roc_auc_score(y_true, y_hat))
         )
-        fig.show()
+        if self.show:
+            fig.show()
 
         return roc, fig
 
-    def make_roc_curve(self, show=True):
+    def make_roc_curve(self):
 
         fig = go.Figure()
         fig.add_shape(type="line", line=dict(dash="dash"), x0=0, x1=1, y0=0, y1=1)
@@ -372,11 +374,11 @@ class Computer:
             plot_bgcolor="#242a44",
             font={"color": "#ffffff"},
         )
-        if show is True:
+        if self.show:
             fig.show()
         return fig
 
-    def make_pr_curve(self, show=True):
+    def make_pr_curve(self):
 
         fig = go.Figure()
         fig.add_shape(type="line", line=dict(dash="dash"), x0=0, x1=1, y0=1, y1=0)
@@ -403,11 +405,11 @@ class Computer:
             plot_bgcolor="#242a44",
             font={"color": "#ffffff"},
         )
-        if show is True:
+        if self.show:
             fig.show()
         return fig
 
-    def keras_acc_plot(self, show=True):
+    def keras_acc_plot(self):
         acc_train = self.history["accuracy"]
         acc_test = self.history["val_accuracy"]
         n_epochs = list(range(len(acc_train)))
@@ -436,11 +438,11 @@ class Computer:
             font={"color": "#ffffff"},
         )
         fig = go.Figure(data=data, layout=layout)
-        if show:
+        if self.show:
             fig.show()
         return fig
 
-    def keras_loss_plot(self, show=True):
+    def keras_loss_plot(self):
         loss_train = self.history["loss"]
         loss_test = self.history["val_loss"]
         n_epochs = list(range(len(loss_train)))
@@ -467,7 +469,7 @@ class Computer:
             font={"color": "#ffffff"},
         )
         fig = go.Figure(data=data, layout=layout)
-        if show:
+        if self.show:
             fig.show()
         return fig
 
