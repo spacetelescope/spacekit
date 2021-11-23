@@ -7,7 +7,7 @@ import sys
 import datetime as dt
 
 # mosaic_ml modules
-from spacekit.extractor.image_loader import detector_prediction_images
+from spacekit.extractor.load_images import SVMImages
 
 DIM = 3
 CH = 3
@@ -54,7 +54,8 @@ def load_regression_data(filepath):
 def load_image_data(X_data, img_path):
     """Loads total detection png images and converts to arrays"""
     print("Loading images into arrays")
-    idx, X_img = detector_prediction_images(X_data, img_path, SIZE, SIZE, DEPTH, DIM)
+    svm_img = SVMImages(img_path, SIZE, SIZE, DEPTH)
+    idx, X_img = svm_img.detector_prediction_images(X_data, DIM)
     print("Inputs: ", X_img.shape[0])
     print("Dimensions: ", X_img.shape[1])
     print("Width: ", X_img.shape[2])

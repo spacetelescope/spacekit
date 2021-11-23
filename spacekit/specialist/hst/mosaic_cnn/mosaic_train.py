@@ -4,20 +4,17 @@ import pandas as pd
 import time
 import datetime as dt
 from sklearn.model_selection import train_test_split
-import tensorflow as tf
 
-# mosaic_ml modules
 from spacekit.preprocessor.augment import (
     apply_power_transform,
     power_transform_matrix,
     training_data_aug,
     training_img_aug,
 )
-from spacekit.builder import Builder, ComputeTest, ComputeVal, proc_time
-from spacekit.extractor.image_loader import detector_training_images
-
-# from analysis.eda import plot_image_sets
-
+from spacekit.builder.cnn import Ensemble
+from spacekit.analyzer.compute import ComputeTest, ComputeVal
+from spacekit.extractor.load_images import SVMImages
+from spacekit.analyzer.track import stopwatch
 
 DIM = 3
 CH = 3
@@ -57,80 +54,24 @@ def make_image_sets(X_train, X_test, X_val, img_path=".", w=128, h=128, d=9, exp
     returns X_train, X_test, y_train, y_test, y_val
     d=9: 3x3 rgb images (9 channels total)
     """
-    t_start = time.time()
-    start = dt.datetime.fromtimestamp(t_start).strftime("%m/%d/%Y - %I:%M:%S %p")
-    print(f"\n[i] LOADING IMAGES  ***{start}***")
+    start = time.time()
+    stopwatch("LOADING IMAGES", t0=start)
 
-    print(f"\n*** Training Set ***")
-    train = detector_training_images(X_train, img_path, w, h, d, exp)
-    print(f"\n*** Test Set ***")
-    test = detector_training_images(X_test, img_path, w, h, d, exp)
-    print(f"\n*** Validation Set ***")
-    val = detector_training_images(X_val, img_path, w, h, d, exp)
+    print("\n*** Training Set ***")
+    svm_img = SVMImages(img_path, w, h, d)
+    train = svm_img.detector_training_images(X_train, exp=exp)
+    print("\n*** Test Set ***")
+    test = svm_img.detector_training_images(X_test, exp=exp)
+    print("\n*** Validation Set ***")
+    val = svm_img.detector_training_images(X_val, exp=exp)
 
-    t_end = time.time()
-    end = dt.datetime.fromtimestamp(t_end).strftime("%m/%d/%Y - %I:%M:%S %p")
-    print(f"\n[i] IMAGES LOADED ***{end}***")
-    proc_time(t_start, t_end)
+    end = time.time()
+    stopwatch("LOADING IMAGES", t0=start, t1=end)
 
     print("\n[i] Length of Splits:")
     print(f"X_train={len(train[1])}, X_test={len(test[1])}, X_val={len(val[1])}")
 
     return train, test, val
-
-
-def save_model(model, name=None, weights=True, output_path="./models"):
-    """The model architecture, and training configuration (including the optimizer, losses, and metrics)
-    are stored in saved_model.pb. The weights are saved in the variables/ directory."""
-    if name is None:
-        name = str(model.name_scope().rstrip("/").upper())
-        datestamp = dt.datetime.now().isoformat().split("T")[0]
-        model_name = f"{name}_{datestamp}"
-    else:
-        model_name = name
-
-    model_path = os.path.join(output_path, "models", model_name)
-    weights_path = f"{model_path}/weights/ckpt"
-    model.save(model_path)
-    if weights is True:
-        model.save_weights(weights_path)
-    for root, _, files in os.walk(model_path):
-        indent = "    " * root.count(os.sep)
-        print("{}{}/".format(indent, os.path.basename(root)))
-        for filename in files:
-            print("{}{}".format(indent + "    ", filename))
-
-
-# def save_to_pickle(data_dict, res_path=f'./results/ensemble'):
-#     keys = []
-#     for k, v in data_dict.items():
-#         if res_path is not None:
-#             os.makedirs(f"{res_path}", exist_ok=True)
-#             key = f"{res_path}/{k}"
-#         else:
-#             key = k
-#         with open(key, "wb") as file_pi:
-#             pickle.dump(v, file_pi)
-#             keys.append(key)
-#     print(f"Results saved to: {res_path}")
-#     return keys
-
-
-def make_tensors(X_train, y_train, X_test, y_test):
-    """Convert Arrays to Tensors"""
-    X_train = tf.convert_to_tensor(X_train, dtype=tf.float32)
-    y_train = tf.convert_to_tensor(y_train, dtype=tf.float32)
-    X_test = tf.convert_to_tensor(X_test, dtype=tf.float32)
-    y_test = tf.convert_to_tensor(y_test, dtype=tf.float32)
-    return X_train, y_train, X_test, y_test
-
-
-def make_arrays(X_train, y_train, X_test, y_test):
-    X_train = X_train.values
-    y_train = y_train.values.reshape(-1, 1)
-    X_test = X_test.values
-    y_test = y_test.values.reshape(-1, 1)
-    return X_train, y_train, X_test, y_test
 
 
 def make_ensembles(
@@ -197,12 +138,12 @@ def train_model(XTR, YTR, XTS, YTS, name, params=None):
             verbose=1,
             ensemble=True,
         )
-    ens = Builder(XTR, YTR, XTS, YTS, **params)
+    ens = Ensemble(XTR, YTR, XTS, YTS, **params)
     name, path = os.path.basename(name), os.path.dirname(name)
     ens.name = name
     ens.build_ensemble(lr_sched=True)
     ens.fit_generator()
-    save_model(ens.model, name=name, weights=True, path=path)
+    ens.save_model(weights=True, path=path)
     return ens.model, ens.history
 
 

@@ -1,22 +1,31 @@
 Metadata-Version: 2.1
 Name: spacekit
-Version: 0.2.1
-Summary: Machine Learning Tools for Astronomical Data Science
+Version: 0.2.2.dev6+gfd26d17.d20211122
+Summary: Astronomical Data Science and Machine Learning Toolkit
 Home-page: https://github.com/alphasentaurii/spacekit
 Author: Ru Keïn
 Author-email: rkein@stsci.edu
 License: MIT
-Keywords: spacekit spkt ml ai api sdk
+Project-URL: Source, https://github.com/alphasentaurii/spacekit
+Project-URL: Documentation, https://spacekit.readthedocs.io
+Project-URL: Tracker, https://github.com/alphasentaurii/spacekit/issues
 Platform: UNKNOWN
 Classifier: Programming Language :: Python :: 3
 Classifier: License :: OSI Approved :: MIT License
 Classifier: Operating System :: OS Independent
+Classifier: Development Status :: 3 - Alpha
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
 Requires-Python: >=3.7
 Description-Content-Type: text/markdown
+Provides-Extra: test
+Provides-Extra: docs
+Provides-Extra: dev
 License-File: LICENSE
 
 # spacekit
-PyPi Machine Learning Utility Package for Astrophysical Data Science
+Astronomical Data Science and Machine Learning Toolkit
 
 ```python
 spacekit

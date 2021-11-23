@@ -2,12 +2,9 @@ import os
 import pandas as pd
 import numpy as np
 import tensorflow as tf
-
-from sklearn.preprocessing import PowerTransformer
-from pprint import pprint
 from zipfile import ZipFile
 
-
+# TODO: avoid using hardcoded settings (set for HST single visit mosaics)
 SIZE = 128
 DIM = 3
 CH = 3

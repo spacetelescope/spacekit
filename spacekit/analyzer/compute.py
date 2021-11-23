@@ -6,9 +6,6 @@ import pandas as pd
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-plt.style.use("seaborn-bright")
-font_dict = {"family": '"Titillium Web", monospace', "size": 16}
-mpl.rc("font", **font_dict)
 import plotly.graph_objects as go
 from sklearn.metrics import (
     roc_curve,
@@ -20,8 +17,13 @@ from sklearn.metrics import (
     jaccard_score,
     accuracy_score,
     recall_score,
-    fowlkes_mallows_score
+    fowlkes_mallows_score,
 )
+
+plt.style.use("seaborn-bright")
+font_dict = {"family": '"Titillium Web", monospace', "size": 16}
+mpl.rc("font", **font_dict)
+
 
 class Computer:
     def __init__(self, model_name, computation, classes):
@@ -511,63 +513,72 @@ class AnalogComputer:
         self.roc_fig = None
         self.results = None
 
-    def compute(self, preds=True, summary=True, cmx=True, 
-                classes=None, report=True, roc=True, hist=True):
+    def compute(
+        self,
+        preds=True,
+        summary=True,
+        cmx=True,
+        classes=None,
+        report=True,
+        roc=True,
+        hist=True,
+    ):
         """
         evaluates model predictions and stores the output in a dict
         returns `results`
         """
         res = {}
-        res['model'] = self.model.name
-        
-        # class predictions 
+        res["model"] = self.model.name
+
+        # class predictions
         if preds:
-            res['preds'] = self.get_preds()
+            res["preds"] = self.get_preds()
 
         if summary:
-            res['summary'] = self.model.summary
+            res["summary"] = self.model.summary
 
         # FUSION MATRIX
         if cmx:
             if classes is None:
-                classes=set(self.y)
-                #classes=['0','1']
+                classes = set(self.y)
+                # classes=['0','1']
             else:
-                classes=classes
+                classes = classes
             # Plot fusion matrix
-            res['FM'] = self.fusion_matrix(matrix=(self.y.flatten(), self.y_pred), 
-                                        classes=classes)
+            res["FM"] = self.fusion_matrix(
+                matrix=(self.y.flatten(), self.y_pred), classes=classes
+            )
 
         # ROC Area Under Curve
         if roc:
-            res['ROC'] = self.roc_plots(self.X, self.y, self.model)
+            res["ROC"] = self.roc_plots(self.X, self.y, self.model)
 
         # CLASSIFICATION REPORT
         if report:
-            num_dashes=20
-            print('\n')
-            print('---'*num_dashes)
-            print('\tCLASSIFICATION REPORT:')
-            print('---'*num_dashes)
+            num_dashes = 20
+            print("\n")
+            print("---" * num_dashes)
+            print("\tCLASSIFICATION REPORT:")
+            print("---" * num_dashes)
             # generate report
-            res['report'] = classification_report(self.y.flatten(), self.y_pred)
+            res["report"] = classification_report(self.y.flatten(), self.y_pred)
             print(report)
 
         # save to dict:
-        res['jaccard'] = jaccard_score(self.y, self.y_pred)
-        res['fowlkes'] = fowlkes_mallows_score(self.y, self.y_pred)
-        res['accuracy'] = accuracy_score(self.y, self.y_pred)
-        res['recall'] = recall_score(self.y, self.y_pred)
-        
-        #Plot Model Training Results (PLOT KERAS HISTORY)
+        res["jaccard"] = jaccard_score(self.y, self.y_pred)
+        res["fowlkes"] = fowlkes_mallows_score(self.y, self.y_pred)
+        res["accuracy"] = accuracy_score(self.y, self.y_pred)
+        res["recall"] = recall_score(self.y, self.y_pred)
+
+        # Plot Model Training Results (PLOT KERAS HISTORY)
         if hist:
-            res['HIST'] = self.keras_history(self.history)
+            res["HIST"] = self.keras_history(self.history)
         return res
 
     @staticmethod
     def get_preds(self):
-        # class predictions 
-        # self.y_pred = self.model.predict_classes(self.X).flatten() 
+        # class predictions
+        # self.y_pred = self.model.predict_classes(self.X).flatten()
         self.y_pred = np.round(self.model.predict(self.X))
         if self.verbose:
             pred_count = pd.Series(self.y_pred).value_counts(normalize=False)
@@ -579,13 +590,13 @@ class AnalogComputer:
         if self.y_pred is None:
             self.y_pred = np.round(self.model.predict(self.X))
 
-        pos_idx = self.y==1
-        neg_idx = self.y==0
+        pos_idx = self.y == 1
+        neg_idx = self.y == 0
 
-        #tp = np.sum(y_pred[pos_idx]==1)/y_pred.shape[0]
-        fn = np.sum(self.y_pred[pos_idx]==0)/self.y_pred.shape[0]
-        #tn = np.sum(y_pred[neg_idx]==0)/y_pred.shape[0]
-        fp = np.sum(self.y_pred[neg_idx]==1)/self.y_pred.shape[0]
+        # tp = np.sum(y_pred[pos_idx]==1)/y_pred.shape[0]
+        fn = np.sum(self.y_pred[pos_idx] == 0) / self.y_pred.shape[0]
+        # tn = np.sum(y_pred[neg_idx]==0)/y_pred.shape[0]
+        fp = np.sum(self.y_pred[neg_idx] == 1) / self.y_pred.shape[0]
 
         if training:
             print(f"FN Rate (Training): {round(fn*100,4)}%")
@@ -597,90 +608,95 @@ class AnalogComputer:
         self.fnfp_dict = {"fn": fn, "fp": fp}
         return self.fnfp_dict
 
-    def keras_history(self, figsize=(15,6), show=True):
+    def keras_history(self, figsize=(15, 6), show=True):
         """
         side by side sublots of training val accuracy and loss (left and right respectively)
-        """        
-        fig, axes = plt.subplots(ncols=2,figsize=figsize)
+        """
+        fig, axes = plt.subplots(ncols=2, figsize=figsize)
         axes = axes.flatten()
 
         ax = axes[0]
-        ax.plot(self.history.history['accuracy'])
-        ax.plot(self.history.history['val_accuracy'])
-        ax.set_title('Model Accuracy')
-        ax.set_ylabel('Accuracy')
-        ax.set_xlabel('Epoch')
-        ax.legend(['Train', 'Test'], loc='upper left')
+        ax.plot(self.history.history["accuracy"])
+        ax.plot(self.history.history["val_accuracy"])
+        ax.set_title("Model Accuracy")
+        ax.set_ylabel("Accuracy")
+        ax.set_xlabel("Epoch")
+        ax.legend(["Train", "Test"], loc="upper left")
 
         ax = axes[1]
-        ax.plot(self.history.history['loss'])
-        ax.plot(self.history.history['val_loss'])
-        ax.set_title('Model Loss')
-        ax.set_ylabel('Loss')
-        ax.set_xlabel('Epoch')
-        ax.legend(['Train', 'Test'], loc='upper left')
+        ax.plot(self.history.history["loss"])
+        ax.plot(self.history.history["val_loss"])
+        ax.set_title("Model Loss")
+        ax.set_ylabel("Loss")
+        ax.set_xlabel("Epoch")
+        ax.legend(["Train", "Test"], loc="upper left")
         if show is True:
             fig.show()
         return fig
 
-    def fusion_matrix(self, matrix, classes=None, normalize=True, cmap='Blues'):      
+    def fusion_matrix(self, matrix, classes=None, normalize=True, cmap="Blues"):
         # make matrix if tuple passed to matrix:
         if isinstance(matrix, tuple):
             y_true = matrix[0].copy()
             y_pred = matrix[1].copy()
-            
-            if y_true.ndim>1:
+
+            if y_true.ndim > 1:
                 y_true = y_true.argmax(axis=1)
-            if y_pred.ndim>1:
+            if y_pred.ndim > 1:
                 y_pred = y_pred.argmax(axis=1)
             fusion = confusion_matrix(y_true, y_pred)
         else:
             fusion = matrix
-        
+
         # INTEGER LABELS
         if classes is None:
-            classes=list(range(len(matrix)))
+            classes = list(range(len(matrix)))
 
-        #NORMALIZING
+        # NORMALIZING
         # Check if normalize is set to True
         # If so, normalize the raw fusion matrix before visualizing
         if normalize:
-            fusion = fusion.astype('float') / fusion.sum(axis=1)[:, np.newaxis]
+            fusion = fusion.astype("float") / fusion.sum(axis=1)[:, np.newaxis]
             thresh = 0.5
-            fmt='.2f'
+            fmt = ".2f"
         else:
-            fmt='d'
-            thresh = fusion.max() / 2.
-        
+            fmt = "d"
+            thresh = fusion.max() / 2.0
+
         # PLOT
-        fig = plt.subplots(figsize=(10,10))
-        plt.imshow(fusion, cmap=cmap, aspect='equal')
-        
-        # Add title and axis labels 
-        plt.title("Confusion Matrix") 
-        plt.ylabel('TRUE') 
-        plt.xlabel('PRED')
-        
+        fig = plt.subplots(figsize=(10, 10))
+        plt.imshow(fusion, cmap=cmap, aspect="equal")
+
+        # Add title and axis labels
+        plt.title("Confusion Matrix")
+        plt.ylabel("TRUE")
+        plt.xlabel("PRED")
+
         # Add appropriate axis scales
         tick_marks = np.arange(len(classes))
         plt.xticks(tick_marks, classes, rotation=45)
         plt.yticks(tick_marks, classes)
-        #ax.set_ylim(len(fusion), -.5,.5) ## <-- This was messing up the plots!
-        
+        # ax.set_ylim(len(fusion), -.5,.5) ## <-- This was messing up the plots!
+
         # Text formatting
-        fmt = '.2f' if normalize else 'd'
+        fmt = ".2f" if normalize else "d"
         # Add labels to each cell
-        #thresh = fusion.max() / 2.
-        # iterate thru matrix and append labels  
+        # thresh = fusion.max() / 2.
+        # iterate thru matrix and append labels
         for i, j in itertools.product(range(fusion.shape[0]), range(fusion.shape[1])):
-            plt.text(j, i, format(fusion[i, j], fmt),
-                    horizontalalignment='center',
-                    color='white' if fusion[i, j] > thresh else 'black',
-                    size=14, weight='bold')
-        
+            plt.text(
+                j,
+                i,
+                format(fusion[i, j], fmt),
+                horizontalalignment="center",
+                color="white" if fusion[i, j] > thresh else "black",
+                size=14,
+                weight="bold",
+            )
+
         # Add a legend
         plt.colorbar()
-        plt.show() 
+        plt.show()
         return fusion, fig
 
     def roc_plots(self):
@@ -694,31 +710,34 @@ class AnalogComputer:
         Returns:
             roc -- roc_auc_score (via sklearn)
         """
-        fpr, tpr, thresholds = roc_curve(self.y.flatten(), self.y_pred) 
+        fpr, tpr, thresholds = roc_curve(self.y.flatten(), self.y_pred)
 
         # Threshold Cutoff for predictions
-        crossover_index = np.min(np.where(1.-fpr <= tpr))
+        crossover_index = np.min(np.where(1.0 - fpr <= tpr))
         crossover_cutoff = thresholds[crossover_index]
-        crossover_specificity = 1.-fpr[crossover_index]
+        crossover_specificity = 1.0 - fpr[crossover_index]
 
-        fig,axes=plt.subplots(ncols=2, figsize=(15,6))
+        fig, axes = plt.subplots(ncols=2, figsize=(15, 6))
         axes = axes.flatten()
 
-        ax=axes[0]
-        ax.plot(thresholds, 1.-fpr)
+        ax = axes[0]
+        ax.plot(thresholds, 1.0 - fpr)
         ax.plot(thresholds, tpr)
-        ax.set_title("Crossover at {0:.2f}, Specificity {1:.2f}".format(crossover_cutoff, crossover_specificity))
+        ax.set_title(
+            "Crossover at {0:.2f}, Specificity {1:.2f}".format(
+                crossover_cutoff, crossover_specificity
+            )
+        )
 
-        ax=axes[1]
+        ax = axes[1]
         ax.plot(fpr, tpr)
-        ax.set_title("ROC area under curve: {0:.2f}".format(roc_auc_score(self.y.flatten(), self.y_pred)))
+        ax.set_title(
+            "ROC area under curve: {0:.2f}".format(
+                roc_auc_score(self.y.flatten(), self.y_pred)
+            )
+        )
         fig.show()
-        
+
         roc = roc_auc_score(self.y.flatten(), self.y_pred)
 
         return roc
-
-
-    
-
-

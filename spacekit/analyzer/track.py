@@ -3,7 +3,7 @@ import numpy as np
 import datetime as dt
 
 
-def proc_time(start, end, prcname=''):
+def proc_time(start, end, prcname=""):
     duration = np.round((end - start), 2)
     proc_time = np.round((duration / 60), 2)
     if duration > 3600:
@@ -15,7 +15,7 @@ def proc_time(start, end, prcname=''):
     print(f"\nProcess [{prcname}] : {t}\n")
 
 
-def clocklog(prcname, t0=None, t1=None, out='.', log=True):
+def stopwatch(prcname, t0=None, t1=None, out=".", log=True):
     lap = 0
     if t1 is not None:
         info = "COMPLETED"

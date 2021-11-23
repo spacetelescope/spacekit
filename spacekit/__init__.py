@@ -10,11 +10,11 @@ def reload(mod):
     # after editing the source file:
     # mf.reload(mf)"""
     from importlib import reload
-    print(f'Reloading...\n')
-    
-    ## 
-    if isinstance(mod,list):
+
+    print(f"Reloading...\n")
+
+    ##
+    if isinstance(mod, list):
         return [reload(m) for m in mod]
     else:
-        return  reload(mod)
-    
+        return reload(mod)

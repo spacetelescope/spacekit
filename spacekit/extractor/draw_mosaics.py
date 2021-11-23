@@ -8,11 +8,10 @@ from astropy.wcs import WCS
 from astropy.io import fits, ascii
 from astropy.visualization import ImageNormalize, ZScaleInterval
 import matplotlib.pyplot as plt
-import datetime as dt
 import time
 from tqdm import tqdm
 
-from tracker.stopwatch import clocklog
+from spacekit.analyzer.track import stopwatch
 
 
 def point_flag_color(x):
@@ -36,7 +35,7 @@ def segment_flag_color(x):
 def draw_catalogs(cfile, catalog):
     cat, fcolor_, fcolor = None, None, None
     if os.path.exists(cfile):
-        #cat = Table.read(catfile, format='ascii.ecsv')
+        # cat = Table.read(catfile, format='ascii.ecsv')
         cat = ascii.read(cfile).to_pandas()
     else:
         cat = ""
@@ -252,7 +251,7 @@ def generate_total_images(
         print("Exiting.")
         sys.exit(1)
     start = time.time()
-    clocklog("DRAWING IMAGES", t0=start)
+    stopwatch("DRAWING IMAGES", t0=start)
     print(f"Generating images for {len(datasets)} datasets.")
     for dataset in tqdm(datasets):
         # print(dataset)
@@ -275,7 +274,7 @@ def generate_total_images(
         else:  # original (0)
             draw_total_images(input_path, outpath, dataset, figsize=figsize, crpt=crpt)
     end = time.time()
-    clocklog("IMAGE GENERATION", t0=start, t1=end)
+    stopwatch("IMAGE GENERATION", t0=start, t1=end)
 
 
 def draw_filter_images(input_path, outpath, dataset, figsize=(24, 24), crpt=0):

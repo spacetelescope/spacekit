@@ -2,19 +2,19 @@
 import os
 import pandas as pd
 import numpy as np
-import os
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-plt.style.use("seaborn-bright")
-font_dict = {"family": '"Titillium Web", monospace', "size": 16}
-mpl.rc("font", **font_dict)
 import plotly.graph_objs as go
 from plotly import subplots
 import plotly.offline as pyo
 import plotly.figure_factory as ff
 from keras.preprocessing import image
+from spacekit.preprocessor.transform import apply_power_transform
 
-from preprocessor.transform import apply_power_transform
+plt.style.use("seaborn-bright")
+font_dict = {"family": '"Titillium Web", monospace', "size": 16}
+mpl.rc("font", **font_dict)
+
 
 class ImagePlots:
     def __init__(self, X, y):
@@ -22,6 +22,7 @@ class ImagePlots:
         self.y = y
         self.X_prime = None
         self.y_prime = None
+
 
 class Preview(ImagePlots):
     def __init__(self, X, y, X_prime, y_prime):
@@ -50,54 +51,26 @@ class Preview(ImagePlots):
         plt.show()
 
 
-
 class ImagePlots:
     def __init__(self, X, y):
         self.X = X
         self.y = y
         self.X_prime = None
         self.y_prime = None
-
-class Preview(ImagePlots):
-    def __init__(self, X, y, X_prime, y_prime):
-        super().init(self, X, y)
-        self.X_prime = X_prime
-        self.y_prime = y_prime
-
-    def preview_augmented(self):
-        posA = self.X[-self.X_prime.shape[0] :][self.y[-self.X_prime.shape[0] :] == 1]
-        posB = self.X_prime[self.y_prime == 1]
-
-        plt.figure(figsize=(10, 10))
-        for n in range(5):
-            x = image.array_to_img(posA[n][0])
-            ax = plt.subplot(5, 5, n + 1)
-            ax.imshow(x)
-            plt.axis("off")
-        plt.show()
-
-        plt.figure(figsize=(10, 10))
-        for n in range(5):
-            x = image.array_to_img(posB[n][0])
-            ax = plt.subplot(5, 5, n + 1)
-            ax.imshow(x)
-            plt.axis("off")
-        plt.show()
-
 
 
 class DataPlots:
-    def __init__(self, df, width=1300, height=700, show=True, save_html='.'):
+    def __init__(self, df, width=1300, height=700, show=True, save_html="."):
         self.df = df
         self.width = width
         self.height = height
         self.show = show
         self.save_html = save_html
-        self.target = None # target (y) column e.g. "label", "memory", "wallclock"
-        self.labels = None # 
-        self.classes = None # target classes e.g. [0,1] or [0,1,2,3]
+        self.target = None  # target (y) column e.g. "label", "memory", "wallclock"
+        self.labels = None  #
+        self.classes = None  # target classes e.g. [0,1] or [0,1,2,3]
         self.n_classes = None
-        self.group = None # e.g. "detector" or "instr"
+        self.group = None  # e.g. "detector" or "instr"
         self.categories = None
         self.telescope = None
         self.figures = None
@@ -120,7 +93,9 @@ class DataPlots:
         for c in self.classes:
             mu, ste = [], []
             for k in list(self.gkeys.keys()):
-                data = self.df[(self.df[self.target] == c) & (self.df[self.group] == k)][feature]
+                data = self.df[
+                    (self.df[self.target] == c) & (self.df[self.group] == k)
+                ][feature]
                 mu.append(np.mean(data))
                 ste.append(np.std(data) / np.sqrt(len(data)))
             means.append(mu)
@@ -157,18 +132,20 @@ class DataPlots:
         if self.save_html:
             if not os.path.exists(self.save_html):
                 os.makedirs(self.save_html, exist_ok=True)
-            pyo.plot(fig, filename=f"{self.save_html}/{figtype}_{self.name1}_vs_{self.name2}")
+            pyo.plot(
+                fig, filename=f"{self.save_html}/{figtype}_{self.name1}_vs_{self.name2}"
+            )
         return fig
-    
+
     def make_scatter_figs(
         self,
         xaxis_name,
         yaxis_name,
         marker_size=15,
-        cmap=["cyan","fuchsia"],
+        cmap=["cyan", "fuchsia"],
         categories=None,
         show=True,
-        save_html=None
+        save_html=None,
     ):
         if categories is None:
             categories = {"all": self.df}
@@ -186,10 +163,10 @@ class DataPlots:
                     mode="markers",
                     opacity=0.7,
                     marker={"size": marker_size, "color": cmap[i]},
-                    name=self.labels[i] #"aligned",
+                    name=self.labels[i],  # "aligned",
                 )
                 traces.append(trace)
-            
+
             layout = go.Layout(
                 xaxis={"title": xaxis_name},
                 yaxis={"title": yaxis_name},
@@ -215,13 +192,19 @@ class DataPlots:
             scatter_figs.append(fig)
         return scatter_figs
 
-    def bar_plots(self, X, Y, feature, y_err=[None, None], 
+    def bar_plots(
+        self,
+        X,
+        Y,
+        feature,
+        y_err=[None, None],
         width=700,
         height=500,
         cmap=["dodgerblue", "fuchsia"],
         show=True,
-        save_html=None):
-        
+        save_html=None,
+    ):
+
         traces = []
         for i in self.classes:
             trace = go.Bar(
@@ -252,7 +235,6 @@ class DataPlots:
         else:
             return fig
 
-
     def kde_plots(
         self,
         cols,
@@ -260,13 +242,14 @@ class DataPlots:
         targets=False,
         hist=True,
         curve=True,
-        binsize=0.2, # [0.3, 0.2, 0.1]
+        binsize=0.2,  # [0.3, 0.2, 0.1]
         width=700,
         height=500,
         cmap=["#F66095", "#2BCDC1"],
         show=True,
-        save_html='.'):
-        if norm is True:              
+        save_html=".",
+    ):
+        if norm is True:
             df, _ = apply_power_transform(self.df)
             cols = [c + "_scl" for c in cols]
         else:
@@ -314,7 +297,7 @@ class SingleVisitMosaic(DataPlots):
         self.group = group
         self.telescope = "HST"
         self.target = "label"
-        self.classes = list(set(df[self.target].values)) # [0, 1]
+        self.classes = list(set(df[self.target].values))  # [0, 1]
         self.labels = ["aligned", "misaligned"]
         self.n_classes = len(set(self.labels))
         self.gkeys = self.group_keys()
@@ -338,18 +321,27 @@ class SingleVisitMosaic(DataPlots):
             bar = self.bar_plots(X, means, f, y_err=errs, save_html=self.save_html)
             bars.append(bar)
         return bars
-    
+
     def alignment_scatters(self):
-        rms_scatter = self.make_scatter_figs("rms_ra", "rms_dec", categories=self.categories, save_html=self.save_html)
-        source_scatter = self.make_scatter_figs("point", "segment", categories=self.categories, save_html=self.save_html)
+        rms_scatter = self.make_scatter_figs(
+            "rms_ra", "rms_dec", categories=self.categories, save_html=self.save_html
+        )
+        source_scatter = self.make_scatter_figs(
+            "point", "segment", categories=self.categories, save_html=self.save_html
+        )
         scatters = [rms_scatter, source_scatter]
         return scatters
 
     def alignment_kde(self):
         cols = self.continuous
-        kde_rms = self.kde_plots(['rms_ra', 'rms_dec'], save_html=self.save_html)
-        kde_targ = [self.kde_plots([c], targets=True, save_html=self.save_html) for c in cols]
-        kde_norm = [self.kde_plots([c], norm=True, targets=True, save_html=self.save_html) for c in cols]
+        kde_rms = self.kde_plots(["rms_ra", "rms_dec"], save_html=self.save_html)
+        kde_targ = [
+            self.kde_plots([c], targets=True, save_html=self.save_html) for c in cols
+        ]
+        kde_norm = [
+            self.kde_plots([c], norm=True, targets=True, save_html=self.save_html)
+            for c in cols
+        ]
         kdes = [kde_rms, kde_targ, kde_norm]
         return kdes
 
@@ -357,11 +349,19 @@ class SingleVisitMosaic(DataPlots):
         if self.group in ["det", "detector"]:
             keys = ["hrc", "ir", "sbc", "uvis", "wfc"]
         elif self.group in ["cat", "category"]:
-            keys = ["calibration", "galaxy", "galaxy_cluster", "ISM" , "star", "stellar_cluster", "unidentified"]
+            keys = [
+                "calibration",
+                "galaxy",
+                "galaxy_cluster",
+                "ISM",
+                "star",
+                "stellar_cluster",
+                "unidentified",
+            ]
         group_keys = dict(enumerate(keys))
         return group_keys
 
-    #TODO generalize and move up to main class
+    # TODO generalize and move up to main class
     def grouped_barplot(self, save=False):
         df = self.df
         groups = df.groupby(["dete_cat"])["label"]
@@ -382,6 +382,7 @@ class SingleVisitMosaic(DataPlots):
             pyo.plot(fig, filename="bar2.html")
         return fig
 
+
 # TODO
 class CalcloudRepro(DataPlots):
     def __init__(self, df, group="instr"):
@@ -394,7 +395,6 @@ class CalcloudRepro(DataPlots):
         self.gkeys = self.group_keys()
         self.categories = self.feature_subset()
 
-
     def group_keys(self):
         if self.group in ["instr", "instrument"]:
             keys = ["acs", "cos", "stis", "wfc3"]
@@ -402,37 +402,52 @@ class CalcloudRepro(DataPlots):
             keys = ["wfc-uvis", "other"]
         # TODO: target classification / "category"
         elif self.group in ["cat", "category"]:
-            keys = ["calibration", "galaxy", "galaxy_cluster", "ISM" , "star", "stellar_cluster", "unidentified"]
+            keys = [
+                "calibration",
+                "galaxy",
+                "galaxy_cluster",
+                "ISM",
+                "star",
+                "stellar_cluster",
+                "unidentified",
+            ]
         # TODO: filters
         group_keys = dict(enumerate(keys))
         return group_keys
 
 
 class SignalPlots:
-
     @staticmethod
-    def atomic_vector_plotter(signal, label_col=None, classes=None, class_names=None, figsize=(15,5), y_units=None, x_units=None):
+    def atomic_vector_plotter(
+        signal,
+        label_col=None,
+        classes=None,
+        class_names=None,
+        figsize=(15, 5),
+        y_units=None,
+        x_units=None,
+    ):
         """
-        Plots scatter and line plots of time series signal values.  
-        
+        Plots scatter and line plots of time series signal values.
+
         **ARGS
         signal: pandas series or numpy array
         label_col: name of the label column if using labeled pandas series
             -use default None for numpy array or unlabeled series.
-            -this is simply for customizing plot Title to include classification    
+            -this is simply for customizing plot Title to include classification
         classes: (optional- req labeled data) tuple if binary, array if multiclass
         class_names: tuple or array of strings denoting what the classes mean
         figsize: size of the figures (default = (15,5))
-        
+
         ******
-        
+
         Ex1: Labeled timeseries passing 1st row of pandas dataframe
         > first create the signal:
         signal = x_train.iloc[0, :]
         > then plot:
-        atomic_vector_plotter(signal, label_col='LABEL',classes=[1,2], 
+        atomic_vector_plotter(signal, label_col='LABEL',classes=[1,2],
                     class_names=['No Planet', 'Planet']), figsize=(15,5))
-        
+
         Ex2: numpy array without any labels
         > first create the signal:
         signal = x_train.iloc[0, :]
@@ -443,52 +458,55 @@ class SignalPlots:
         import pandas as pd
         import numpy as np
 
-        ### LABELS
         # pass None to label_col if unlabeled data, creates generic title
         if label_col is None:
             label = None
             title_scatter = "Scatterplot of Star Flux Signals"
             title_line = "Line Plot of Star Flux Signals"
-            color='black'
-            
-        # store target column as variable 
+            color = "black"
+
+        # store target column as variable
         elif label_col is not None:
             label = signal[label_col]
             # for labeled timeseries
             if label == 1:
                 cn = class_names[0]
-                color='red'
+                color = "red"
 
             elif label == 2:
-                cn = class_names[1] 
-                color='blue'
-            ## TITLES
-        #create appropriate title acc to class_names    
+                cn = class_names[1]
+                color = "blue"
+            # TITLES
+            # create appropriate title acc to class_names
             title_scatter = f"Scatterplot for Star Flux Signal: {cn}"
             title_line = f"Line Plot for Star Flux Signal: {cn}"
-        
+
         # Set x and y axis labels according to units
         # if the units are unknown, we will default to "Flux"
-        if y_units == None:
-            y_units = 'Flux'
+        if y_units is None:
+            y_units = "Flux"
         else:
             y_units = y_units
-        # it is assumed this is a timeseries, default to "time"   
-        if x_units == None:
-            x_units = 'Time'
+        # it is assumed this is a timeseries, default to "time"
+        if x_units is None:
+            x_units = "Time"
         else:
             x_units = x_units
-        
+
         # Scatter Plot
         if type(signal) == np.array:
-            series_index=list(range(len(signal)))
+            series_index = list(range(len(signal)))
 
             converted_array = pd.Series(signal.ravel(), index=series_index)
-            signal = converted_array 
-        
+            signal = converted_array
+
         plt.figure(figsize=figsize)
-        plt.scatter(pd.Series([i for i in range(1, len(signal))]), 
-                    signal[1:], marker=4, color=color)
+        plt.scatter(
+            pd.Series([i for i in range(1, len(signal))]),
+            signal[1:],
+            marker=4,
+            color=color,
+        )
         plt.ylabel(y_units)
         plt.xlabel(x_units)
         plt.title(title_scatter)
@@ -496,68 +514,82 @@ class SignalPlots:
 
         # Line Plot
         plt.figure(figsize=figsize)
-        plt.plot(pd.Series([i for i in range(1, len(signal))]), 
-                signal[1:], color=color)
+        plt.plot(pd.Series([i for i in range(1, len(signal))]), signal[1:], color=color)
         plt.ylabel(y_units)
         plt.xlabel(x_units)
         plt.title(title_line)
         plt.show()
 
     @staticmethod
-    def flux_specs(signal, Fs=2, NFFT=256, noverlap=128, mode='psd',
-                    cmap=None, units=None, colorbar=False, 
-                    save_for_ML=False, fname=None,num=None,**kwargs):
-        """generate and save spectographs of flux signal frequencies
-        """
+    def flux_specs(
+        signal,
+        Fs=2,
+        NFFT=256,
+        noverlap=128,
+        mode="psd",
+        cmap=None,
+        units=None,
+        colorbar=False,
+        save_for_ML=False,
+        fname=None,
+        num=None,
+        **kwargs,
+    ):
+        """generate and save spectographs of flux signal frequencies"""
         import matplotlib.pyplot as plt
 
         if cmap is None:
-            cmap='binary'
+            cmap = "binary"
 
-        #PIX: plots only the pixelgrids -ideal for image classification
-        if save_for_ML == True:
+        # PIX: plots only the pixelgrids -ideal for image classification
+        if save_for_ML is True:
             # turn off everything except pixel grid
-            fig, ax = plt.subplots(figsize=(10,10),frameon=False)
-            fig, freqs, t, m = plt.specgram(signal, Fs=Fs, NFFT=NFFT, mode=mode,cmap=cmap)
+            fig, ax = plt.subplots(figsize=(10, 10), frameon=False)
+            fig, freqs, t, m = plt.specgram(
+                signal, Fs=Fs, NFFT=NFFT, mode=mode, cmap=cmap
+            )
             ax.axis(False)
             ax.show()
 
             if fname is not None:
                 try:
                     if num:
-                        path=fname+num
+                        path = fname + num
                     else:
-                        path=fname
-                    plt.savefig(path,**kwargs)
-                except:
-                    print('Something went wrong while saving the img file')
+                        path = fname
+                    plt.savefig(path, **kwargs)
+                except Exception as e:
+                    print("Something went wrong while saving the img file")
+                    print(e)
 
         else:
-            fig, ax = plt.subplots(figsize=(13,11))
-            fig, freqs, t, m = plt.specgram(signal, Fs=Fs, NFFT=NFFT, mode=mode,cmap=cmap)
+            fig, ax = plt.subplots(figsize=(13, 11))
+            fig, freqs, t, m = plt.specgram(
+                signal, Fs=Fs, NFFT=NFFT, mode=mode, cmap=cmap
+            )
             plt.colorbar()
             if units is None:
-                units=['Wavelength (λ)','Frequency (ν)']
+                units = ["Wavelength (λ)", "Frequency (ν)"]
             plt.xlabel(units[0])
             plt.ylabel(units[1])
             if num:
-                title=f'Spectrogram_{num}'
+                title = f"Spectrogram_{num}"
             else:
-                title='Spectrogram'
+                title = "Spectrogram"
             plt.title(title)
             plt.show()
 
         return fig, freqs, t, m
 
     @staticmethod
-    def singal_phase_folder(file_list, fmt='kepler.fits', error=False, snr=False):
+    def singal_phase_folder(file_list, fmt="kepler.fits", error=False, snr=False):
         """plots phase-folded light curve of a signal
-        returns dataframe of transit timestamps for each light curve 
+        returns dataframe of transit timestamps for each light curve
         planet_hunter(f=files[9], fmt='kepler.fits')
-        
+
         args:
         - fits_files = takes array of files or single .fits file
-        
+
         kwargs:
         - format : 'kepler.fits' or  'tess.fits'
         - error: include SAP flux error (residuals) if available
@@ -569,92 +601,102 @@ class SignalPlots:
         from astropy.timeseries import BoxLeastSquares
         from astropy.stats import sigma_clipped_stats
         from astropy.timeseries import aggregate_downsample
-        
+
         # read in file
         transits = {}
         for index, file in enumerate(file_list):
             res = {}
-            if fmt == 'kepler.fits':
-                prefix = file.replace('ktwo','') 
-                suffix = prefix.replace('_llc.fits','')
-                pair = suffix.split('-')
+            if fmt == "kepler.fits":
+                prefix = file.replace("ktwo", "")
+                suffix = prefix.replace("_llc.fits", "")
+                pair = suffix.split("-")
                 obs_id = pair[0]
                 campaign = pair[1]
-            
-            ts = TimeSeries.read(file, format=fmt) # read in timeseries
-            
+
+            ts = TimeSeries.read(file, format=fmt)  # read in timeseries
+
             # add to meta dict
-            res['obs_id'] = obs_id
-            res['campaign'] = campaign
-            res['lc_start'] = ts.time.jd[0]
-            res['lc_end'] = ts.time.jd[-1]
+            res["obs_id"] = obs_id
+            res["campaign"] = campaign
+            res["lc_start"] = ts.time.jd[0]
+            res["lc_end"] = ts.time.jd[-1]
 
             # use box least squares to estimate period
-            if error is True: # if error col data available
-                periodogram = BoxLeastSquares.from_timeseries(ts,'sap_flux','sap_flux_err')
+            if error is True:  # if error col data available
+                periodogram = BoxLeastSquares.from_timeseries(
+                    ts, "sap_flux", "sap_flux_err"
+                )
             else:
-                periodogram = BoxLeastSquares.from_timeseries(ts, 'sap_flux')
+                periodogram = BoxLeastSquares.from_timeseries(ts, "sap_flux")
             if snr is True:
-                results = periodogram.autopower(0.2 * u.day, objective='snr')
+                results = periodogram.autopower(0.2 * u.day, objective="snr")
             else:
                 results = periodogram.autopower(0.2 * u.day)
-            
-            maxpower = np.argmax(results.power)  
-            period = results.period[maxpower] 
+
+            maxpower = np.argmax(results.power)
+            period = results.period[maxpower]
             transit_time = results.transit_time[maxpower]
-            
-            res['maxpower'] = maxpower
-            res['period'] = period
-            res['transit'] = transit_time
-            
-            #res['ts'] = ts
-            
-            # fold the time series using the period 
+
+            res["maxpower"] = maxpower
+            res["period"] = period
+            res["transit"] = transit_time
+
+            # res['ts'] = ts
+
+            # fold the time series using the period
             ts_folded = ts.fold(period=period, epoch_time=transit_time)
-            
+
             # folded time series plot
             # plt.plot(ts_folded.time.jd, ts_folded['sap_flux'], 'k.', markersize=1)
             # plt.xlabel('Time (days)')
             # plt.ylabel('SAP Flux (e-/s)')
 
-            #normalize the flux by sigma-clipping the data to determine the baseline flux:
-            mean, median, stddev = sigma_clipped_stats(ts_folded['sap_flux'])
-            ts_folded['sap_flux_norm'] = ts_folded['sap_flux'] / median 
-            res['mean'] = mean
-            res['median'] = median
-            res['stddev'] = stddev
-            res['sap_flux_norm'] = ts_folded['sap_flux_norm']
-            
-            # downsample the time series by binning the points into bins of equal time 
-            ts_binned = aggregate_downsample(ts_folded, time_bin_size=0.03 * u.day)  
+            # normalize the flux by sigma-clipping the data to determine the baseline flux:
+            mean, median, stddev = sigma_clipped_stats(ts_folded["sap_flux"])
+            ts_folded["sap_flux_norm"] = ts_folded["sap_flux"] / median
+            res["mean"] = mean
+            res["median"] = median
+            res["stddev"] = stddev
+            res["sap_flux_norm"] = ts_folded["sap_flux_norm"]
+
+            # downsample the time series by binning the points into bins of equal time
+            ts_binned = aggregate_downsample(ts_folded, time_bin_size=0.03 * u.day)
 
             # final result
-            fig = plt.figure(figsize=(11,5))
+            fig = plt.figure(figsize=(11, 5))
             ax = fig.gca()
-            ax.plot(ts_folded.time.jd, ts_folded['sap_flux_norm'], 'k.', markersize=1)
-            ax.plot(ts_binned.time_bin_start.jd, ts_binned['sap_flux_norm'], 'r-', drawstyle='steps-post')
-            ax.set_xlabel('Time (days)')
-            ax.set_ylabel('Normalized flux')
+            ax.plot(ts_folded.time.jd, ts_folded["sap_flux_norm"], "k.", markersize=1)
+            ax.plot(
+                ts_binned.time_bin_start.jd,
+                ts_binned["sap_flux_norm"],
+                "r-",
+                drawstyle="steps-post",
+            )
+            ax.set_xlabel("Time (days)")
+            ax.set_ylabel("Normalized flux")
             ax.set_title(obs_id)
             ax.legend([np.round(period, 3)])
             plt.close()
-            
-            res['fig'] = fig
-            
+
+            res["fig"] = fig
+
             transits[index] = res
-            
-        df = pd.DataFrame.from_dict(transits, orient='index')
-            
+
+        df = pd.DataFrame.from_dict(transits, orient="index")
+
         return df
 
- 
+
 # testing
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("dataset", type=str, help="path to dataframe (csv file)")
     parser.add_argument("index", type=str, default="index", help="index column name")
-    parser.add_argument("-e", "--example", type=str, choices=["svm", "cal"], help="run example demo")
+    parser.add_argument(
+        "-e", "--example", type=str, choices=["svm", "cal"], help="run example demo"
+    )
     args = parser.parse_args()
     dataset = args.dataset
     index = args.index

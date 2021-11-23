@@ -17,9 +17,11 @@ import time
 from tqdm import tqdm
 from progressbar import ProgressBar
 
-# mosaic_ml modules
-from extractor.draw_mosaics import generate_total_images, generate_filter_images
-from tracker.stopwatch import clocklog
+from spacekit.extractor.draw_mosaics import (
+    generate_total_images,
+    generate_filter_images,
+)
+from spacekit.analyzer.track import stopwatch
 
 SVM_QUALITY_TESTING = "on"
 
@@ -242,6 +244,7 @@ def multiple_permutations(dataset, outputs, expos, mode, thresh="any"):
 
 def run_svm(dataset, outputs):
     from drizzlepac import runsinglehap
+
     os.environ.get("SVM_QUALITY_TESTING", "on")
     mutations = glob.glob(f"{outputs}/{dataset}_*")
     for m in mutations:
@@ -280,75 +283,75 @@ def all_permutations(dataset, outputs):
 
 def run_blocks(datasets, outputs, prc, cfg):
     start_block = time.time()
-    clocklog("Block Workflow", t0=start_block, out=outputs)
+    stopwatch("Block Workflow", t0=start_block, out=outputs)
     if prc["crpt"]:
         prcname = "CORRUPTION"
         start = time.time()
-        clocklog(prcname, t0=start, out=outputs)
+        stopwatch(prcname, t0=start, out=outputs)
         for dataset in tqdm(datasets):
-            if cfg['palette'] == "multi":
+            if cfg["palette"] == "multi":
                 all_permutations(dataset, outputs)
-            elif cfg['palette'] == "mfi":
-                multiple_permutations(dataset, outputs, cfg['expos'], cfg['mode'], cfg['thresh'])
-            elif cfg['palette'] in ["rex", "rfi"]:
-                artificial_misalignment(dataset, outputs,  cfg['palette'])
+            elif cfg["palette"] == "mfi":
+                multiple_permutations(
+                    dataset, outputs, cfg["expos"], cfg["mode"], cfg["thresh"]
+                )
+            elif cfg["palette"] in ["rex", "rfi"]:
+                artificial_misalignment(dataset, outputs, cfg["palette"])
         end = time.time()
-        clocklog(prcname, t0=start, t1=end, out=outputs)
-        
+        stopwatch(prcname, t0=start, t1=end, out=outputs)
+
     if prc["runsvm"]:
         prcname = "ALIGNMENT"
         start = time.time()
-        clocklog(prcname, t0=start, out=outputs)
+        stopwatch(prcname, t0=start, out=outputs)
         for dataset in tqdm(datasets):
             run_svm(datasets, outputs)
         end = time.time()
-        clocklog(prcname, t0=start, t1=end, out=outputs)
+        stopwatch(prcname, t0=start, t1=end, out=outputs)
 
     if prc["imagegen"]:
         prcname = "IMAGE GENERATION"
         start = time.time()
-        clocklog(prcname, t0=start, out=outputs)
+        stopwatch(prcname, t0=start, out=outputs)
         for dataset in tqdm(datasets):
             generate_images()
         end = time.time()
-        clocklog(prcname, t0=start, t1=end, out=outputs)
+        stopwatch(prcname, t0=start, t1=end, out=outputs)
     end_block = time.time()
-    clocklog("Block Workflow", t0=start_block, t1=end_block, out=outputs)
+    stopwatch("Block Workflow", t0=start_block, t1=end_block, out=outputs)
 
 
 def run_pipes(datasets, outputs, prc, cfg):
     start = time.time()
-    clocklog("Pipe Workflow", t0=start, out=outputs)
+    stopwatch("Pipe Workflow", t0=start, out=outputs)
     for dataset in tqdm(datasets):
         t0 = time.time()
-        clocklog(dataset, t0=t0, out=outputs)
+        stopwatch(dataset, t0=t0, out=outputs)
         if prc["crpt"]:
-            if cfg['palette'] == "multi":
+            if cfg["palette"] == "multi":
                 all_permutations(dataset, outputs)
-            elif cfg['palette'] == "mfi":
+            elif cfg["palette"] == "mfi":
                 multiple_permutations(
-                    dataset, outputs, cfg['expos'], cfg['mode'], thresh=cfg['thresh']
+                    dataset, outputs, cfg["expos"], cfg["mode"], thresh=cfg["thresh"]
                 )
-            elif cfg['palette'] in ["rex", "rfi"]:
-                artificial_misalignment(dataset, outputs, cfg['palette'])
+            elif cfg["palette"] in ["rex", "rfi"]:
+                artificial_misalignment(dataset, outputs, cfg["palette"])
         if prc["runsvm"]:
             run_svm(dataset, outputs)
         if prc["imagegen"]:
             generate_images(dataset)
         t1 = time.time()
-        clocklog(dataset, t0=t0, t1=t1, out=outputs)
+        stopwatch(dataset, t0=t0, t1=t1, out=outputs)
 
     end = time.time()
-    clocklog("Pipe Workflow", t0=start, t1=end, out=outputs)
+    stopwatch("Pipe Workflow", t0=start, t1=end, out=outputs)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         prog="mosaic_ml", usage="python corrupt.py j8ep07 mfi -e=sub -m=stat"
     )
-    parser.add_argument(
-        "srcpath", type=str, help="single visit dataset(s) directory"
-    )
+    parser.add_argument("srcpath", type=str, help="single visit dataset(s) directory")
     parser.add_argument(
         "outputs", type=str, help="path for saving corrupt versions of HAP files"
     )
@@ -429,10 +432,11 @@ if __name__ == "__main__":
     if len(datasets) < 1:
         print("No datasets found matching the search pattern.")
         sys.exit(1)
+    procs = dict(crpt=args.crpt, runsvm=args.runsvm, imagegen=args.imagegen)
+    cfg = dict(
+        palette=args.palette, expos=args.expos, mode=args.mode, thresh=args.threshold
+    )
+    if workflow == "block":
+        run_blocks(datasets, outputs, procs, cfg)
     else:
-        procs = dict(crpt=args.crpt, runsvm=args.runsvm, imagegen=args.imagegen)
-        cfg = dict(palette=args.palette, expos=args.expos, mode=args.mode, thresh=args.threshold)
-        if workflow == "block":
-            run_blocks(datasets, outputs, procs, cfg)
-        else:
-            run_pipes(datasets, outputs, procs, cfg)
+        run_pipes(datasets, outputs, procs, cfg)

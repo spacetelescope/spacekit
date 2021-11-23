@@ -7,7 +7,7 @@ import numpy as np
 from sklearn.preprocessing import LabelEncoder
 from progressbar import ProgressBar
 
-import json_scraper as djh
+import spacekit.extractor.scrape_json as djh
 
 
 def make_h5_file(
