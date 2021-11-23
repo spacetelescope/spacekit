@@ -57,13 +57,16 @@ $ pip install -e .
 
 **Example: HST Single Visit Mosaic Alignment Classification**
 
-### Classify new data using pre-trained model (from the command line):
+### Classify new data using pre-trained model:
 
 1. Preprocess data (scrape from regression test json and fits files)
+
+***from the command line***
 
 ```bash
 $ python -m spacekit.extractor.frame_data path/to/svmdata -o=./newdata.csv
 ```
+
 
 2. Preprocess images (generate png preview files)
 
@@ -77,10 +80,41 @@ python -m spacekit.extractor.draw_mosaics path/to/svmdata -o=./img -d=./mydata.c
 $ python -m spacekit.skopes.hst.mosaic.svm_predict ./mydata.csv ./img -m=./models/ensembleSVM -o=./results
 ```
 
+----
+
 ### Build, train, evaluate new classifier from labeled data
 
 Run steps 1 and 2 above, then:
 
 ```bash
+# Note: there are several option flags you can also include in this command
 $ python -m spacekit.skopes.hst.mosaic.svm_train ./mydata.csv ./img
+```
+
+***Python***
+
+```python
+# import spacekit training submodule
+from spacekit.skopes.hst.mosaic.svm_train import prep_ensemble_data, train_model, compute_results
+# initialize some vars
+training_data = "labeled_data.csv" # preprocessed dataframe (see step 1 above)
+img_path = "./img" # preprocessed PNG image files (see step 2 above)
+model_name = "my_new_model_name" # give the model a custom name (optional)
+res_path = "./results" # where to save the model training results (optional)
+# training parameters (optional - uses these defaults if none are explicitly set)
+params=dict(
+    batch_size=32,
+    epochs=60, # set to 1 or 5 if just testing functionality...or 1000 if you have all day
+    lr=1e-4,
+    decay=[100000, 0.96],
+    early_stopping=None,
+    verbose=2,
+    ensemble=True
+    )
+# create train test val splits, test-val index (for reviewing names of images model gets wrong)
+tv_idx, XTR, YTR, XTS, YTS, XVL, YVL = prep_ensemble_data("training_data.csv", "path/to/img")
+# train the model
+ens_model, ens_history = train_model(XTR, YTR, XTS, YTS, model_name)
+# evaluate results (saved to local pickle files for later analysis)
+compute_results(ens_model, ens_history, model_name, tv_idx, XTR, YTR, XTS, YTS, XVL, YVL)
 ```
