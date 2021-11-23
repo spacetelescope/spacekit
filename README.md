@@ -112,9 +112,21 @@ params=dict(
     ensemble=True
     )
 # create train test val splits, test-val index (for reviewing names of images model gets wrong)
-tv_idx, XTR, YTR, XTS, YTS, XVL, YVL = prep_ensemble_data("training_data.csv", "path/to/img")
+tv_idx, XTR, YTR, XTS, YTS, XVL, YVL = prep_ensemble_data(training_data, img_path)
 # train the model
 ens_model, ens_history = train_model(XTR, YTR, XTS, YTS, model_name)
 # evaluate results (saved to local pickle files for later analysis)
 compute_results(ens_model, ens_history, model_name, tv_idx, XTR, YTR, XTS, YTS, XVL, YVL)
+```
+
+
+```bash
+                       
+           /\    _       _                           _                      *  
+/\_/\_____/  \__| |_____| |_________________________| |___________________*___
+[===]    / /\ \ | |  _  |  _  | _  \/ __/ -__|  \| \_  _/ _  \ \_/ | * _/| | |
+ \./    /_/  \_\|_|  ___|_| |_|__/\_\ \ \____|_|\__| \__/__/\_\___/|_|\_\|_|_|
+                  | /             |___/        
+                  |/   
+
 ```

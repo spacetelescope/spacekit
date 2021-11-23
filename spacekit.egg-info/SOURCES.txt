@@ -29,5 +29,11 @@ spacekit/preprocessor/__init__.py
 spacekit/preprocessor/augment.py
 spacekit/preprocessor/radio.py
 spacekit/preprocessor/transform.py
+spacekit/skopes/__init__.py
+spacekit/skopes/hst/__init__.py
+spacekit/skopes/hst/mosaic/__init__.py
+spacekit/skopes/hst/mosaic/svm_corrupt.py
+spacekit/skopes/hst/mosaic/svm_predict.py
+spacekit/skopes/hst/mosaic/svm_train.py
 tests/__init__.py
 tests/test_example.py
