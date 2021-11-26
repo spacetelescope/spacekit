@@ -71,7 +71,7 @@ $ python -m spacekit.extractor.frame_data path/to/svmdata -o=./newdata.csv
 2. Preprocess images (generate png preview files)
 
 ```bash
-python -m spacekit.extractor.draw_mosaics path/to/svmdata -o=./img -d=./mydata.csv
+python -m spacekit.extractor.draw_mosaics path/to/svmdata -o=./img
 ```
 
 3. Generate predictions

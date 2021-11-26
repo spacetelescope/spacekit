@@ -5,7 +5,7 @@ import argparse
 import os
 import sys
 import datetime as dt
-
+import importlib.resources
 from spacekit.extractor.load_images import SVMImages
 
 DIM = 3
@@ -19,6 +19,9 @@ TF_CPP_MIN_LOG_LEVEL = 2
 
 def get_model(model_path):
     """Loads pretrained Keras functional model"""
+    if model_path is None:
+        with importlib.resources.path("spacekit.skopes.trained_networks", "ensembleSVM") as M:
+            model_path = M
     print("Loading saved model: ", model_path)
     model = tf.keras.models.load_model(model_path)
     return model

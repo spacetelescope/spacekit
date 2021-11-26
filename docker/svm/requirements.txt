@@ -1,0 +1,7 @@
+spacekit
+drizzlepac
+# tensorflow==2.6.2
+# progressbar==2.5
+# tqdm==4.62.3
+# tables==3.6.1
+# plotly~=5.3.1
