@@ -19,15 +19,6 @@ def unzip_images(zip_file):
     return image_folder
 
 
-def extract_images(path_to_zip, extract_to="."):
-    subfolder = os.path.basename(path_to_zip).replace(".zip", "")
-    with ZipFile(path_to_zip, "r") as zip_ref:
-        zip_ref.extractall(extract_to)
-    image_path = os.path.join(extract_to, subfolder)
-    print(len(os.listdir(image_path)))
-    return image_path
-
-
 def read_channels(channels, w, h, d, exp=None, color_mode="rgb"):
     """Loads PNG image data and converts to 3D arrays.
     **args

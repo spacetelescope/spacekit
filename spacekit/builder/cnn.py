@@ -1,5 +1,6 @@
 # STANDARD libraries
 import os
+import importlib.resources
 import numpy as np
 import time
 import datetime as dt
@@ -59,6 +60,10 @@ class Builder:
         self.model_path = None
 
     def load_saved_model(self):
+        if self.model_path is None:
+            model_src = "spacekit.skopes.trained_networks"
+            with importlib.resources.path(model_src, "ensembleSVM") as mod:
+                self.model_path = mod
         model = load_model(self.model_path)
         self.model = Model(inputs=model.inputs, outputs=model.outputs)
         self.model.compile(
@@ -67,6 +72,13 @@ class Builder:
             metrics=["accuracy"],
         )
         return self
+    
+    # def unzip_model_files(path_to_zip, extract_to="."):
+    #     model_base = os.path.basename(path_to_zip).split(".")[0]
+    #     with ZipFile(path_to_zip, "r") as zip_ref:
+    #         zip_ref.extractall(extract_to)
+    #     model_path = os.path.join(extract_to, model_base)
+    #     return model_path
 
     def draft_blueprint(self):
         if self.blueprint == "mlp":
@@ -250,40 +262,6 @@ class MultiLayerPerceptron(Builder):
 
             yield xb, yb
 
-    # def fit_mlp(self):
-    #     """
-    #     Fits cnn and returns keras history
-    #     Gives equal number of positive and negative samples rotating randomly
-    #     """
-    #     model_name = str(self.model.name_scope().rstrip("/").upper())
-    #     print(f"FITTING MODEL...")
-    #     validation_data = (self.X_test, self.y_test)
-
-    #     if self.early_stopping is not None:
-    #         self.callbacks = self.set_callbacks()
-
-    #     start = time.time()
-    #     clocklog(f"TRAINING ***{model_name}***", t0=start)
-    #     # if self.ensemble is True:
-    #     #     make_batches = self.batch_ensemble()
-    #     #     steps_per_epoch = self.X_train[0].shape[0] // self.batch_size
-    #     # else:
-    #     make_batches = self.batch_mlp()
-    #     steps_per_epoch = self.X_train.shape[0] // self.batch_size
-
-    #     self.history = self.model.fit(
-    #         make_batches,
-    #         validation_data=validation_data,
-    #         verbose=self.verbose,
-    #         epochs=self.epochs,
-    #         steps_per_epoch=steps_per_epoch,
-    #         callbacks=self.callbacks,
-    #     )
-    #     end = time.time()
-    #     clocklog(f"TRAINING ***{model_name}***", t0=start, t1=end)
-    #     self.model.summary()
-    #     return self.history
-
 
 class ImageCNN3D(Builder):
     def __init__(self, X_train, X_test, y_train, y_test, blueprint="cnn3d"):
@@ -335,7 +313,7 @@ class ImageCNN3D(Builder):
         x = layers.Dense(units=512, activation="leaky_relu")(x)
         x = layers.Dropout(0.3)(x)
 
-        if self.ensemble is True:
+        if self.blueprint == "ensemble":
             self.cnn = Model(inputs, x, name="cnn_ensemble")
             return self.cnn
         else:
@@ -372,7 +350,6 @@ class ImageCNN3D(Builder):
         # hb: half-batch
         hb = self.batch_size // 2
         # Returns a new array of given shape and type, without initializing.
-        # x_train.shape = (2016, 3, 128, 128, 3)
 
         xb = np.empty(
             (
@@ -385,7 +362,6 @@ class ImageCNN3D(Builder):
             dtype="float32",
         )
 
-        # y_train.shape = (2016, 1)
         yb = np.empty((self.batch_size, self.y_train.shape[1]), dtype="float32")
 
         pos = np.where(self.y_train[:, 0] == 1.0)[0]
@@ -405,37 +381,6 @@ class ImageCNN3D(Builder):
                 xb[i] = augment_image(xb[i])
 
             yield xb, yb
-
-    # def fit_cnn(self):
-    #     """
-    #     Fits cnn and returns keras history
-    #     Gives equal number of positive and negative samples rotating randomly
-    #     """
-    #     model_name = str(self.model.name_scope().rstrip("/").upper())
-    #     print(f"FITTING MODEL...")
-    #     validation_data = (self.X_test, self.y_test)
-
-    #     if self.early_stopping is not None:
-    #         self.callbacks = self.set_callbacks()
-
-    #     start = time.time()
-    #     clocklog(f"TRAINING ***{model_name}***", t0=start)
-
-    #     make_batches = self.batch_cnn()
-    #     steps_per_epoch = self.X_train.shape[0] // self.batch_size
-
-    #     self.history = self.model.fit(
-    #         make_batches,
-    #         validation_data=validation_data,
-    #         verbose=self.verbose,
-    #         epochs=self.epochs,
-    #         steps_per_epoch=steps_per_epoch,
-    #         callbacks=self.callbacks,
-    #     )
-    #     end = time.time()
-    #     clocklog(f"TRAINING ***{model_name}***", t0=start, t1=end)
-    #     self.model.summary()
-    #     return self.history
 
 
 class Ensemble(Builder):
@@ -528,40 +473,6 @@ class Ensemble(Builder):
                 xb[i] = augment_image(xb[i])
 
             yield [xa, xb], yb
-
-    # def fit_ensemble(self):
-    #     """
-    #     Fits cnn and returns keras history
-    #     Gives equal number of positive and negative samples rotating randomly
-    #     """
-    #     model_name = str(self.model.name_scope().rstrip("/").upper())
-    #     print(f"FITTING MODEL...")
-    #     validation_data = (self.X_test, self.y_test)
-
-    #     if self.early_stopping is not None:
-    #         self.callbacks = self.set_callbacks()
-
-    #     start = time.time()
-    #     clocklog(f"TRAINING ***{model_name}***", t0=start)
-
-    #     make_batches = self.batch_ensemble()
-    #     steps_per_epoch = self.X_train[0].shape[0] // self.batch_size
-    #     # else:
-    #     #     make_batches = self.batch_maker()
-    #     #     steps_per_epoch = self.X_train.shape[0] // self.batch_size
-
-    #     self.history = self.model.fit(
-    #         make_batches,
-    #         validation_data=validation_data,
-    #         verbose=self.verbose,
-    #         epochs=self.epochs,
-    #         steps_per_epoch=steps_per_epoch,
-    #         callbacks=self.callbacks,
-    #     )
-    #     end = time.time()
-    #     clocklog(f"TRAINING ***{model_name}***", t0=start, t1=end)
-    #     self.model.summary()
-    #     return self.history
 
 
 class LinearCNN1D(Builder):

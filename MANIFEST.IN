@@ -1,5 +1,8 @@
 include pyproject.toml
 
+# Include pre-trained neural networks
+include spacekit/skopes/trained_networks/*
+
 # Include the README
 include *.md
 

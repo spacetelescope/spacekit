@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: spacekit
-Version: 0.2.3
+Version: 0.2.4
 Summary: Astronomical Data Science and Machine Learning Toolkit
 Home-page: https://github.com/alphasentaurii/spacekit
 Author: Ru Keïn
@@ -97,7 +97,7 @@ $ python -m spacekit.extractor.frame_data path/to/svmdata -o=./newdata.csv
 2. Preprocess images (generate png preview files)
 
 ```bash
-python -m spacekit.extractor.draw_mosaics path/to/svmdata -o=./img -d=./mydata.csv
+python -m spacekit.extractor.draw_mosaics path/to/svmdata -o=./img
 ```
 
 3. Generate predictions
