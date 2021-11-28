@@ -20,7 +20,9 @@ TF_CPP_MIN_LOG_LEVEL = 2
 def get_model(model_path):
     """Loads pretrained Keras functional model"""
     if model_path is None:
-        with importlib.resources.path("spacekit.skopes.trained_networks", "ensembleSVM") as M:
+        with importlib.resources.path(
+            "spacekit.skopes.trained_networks", "ensembleSVM"
+        ) as M:
             model_path = M
     print("Loading saved model: ", model_path)
     model = tf.keras.models.load_model(model_path)
@@ -148,7 +150,10 @@ def main(model_path, data_file, img_path, output_path):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(prog="spacekit", usage="spacekit.skopes.hst.svm.predict ./unlabeled.csv ./img -o=./predictions")
+    parser = argparse.ArgumentParser(
+        prog="spacekit",
+        usage="spacekit.skopes.hst.svm.predict ./unlabeled.csv ./img -o=./predictions",
+    )
     parser.add_argument(
         "data_file",
         type=str,

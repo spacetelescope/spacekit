@@ -196,8 +196,9 @@ def main(training_data, img_path, synth_data, norm, model_name, params, output_p
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(prog="spacekit",
-        usage="python -m spacekit.skopes.hst.svm.train training_data.csv path/to/img"
+    parser = argparse.ArgumentParser(
+        prog="spacekit",
+        usage="python -m spacekit.skopes.hst.svm.train training_data.csv path/to/img",
     )
     parser.add_argument(
         "training_data", type=str, help="path to training data csv file(s)"

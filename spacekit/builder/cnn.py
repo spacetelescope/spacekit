@@ -72,7 +72,7 @@ class Builder:
             metrics=["accuracy"],
         )
         return self
-    
+
     # def unzip_model_files(path_to_zip, extract_to="."):
     #     model_base = os.path.basename(path_to_zip).split(".")[0]
     #     with ZipFile(path_to_zip, "r") as zip_ref:

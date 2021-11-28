@@ -350,7 +350,8 @@ def run_pipes(datasets, outputs, prc, cfg):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        prog="spacekit", usage="python -m spacekit.skopes.hst.svm.corrupt ./singlevisits ./synthetic -e=sub -m=stat"
+        prog="spacekit",
+        usage="python -m spacekit.skopes.hst.svm.corrupt ./singlevisits ./synthetic -e=sub -m=stat",
     )
     parser.add_argument("srcpath", type=str, help="single visit dataset(s) directory")
     parser.add_argument(

@@ -24,6 +24,7 @@ docs/_build
 # Packages/installer info
 *.egg
 spacekit.egg-info
+spacekit.egg-info/*
 dist
 build
 eggs
