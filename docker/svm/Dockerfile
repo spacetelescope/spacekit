@@ -1,7 +1,8 @@
 # Copyright (c) Association of Universities for Research in Astronomy
 # Distributed under the terms of the Modified BSD License.
 # DATB's HST CAL code build for fundamental calibration s/w
-ARG CAL_BASE_IMAGE="stsci/hst-pipeline:CALDP_drizzlecats_CAL_rc6"
+# ARG CAL_BASE_IMAGE="stsci/hst-pipeline:CALDP_drizzlecats_CAL_rc6"
+ARG CAL_BASE_IMAGE="stsci/hst-pipeline:latest"
 FROM ${CAL_BASE_IMAGE}
 
 LABEL maintainer="dmd_octarine@stsci.edu" \
@@ -35,9 +36,8 @@ RUN yum remove -y kernel-devel   &&\
    time
 
 WORKDIR /home/developer
-RUN mkdir /home/developer/spacekit_svm
-ADD spacekit/skopes/trained_networks/ensembleSVM /home/developer/spacekit_svm/ensembleSVM
-COPY scripts /home/developer/spacekit_svm/.
+RUN mkdir /home/developer/scripts
+COPY scripts /home/developer/.
 RUN chown -R developer:developer /home/developer
 
 COPY requirements.txt /home/developer/.

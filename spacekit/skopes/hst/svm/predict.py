@@ -148,7 +148,7 @@ def main(model_path, data_file, img_path, output_path):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(prog="spacekit", usage="spacekit.skopes.hst.svm.predict ./unlabeled.csv ./img -o=./predictions")
     parser.add_argument(
         "data_file",
         type=str,

@@ -17,15 +17,14 @@ SRC=${SRC:-"data/singlevisits"} # data/singlevisits/results_2021-07-28
 OUT=${OUT:-"data"}
 EXPO=${EXPO:-"*"}
 MODE=${MODE:-"*"}
-
-synthetic=${OUT}/synthetic
-img=${OUT}/img/1
+SYNTH=${SYNTH:-"data/synthetic"} # data/synthetic/ibf
+IMG=${IMG:-"data/img/1"}
 # FILTERS=${filters:-""}
 
 
 # Generate synthetic data
 if [[ $CRPT -ne 0 ]]; then
-    mkdir -p $synthetic
+    mkdir -p $SYNTH
     if [[ ${EXPO} != "*" && ${MODE} != "*" ]]; then
         permutation="mfi -e=${EXPO} -m=${MODE}"
     else
@@ -35,10 +34,10 @@ if [[ $CRPT -ne 0 ]]; then
         echo "Generating synthetic misalignments for ${DATASETS[@]}"
         for dataset in "${DATASETS[@]}"
         do
-            python -m spacekit.skopes.hst.mosaic.corrupt $SRC $synthetic $permutation -p=$dataset
+            python -m spacekit.skopes.hst.mosaic.corrupt $SRC $OUT $permutation -p=$dataset
         done
     else
-        python -m spacekit.skopes.hst.mosaic.corrupt $SRC $synthetic $permutation
+        python -m spacekit.skopes.hst.mosaic.corrupt $SRC $OUT $permutation
     fi
 fi
 
@@ -51,14 +50,14 @@ if [[ $DRIZ -ne 0 ]]; then
     echo "Drizzling synthetic misalignments for ${DATASETS[@]}"
     for dataset in "${DATASETS[@]}"
     do
-        visits=(`find ${synthetic}/${dataset}_* -maxdepth 0`)
+        visits=(`find ${SYNTH}/${dataset}_* -maxdepth 0`)
         for v in "${visits[@]}"
         do
             warning_file=`find ${v} -name "warning.txt"`
             if [[ -z $warning_file ]]; then
                 cd $v; input_file=`find . -name "*input.out"`
                 runsinglehap "${input_file}"
-                cd ${HOME}/spacekit-svm
+                cd ${HOME}
             else
                 echo "${v} warning file found - skipping"
             fi
@@ -68,15 +67,14 @@ fi
 
 # draw png images
 if [[ $DRAW -ne 0 ]]; then
-    mkdir -p $img
-    python spacekit.extractor.draw_mosaics $synthetic -o=$img -c=1
+    mkdir -p $IMG
+    python spacekit.extractor.draw_mosaics $SYNTH -o=$IMG -c=1
 fi
-python -m spacekit.extractor.frame_data $SRCPATH -o=$unlabeled_data
 
 # make dataset
 if [[ $DATA -ne 0 ]]; then  
     synth_data=${OUT}/svm_synthetic.csv
-    python spacekit.extractor.frame_data $synthetic -d=svm_synth -o=$synth_data -c=1
+    python spacekit.extractor.frame_data $SYNTH -d=svm_synth -o=$synth_data -c=1
 fi
 
 # # Create filter images (for similarity embeddings)

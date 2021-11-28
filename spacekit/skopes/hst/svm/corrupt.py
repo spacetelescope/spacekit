@@ -261,9 +261,10 @@ def run_svm(dataset, outputs):
             #     print(f"SVM failed to run for {m}")
 
 
-def generate_images(dataset, filters=False):
-    input_path = os.getcwd()
-    generate_total_images(input_path, datasets=[dataset], output_img="./img/total/1")
+def generate_images(dataset, outputs, filters=False):
+    input_path = outputs
+    output_path = os.path.join(os.path.dirname(outputs), "img/1")
+    generate_total_images(input_path, datasets=[dataset], output_img=output_path)
     if filters is True:
         generate_filter_images(
             input_path,
@@ -314,7 +315,7 @@ def run_blocks(datasets, outputs, prc, cfg):
         start = time.time()
         stopwatch(prcname, t0=start, out=outputs)
         for dataset in tqdm(datasets):
-            generate_images()
+            generate_images(dataset, outputs)
         end = time.time()
         stopwatch(prcname, t0=start, t1=end, out=outputs)
     end_block = time.time()
@@ -339,7 +340,7 @@ def run_pipes(datasets, outputs, prc, cfg):
         if prc["runsvm"]:
             run_svm(dataset, outputs)
         if prc["imagegen"]:
-            generate_images(dataset)
+            generate_images(dataset, outputs)
         t1 = time.time()
         stopwatch(dataset, t0=t0, t1=t1, out=outputs)
 
@@ -349,7 +350,7 @@ def run_pipes(datasets, outputs, prc, cfg):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        prog="spacekit", usage="python corrupt.py j8ep07 mfi -e=sub -m=stat"
+        prog="spacekit", usage="python -m spacekit.skopes.hst.svm.corrupt ./singlevisits ./synthetic -e=sub -m=stat"
     )
     parser.add_argument("srcpath", type=str, help="single visit dataset(s) directory")
     parser.add_argument(
@@ -370,7 +371,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "-e",
-        "--exposures",
+        "--expos",
         type=str,
         choices=["all", "sub"],
         default="all",
