@@ -23,8 +23,8 @@ docs/_build
 
 # Packages/installer info
 *.egg
-spacekit.egg-info
-spacekit.egg-info/*
+*.egg-info/
+spacekit.egg-info/
 dist
 build
 eggs
@@ -47,6 +47,8 @@ distribute-*.tar.gz
 .settings
 crds_cache
 *k2_lightcurve_cnn.py
+svm-data/
+docker/dev/
 
 # Mac OSX
 .DS_Store
