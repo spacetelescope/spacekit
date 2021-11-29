@@ -37,7 +37,7 @@ RUN yum remove -y kernel-devel   &&\
 
 WORKDIR /home/developer
 RUN mkdir /home/developer/scripts
-COPY scripts /home/developer/.
+COPY scripts /home/developer/scripts/.
 RUN chown -R developer:developer /home/developer
 
 COPY requirements.txt /home/developer/.
@@ -47,5 +47,5 @@ RUN pip install numpy~=1.21
 USER developer
 ENV SVM_QUALITY_TESTING=on
 ENV TF_CPP_MIN_LOG_LEVEL=2
-RUN conda init bash && source ~/.bashrc && conda activate && conda install typing-extensions
+RUN conda init bash && pip install typing-extensions
 CMD ["/bin/bash"]

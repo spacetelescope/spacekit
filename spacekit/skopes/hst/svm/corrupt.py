@@ -16,7 +16,7 @@ from astropy.io import fits
 import time
 from tqdm import tqdm
 from progressbar import ProgressBar
-
+from drizzlepac import runsinglehap
 from spacekit.extractor.draw_mosaics import (
     generate_total_images,
     generate_filter_images,
@@ -243,18 +243,20 @@ def multiple_permutations(dataset, outputs, expos, mode, thresh="any"):
 
 
 def run_svm(dataset, outputs):
-    from drizzlepac import runsinglehap
-
     os.environ.get("SVM_QUALITY_TESTING", "on")
-    mutations = glob.glob(f"{outputs}/{dataset}_*")
+    home = os.getcwd()
+    visit = dataset.split("/")[-1][:6]
+    mutations = glob.glob(f"{outputs}/{visit}_*")
     for m in mutations:
         warning = f"{m}/warning.txt"
         if os.path.exists(warning):
             print(f"Skipping {m} - see warning file")
         else:
-            drz_file = glob.glob(f"{m}/*.out")[0]
-            if drz_file:
-                runsinglehap.perform(drz_file, log_level="info")
+            os.chdir(m)
+            drz_file = glob.glob("*.out")
+            if len(drz_file) > 0:
+                runsinglehap.perform(drz_file[0], log_level="info")
+            os.chdir(home)
             # cmd = ["runsinglehap", drz_file]
             # err = subprocess.call(cmd)
             # if err:
@@ -264,7 +266,7 @@ def run_svm(dataset, outputs):
 def generate_images(dataset, outputs, filters=False):
     input_path = outputs
     output_path = os.path.join(os.path.dirname(outputs), "img/1")
-    generate_total_images(input_path, datasets=[dataset], output_img=output_path)
+    generate_total_images(input_path, output_path, dataset=dataset, crpt=1)
     if filters is True:
         generate_filter_images(
             input_path,
@@ -284,11 +286,11 @@ def all_permutations(dataset, outputs):
 
 def run_blocks(datasets, outputs, prc, cfg):
     start_block = time.time()
-    stopwatch("Block Workflow", t0=start_block, out=outputs)
+    stopwatch("Block Workflow", t0=start_block)
     if prc["crpt"]:
         prcname = "CORRUPTION"
         start = time.time()
-        stopwatch(prcname, t0=start, out=outputs)
+        stopwatch(prcname, t0=start)
         for dataset in tqdm(datasets):
             if cfg["palette"] == "multi":
                 all_permutations(dataset, outputs)
@@ -299,35 +301,36 @@ def run_blocks(datasets, outputs, prc, cfg):
             elif cfg["palette"] in ["rex", "rfi"]:
                 artificial_misalignment(dataset, outputs, cfg["palette"])
         end = time.time()
-        stopwatch(prcname, t0=start, t1=end, out=outputs)
+        stopwatch(prcname, t0=start, t1=end)
 
     if prc["runsvm"]:
         prcname = "ALIGNMENT"
         start = time.time()
-        stopwatch(prcname, t0=start, out=outputs)
+        stopwatch(prcname, t0=start)
         for dataset in tqdm(datasets):
-            run_svm(datasets, outputs)
+            run_svm(dataset, outputs)
         end = time.time()
-        stopwatch(prcname, t0=start, t1=end, out=outputs)
+        stopwatch(prcname, t0=start, t1=end)
 
     if prc["imagegen"]:
+        img_out = os.path.join(os.path.dirname(outputs), "img/1")
         prcname = "IMAGE GENERATION"
         start = time.time()
-        stopwatch(prcname, t0=start, out=outputs)
-        for dataset in tqdm(datasets):
-            generate_images(dataset, outputs)
+        stopwatch(prcname, t0=start)
+        generate_total_images(outputs, img_out, dataset=None, crpt=1)
         end = time.time()
-        stopwatch(prcname, t0=start, t1=end, out=outputs)
+        stopwatch(prcname, t0=start, t1=end)
     end_block = time.time()
-    stopwatch("Block Workflow", t0=start_block, t1=end_block, out=outputs)
+    stopwatch("Block Workflow", t0=start_block, t1=end_block)
 
 
 def run_pipes(datasets, outputs, prc, cfg):
+    img_out = os.path.join(os.path.dirname(outputs), "img/1")
     start = time.time()
-    stopwatch("Pipe Workflow", t0=start, out=outputs)
+    stopwatch("Pipe Workflow", t0=start)
     for dataset in tqdm(datasets):
         t0 = time.time()
-        stopwatch(dataset, t0=t0, out=outputs)
+        stopwatch(dataset, t0=t0)
         if prc["crpt"]:
             if cfg["palette"] == "multi":
                 all_permutations(dataset, outputs)
@@ -340,12 +343,13 @@ def run_pipes(datasets, outputs, prc, cfg):
         if prc["runsvm"]:
             run_svm(dataset, outputs)
         if prc["imagegen"]:
-            generate_images(dataset, outputs)
+            generate_total_images(outputs, img_out, dataset=dataset, crpt=1)
+            # generate_images(dataset, outputs)
         t1 = time.time()
-        stopwatch(dataset, t0=t0, t1=t1, out=outputs)
+        stopwatch(dataset, t0=t0, t1=t1)
 
     end = time.time()
-    stopwatch("Pipe Workflow", t0=start, t1=end, out=outputs)
+    stopwatch("Pipe Workflow", t0=start, t1=end)
 
 
 if __name__ == "__main__":
