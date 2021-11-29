@@ -253,7 +253,7 @@ def run_svm(dataset, outputs):
             print(f"Skipping {m} - see warning file")
         else:
             os.chdir(m)
-            drz_file = glob.glob(f"*.out")
+            drz_file = glob.glob("*.out")
             if len(drz_file) > 0:
                 runsinglehap.perform(drz_file[0], log_level="info")
             os.chdir(home)
@@ -344,7 +344,7 @@ def run_pipes(datasets, outputs, prc, cfg):
             run_svm(dataset, outputs)
         if prc["imagegen"]:
             generate_total_images(outputs, img_out, dataset=dataset, crpt=1)
-            #generate_images(dataset, outputs)
+            # generate_images(dataset, outputs)
         t1 = time.time()
         stopwatch(dataset, t0=t0, t1=t1)
 
