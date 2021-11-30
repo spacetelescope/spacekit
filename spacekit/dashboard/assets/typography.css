@@ -1,0 +1,36 @@
+body {
+    font-family: monospace, sans-serif;
+    font-size: 18px;
+}
+h1, h2, h3, h4, h5, h6 {
+    color: #1a73f9;
+    font-family: Helvetica, sans-serif;
+}
+
+p {
+    color: #ffffff;
+    font-family: monospace;
+    font-size: 18px;
+}
+
+label {
+    color: #ffffff;
+    font-family: monospace;
+    font-size: 18px;
+}
+
+.description-text {
+    width: 40%;
+    text-align: 'center'; 
+    display: 'inline-block';
+    float: 'center';
+    font-size: 18px
+}
+
+#xaxis-features {
+    color: black;
+}
+
+#yaxis-features {
+    color: black
+}
