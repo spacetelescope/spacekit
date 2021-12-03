@@ -1,153 +1,201 @@
+"""
+Classes and methods primarily used by spacekit.dashboard but can easily be repurposed.
+"""
+import os
 import pandas as pd
-import pickle
-import datetime as dt
+import glob
+import boto3
+from botocore import Config
+from keras.utils.data_utils import get_file
+from spacekit.analyzer.compute import ComputeClassifier, ComputeRegressor
 
-# timestamps = [1620351000, 1620740441, 1620929899, 1621096666]
-# versions = ["v0", "v1", "v2", "v3"]
-
-# metadata = {
-#     "v0": {"date": "2021-05-06-1620351000", "files": res_files},
-#     "v1": {"date": "2021-05-11-1620740441", "files": res_files},
-#     "v2": {"date": "2021-05-13-1620929899", "files": res_files},
-#     "v3": {"date": "2021-05-15-1621096666", "files": res_files}
-# }
+retry_config = Config(retries={"max_attempts": 3})
+client = boto3.client("s3", config=retry_config)
 
 
-def format_res_files():
-    clf_files = [
-        "history",
-        #"kfold",
-        "matrix",
-        "preds",
-        "proba",
-        "scores",
-        "y_pred",
-        "y_true",
-    ]
-    reg_files = ["history", "predictions", "residuals", "scores"]
-    res_files = {"mem_bin": clf_files, "memory": reg_files, "wallclock": reg_files}
-    return res_files
+def scrape_web_data(
+    fname = 'latest.csv',
+    root = "https://raw.githubusercontent.com/alphasentaurii/spacekit/main/dashboard/cal/",
+    prefix = "2021-11-04-1636048291",
+    file_hash='6a8e188ed7ec6b97c49941c52fc1b7da',
+    hash_algorithm = "md5",
+    ):
+    origin = f"{root}/{prefix}/{fname}"
+    cache_subdir=f"./data/{prefix}/"
+    path = get_file(
+        origin=origin,
+        file_hash='6a8e188ed7ec6b97c49941c52fc1b7da',
+        hash_algorithm="md5",
+        cache_subdir=f"./data/{prefix}/",
+        untar=False,
+        )
+    
+
+# def scrape_web_images():
+#     num_train_samples = 50000
+
+#     x_train = np.empty((num_train_samples, 3, 32, 32), dtype='uint8')
+#     y_train = np.empty((num_train_samples,), dtype='uint8')
+
+#     for i in range(1, 6):
+#         fpath = os.path.join(path, 'data_batch_' + str(i))
+#         (x_train[(i - 1) * 10000:i * 10000, :, :, :],
+#         y_train[(i - 1) * 10000:i * 10000]) = load_batch(fpath)
+
+#     fpath = os.path.join(path, 'test_batch')
+#     x_test, y_test = load_batch(fpath)
+
+#     y_train = np.reshape(y_train, (len(y_train), 1))
+#     y_test = np.reshape(y_test, (len(y_test), 1))
+
+#     if backend.image_data_format() == 'channels_last':
+#         x_train = x_train.transpose(0, 2, 3, 1)
+#         x_test = x_test.transpose(0, 2, 3, 1)
+
+#     x_test = x_test.astype(x_train.dtype)
+#     y_test = y_test.astype(y_train.dtype)
+
+#     return (x_train, y_train), (x_test, y_test)
+
+def scrape_s3(uri, results=[]):
+    res_keys = {}
+    for r in results:
+        os.makedirs(f"./data/{r}")
+        res_keys[r] = [
+            "latest.csv", 
+            "models/models.zip", 
+            "results/mem_bin",
+            "results/memory",
+            "results/wallclock"
+        ]
+    err = None
+    for prefix, key in res_keys.items():
+        obj = f"{uri}/{prefix}/{key}"
+        print("s3//:", obj)
+        try:
+            keypath = f"./data/{prefix}/{key}"
+            with open(keypath, "wb") as f:
+                client.download_fileobj(uri, obj, f)
+        except Exception as e:
+            err = e
+            continue
+    if err is not None:
+        print(err)
 
 
-def make_meta(timestamps, versions):
-    res_files = format_res_files()
-    meta = {}
-    for v in versions:
-        meta[v] = {"date": "", "files": res_files}
-    for (v, t) in list(zip(versions, timestamps)):
-        DATE = dt.date.fromtimestamp(t).isoformat()
-        datestring = f"{DATE}-{t}"
-        meta[v] = {"date": datestring, "files": res_files}
-    return meta
+def decode_categorical(df, decoder_key):
+    """Returns dataframe with added decoded column (using "{column}_key" suffix)"""
+    # instrument_key = {"instr": {0: "acs", 1: "cos", 2: "stis", 3: "wfc3"}}
+    # detector_key = {"det": {0: "hrc", 1: "ir", 2: "sbc", 3: "uvis", 4: "wfc"}}
+    for key, pairs in decoder_key.items():
+        for i, name in pairs.items():
+            df.loc[df[key] == i, f"{key}_key"] = name
+    return df
 
 
-def load_res_file(meta, metric, version, target):
-    """Locates pickle obj for a given metric, loads and stores into variable
-    Returns res_file (loaded pickle object).
-    Ex: keras_file = load_res_file("history", "v0", "mem_bin")
-    loads from: "./data/2021-05-06-1620351000/results/mem_bin/history"
+def import_dataset(filename=None, kwargs=dict(index_col="ipst"), decoder_key=None):
+    """Imports and loads dataset from csv file via local, https, s3, or dynamodb.
+    Returns Pandas dataframe.
+    *args*
+    src: data source ("file", "s3", or "ddb")
+    uri: local file path
+    kwargs: dict of keyword args to pass into pandas read_csv method e.g. set index_col: kwargs=dict(index_col="ipst")
+    decoder_key: nested dict of column and key value pairs for decoding a categorical feature into strings
+    Ex: {"instr": {{0: "acs", 1: "cos", 2: "stis", 3: "wfc3"}}}
     """
-    datestring = meta[version]["date"]
-    res_file = f"data/{datestring}/results/{target}/{metric}"
-    # print(f"{metric} file located: \n{res_file}")
-    res_data = pickle.load(open(res_file, "rb"))
-    return res_data
-
-
-def make_res(meta, versions=None):
-    if versions is None:
-        versions = list(meta.keys())
-    results = {}
-    for v in versions:
-        results[v] = {"mem_bin": {}, "memory": {}, "wallclock": {}}
-        targets = list(meta[v]["files"].keys())
-        for t in targets:
-            for r in meta[v]["files"][t]:
-                results[v][t][r] = load_res_file(meta, r, v, t)
-    return results
-
-
-def get_scores(results):
-    df_list = []
-    for v in results.keys():
-        score_dict = results[v]["mem_bin"]["scores"]
-        df = pd.DataFrame.from_dict(score_dict, orient="index", columns=[v])
-        df_list.append(df)
-    df_scores = pd.concat([d for d in df_list], axis=1)
-    return df_scores
-
-
-def get_history(results, version):
-    return results[version]["mem_bin"]["history"]
-
-
-def get_pred_proba(results, version):
-    y_true = results[version]["mem_bin"]["y_true"]
-    y_pred = results[version]["mem_bin"]["y_pred"]
-    y_proba = results[version]["mem_bin"]["proba"]
-    return y_true, y_pred, y_proba
-
-
-def dynamodb_data(key):
-    # TODO: download from ddb
-    csv_file = key
-    return csv_file
-
-
-def s3_data(key):
-    # TODO: download from s3
-    csv_file = key
-    return csv_file
-
-
-def import_csv(src, key, index=None):
-    if src == "s3":
-        csv_file = s3_data(key)
-    elif src == "ddb":
-        csv_file = dynamodb_data(key)
-    elif src == "file":
-        csv_file = key
-    # import csv file
-    if index:
-        df = pd.read_csv(csv_file, index_col=index)
+    # 2021-11-04-1636048291
+    # 6a8e188ed7ec6b97c49941c52fc1b7da
+    if not os.path.exists(filename):
+        address = "https://raw.githubusercontent.com/alphasentaurii/spacekit/main/dashboard/cal/"
+        csv_file = f"{address}/{filename}"
     else:
-        df = pd.read_csv(csv_file)
+        csv_file = filename
+    # load dataset
+    df = pd.read_csv(csv_file, **kwargs)
+    if decoder_key:
+        df = decode_categorical(df, decoder_key)  # adds instrument label (string)
     return df
 
+class MegaScanner:
+    def __init__(self, prefix=f"data/20??-*-*-*"):
+        self.prefix = prefix
+        self.datasets = sorted(list(glob.glob(prefix)))
+        self.timestamps = [int(t.split('-')[-1]) for t in self.datasets] # [1636048291, 1635457222, 1629663047]
+        self.dates = [v[5:15] for v in self.datasets] # ["2021-11-04", "2021-10-28", "2021-08-22"]
+        self.selection = None
+        self.versions = None
+        self.res_keys = None # {"mem_bin": {}, "memory": {}, "wallclock": {}}
+        self.mega = None
 
-def get_instruments(df):
-    instrument_key = {0: "acs", 1: "cos", 2: "stis", 3: "wfc3"}
-    for i, name in instrument_key.items():
-        df.loc[df["instr"] == i, "instr_key"] = name
-    return df
+    def select_dataset(self):
+        if self.selection is None:
+            self.selection = f"{self.dates[-1]}-{self.timestamps[-1]}"
+        self.dataset = glob.glob(f"data/{self.selection}/*.csv")[0]
 
-# timestamps = [1629663047, 1635457222, 1636048291]
-# versions = ["2021-08-22", "2021-10-28", "2021-11-04"]
-# dataset = f"{versions[-1]}-{timestamps[-1]}/data/latest.csv"
-# def split_df_by_instrument_timestamp(data, meta, instr):
-#     dates = [meta[i]["date"] for i, _ in meta.items()]
-#     df = data.loc[data['instr'] == instr]
-#     df0 = df.loc[df["timestamp"] == dates[0]]
-#     df1 = df.loc[df["timestamp"] == dates[1]]
-#     df2 = df.loc[df["timestamp"] == dates[2]]
+    def make_mega(self):
+        self.mega = {}
+        versions = []
+        for i, (d, t) in enumerate(zip(self.dates, self.timestamps)):
+            if self.versions is None:
+                v = f"v{str(i)}"
+                versions.append(v)
+            else:
+                v = self.versions[i]
+            self.mega[v] = {"date": d, "time": t, "res": self.res_keys}
+        if len(versions) > 0:
+            self.versions = versions
+        return self.mega
 
+class CalRes(MegaScanner):
+    def __init__(self, prefix=f"data/20??-*-*-*"):
+        super().init(prefix)
+        self.classes = [0,1,2,3]
+        self.res_keys = {"mem_bin": {}, "memory": {}, "wallclock": {}}
+    
+    def scan_results(self):
+        self.mega = self.make_mega()
+        for i, d in enumerate(self.datasets):
+            v = self.versions[i]
+            bCom = ComputeClassifier(computation="clf", classes=[0,1,2,3], res_path=f"{d}/results/mem_bin")
+            bCom.upload()
+            self.mega[v]["res"]["mem_bin"] = bCom
+            mCom = ComputeRegressor(computation="reg", res_path=f"{d}/results/memory")
+            mCom.upload()
+            self.mega[v]["res"]["memory"] = mCom
+            wCom = ComputeRegressor(computation="reg", res_path=f"{d}/results/wallclock")
+            wCom.upload()
+            self.mega[v]["res"]["wallclock"] = wCom
+        return self.mega
 
-def get_training_data(meta):
-    dates = [meta[i]["date"] for i, _ in meta.items()]
-    batches = [f"./data/{d}/batch.csv" for d in dates]
-    dataframes = [pd.read_csv(d) for d in batches]
-    training_list = [get_instruments(df) for df in dataframes]
-    instruments = list(training_list[0]["instr_key"].unique())
-    versions = list(meta.keys())
-    for dataset, version, date in list(zip(training_list, versions, dates)):
-        dataset["version"] = version
-        dataset["training_date"] = date
-    training_data = pd.concat([d for d in training_list], verify_integrity=False)
-    return training_data, instruments
+    # TODO: update results files and get rid of this
+    def get_scores(self):
+        df_list = []
+        for v in self.versions:
+            score_dict = self.mega[v]["res"]["mem_bin"]["scores"]
+            df = pd.DataFrame.from_dict(score_dict, orient="index", columns=[v])
+            df_list.append(df)
+        df_scores = pd.concat([d for d in df_list], axis=1)
+        return df_scores
 
+class SvmRes(MegaScanner):
+    def __init__(self, prefix=f"data/20??-*-*-*"):
+        super().__init__(prefix)
+        self.datasets = sorted(list(glob.glob(prefix)))
+        self.timestamps = [int(t.split('-')[-1]) for t in self.datasets]
+        self.dates = [v[5:15] for v in self.datasets]
+        self.selection = f"{self.dates[-1]}-{self.timestamps[-1]}"
+        self.dataset = glob.glob(f"data/{self.selection}/*.csv")[0]
+        self.classes = ["aligned", "misaligned"]
+        self.res_keys = {"test": {}, "val": {}}
 
-def get_single_dataset(filename):
-    data = pd.read_csv(filename)
-    data.set_index("ipst", drop=False, inplace=True)
-    df = get_instruments(data)  # adds instrument label (string)
-    return df
+    def scan_results(self):
+        self.mega = self.make_mega()
+        for i, d in enumerate(self.datasets):
+            v = self.versions[i]
+            tCom = ComputeClassifier(algorithm="test", classes=self.classes, res_path=f"{d}/results/test")
+            tCom.upload()
+            self.mega[v]["res"]["test"] = tCom
+
+            vCom = ComputeClassifier(algorithm="val", classes=self.classes, res_path=f"{d}/results/val")
+            vCom.upload()
+            self.mega[v]["res"]["val"] = vCom

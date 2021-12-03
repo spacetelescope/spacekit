@@ -22,7 +22,7 @@ libreadline-dev \
 libsqlite3-dev \
 libssl-dev \
 unzip \
-zlib1g-dev 
+zlib1g-dev
 
 RUN DEBIAN_FRONTEND=noninteractive \
 && curl -o Python-3.9.5.tgz https://www.python.org/ftp/python/3.9.5/Python-3.9.5.tgz \
@@ -39,8 +39,10 @@ RUN DEBIAN_FRONTEND=noninteractive \
 
 RUN useradd --create-home --shell /bin/bash developer
 USER developer
-COPY ../../spacekit/dashboard /home/developer/dashboard
-COPY requirements.txt ./home/developer/dashboard
-WORKDIR /home/developer/dashboard
+COPY scrape.sh /home/developer/
+COPY requirements.txt ./home/developer/
+WORKDIR /home/developer/
 RUN python -m pip install --upgrade pip && python -m pip install -r requirements.txt
-CMD ["python", "app.py"]
+RUN mkdir /home/developer/data
+ENTRYPOINT ["python","-m","spacekit.dashboard.cal.app"]
+# ["python","-m","spacekit.dashboard.svm.app"]

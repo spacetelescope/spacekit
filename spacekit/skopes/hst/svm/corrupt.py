@@ -242,11 +242,10 @@ def multiple_permutations(dataset, outputs, expos, mode, thresh="any"):
     bar.finish()
 
 
-def run_svm(dataset, outputs):
+def run_svm(visit, outputs, pattern):
     os.environ.get("SVM_QUALITY_TESTING", "on")
     home = os.getcwd()
-    visit = dataset.split("/")[-1][:6]
-    mutations = glob.glob(f"{outputs}/{visit}_*")
+    mutations = glob.glob(f"{outputs}/{pattern}/{visit}_*")
     for m in mutations:
         warning = f"{m}/warning.txt"
         if os.path.exists(warning):
@@ -263,17 +262,17 @@ def run_svm(dataset, outputs):
             #     print(f"SVM failed to run for {m}")
 
 
-def generate_images(dataset, outputs, filters=False):
+def generate_images(outputs, filters=False, pattern=None):
     input_path = outputs
-    output_path = os.path.join(os.path.dirname(outputs), "img/1")
-    generate_total_images(input_path, output_path, dataset=dataset, crpt=1)
+    img_out = os.path.join(os.path.dirname(outputs), "img/1")
+    generate_total_images(input_path, img_out, crpt=1, pattern=pattern)
     if filters is True:
         generate_filter_images(
             input_path,
-            dataset=dataset,
             outpath="./img/filter",
             figsize=(24, 24),
             crpt=0,
+            pattern=pattern
         )
 
 
@@ -284,7 +283,7 @@ def all_permutations(dataset, outputs):
     multiple_permutations(dataset, outputs, "sub", "stoc")
 
 
-def run_blocks(datasets, outputs, prc, cfg):
+def run_blocks(datasets, outputs, prc, cfg, pattern):
     start_block = time.time()
     stopwatch("Block Workflow", t0=start_block)
     if prc["crpt"]:
@@ -307,24 +306,25 @@ def run_blocks(datasets, outputs, prc, cfg):
         prcname = "ALIGNMENT"
         start = time.time()
         stopwatch(prcname, t0=start)
-        for dataset in tqdm(datasets):
-            run_svm(dataset, outputs)
+        # prevent repetitions on single dataset if pattern="*"
+        visits = list(set([d.split("/")[-1][:6] for d in datasets]))
+        for visit in tqdm(visits):
+            run_svm(visit, outputs, pattern)
         end = time.time()
         stopwatch(prcname, t0=start, t1=end)
 
     if prc["imagegen"]:
-        img_out = os.path.join(os.path.dirname(outputs), "img/1")
         prcname = "IMAGE GENERATION"
         start = time.time()
         stopwatch(prcname, t0=start)
-        generate_total_images(outputs, img_out, dataset=None, crpt=1)
+        generate_images(outputs, pattern=pattern)
         end = time.time()
         stopwatch(prcname, t0=start, t1=end)
     end_block = time.time()
     stopwatch("Block Workflow", t0=start_block, t1=end_block)
 
 
-def run_pipes(datasets, outputs, prc, cfg):
+def run_pipes(datasets, outputs, prc, cfg, pattern):
     img_out = os.path.join(os.path.dirname(outputs), "img/1")
     start = time.time()
     stopwatch("Pipe Workflow", t0=start)
@@ -341,9 +341,11 @@ def run_pipes(datasets, outputs, prc, cfg):
             elif cfg["palette"] in ["rex", "rfi"]:
                 artificial_misalignment(dataset, outputs, cfg["palette"])
         if prc["runsvm"]:
-            run_svm(dataset, outputs)
+            visits = list(set([d.split("/")[-1][:6] for d in datasets]))
+            for visit in tqdm(visits):
+                run_svm(visit, outputs, pattern)
         if prc["imagegen"]:
-            generate_total_images(outputs, img_out, dataset=dataset, crpt=1)
+            generate_total_images(outputs, img_out, dataset=dataset, crpt=1, pattern=pattern)
             # generate_images(dataset, outputs)
         t1 = time.time()
         stopwatch(dataset, t0=t0, t1=t1)
@@ -365,14 +367,15 @@ if __name__ == "__main__":
         "palette",
         type=str,
         choices=["rex", "rfi", "mfi", "multi"],
-        help="`rex`: randomly select subset of exposures from any filter; `rfi`: select all exposures from randomly selected filter; `mfi`: exposures of one filter, repeated for every filter in dataset. 'multi' creates sub- and all- MFI permutations",
+        default="multi",
+        help="`rex`: randomly select subset of exposures from any filter; `rfi`: select all exposures from randomly selected filter; `mfi`: exposures of one filter, repeated for every filter in dataset. 'multi' (default) creates sub- and all- MFI permutations",
     )
     parser.add_argument(
         "-p",
         "--pattern",
         type=str,
         default="*",
-        help="glob search pattern - default is wildcard *",
+        help="glob search pattern for restricting which visits to process - default is wildcard *",
     )
     parser.add_argument(
         "-e",
@@ -434,7 +437,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     outputs = args.outputs
     workflow = args.workflow
-    datasets = glob.glob(f"{args.srcpath}/{args.pattern}")
+    pattern = args.pattern.lstrip('/')
+    datasets = glob.glob(f"{args.srcpath.rstrip('/')}/{pattern}")
     if len(datasets) < 1:
         print("No datasets found matching the search pattern.")
         sys.exit(1)
@@ -443,6 +447,6 @@ if __name__ == "__main__":
         palette=args.palette, expos=args.expos, mode=args.mode, thresh=args.threshold
     )
     if workflow == "block":
-        run_blocks(datasets, outputs, procs, cfg)
+        run_blocks(datasets, outputs, procs, cfg, pattern)
     else:
-        run_pipes(datasets, outputs, procs, cfg)
+        run_pipes(datasets, outputs, procs, cfg, pattern)

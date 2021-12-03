@@ -9,7 +9,7 @@ from spacekit.preprocessor.transform import (
     apply_power_transform,
     power_transform_matrix,
 )
-from spacekit.builder.cnn import Ensemble
+from spacekit.builder.networks import Ensemble
 from spacekit.analyzer.compute import ComputeTest, ComputeVal
 from spacekit.extractor.load_images import SVMImages
 from spacekit.analyzer.track import stopwatch
@@ -126,7 +126,7 @@ def prep_ensemble_data(filename, img_path, synth=None, norm=False):
     return tv_idx, XTR, YTR, XTS, YTS, XVL, YVL
 
 
-def train_model(XTR, YTR, XTS, YTS, model_name, params=None):
+def train_ensemble(XTR, YTR, XTS, YTS, model_name, params=None):
     if params is None:
         params = dict(
             batch_size=32,
@@ -141,7 +141,7 @@ def train_model(XTR, YTR, XTS, YTS, model_name, params=None):
     name, outpath = os.path.basename(model_name), os.path.dirname(model_name)
     ens.name = name
     ens.build_ensemble(lr_sched=True)
-    ens.fit_cnn()
+    ens.batch_fit()
     ens.save_model(weights=True, output_path=outpath)
     return ens.model, ens.history
 
@@ -162,25 +162,24 @@ def compute_results(
     )
     com.res_path = res_path
     com.calculate_results()
-    com.draw_plots()
     com.download()
     val = ComputeVal(
         model_name, ["aligned", "misaligned"], model, XTS, YTS, XVL, YVL, tv_idx[1]
     )
     val.res_path = res_path
     val.calculate_results()
-    val.draw_plots()
     val.download()
+    return com, val
 
 
-def main(training_data, img_path, synth_data, norm, model_name, params, output_path):
+def run_training(training_data, img_path, synth_data, norm, model_name, params, output_path):
     os.makedirs(output_path, exist_ok=True)
     tv_idx, XTR, YTR, XTS, YTS, XVL, YVL = prep_ensemble_data(
         training_data, img_path, synth=synth_data, norm=norm
     )
-    ens_model, ens_history = train_model(XTR, YTR, XTS, YTS, model_name, params)
+    ens_model, ens_history = train_ensemble(XTR, YTR, XTS, YTS, model_name, params)
     res_path = os.path.join(output_path, "results")
-    compute_results(
+    com, val = compute_results(
         ens_model,
         ens_history,
         model_name,
@@ -193,6 +192,7 @@ def main(training_data, img_path, synth_data, norm, model_name, params, output_p
         XVL,
         YVL,
     )
+    return com, val
 
 
 if __name__ == "__main__":
@@ -234,6 +234,7 @@ if __name__ == "__main__":
         "-y", "--early_stopping", type=str, default=None, help="early stopping"
     )
     parser.add_argument("-v", "--verbose", type=int, default=2, help="verbosity level")
+    parser.add_argument("-p", "--plots", type=int, default=0, help="draw model performance plots")
     args = parser.parse_args()
     training_data = args.training_data
     img_path = args.img_path
@@ -256,5 +257,8 @@ if __name__ == "__main__":
         verbose=verbose,
         ensemble=True,
     )
+    com, val = run_training(training_data, img_path, synth_data, norm, model_name, params, output_path)
+    if args.plots is True:
+        com.draw_plots()
+        val.draw_plots()
 
-    main(training_data, img_path, synth_data, norm, model_name, params, output_path)

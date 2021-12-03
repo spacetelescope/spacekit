@@ -384,7 +384,7 @@ class SingleVisitMosaic(DataPlots):
 
 
 # TODO
-class HSTRepro(DataPlots):
+class HstCalPlots(DataPlots):
     def __init__(self, df, group="instr"):
         super().__init__(df)
         self.telescope = "HST"
@@ -485,7 +485,7 @@ class HSTRepro(DataPlots):
             trace = go.Scatter(
                 x=data[xaxis_name],
                 y=data[yaxis_name],
-                text=data["ipst"],
+                text=data.index,
                 mode="markers",
                 opacity=0.7,
                 marker={"size": 15, "color": color},

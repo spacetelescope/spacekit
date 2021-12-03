@@ -49,7 +49,7 @@ crds_cache
 *k2_lightcurve_cnn.py
 svm-data/
 docker/dev/
-
+cal-data/
 # Mac OSX
 .DS_Store
 *.pyc

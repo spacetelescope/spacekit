@@ -1,10 +1,11 @@
+import json
 import pandas as pd
 import numpy as np
 from scipy.ndimage.filters import uniform_filter1d
 from sklearn.preprocessing import PowerTransformer
 import tensorflow as tf
 
-
+# TODO: update code elsewhere to use class method versions instead of static functions
 def apply_power_transform(
     data, cols=["numexp", "rms_ra", "rms_dec", "nmatches", "point", "segment", "gaia"]
 ):
@@ -51,6 +52,152 @@ def power_transform_matrix(data, pt_data):
         normalized[:, i] = x
     data_norm = np.concatenate((normalized, data_cat), axis=1)
     return data_norm
+
+
+
+class Transformer:
+    def __init__(self, data, transformer=PowerTransformer(standardize=False), cols=None):
+        self.data = data # cal: data = x_features
+        self.transformer = transformer
+        self.cols = cols
+        self.matrix = self.frame_to_matrix()
+        self.matrix_cont = None
+        self.matrix_cat = None
+        self.matrix_norm = None
+        self.idx = self.data.index
+        self.data_cont = None
+        self.data_cat = None
+        self.data_norm = None
+        self.tx_file = None
+        self.tx_data = None
+        self.lambdas = None
+
+    def load_transformer_data(self):
+        if self.tx_file is not None:
+            with open(self.tx_file, "r") as j:
+                self.tx_data = json.load(j)
+            return self.tx_data
+        else:
+            return None
+        
+    
+    def frame_to_matrix(self):
+        if type(self.data) == pd.DataFrame:
+            self.matrix = self.data.values
+        return self.matrix
+
+    def power_matrix(self):
+        try:
+            nrows = self.matrix_cont.shape[0]
+            ncols = self.matrix_cont.shape[1]
+            self.transformer.fit(self.matrix_cont)
+            self.transformer.lambdas_ = self.tx_data["lambdas"]
+            input_matrix = self.transformer.transform(self.matrix_cont)
+            normalized = np.empty((nrows, ncols))
+            for i in range(ncols):
+                v = input_matrix[:, i]
+                m = self.tx_data["mu"][i]
+                s = self.tx_data["sigma"][i]
+                x = (v - m) / s
+                normalized[:, i] = x
+            self.matrix_norm = np.concatenate((normalized, self.matrix_cat), axis=1)
+            return self.matrix_norm
+        except Exception as e:
+            print("Err: Continuous/Categorical matrices (`matrix_cont`, `matrix_cat`) need to be instantiated.")
+            print(e)
+            return None
+
+
+    def power_frame(self):
+        # data_cont = data[cols]
+        self.transformer.fit(self.data_cont)
+        input_matrix = self.transformer.transform(self.data_cont)
+        self.lambdas = self.transformer.lambdas_
+        normalized = np.empty((len(self.data), len(self.cols)))
+        mu, sig = [], []
+        for i in range(len(self.cols)):
+            v = input_matrix[:, i]
+            m, s = np.mean(v), np.std(v)
+            x = (v - m) / s
+            normalized[:, i] = x
+            mu.append(m)
+            sig.append(s)
+        self.tx_data = {"lambdas": self.lambdas, "mu": np.array(mu), "sigma": np.array(sig)}
+        newcols = [c + "_scl" for c in self.cols]
+        df_norm = pd.DataFrame(normalized, index=self.idx, columns=newcols)
+        self.data_norm = df_norm.join(self.data_cat, how="left")
+        return self
+
+
+class SvmX(Transformer):
+    def __init__(self, data, tx_file=None):
+        super.__init__(data)
+        self.tx_file = tx_file
+        self.cols = ["numexp", "rms_ra", "rms_dec", "nmatches", "point", "segment", "gaia"]
+        self.matrix_cont = self.data[:, :7] # continuous
+        self.matrix_cat = self.data[:, -3:] # categorical
+        self.data_cont = self.data[self.cols]
+        self.data_cat = self.data.drop(self.cols, axis=1, inplace=False)
+        
+
+class CalX(Transformer):
+    def __init__(self, data, tx_file=None):
+        super().__init__(data)
+        self.tx_file = tx_file
+        self.cols = ["n_files", "total_mb"]
+        self.tx_data = self.load_transformer_data()
+        self.X = self.powerX()
+    
+    def transform(self):
+        if self.tx_data is not None:
+            self.inputs = self.scrub_keys()
+            self.lambdas = np.array([self.tx_data["f_lambda"], self.tx_data["s_lambda"]])
+            self.f_mean = self.tx_data["f_mean"]
+            self.f_sigma = self.tx_data["f_sigma"]
+            self.s_mean = self.tx_data["s_mean"]
+            self.s_sigma = self.tx_data["s_sigma"]
+            return self
+
+    def scrub_keys(self):
+        x = self.data
+        self.inputs = np.array(
+            [
+                x["n_files"],
+                x["total_mb"],
+                x["drizcorr"],
+                x["pctecorr"],
+                x["crsplit"],
+                x["subarray"],
+                x["detector"],
+                x["dtype"],
+                x["instr"],
+            ]
+        )
+        return self.inputs
+
+    def powerX(self):
+        """applies yeo-johnson power transform to first two indices of array (n_files, total_mb) using lambdas, mean and standard deviation pre-calculated for each variable (loads dict from json file).
+
+        Returns: X inputs as 2D-array for generating predictions
+        """
+        if self.inputs is None:
+            return None
+        else:
+            X = self.inputs
+            n_files = X[0]
+            total_mb = X[1]
+            # apply power transformer normalization to continuous vars
+            x = np.array([[n_files], [total_mb]]).reshape(1, -1)
+            self.transformer.lambdas_ = self.lambdas
+            xt = self.transformer.transform(x)
+            # normalization (zero mean, unit variance)
+            x_files = np.round(((xt[0, 0] - self.f_mean) / self.f_sigma), 5)
+            x_size = np.round(((xt[0, 1] - self.s_mean) / self.s_sigma), 5)
+            self.X = np.array(
+                [x_files, x_size, X[2], X[3], X[4], X[5], X[6], X[7], X[8]]
+            ).reshape(1, -1)
+            print(self.X)
+            return self.X
 
 
 def make_tensors(X_train, y_train, X_test, y_test):

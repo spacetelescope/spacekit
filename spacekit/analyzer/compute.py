@@ -1,13 +1,15 @@
 import os
 import sys
+import glob
 import pickle
 import itertools
-import pandas as pd
 import numpy as np
+import pandas as pd
+import datetime as dt
 import matplotlib as mpl
+from plotly import subplots
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
-from plotly import subplots
 import plotly.figure_factory as ff
 from sklearn.metrics import (
     roc_curve,
@@ -21,19 +23,17 @@ from sklearn.metrics import (
     recall_score,
     fowlkes_mallows_score,
 )
-
 plt.style.use("seaborn-bright")
 font_dict = {"family": '"Titillium Web", monospace', "size": 16}
 mpl.rc("font", **font_dict)
 
 
-class Computer:
-    def __init__(self, model_name, computation, classes, show=False):
-        self.model_name = model_name
-        self.computation = computation
-        self.classes = classes
+class Computer(object):
+    def __init__(self, algorithm, res_path=None, show=False):
+        self.algorithm = algorithm # test/val; clf/reg
+        self.res_path = res_path
         self.show = show
-        self.res_path = None
+        self.model_name = None
         self.model = None
         self.history = None
         self.X_train = None
@@ -41,11 +41,13 @@ class Computer:
         self.X_test = None
         self.y_test = None
         self.test_idx = None
-        self.y_onehot = None
-        self.y_scores = None
         self.y_pred = None
-        self.cmx = None
+        self.y_scores = None
+        self.y_onehot = None
         self.fnfp = None
+        self.cmx = None
+        self.cmx_norm = None
+        self.cm_fig = None
         self.report = None
         self.roc_auc = None
         self.acc_loss = None
@@ -53,10 +55,25 @@ class Computer:
         self.loss_fig = None
         self.roc_fig = None
         self.pr_fig = None
-        self.cm_fig = None
-        self.cmx_norm = None
 
     def inputs(self, model, history, X_train, y_train, X_test, y_test, test_idx):
+        """Instantiates training vars as attributes (typically carried over from a Builder object post-training).
+        By default, a Computer object is instantiated without these - they are only needed for calculating and storing
+        results which can then be retrieved by Computer separately (without training vars) from pickle objects using 
+        the `upload()` method.
+
+        Args:
+            model (object): Keras functional model
+            history (dict): model training history
+            X_train (dataframe or array): training feature data
+            y_train (dataframe or array): training target data
+            X_test (dataframe or array): test feature data
+            y_test (dataframe or array): test target data
+            test_idx (pandas Series): test data index and ground truth values (used for FNFP)
+
+        Returns:
+            class object (self): updated Computer object with model attributes used for calculating results
+        """
         self.model = model
         self.history = history.history
         self.X_train = X_train
@@ -66,89 +83,39 @@ class Computer:
         self.test_idx = test_idx
         return self
 
-    def store_results(self):
-        # model_name, compute, training_date, etc
-        outputs = {
-            "predictions": {
-                "y_onehot": self.y_onehot,
-                "y_scores": self.y_scores,
-                "y_pred": self.y_pred,
-                "cmx": self.cmx,
-                "cmx_norm": self.cmx_norm,
-                "fnfp": self.fnfp,
-            },
-            "scores": {
-                "roc_auc": self.roc_auc,
-                "acc_loss": self.acc_loss,
-                "report": self.report,
-            },
-        }
-        if self.computation == "val":
-            outputs["plots"] = {
-                "roc_fig": self.roc_fig,
-                "pr_fig": self.pr_fig,
-                "cm_fig": self.cm_fig,
-            }
-        else:
-            outputs["plots"] = {
-                "keras_acc": self.acc_fig,
-                "keras_loss": self.loss_fig,
-                "roc_fig": self.roc_fig,
-                "pr_fig": self.pr_fig,
-                "cm_fig": self.cm_fig,
-            }
-        return outputs
+    def download(self, outputs):
+        """Downloads model training results (`outputs` calculated by Computer obj) to local pickle objects for later retrieval and plotting/analysis. 
 
-    def download(self):
-        outputs = self.store_results()
+        Args:
+            outputs (dict): Outputs created by their respective subclasses (due to distinct diffs btw clf and reg models).
+        """
         if self.res_path is None:
-            self.res_path = os.path.join("./results", self.model_name, self.computation)
+            timestamp = int(dt.datetime.now().timestamp())
+            datestamp = dt.date.fromtimestamp(timestamp).isoformat()
+            prefix = str(datestamp) + "-" + str(timestamp)
+            self.res_path = os.path.join(".", prefix, "results", self.algorithm)
         os.makedirs(f"{self.res_path}", exist_ok=True)
         for k, v in outputs.items():
             key = f"{self.res_path}/{k}"
-            with open(key, "wb") as file_pi:
-                pickle.dump(v, file_pi)
+            with open(key, "wb") as pyfi:
+                pickle.dump(v, pyfi)
         print(f"Results saved to: {self.res_path}")
-
-        out = sys.stdout
-        with open(f"{self.res_path}/metrics_report.txt", "w") as f:
-            sys.stdout = f
-            print(self.report)
-            sys.stdout = out
 
     def upload(self):
         if self.res_path is None:
-            self.res_path = os.path.join("./results", self.model_name, self.computation)
-        if os.path.exists(self.res_path):
-            res = {}
-            for r in os.listdir(self.res_path):
-                key = os.path.join(self.res_path, r)
-                with open(key, "rb") as py_fi:
-                    res[r] = pickle.load(py_fi)
-            self.outputs(res)
+            try:
+                self.res_path = glob.glob(f"data/*/results/{self.algorithm}")[0]
+            except Exception as e:
+                print(f"No results found @ {self.res_path} \n", e)
+        if not os.path.exists(self.res_path):
+            print(f"Path DNE @ {self.res_path}")
         else:
-            print(f"No results found @ {self.res_path}")
-        return self
-
-    def outputs(self, res):
-        self.y_onehot = res["predictions"]["y_onehot"]
-        self.y_scores = res["predictions"]["y_scores"]
-        self.y_pred = res["predictions"]["y_pred"]
-        self.cmx = res["predictions"]["cmx"]
-        self.cmx_norm = res["predictions"]["cmx_norm"]
-        self.fnfp = res["predictions"]["fnfp"]
-        # self.report = res['scores']['report']
-        self.roc_auc = res["scores"]["roc_auc"]
-        self.acc_loss = res["scores"]["acc_loss"]
-        self.roc_fig = res["plots"]["roc_fig"]
-        self.pr_fig = res["plots"]["pr_fig"]
-        self.cm_fig = res["plots"]["cm_fig"]
-        if self.computation == "test":
-            self.acc_fig = res["plots"]["acc_fig"]
-            self.loss_fig = res["plots"]["loss_fig"]
-        with open(f"{self.res_path}/metrics_report.txt", "r") as f:
-            self.report = f.read()
-        return self
+            outputs = {}
+            for r in glob.glob(f"{self.res_path}/*"):
+                key = r.split('/')[-1]
+                with open(r, "rb") as pyfi:
+                    outputs[key] = pickle.load(pyfi)
+        return outputs
 
     """ MODEL PERFORMANCE METRICS """
 
@@ -157,28 +124,38 @@ class Computer:
         self.y_scores = self.score_y()
         self.y_pred = self.y_scores[:, 1]
         self.report = classification_report(
-            self.y_test, self.y_pred, labels=[0, 1], target_names=self.classes
+            self.y_test, self.y_pred, labels=list(range(len(self.classes))), target_names=self.classes
         )
-        self.roc_auc = roc_auc_score(self.y_test, self.y_pred)
+        try:
+            self.roc_auc = roc_auc_score(self.y_test, self.y_pred)
+        except ValueError:
+            self.roc_auc = self.roc_auc_multiclass()
         self.acc_loss = self.acc_loss_scores()
         self.cmx = confusion_matrix(self.y_test, self.y_pred)
         self.fnfp = self.track_fnfp()
-
         if show_summary:
             self.print_summary()
-
         return self
 
-    def onehot_y(self):
-        self.y_onehot = pd.get_dummies(self.y_test.ravel(), prefix="lab")
+    def onehot_y(self, prefix="lab"):
+        self.y_onehot = pd.get_dummies(self.y_test.ravel(), prefix=prefix)
         return self.y_onehot
 
     def score_y(self):
-        y_scores = self.model.predict(self.X_test)
-        self.y_scores = np.concatenate(
-            [np.round(1 - y_scores), np.round(y_scores)], axis=1
-        )
+        self.y_scores = self.model.predict(self.X_test)
+        if self.y_scores.shape[1] < 2:
+            self.y_scores = np.concatenate(
+                [np.round(1 - self.y_scores), np.round(self.y_scores)], axis=1
+            )
         return self.y_scores
+
+    def roc_auc_multiclass(self):
+        self.roc_auc = []
+        for i in range(self.y_scores.shape[1]):
+            y_true = self.y_onehot.iloc[:, i]
+            y_score = self.y_scores[:, i]
+            self.roc_auc.append(roc_auc_score(y_true, y_score))
+        return self.roc_auc
 
     def acc_loss_scores(self):
         train_scores = self.model.evaluate(self.X_train, self.y_train, verbose=2)
@@ -234,76 +211,10 @@ class Computer:
         self.loss_fig = self.keras_loss_plot()
         self.roc_fig = self.make_roc_curve()
         self.pr_fig = self.make_pr_curve()
-        self.cm_fig, self.cmx_norm = self.fusion_matrix(self.cm, self.classes)
+        self.cm_fig, self.cmx_norm = self.fusion_matrix(self.cmx, self.classes)
         return self
 
-    def fusion_matrix(self, cm, classes, normalize=True, cmap="Blues"):
-        """
-        FUSION MATRIX!
-        -------------
-
-        matrix: can pass in matrix or a tuple (ytrue,ypred) to create on the fly
-        classes: class names for target variables
-        """
-        # make matrix if tuple passed to matrix:
-        if isinstance(cm, tuple):
-            y_true = cm[0].copy()
-            y_pred = cm[1].copy()
-
-            if y_true.ndim > 1:
-                y_true = y_true.argmax(axis=1)
-            if y_pred.ndim > 1:
-                y_pred = y_pred.argmax(axis=1)
-            fusion = confusion_matrix(y_true, y_pred)
-        else:
-            fusion = cm
-        # INTEGER LABELS
-        if classes is None:
-            classes = list(range(len(fusion)))
-
-        if normalize:
-            fusion = fusion.astype("float") / fusion.sum(axis=1)[:, np.newaxis]
-            fmt = ".2f"
-        else:
-            fmt = "d"
-
-        # PLOT
-        fig, _ = plt.subplots(figsize=(10, 10))
-        plt.imshow(fusion, cmap=cmap, aspect="equal")
-
-        # Add title and axis labels
-        plt.title("Confusion Matrix")
-        plt.ylabel("TRUE")
-        plt.xlabel("PRED")
-
-        # Add appropriate axis scales
-        tick_marks = np.arange(len(classes))
-        plt.xticks(tick_marks, classes, rotation=45)
-        plt.yticks(tick_marks, classes)
-
-        # Text formatting
-        fmt = ".2f" if normalize else "d"
-        # Add labels to each cell
-        thresh = fusion.max() / 2.0
-        # iterate thru matrix and append labels
-        for i, j in itertools.product(range(fusion.shape[0]), range(fusion.shape[1])):
-            plt.text(
-                j,
-                i,
-                format(fusion[i, j], fmt),
-                horizontalalignment="center",
-                color="white" if fusion[i, j] > thresh else "black",
-                size=14,
-                weight="bold",
-            )
-
-        # Add a legend
-        plt.colorbar()
-        if self.show:
-            fig.show()
-
-        return fig, fusion
-
+    # Matplotlib "static" alternative to interactive plotly version
     def roc_plots(self):
         """Calculates ROC_AUC score and plots Receiver Operator Characteristics (ROC)
 
@@ -474,46 +385,105 @@ class Computer:
         if self.show:
             fig.show()
         return fig
-    
-    def normalize_cmx(self):
-        cmx_norm = self.cmx.astype("float") / self.cmx.sum(axis=1)[:, np.newaxis]
-        cmx_norm = np.round(cmx_norm, 3)
-        return cmx_norm
+ 
+    # Matplotlib "static" alternative to interactive plotly version
+    def fusion_matrix(self, cm, classes, normalize=True, cmap="Blues"):
+        """
+        FUSION MATRIX!
+        -------------
 
+        matrix: can pass in matrix or a tuple (ytrue,ypred) to create on the fly
+        classes: class names for target variables
+        """
+        # make matrix if tuple passed to matrix:
+        if isinstance(cm, tuple):
+            y_true = cm[0].copy()
+            y_pred = cm[1].copy()
 
-    def import_cmx(self, results, cmx_type):
-        cmx = []
-        for v in results.keys():
-            matrix = results[v]["mem_bin"]["matrix"]
-            if cmx_type == "normalized":
-                matrix = self.normalize_cmx(matrix)
-            cmx.append(matrix)
-        return cmx
+            if y_true.ndim > 1:
+                y_true = y_true.argmax(axis=1)
+            if y_pred.ndim > 1:
+                y_pred = y_pred.argmax(axis=1)
+            fusion = confusion_matrix(y_true, y_pred)
+        else:
+            fusion = cm
+        # INTEGER LABELS
+        if classes is None:
+            classes = list(range(len(fusion)))
 
+        if normalize:
+            fusion = fusion.astype("float") / fusion.sum(axis=1)[:, np.newaxis]
+            fmt = ".2f"
+        else:
+            fmt = "d"
 
-    def make_cmx_figure(self, results, cmx_type):
-        cmx = self.import_cmx(results, cmx_type)
+        # PLOT
+        fig, _ = plt.subplots(figsize=(10, 10))
+        plt.imshow(fusion, cmap=cmap, aspect="equal")
+
+        # Add title and axis labels
+        plt.title("Confusion Matrix")
+        plt.ylabel("TRUE")
+        plt.xlabel("PRED")
+
+        # Add appropriate axis scales
+        tick_marks = np.arange(len(classes))
+        plt.xticks(tick_marks, classes, rotation=45)
+        plt.yticks(tick_marks, classes)
+
+        # Text formatting
+        fmt = ".2f" if normalize else "d"
+        # Add labels to each cell
+        thresh = fusion.max() / 2.0
+        # iterate thru matrix and append labels
+        for i, j in itertools.product(range(fusion.shape[0]), range(fusion.shape[1])):
+            plt.text(
+                j,
+                i,
+                format(fusion[i, j], fmt),
+                horizontalalignment="center",
+                color="white" if fusion[i, j] > thresh else "black",
+                size=14,
+                weight="bold",
+            )
+
+        # Add a legend
+        plt.colorbar()
+        if self.show:
+            fig.show()
+
+        return fig, fusion
+
+    # REFACTOR there is a definitely a better way to do this
+    def make_cmx_figure(self, cmx_type, n=3):
         if cmx_type == "normalized":
             zmin = 0.0
             zmax = 1.0
+            cmx = self.cmx_norm
         else:
             zmin = 0
             zmax = 100
+            cmx = self.cmx
         # cmx_norm = normalize_cmx(cmx)
         classes = ["2GB", "8GB", "16GB", "64GB"]
         x = classes
         y = x[::-1].copy()
         z1 = cmx[0][::-1]
-        z2 = cmx[1][::-1]
-        z3 = cmx[2][::-1]
         z1_text = [[str(y) for y in x] for x in z1]
-        z2_text = [[str(y) for y in x] for x in z2]
-        z3_text = [[str(y) for y in x] for x in z3]
+        subplot_titles=("v1")
+        if n >= 2:
+            z2 = cmx[1][::-1]
+            z2_text = [[str(y) for y in x] for x in z2]
+            subplot_titles=("v1", "v2")
+        if n >= 3:
+            z3 = cmx[2][::-1]
+            z3_text = [[str(y) for y in x] for x in z3]
+            subplot_titles=("v1", "v2", "v3")
 
         fig = subplots.make_subplots(
             rows=1,
-            cols=3,
-            subplot_titles=("v1", "v2", "v3"),
+            cols=n,
+            subplot_titles=subplot_titles,
             shared_yaxes=False,
             x_title="Predicted",
             y_title="Actual",
@@ -534,41 +504,46 @@ class Computer:
             zmin=zmin,
             zmax=zmax,
         )
-        fig2 = ff.create_annotated_heatmap(
-            z=z2,
-            x=x,
-            y=y,
-            annotation_text=z2_text,
-            colorscale="Blues",
-            zmin=zmin,
-            zmax=zmax,
-        )
-        fig3 = ff.create_annotated_heatmap(
-            z=z3,
-            x=x,
-            y=y,
-            annotation_text=z3_text,
-            colorscale="Blues",
-            zmin=zmin,
-            zmax=zmax,
-        )
 
         fig.add_trace(fig1.data[0], 1, 1)
-        fig.add_trace(fig2.data[0], 1, 2)
-        fig.add_trace(fig3.data[0], 1, 3)
-
         annot1 = list(fig1.layout.annotations)
-        annot2 = list(fig2.layout.annotations)
-        annot3 = list(fig3.layout.annotations)
-        for k in range(len(annot2)):
-            annot2[k]["xref"] = "x2"
-            annot2[k]["yref"] = "y2"
-        for k in range(len(annot3)):
-            annot3[k]["xref"] = "x3"
-            annot3[k]["yref"] = "y3"
+        annos = [annot1]
 
+        if n >= 2:
+            fig2 = ff.create_annotated_heatmap(
+                z=z2,
+                x=x,
+                y=y,
+                annotation_text=z2_text,
+                colorscale="Blues",
+                zmin=zmin,
+                zmax=zmax,
+            )
+            fig.add_trace(fig2.data[0], 1, 2)
+            annot2 = list(fig2.layout.annotations)
+            for k in range(len(annot2)):
+                annot2[k]["xref"] = "x2"
+                annot2[k]["yref"] = "y2"
+            annos = [annot1, annot2]
+
+        if n >= 3:
+            fig3 = ff.create_annotated_heatmap(
+                z=z3,
+                x=x,
+                y=y,
+                annotation_text=z3_text,
+                colorscale="Blues",
+                zmin=zmin,
+                zmax=zmax,
+            )
+            fig.add_trace(fig3.data[0], 1, 3)
+            annot3 = list(fig3.layout.annotations)
+            for k in range(len(annot3)):
+                annot3[k]["xref"] = "x3"
+                annot3[k]["yref"] = "y3"
+            annos = [annot1, annot2, annot3]
+            
         new_annotations = []
-        annos = [annot1, annot2, annot3]
         for a in annos:
             new_annotations.extend(a)
 
@@ -579,12 +554,92 @@ class Computer:
             fig.add_annotation(anno)
         return fig
 
+class ComputeClassifier(Computer):
+    def __init__(self, algorithm="clf", classes=[0,1,2,3], res_path="results/mem_clf", show=False):
+        super().__init__(algorithm, res_path=res_path, show=show)
+        self.classes = classes
+
+    def make_outputs(self, dl=True):
+        outputs = {
+            "y_onehot": self.y_onehot,
+            "y_scores": self.y_scores,
+            "y_pred": self.y_pred,
+            "cmx": self.cmx,
+            "cmx_norm": self.cmx_norm,
+            "fnfp": self.fnfp,
+            "test_idx": self.test_idx,
+            "roc_auc": self.roc_auc,
+            "acc_loss": self.acc_loss,
+            "report": self.report
+            }
+        if self.algorithm != "val":
+           outputs["history"] = self.history
+        if dl:
+            super().download(outputs)
+        return outputs
+
+    def load_results(self, outputs):
+        self.y_onehot = outputs["y_onehot"]
+        self.y_scores = outputs["y_scores"]
+        self.y_pred = outputs["y_pred"]
+        self.cmx = outputs["cmx"]
+        self.cmx_norm = outputs["cmx_norm"]
+        self.report = outputs['report']
+        self.roc_auc = outputs["roc_auc"]
+        self.acc_loss = outputs["acc_loss"]
+        self.roc_fig = self.make_roc_curve()
+        self.pr_fig = self.make_pr_curve()
+        #TODO: update to use plotly make_cmx_fig
+        self.cm_fig, _ = self.fusion_matrix(self.cmx, self.classes)
+        if self.algorithm != "val" :
+            self.acc_fig = self.keras_acc_plot()
+            self.loss_fig = self.keras_loss_plot()
+            self.history = outputs["history"]
+        # TODO: add fnfp to multiclass training res
+        if "fnfp" in outputs:
+            self.fnfp = outputs["fnfp"]
+        return self
+
+class ComputeRegressor(Computer):
+    def __init__(self, algorithm="reg", res_path="results/memory"):
+        super().__init__(algorithm, res_path=res_path)
+        self.predictions = None
+        self.residuals = None
+        self.scores = None
+    
+    def make_outputs(self, dl=True):
+        outputs = {
+            "y_scores": self.y_scores,
+            "y_pred": self.y_pred,
+            "test_idx": self.test_idx,
+            "acc_loss": self.acc_loss,
+            "residuals": self.residuals
+            }
+        if self.algorithm != "val":
+           outputs["history"] = self.history
+        if dl:
+            super().download(outputs)
+        return outputs
+
+    def load_results(self, outputs):
+        self.y_scores = outputs["y_scores"]
+        self.y_pred = outputs["y_pred"]
+        self.acc_loss = outputs["acc_loss"]
+        self.residuals = outputs["residuals"]
+        if "test_idx" in outputs:
+            self.test_idx = outputs["test_idx"]
+        if self.algorithm != "val" :
+            self.acc_fig = self.keras_acc_plot()
+            self.loss_fig = self.keras_loss_plot()
+            self.history = outputs["history"]
+            if "kfold" in outputs:
+                self.kfold = outputs["kfold"]
+        return self
 
 
-class ComputeTest(Computer):
+class ComputeTest(ComputeClassifier):
     def __init__(
         self,
-        model_name,
         classes,
         model,
         history,
@@ -594,18 +649,19 @@ class ComputeTest(Computer):
         y_test,
         test_idx,
     ):
-        super().__init__(model_name, "test", classes)
+        super().__init__("test", classes)
         self.inputs(model, history, X_train, y_train, X_test, y_test, test_idx)
 
 
-class ComputeVal(Computer):
+class ComputeVal(ComputeClassifier):
     def __init__(
-        self, model_name, classes, model, X_test, y_test, X_val, y_val, val_idx
+        self, classes, model, X_test, y_test, X_val, y_val, val_idx
     ):
-        super().__init__(model_name, "val", classes)
+        super().__init__("val", classes)
         self.inputs(model, X_test, y_test, X_val, y_val, val_idx)
 
 
+# This is old and may be deleted in future versions
 class AnalogComputer:
     """Classic matplotlib plots"""
 
@@ -850,3 +906,20 @@ class AnalogComputer:
         roc = roc_auc_score(self.y.flatten(), self.y_pred)
 
         return roc
+
+
+
+# testing
+# import argparse
+# if __name__ == '__main__':
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument("res_path")
+#     args = parser.parse_args()
+#     res_path = args.res_path
+#     algorithm = "clf"
+#     classes = ["2g", "8g", "16g", "64g"]
+#     com = ComputeClassifier(algorithm=algorithm, classes=classes, res_path=res_path)
+#     com.upload()
+#     print(com.report)
+#     print(com.roc_auc)
+

@@ -207,74 +207,7 @@ def draw_total_images(
             plt.close(fig)
             # print(f"\t{imgpath}.png")
     else:
-        print(f"{dataset} fits file could not be found")
         return
-
-
-def list_visits(dataset, outpath):
-    df = pd.read_csv(dataset, index_col="index")
-    idx = list(df.index)
-    datasets = []
-    skip = 0
-    for i in idx:
-        impath = os.path.join(outpath, i)
-        visit = i.split("_")[6]
-        if os.path.exists(impath):
-            num = len(glob.glob(f"{impath}/*"))
-            if num < 3:
-                datasets.append(visit)
-            else:
-                skip += 1
-        else:
-            datasets.append(visit)
-    if skip > 0:
-        print("Skipping pre-existing images: ", skip)
-    return list(set(datasets))
-
-
-def generate_total_images(
-    input_path, outpath, dataset=None, figsize=(24, 24), crpt=0, gen=3
-):
-    if dataset is not None:
-        if dataset.endswith(".csv"):
-            datasets = list_visits(dataset, outpath)
-        else:
-            datasets = [dataset]
-    else:
-        if crpt == 0:
-            inputs = glob.glob(f"{input_path}/??????")
-        else:
-            inputs = glob.glob(f"{input_path}/??????_*_???_st??")
-        datasets = [i.split("/")[-1] for i in inputs]
-    print(f"\nFound {len(datasets)} datasets.")
-    if len(datasets) == 0:
-        print("Exiting.")
-        sys.exit(1)
-    start = time.time()
-    stopwatch("DRAWING IMAGES", t0=start)
-    print(f"Generating images for {len(datasets)} datasets.")
-    for dataset in tqdm(datasets):
-        # print(dataset)
-        if gen == 3:  # original, point-segment, and GAIA
-            draw_total_images(input_path, outpath, dataset, figsize=figsize, crpt=crpt)
-            draw_total_images(
-                input_path, outpath, dataset, P=1, S=1, figsize=figsize, crpt=crpt
-            )
-            draw_total_images(
-                input_path, outpath, dataset, G=1, figsize=figsize, crpt=crpt
-            )
-        elif gen == 2:  # GAIA
-            draw_total_images(
-                input_path, outpath, dataset, G=1, figsize=figsize, crpt=crpt
-            )
-        elif gen == 1:  # point-segment
-            draw_total_images(
-                input_path, outpath, dataset, P=1, S=1, figsize=figsize, crpt=crpt
-            )
-        else:  # original (0)
-            draw_total_images(input_path, outpath, dataset, figsize=figsize, crpt=crpt)
-    end = time.time()
-    stopwatch("IMAGE GENERATION", t0=start, t1=end)
 
 
 def draw_filter_images(input_path, outpath, dataset, figsize=(24, 24), crpt=0):
@@ -318,16 +251,98 @@ def draw_filter_images(input_path, outpath, dataset, figsize=(24, 24), crpt=0):
         print(f"\t{imgpath}.png")
 
 
-def generate_filter_images(input_path, outpath, dataset=None, figsize=(24, 24), crpt=0):
-    if dataset is not None:
-        datasets = [dataset]
+def list_visits(dataset, outpath):
+    df = pd.read_csv(dataset, index_col="index")
+    idx = list(df.index)
+    datasets = []
+    skip = 0
+    for i in idx:
+        impath = os.path.join(outpath, i)
+        visit = i.split("_")[6]
+        if os.path.exists(impath):
+            num = len(glob.glob(f"{impath}/*"))
+            if num < 3:
+                datasets.append(visit)
+            else:
+                skip += 1
+        else:
+            datasets.append(visit)
+    if skip > 0:
+        print("Skipping pre-existing images: ", skip)
+    return list(set(datasets))
+
+
+def find_visits(input_path, crpt, pattern):
+    if crpt == 0:
+        search_pattern = pattern + "/??????"
+        inputs = glob.glob(f"{input_path}/{search_pattern}")
+        if len(inputs) == 0:
+            inputs = glob.glob(f"{input_path}/??????")
     else:
-        if os.path.exists(f"{input_path}/.DS_Store"):  # only happens on Mac
-            os.remove(f"{input_path}/.DS_Store")
-        datasets = os.listdir(input_path)
-    for dataset in datasets:
-        print(dataset)
+        search_pattern = pattern + "/??????_*_???_st??"
+        inputs = glob.glob(f"{input_path}/{search_pattern}")
+        if len(inputs) == 0:
+            inputs = glob.glob(f"{input_path}/??????_*_???_st??")
+    try:
+        datasets = [i.split("/")[-1] for i in inputs]
+        print(f"\nFound {len(datasets)} datasets.")
+        return datasets
+    except Exception as e:
+        print(e)
+        print("Exiting.")
+        sys.exit(1)
+
+
+def generate_filter_images(input_path, outpath, dataset=None, figsize=(24, 24), crpt=0, pattern=None):
+    if dataset is not None:
+        if dataset.endswith(".csv"):
+            datasets = list_visits(dataset, outpath)
+        else:
+            datasets = [dataset]
+    else:
+        datasets = find_visits(input_path, crpt, pattern)
+    for dataset in tqdm(datasets):
         draw_filter_images(input_path, outpath, dataset, figsize=figsize, crpt=crpt)
+
+
+
+def generate_total_images(
+    input_path, outpath, dataset=None, figsize=(24, 24), crpt=0, gen=3, pattern=None
+):
+    if dataset is not None:
+        if dataset.endswith(".csv"):
+            datasets = list_visits(dataset, outpath)
+        else:
+            datasets = [dataset]
+    else:
+        datasets = find_visits(input_path, crpt, pattern)
+    start = time.time()
+    stopwatch("DRAWING IMAGES", t0=start)
+    print(f"Generating images for {len(datasets)} datasets.")
+    if pattern:
+        input_path = f"{input_path}/{pattern}"
+    for dataset in tqdm(datasets):
+        # print(dataset)
+        if gen == 3:  # original, point-segment, and GAIA
+            draw_total_images(input_path, outpath, dataset, figsize=figsize, crpt=crpt)
+            draw_total_images(
+                input_path, outpath, dataset, P=1, S=1, figsize=figsize, crpt=crpt
+            )
+            draw_total_images(
+                input_path, outpath, dataset, G=1, figsize=figsize, crpt=crpt
+            )
+        elif gen == 2:  # GAIA
+            draw_total_images(
+                input_path, outpath, dataset, G=1, figsize=figsize, crpt=crpt
+            )
+        elif gen == 1:  # point-segment
+            draw_total_images(
+                input_path, outpath, dataset, P=1, S=1, figsize=figsize, crpt=crpt
+            )
+        else:  # original (0)
+            draw_total_images(input_path, outpath, dataset, figsize=figsize, crpt=crpt)
+    end = time.time()
+    stopwatch("IMAGE GENERATION", t0=start, t1=end)
 
 
 if __name__ == "__main__":
