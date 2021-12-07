@@ -10,17 +10,17 @@ client = boto3.client("s3")#, config=retry_config)
 
 d0 = {
     "fname" : "2021-11-04-1636048291.zip",
-    "hash": "00846f24975ec51d18b01ed031bb82c7a2ddad10"
+    "hash": "dc71c76b5d1bd84a4581bf4d4b241f03e954e809"
 }
 
 d1 = {
     "fname": "2021-10-28-1635457222.zip",
-    "hash": "ba0f555bfcdc36f977e92c49344cd5379af0a08b"
+    "hash": "0275e31e98574a4a57cdf263b4296d9b77ce89cf"
     }
 
 d2 = {
     "fname": "2021-08-22-1629663047.zip",
-    "hash": "55d1943ef3c90b37124448ac13969bc528b53ae4"
+    "hash": "92ace64fcb8d856f4edb4cdd37ac87c2d68303a7"
     }
 
 def scrape_web(root=None, key=d0):
