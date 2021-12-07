@@ -8,7 +8,7 @@ client = boto3.client("s3")#, config=retry_config)
 
 d0 = {
     "fname" : "2021-11-04-1636048291.zip",
-    "hash": "e46777117e7a43e1053cc20609e25f798a564333"
+    "hash": "00846f24975ec51d18b01ed031bb82c7a2ddad10"
 }
 
 d1 = {
