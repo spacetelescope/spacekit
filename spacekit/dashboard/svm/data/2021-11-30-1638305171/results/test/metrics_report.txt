@@ -1,0 +1,7 @@
+              precision  recall  f1-score  support
+metric                                            
+aligned            1.00    1.00      1.00      222
+misaligned         0.99    0.99      0.99       91
+accuracy            NaN     NaN      0.99      313
+macro_avg          0.99    0.99      0.99      313
+weighted_avg       0.99    0.99      0.99      313

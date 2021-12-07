@@ -50,5 +50,4 @@ if __name__ == "__main__":
         print(fpaths)
     elif args.src == "s3":
         scrape_s3(args.uri, get_latest=args.latest, results=[args.r0, args.r1, args.r2])
-
     app.run_server(host="0.0.0.0", port=8050, debug=True)

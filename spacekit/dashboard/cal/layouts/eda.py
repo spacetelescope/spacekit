@@ -1,23 +1,11 @@
-from os.path import dirname
+
 from dash import dcc
 from dash import html
 from dash.dependencies import Input, Output
 from spacekit.analyzer.explore import HstCalPlots
-from spacekit.extractor.load_data import MegaScanner, import_dataset
+from spacekit.extractor.load_data import import_dataset
 from spacekit.dashboard.cal.app import app
-
-
-# Find available datasets and load most recent (default)
-scanner = MegaScanner(prefix=f"data/20??-*-*-*")
-dataset_names = [dirname(d) for d in scanner.datasets]
-
-dataset = scanner.select_dataset() # "data/2021-11-04-1636048291/latest.csv"
-# df, hst = select_dataset(dataset)
-df = import_dataset(
-    filename=dataset, kwargs=dict(index_col="ipst"), 
-    decoder_key={"instr": {0: "acs", 1: "cos", 2: "stis", 3: "wfc3"}}
-    )
-hst = HstCalPlots(df).df_by_instr()
+from spacekit.dashboard.cal.config import scanner, df, hst
 
 layout = html.Div(
     children=[
@@ -33,24 +21,23 @@ layout = html.Div(
             ]
         ),
         html.Div(
+            id="explore-dataset",
             children=[
                 html.Div(
                     [
                     dcc.Dropdown(
                         id="dataset-selector",
                         options=[
-                            {"label": n, "value": d} for (n, d) in list(zip(dataset_names, scanner.datasets))
+                            {"label": n, "value": d} for (n, d) in list(zip(scanner.datasets, list(range(len(scanner.datasets)))))
                         ],
-                        value=dataset
+                        value=scanner.primary
                         )
                     ],
                     style={
                         "display": "inline-block",
                         "padding": 5,
                     }
-                )
-            ]
-        ),
+                ),
         html.Div(
             children=[
                 # FEATURE COMPARISON SCATTERPLOTS
@@ -168,6 +155,7 @@ layout = html.Div(
                 "width": "85%",
             },
         ),
+            ])
     ],
     style={
         "backgroundColor": "#242a44",
@@ -181,21 +169,18 @@ layout = html.Div(
 
 # Page 2 EDA callbacks
 @app.callback(
-    [Output("", "children")],
+    [Output("explore-dataset", "children")],
     [Input("dataset-selector", "value")]
 )
-def select_dataset(dataset_selection):
-    scanner.selection = dataset_selection
-    dataset = scanner.select_dataset() # "data/2021-11-04-1636048291/latest.csv"
-    global df
+def data_explorer(dataset_selection):
+    scanner.primary = dataset_selection
+    scanner.data = scanner.select_dataset() # "data/2021-11-04-1636048291/latest.csv"
     df = import_dataset(
-        filename=dataset, kwargs=dict(index_col="ipst"), 
+        filename=scanner.data, kwargs=dict(index_col="ipst"), 
         decoder_key={"instr": {0: "acs", 1: "cos", 2: "stis", 3: "wfc3"}}
         )
-    global hst
     hst = HstCalPlots(df)
     hst.df_by_instr()
-    return df, hst
 
 # SCATTER CALLBACK
 @app.callback(

@@ -1,5 +1,4 @@
 import os
-import sys
 import glob
 import pickle
 import itertools
@@ -10,7 +9,6 @@ import matplotlib as mpl
 from plotly import subplots
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
-import plotly.figure_factory as ff
 from sklearn.metrics import (
     roc_curve,
     roc_auc_score,
@@ -18,10 +16,6 @@ from sklearn.metrics import (
     average_precision_score,
     classification_report,
     confusion_matrix,
-    jaccard_score,
-    accuracy_score,
-    recall_score,
-    fowlkes_mallows_score,
 )
 plt.style.use("seaborn-bright")
 font_dict = {"family": '"Titillium Web", monospace', "size": 16}
@@ -119,24 +113,6 @@ class Computer(object):
 
     """ MODEL PERFORMANCE METRICS """
 
-    def calculate_results(self, show_summary=True):
-        self.y_onehot = self.onehot_y()
-        self.y_scores = self.score_y()
-        self.y_pred = self.y_scores[:, 1]
-        self.report = classification_report(
-            self.y_test, self.y_pred, labels=list(range(len(self.classes))), target_names=self.classes
-        )
-        try:
-            self.roc_auc = roc_auc_score(self.y_test, self.y_pred)
-        except ValueError:
-            self.roc_auc = self.roc_auc_multiclass()
-        self.acc_loss = self.acc_loss_scores()
-        self.cmx = confusion_matrix(self.y_test, self.y_pred)
-        self.fnfp = self.track_fnfp()
-        if show_summary:
-            self.print_summary()
-        return self
-
     def onehot_y(self, prefix="lab"):
         self.y_onehot = pd.get_dummies(self.y_test.ravel(), prefix=prefix)
         return self.y_onehot
@@ -148,14 +124,6 @@ class Computer(object):
                 [np.round(1 - self.y_scores), np.round(self.y_scores)], axis=1
             )
         return self.y_scores
-
-    def roc_auc_multiclass(self):
-        self.roc_auc = []
-        for i in range(self.y_scores.shape[1]):
-            y_true = self.y_onehot.iloc[:, i]
-            y_score = self.y_scores[:, i]
-            self.roc_auc.append(roc_auc_score(y_true, y_score))
-        return self.roc_auc
 
     def acc_loss_scores(self):
         train_scores = self.model.evaluate(self.X_train, self.y_train, verbose=2)
@@ -203,6 +171,7 @@ class Computer(object):
         print(f"\n ROC_AUC: {self.roc_auc}")
         print(f"\nFalse -/+\n{self.cmx}")
         print(f"\nFalse Negatives Index\n{self.fnfp['fn_idx']}\n")
+        print(f"\nFalse Positives Index\n{self.fnfp['fp_idx']}\n")
 
     """ PLOTS """
 
@@ -454,105 +423,6 @@ class Computer(object):
 
         return fig, fusion
 
-    # REFACTOR there is a definitely a better way to do this
-    def make_cmx_figure(self, cmx_type, n=3):
-        if cmx_type == "normalized":
-            zmin = 0.0
-            zmax = 1.0
-            cmx = self.cmx_norm
-        else:
-            zmin = 0
-            zmax = 100
-            cmx = self.cmx
-        # cmx_norm = normalize_cmx(cmx)
-        classes = ["2GB", "8GB", "16GB", "64GB"]
-        x = classes
-        y = x[::-1].copy()
-        z1 = cmx[0][::-1]
-        z1_text = [[str(y) for y in x] for x in z1]
-        subplot_titles=("v1")
-        if n >= 2:
-            z2 = cmx[1][::-1]
-            z2_text = [[str(y) for y in x] for x in z2]
-            subplot_titles=("v1", "v2")
-        if n >= 3:
-            z3 = cmx[2][::-1]
-            z3_text = [[str(y) for y in x] for x in z3]
-            subplot_titles=("v1", "v2", "v3")
-
-        fig = subplots.make_subplots(
-            rows=1,
-            cols=n,
-            subplot_titles=subplot_titles,
-            shared_yaxes=False,
-            x_title="Predicted",
-            y_title="Actual",
-        )
-        fig.update_layout(
-            title_text="Confusion Matrix",
-            paper_bgcolor="#242a44",
-            plot_bgcolor="#242a44",
-            font={"color": "#ffffff"},
-        )
-        # make traces
-        fig1 = ff.create_annotated_heatmap(
-            z=z1,
-            x=x,
-            y=y,
-            annotation_text=z1_text,
-            colorscale="Blues",
-            zmin=zmin,
-            zmax=zmax,
-        )
-
-        fig.add_trace(fig1.data[0], 1, 1)
-        annot1 = list(fig1.layout.annotations)
-        annos = [annot1]
-
-        if n >= 2:
-            fig2 = ff.create_annotated_heatmap(
-                z=z2,
-                x=x,
-                y=y,
-                annotation_text=z2_text,
-                colorscale="Blues",
-                zmin=zmin,
-                zmax=zmax,
-            )
-            fig.add_trace(fig2.data[0], 1, 2)
-            annot2 = list(fig2.layout.annotations)
-            for k in range(len(annot2)):
-                annot2[k]["xref"] = "x2"
-                annot2[k]["yref"] = "y2"
-            annos = [annot1, annot2]
-
-        if n >= 3:
-            fig3 = ff.create_annotated_heatmap(
-                z=z3,
-                x=x,
-                y=y,
-                annotation_text=z3_text,
-                colorscale="Blues",
-                zmin=zmin,
-                zmax=zmax,
-            )
-            fig.add_trace(fig3.data[0], 1, 3)
-            annot3 = list(fig3.layout.annotations)
-            for k in range(len(annot3)):
-                annot3[k]["xref"] = "x3"
-                annot3[k]["yref"] = "y3"
-            annos = [annot1, annot2, annot3]
-            
-        new_annotations = []
-        for a in annos:
-            new_annotations.extend(a)
-
-        # add colorbar
-        fig["data"][0]["showscale"] = True
-        # annotation values for each square
-        for anno in new_annotations:
-            fig.add_annotation(anno)
-        return fig
 
 class ComputeClassifier(Computer):
     def __init__(self, algorithm="clf", classes=[0,1,2,3], res_path="results/mem_clf", show=False):
@@ -587,18 +457,140 @@ class ComputeClassifier(Computer):
         self.report = outputs['report']
         self.roc_auc = outputs["roc_auc"]
         self.acc_loss = outputs["acc_loss"]
-        self.roc_fig = self.make_roc_curve()
-        self.pr_fig = self.make_pr_curve()
-        #TODO: update to use plotly make_cmx_fig
-        self.cm_fig, _ = self.fusion_matrix(self.cmx, self.classes)
-        if self.algorithm != "val" :
-            self.acc_fig = self.keras_acc_plot()
-            self.loss_fig = self.keras_loss_plot()
-            self.history = outputs["history"]
-        # TODO: add fnfp to multiclass training res
         if "fnfp" in outputs:
             self.fnfp = outputs["fnfp"]
+        self.roc_fig = self.make_roc_curve()
+        self.pr_fig = self.make_pr_curve()
+        self.cm_fig, _ = self.fusion_matrix(self.cmx, self.classes)
+        if self.algorithm != "val" :
+            self.history = outputs["history"]
+            self.acc_fig = self.keras_acc_plot()
+            self.loss_fig = self.keras_loss_plot()
         return self
+
+class ComputeTest(ComputeClassifier):
+    def __init__(
+        self,
+        classes,
+        model,
+        history,
+        X_train,
+        y_train,
+        X_test,
+        y_test,
+        test_idx,
+    ):
+        super().__init__("test", classes)
+        self.inputs(model, history, X_train, y_train, X_test, y_test, test_idx)
+
+
+class ComputeVal(ComputeClassifier):
+    def __init__(
+        self, classes, model, X_test, y_test, X_val, y_val, val_idx
+    ):
+        super().__init__("val", classes)
+        self.inputs(model, X_test, y_test, X_val, y_val, val_idx)
+
+
+class ComputeBinary(ComputeClassifier):
+    def __init__(self, algorithm="clf", classes=[0,1], res_path="results/svm_clf", show=False):
+        super().__init__(algorithm=algorithm, classes=classes, res_path=res_path, show=show)
+
+    def calculate_results(self, show_summary=True):
+        self.y_onehot = self.onehot_y()
+        self.y_scores = self.score_y()
+        self.y_pred = self.y_scores[:, 1]
+        self.report = classification_report(
+            self.y_test, self.y_pred, labels=list(range(len(self.classes))), target_names=self.classes
+        )
+        self.roc_auc = roc_auc_score(self.y_test, self.y_pred)
+        self.acc_loss = self.acc_loss_scores()
+        self.cmx = confusion_matrix(self.y_test, self.y_pred)
+        self.fnfp = self.track_fnfp()
+        if show_summary:
+            self.print_summary()
+        return self
+
+class ComputeMulti(ComputeClassifier):
+    def __init__(self, algorithm="clf", classes=[0,1,2,3], res_path="results/mem_bin", show=False):
+        super().__init__(algorithm=algorithm, classes=classes, res_path=res_path, show=show)
+
+    def calculate_multi(self, show_summary=True):
+        self.y_onehot = self.onehot_multi()
+        self.y_scores = self.model.predict(self.X_test)
+        self.y_pred =  np.round(self.y_scores)
+        self.report = classification_report(
+            self.y_test, 
+            self.y_pred, 
+            labels=list(range(len(self.classes))), 
+            target_names=self.classes,
+            zero_division=0
+        )
+        self.roc_auc = self.roc_auc_multi()
+        self.acc_loss = self.acc_loss_scores()
+        self.cmx = confusion_matrix(np.argmax(self.y_test, axis=-1), np.argmax(self.y_pred, axis=-1))
+        _, self.cmx_norm = self.fusion_matrix(self.cmx, self.classes)
+        self.fnfp = self.fnfp_multi()
+        if show_summary:
+            self.print_summary()
+        return self
+    
+    def roc_auc_multi(self):
+        self.roc_auc = []
+        for i in range(self.y_scores.shape[1]):
+            y_true = self.y_onehot.iloc[:, i]
+            y_score = self.y_scores[:, i]
+            self.roc_auc.append(roc_auc_score(y_true, y_score))
+        return self.roc_auc
+    
+    def onehot_multi(self, prefix="bin"):
+        self.y_onehot = pd.get_dummies(np.argmax(self.y_test, axis=-1), prefix=prefix)
+        self.y_onehot.set_index(self.test_idx.index)
+        return self.y_onehot
+
+    def fnfp_multi(self):
+        if self.test_idx is None:
+            print("Test index not found")
+            return
+        preds = np.argmax(self.y_pred, axis=-1)
+        actual = self.test_idx.values.ravel()
+        try:
+            conf_idx = np.where(preds != actual)[0]
+        except AttributeError as e: # can probably remove this
+            print(
+                f"Test/Val Index should be a pandas series, not {type(self.test_idx)}"
+            )
+            print(e)
+            return
+        pred_proba = np.amax(self.y_scores, axis=-1)
+        conf_proba = pred_proba[conf_idx]
+        
+        ipsts = pd.DataFrame(list(self.test_idx.index), columns=["ipsts"])
+        y_true = pd.DataFrame(actual, columns=['y_true'])
+        y_pred = pd.DataFrame(preds, columns=['y_pred'])
+        y_proba = pd.DataFrame(pred_proba, columns=['proba'])
+        df_proba = pd.concat([y_true, y_pred, y_proba, ipsts], axis=1)
+        df_proba = df_proba.iloc[conf_idx]
+        #conf_proba = df_proba.loc[conf_idx][['proba', 'ipsts']].to_dict('split')
+        fn, fp = {}, {}
+        for label in list(range(len(self.classes))):
+            idx = df_proba.loc[df_proba['y_true'] == label]
+            false_neg = idx.loc[df_proba['y_pred'] < label]['ipsts']
+            if len(false_neg) > 0:
+                fn[str(label)] = false_neg
+            false_pos = idx.loc[df_proba['y_pred'] > label]['ipsts']
+            if len(false_pos) > 0:
+                fp[str(label)] = false_pos
+        df_proba.set_index('ipsts', inplace=True, drop=True)
+        self.fnfp = {
+            "pred_proba": df_proba.to_dict('split'),
+            "conf_idx": conf_idx,
+            "conf_proba": conf_proba,
+            "fn_idx": fn,
+            "fp_idx": fp,
+        }
+        return self.fnfp
+
 
 class ComputeRegressor(Computer):
     def __init__(self, algorithm="reg", res_path="results/memory"):
@@ -637,234 +629,213 @@ class ComputeRegressor(Computer):
         return self
 
 
-class ComputeTest(ComputeClassifier):
-    def __init__(
-        self,
-        classes,
-        model,
-        history,
-        X_train,
-        y_train,
-        X_test,
-        y_test,
-        test_idx,
-    ):
-        super().__init__("test", classes)
-        self.inputs(model, history, X_train, y_train, X_test, y_test, test_idx)
 
 
-class ComputeVal(ComputeClassifier):
-    def __init__(
-        self, classes, model, X_test, y_test, X_val, y_val, val_idx
-    ):
-        super().__init__("val", classes)
-        self.inputs(model, X_test, y_test, X_val, y_val, val_idx)
 
 
-# This is old and may be deleted in future versions
-class AnalogComputer:
-    """Classic matplotlib plots"""
+# class AnalogComputer:
+#     """Classic matplotlib plots"""
 
-    def __init__(self, X, y, model, history, verbose=False):
-        self.X = X
-        self.y = y
-        self.model = model
-        self.history = history
-        self.verbose = False
-        self.y_pred = None
-        self.fnfp_dict = None
-        self.keras_fig = None
-        self.cmx = None
-        self.roc_fig = None
-        self.results = None
+#     def __init__(self, X, y, model, history, verbose=False):
+#         self.X = X
+#         self.y = y
+#         self.model = model
+#         self.history = history
+#         self.verbose = False
+#         self.y_pred = None
+#         self.fnfp_dict = None
+#         self.keras_fig = None
+#         self.cmx = None
+#         self.roc_fig = None
+#         self.results = None
 
-    def compute(
-        self,
-        preds=True,
-        summary=True,
-        cmx=True,
-        classes=None,
-        report=True,
-        roc=True,
-        hist=True,
-    ):
-        """
-        evaluates model predictions and stores the output in a dict
-        returns `results`
-        """
-        res = {}
-        res["model"] = self.model.name
+#     def compute(
+#         self,
+#         preds=True,
+#         summary=True,
+#         cmx=True,
+#         classes=None,
+#         report=True,
+#         roc=True,
+#         hist=True,
+#     ):
+#         """
+#         evaluates model predictions and stores the output in a dict
+#         returns `results`
+#         """
+#         res = {}
+#         res["model"] = self.model.name
 
-        # class predictions
-        if preds:
-            res["preds"] = self.get_preds()
+#         # class predictions
+#         if preds:
+#             res["preds"] = self.get_preds()
 
-        if summary:
-            res["summary"] = self.model.summary
+#         if summary:
+#             res["summary"] = self.model.summary
 
-        # FUSION MATRIX
-        if cmx:
-            if classes is None:
-                classes = set(self.y)
-                # classes=['0','1']
-            else:
-                classes = classes
-            # Plot fusion matrix
-            res["FM"] = self.fusion_matrix(
-                matrix=(self.y.flatten(), self.y_pred), classes=classes
-            )
+#         # FUSION MATRIX
+#         if cmx:
+#             if classes is None:
+#                 classes = set(self.y)
+#                 # classes=['0','1']
+#             else:
+#                 classes = classes
+#             # Plot fusion matrix
+#             res["FM"] = self.fusion_matrix(
+#                 matrix=(self.y.flatten(), self.y_pred), classes=classes
+#             )
 
-        # ROC Area Under Curve
-        if roc:
-            res["ROC"] = self.roc_plots(self.X, self.y, self.model)
+#         # ROC Area Under Curve
+#         if roc:
+#             res["ROC"] = self.roc_plots(self.X, self.y, self.model)
 
-        # CLASSIFICATION REPORT
-        if report:
-            num_dashes = 20
-            print("\n")
-            print("---" * num_dashes)
-            print("\tCLASSIFICATION REPORT:")
-            print("---" * num_dashes)
-            # generate report
-            res["report"] = classification_report(self.y.flatten(), self.y_pred)
-            print(report)
+#         # CLASSIFICATION REPORT
+#         if report:
+#             num_dashes = 20
+#             print("\n")
+#             print("---" * num_dashes)
+#             print("\tCLASSIFICATION REPORT:")
+#             print("---" * num_dashes)
+#             # generate report
+#             res["report"] = classification_report(self.y.flatten(), self.y_pred)
+#             print(report)
 
-        # save to dict:
-        res["jaccard"] = jaccard_score(self.y, self.y_pred)
-        res["fowlkes"] = fowlkes_mallows_score(self.y, self.y_pred)
-        res["accuracy"] = accuracy_score(self.y, self.y_pred)
-        res["recall"] = recall_score(self.y, self.y_pred)
+#         # save to dict:
+#         res["jaccard"] = jaccard_score(self.y, self.y_pred)
+#         res["fowlkes"] = fowlkes_mallows_score(self.y, self.y_pred)
+#         res["accuracy"] = accuracy_score(self.y, self.y_pred)
+#         res["recall"] = recall_score(self.y, self.y_pred)
 
-        # Plot Model Training Results (PLOT KERAS HISTORY)
-        if hist:
-            res["HIST"] = self.keras_history(self.history)
-        return res
+#         # Plot Model Training Results (PLOT KERAS HISTORY)
+#         if hist:
+#             res["HIST"] = self.keras_history(self.history)
+#         return res
 
-    @staticmethod
-    def get_preds(self):
-        # class predictions
-        # self.y_pred = self.model.predict_classes(self.X).flatten()
-        self.y_pred = np.round(self.model.predict(self.X))
-        if self.verbose:
-            pred_count = pd.Series(self.y_pred).value_counts(normalize=False)
-            print(f"y_pred:\n {pred_count}")
-            print("\n")
-        return self.y_pred
+#     @staticmethod
+#     def get_preds(self):
+#         # class predictions
+#         # self.y_pred = self.model.predict_classes(self.X).flatten()
+#         self.y_pred = np.round(self.model.predict(self.X))
+#         if self.verbose:
+#             pred_count = pd.Series(self.y_pred).value_counts(normalize=False)
+#             print(f"y_pred:\n {pred_count}")
+#             print("\n")
+#         return self.y_pred
 
-    def fnfp(self, training=False):
-        if self.y_pred is None:
-            self.y_pred = np.round(self.model.predict(self.X))
+#     def fnfp(self, training=False):
+#         if self.y_pred is None:
+#             self.y_pred = np.round(self.model.predict(self.X))
 
-        pos_idx = self.y == 1
-        neg_idx = self.y == 0
+#         pos_idx = self.y == 1
+#         neg_idx = self.y == 0
 
-        # tp = np.sum(y_pred[pos_idx]==1)/y_pred.shape[0]
-        fn = np.sum(self.y_pred[pos_idx] == 0) / self.y_pred.shape[0]
-        # tn = np.sum(y_pred[neg_idx]==0)/y_pred.shape[0]
-        fp = np.sum(self.y_pred[neg_idx] == 1) / self.y_pred.shape[0]
+#         # tp = np.sum(y_pred[pos_idx]==1)/y_pred.shape[0]
+#         fn = np.sum(self.y_pred[pos_idx] == 0) / self.y_pred.shape[0]
+#         # tn = np.sum(y_pred[neg_idx]==0)/y_pred.shape[0]
+#         fp = np.sum(self.y_pred[neg_idx] == 1) / self.y_pred.shape[0]
 
-        if training:
-            print(f"FN Rate (Training): {round(fn*100,4)}%")
-            print(f"FP Rate (Training): {round(fp*100,4)}%")
-        else:
-            print(f"FN Rate (Test): {round(fn*100,4)}%")
-            print(f"FP Rate (Test): {round(fp*100,4)}%")
+#         if training:
+#             print(f"FN Rate (Training): {round(fn*100,4)}%")
+#             print(f"FP Rate (Training): {round(fp*100,4)}%")
+#         else:
+#             print(f"FN Rate (Test): {round(fn*100,4)}%")
+#             print(f"FP Rate (Test): {round(fp*100,4)}%")
 
-        self.fnfp_dict = {"fn": fn, "fp": fp}
-        return self.fnfp_dict
+#         self.fnfp_dict = {"fn": fn, "fp": fp}
+#         return self.fnfp_dict
 
-    def keras_history(self, figsize=(15, 6), show=True):
-        """
-        side by side sublots of training val accuracy and loss (left and right respectively)
-        """
-        fig, axes = plt.subplots(ncols=2, figsize=figsize)
-        axes = axes.flatten()
+#     def keras_history(self, figsize=(15, 6), show=True):
+#         """
+#         side by side sublots of training val accuracy and loss (left and right respectively)
+#         """
+#         fig, axes = plt.subplots(ncols=2, figsize=figsize)
+#         axes = axes.flatten()
 
-        ax = axes[0]
-        ax.plot(self.history.history["accuracy"])
-        ax.plot(self.history.history["val_accuracy"])
-        ax.set_title("Model Accuracy")
-        ax.set_ylabel("Accuracy")
-        ax.set_xlabel("Epoch")
-        ax.legend(["Train", "Test"], loc="upper left")
+#         ax = axes[0]
+#         ax.plot(self.history.history["accuracy"])
+#         ax.plot(self.history.history["val_accuracy"])
+#         ax.set_title("Model Accuracy")
+#         ax.set_ylabel("Accuracy")
+#         ax.set_xlabel("Epoch")
+#         ax.legend(["Train", "Test"], loc="upper left")
 
-        ax = axes[1]
-        ax.plot(self.history.history["loss"])
-        ax.plot(self.history.history["val_loss"])
-        ax.set_title("Model Loss")
-        ax.set_ylabel("Loss")
-        ax.set_xlabel("Epoch")
-        ax.legend(["Train", "Test"], loc="upper left")
-        if show is True:
-            fig.show()
-        return fig
+#         ax = axes[1]
+#         ax.plot(self.history.history["loss"])
+#         ax.plot(self.history.history["val_loss"])
+#         ax.set_title("Model Loss")
+#         ax.set_ylabel("Loss")
+#         ax.set_xlabel("Epoch")
+#         ax.legend(["Train", "Test"], loc="upper left")
+#         if show is True:
+#             fig.show()
+#         return fig
 
-    def fusion_matrix(self, matrix, classes=None, normalize=True, cmap="Blues"):
-        # make matrix if tuple passed to matrix:
-        if isinstance(matrix, tuple):
-            y_true = matrix[0].copy()
-            y_pred = matrix[1].copy()
+#     def fusion_matrix(self, matrix, classes=None, normalize=True, cmap="Blues"):
+#         # make matrix if tuple passed to matrix:
+#         if isinstance(matrix, tuple):
+#             y_true = matrix[0].copy()
+#             y_pred = matrix[1].copy()
 
-            if y_true.ndim > 1:
-                y_true = y_true.argmax(axis=1)
-            if y_pred.ndim > 1:
-                y_pred = y_pred.argmax(axis=1)
-            fusion = confusion_matrix(y_true, y_pred)
-        else:
-            fusion = matrix
+#             if y_true.ndim > 1:
+#                 y_true = y_true.argmax(axis=1)
+#             if y_pred.ndim > 1:
+#                 y_pred = y_pred.argmax(axis=1)
+#             fusion = confusion_matrix(y_true, y_pred)
+#         else:
+#             fusion = matrix
 
-        # INTEGER LABELS
-        if classes is None:
-            classes = list(range(len(matrix)))
+#         # INTEGER LABELS
+#         if classes is None:
+#             classes = list(range(len(matrix)))
 
-        # NORMALIZING
-        # Check if normalize is set to True
-        # If so, normalize the raw fusion matrix before visualizing
-        if normalize:
-            fusion = fusion.astype("float") / fusion.sum(axis=1)[:, np.newaxis]
-            thresh = 0.5
-            fmt = ".2f"
-        else:
-            fmt = "d"
-            thresh = fusion.max() / 2.0
+#         # NORMALIZING
+#         # Check if normalize is set to True
+#         # If so, normalize the raw fusion matrix before visualizing
+#         if normalize:
+#             fusion = fusion.astype("float") / fusion.sum(axis=1)[:, np.newaxis]
+#             thresh = 0.5
+#             fmt = ".2f"
+#         else:
+#             fmt = "d"
+#             thresh = fusion.max() / 2.0
 
-        # PLOT
-        fig = plt.subplots(figsize=(10, 10))
-        plt.imshow(fusion, cmap=cmap, aspect="equal")
+#         # PLOT
+#         fig = plt.subplots(figsize=(10, 10))
+#         plt.imshow(fusion, cmap=cmap, aspect="equal")
 
-        # Add title and axis labels
-        plt.title("Confusion Matrix")
-        plt.ylabel("TRUE")
-        plt.xlabel("PRED")
+#         # Add title and axis labels
+#         plt.title("Confusion Matrix")
+#         plt.ylabel("TRUE")
+#         plt.xlabel("PRED")
 
-        # Add appropriate axis scales
-        tick_marks = np.arange(len(classes))
-        plt.xticks(tick_marks, classes, rotation=45)
-        plt.yticks(tick_marks, classes)
-        # ax.set_ylim(len(fusion), -.5,.5) ## <-- This was messing up the plots!
+#         # Add appropriate axis scales
+#         tick_marks = np.arange(len(classes))
+#         plt.xticks(tick_marks, classes, rotation=45)
+#         plt.yticks(tick_marks, classes)
+#         # ax.set_ylim(len(fusion), -.5,.5) ## <-- This was messing up the plots!
 
-        # Text formatting
-        fmt = ".2f" if normalize else "d"
-        # Add labels to each cell
-        # thresh = fusion.max() / 2.
-        # iterate thru matrix and append labels
-        for i, j in itertools.product(range(fusion.shape[0]), range(fusion.shape[1])):
-            plt.text(
-                j,
-                i,
-                format(fusion[i, j], fmt),
-                horizontalalignment="center",
-                color="white" if fusion[i, j] > thresh else "black",
-                size=14,
-                weight="bold",
-            )
+#         # Text formatting
+#         fmt = ".2f" if normalize else "d"
+#         # Add labels to each cell
+#         # thresh = fusion.max() / 2.
+#         # iterate thru matrix and append labels
+#         for i, j in itertools.product(range(fusion.shape[0]), range(fusion.shape[1])):
+#             plt.text(
+#                 j,
+#                 i,
+#                 format(fusion[i, j], fmt),
+#                 horizontalalignment="center",
+#                 color="white" if fusion[i, j] > thresh else "black",
+#                 size=14,
+#                 weight="bold",
+#             )
 
-        # Add a legend
-        plt.colorbar()
-        plt.show()
-        return fusion, fig
+#         # Add a legend
+#         plt.colorbar()
+#         plt.show()
+#         return fusion, fig
 
-    def roc_plots(self):
+#     def roc_plots(self):
         """Calculates ROC_AUC score and plots Receiver Operator Characteristics (ROC)
 
         Arguments:

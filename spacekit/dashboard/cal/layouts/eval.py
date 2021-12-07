@@ -1,11 +1,8 @@
 from dash import dcc
 from dash import html
 from dash.dependencies import Input, Output
-
-from spacekit.extractor.load_data import CalRes
 from spacekit.dashboard.cal.app import app
-
-res = CalRes()
+from spacekit.dashboard.cal.config import cal
 
 
 layout = html.Div(
@@ -36,7 +33,7 @@ layout = html.Div(
                             children=[
                                 dcc.Graph(
                                     id="acc-bars",
-                                    figure=com.acc_fig,
+                                    figure=cal.acc_fig,
                                     style={
                                         "display": "inline-block",
                                         "float": "center",
@@ -45,7 +42,7 @@ layout = html.Div(
                                 ),
                                 dcc.Graph(
                                     id="loss-bars",
-                                    figure=com.loss_fig,
+                                    figure=cal.loss_fig,
                                     style={
                                         "display": "inline-block",
                                         "float": "center",
@@ -66,9 +63,9 @@ layout = html.Div(
                                                     id="version-picker",
                                                     options=[
                                                         {"label": str(v), "value": v}
-                                                        for v in versions
+                                                        for v in cal.versions
                                                     ],
-                                                    value=versions[-1],
+                                                    value=cal.versions[-1],
                                                 )
                                             ],
                                             style={
@@ -113,9 +110,9 @@ layout = html.Div(
                                                     id="rocauc-picker",
                                                     options=[
                                                         {"label": str(v), "value": v}
-                                                        for v in versions
+                                                        for v in cal.versions
                                                     ],
-                                                    value=versions[-1],
+                                                    value=cal.versions[-1],
                                                 )
                                             ],
                                             style={
@@ -210,9 +207,12 @@ layout = html.Div(
     Input("version-picker", "value"),
 )
 def update_keras(selected_version):
-    com = res.mega[selected_version]["res"]["mem_bin"]
+    com = cal.mega[selected_version]["res"]["mem_bin"]
+    com.acc_fig = com.keras_acc_plot()
+    com.loss_fig = com.keras_loss_plot()
     keras_figs = [com.acc_fig, com.loss_fig]
     return keras_figs
+
 
 # ROC AUC CALLBACK
 @app.callback(
@@ -220,14 +220,16 @@ def update_keras(selected_version):
     Input("rocauc-picker", "value"),
 )
 def update_roc_auc(selected_version):
-    com = res.mega[selected_version]["res"]["mem_bin"]
+    com = cal.mega[selected_version]["res"]["mem_bin"]
+    com.roc_fig = com.make_roc_curve()
+    com.pr_fig = com.make_pr_curve()
     return [com.roc_fig, com.pr_fig]
 
 
 @app.callback(Output("confusion-matrix", "figure"), Input("cmx-type", "value"))
 def update_cmx(cmx_type):
     #com.cm_fig
-    v = list(res.mega.keys())[-1]
-    com = res.mega[v]["res"]["mem_bin"]
+    v = list(cal.mega.keys())[-1]
+    com = cal.mega[v]["res"]["mem_bin"]
     cmx_fig = com.make_cmx_figure(com, cmx_type)
     return cmx_fig
