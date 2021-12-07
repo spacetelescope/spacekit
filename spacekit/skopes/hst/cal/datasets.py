@@ -1,6 +1,8 @@
 import os
 from keras.utils.data_utils import get_file
 import boto3
+import numpy as np
+import pandas as pd
 # from botocore import Config
 
 #retry_config = Config(retries={"max_attempts": 3})
@@ -78,6 +80,28 @@ def scrape_s3(bucket, results=[]):
     if err is not None:
         print(err)
 
+
+def load_train_test(data_path='.', idx=True, target="mem_bin"):
+    X_train, y_train = np.load(f'{data_path}/X_train.npy'), np.load(f'{data_path}/y_train.npy')
+    X_test, y_test = np.load(f'{data_path}/X_test.npy'), np.load(f'{data_path}/y_test.npy')
+    if idx is True:
+        test_idx = np.load(f'{data_path}/test_idx.npy', allow_pickle=True)
+        if target:
+            test_idx = pd.DataFrame(np.argmax(y_test, axis=-1), index=idx, columns=[target])
+        return X_train, y_train, X_test, y_test, test_idx
+    else:
+        return X_train, y_train, X_test, y_test
+
+def save_train_test(X_train, X_test, y_train, y_test, test_idx, dpath):
+	np.save(f'{dpath}/X_train.npy', np.asarray(X_train))
+	np.save(f'{dpath}/X_test.npy', np.asarray(X_test))
+	np.save(f'{dpath}/y_train.npy', y_train)
+	np.save(f'{dpath}/y_test.npy', y_test)
+	np.save(f"{dpath}/test_idx.npy", np.asarray(test_idx.index))
+	print("Train-test data saved as numpy arrays:\n")
+	print(os.listdir(dpath))
+
+
 # def scrape_web_images():
 #     num_train_samples = 50000
 
@@ -103,9 +127,3 @@ def scrape_s3(bucket, results=[]):
 #     y_test = y_test.astype(y_train.dtype)
 
 #     return (x_train, y_train), (x_test, y_test)
-
-import numpy as np
-def load_cal_data():
-    X_train, y_train = np.load('X_train.npy'), np.load('y_train.npy')
-    X_test, y_test = np.load('X_test.npy'), np.load('y_test.npy')
-    return X_train, y_train, X_test, y_test

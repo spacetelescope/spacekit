@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 from scipy.ndimage.filters import uniform_filter1d
 from sklearn.preprocessing import PowerTransformer
+from sklearn.preprocessing import LabelEncoder
 import tensorflow as tf
 
 # TODO: update code elsewhere to use class method versions instead of static functions
@@ -53,6 +54,53 @@ def power_transform_matrix(data, pt_data):
     data_norm = np.concatenate((normalized, data_cat), axis=1)
     return data_norm
 
+
+def encode_target_data(y_train, y_test):
+    # label encode class values as integers
+    encoder = LabelEncoder()
+    encoder.fit(y_train)
+    y_train_enc = encoder.transform(y_train)
+    y_train = tf.keras.utils.to_categorical(y_train_enc)
+    # test set
+    encoder.fit(y_test)
+    y_test_enc = encoder.transform(y_test)
+    y_test = tf.keras.utils.to_categorical(y_test_enc)
+    # ensure train/test targets have correct shape (4 bins)
+    print(y_train.shape, y_test.shape)
+    return y_train, y_test
+
+
+def update_power_transform(df):
+    pt = PowerTransformer(standardize=False)
+    df_cont = df[["n_files", "total_mb"]]
+    pt.fit(df_cont)
+    input_matrix = pt.transform(df_cont)
+    # FILES (n_files)
+    f_mean = np.mean(input_matrix[:, 0])
+    f_sigma = np.std(input_matrix[:, 0])
+    # SIZE (total_mb)
+    s_mean = np.mean(input_matrix[:, 1])
+    s_sigma = np.std(input_matrix[:, 1])
+    files = input_matrix[:, 0]
+    size = input_matrix[:, 1]
+    x_files = (files - f_mean) / f_sigma
+    x_size = (size - s_mean) / s_sigma
+    normalized = np.stack([x_files, x_size], axis=1)
+    idx = df_cont.index
+    df_norm = pd.DataFrame(normalized, index=idx, columns=["x_files", "x_size"])
+    df["x_files"] = df_norm["x_files"]
+    df["x_size"] = df_norm["x_size"]
+    lambdas = pt.lambdas_
+    pt_transform = {
+        "f_lambda": lambdas[0],
+        "s_lambda": lambdas[1],
+        "f_mean": f_mean,
+        "f_sigma": f_sigma,
+        "s_mean": s_mean,
+        "s_sigma": s_sigma,
+    }
+    print(pt_transform)
+    return df, pt_transform
 
 
 class Transformer:

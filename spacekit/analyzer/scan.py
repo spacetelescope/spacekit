@@ -7,7 +7,7 @@ import glob
 import plotly.graph_objs as go
 from plotly import subplots
 import plotly.figure_factory as ff
-from spacekit.analyzer.compute import ComputeClassifier, ComputeMulti, ComputeRegressor
+from spacekit.analyzer.compute import ComputeBinary, ComputeMulti, ComputeRegressor
 
 def decode_categorical(df, decoder_key):
     """Returns dataframe with added decoded column (using "{column}_key" suffix)"""
@@ -50,12 +50,14 @@ class MegaScanner:
         self.res_keys = None
         self.mega = None
         self.dfs = []
-        self.scores = None
-        self.acc_fig = None
-        self.loss_fig = None
-        self.acc_loss_fig = None
+        self.scores = None#self.compare_scores()
+        self.acc_fig = None#self.acc_bars()
+        self.loss_fig = None#self.loss_bars()
+        self.acc_loss_figs = None#self.acc_loss_subplots()
 
-    def select_dataset(self):
+    def select_dataset(self, primary=None):
+        if primary:
+            self.primary = primary
         if self.primary > len(self.datapaths):
             print("Using default index (-1)")
             self.primary = -1
@@ -80,6 +82,15 @@ class MegaScanner:
         if len(versions) > 0:
             self.versions = versions
         return self.mega
+    
+    def compare_scores(self, target="mem_bin"):
+        df_list = []
+        for v in self.versions:
+            score_dict = self.mega[v]["res"][target]["acc_loss"]
+            df = pd.DataFrame.from_dict(score_dict, orient="index", columns=[v])
+            df_list.append(df)
+        self.scores = pd.concat([d for d in df_list], axis=1)
+        return self.scores
 
     def accuracy_bars(self):
         acc_train = self.scores.loc["train_acc"].values
@@ -305,15 +316,6 @@ class CalScanner(MegaScanner):
             self.mega[v]["res"]["wallclock"] = wCom
         return self.mega
 
-    def compare_scores(self):
-        df_list = []
-        for v in self.versions:
-            score_dict = self.mega[v]["res"]["mem_bin"]["scores"]
-            df = pd.DataFrame.from_dict(score_dict, orient="index", columns=[v])
-            df_list.append(df)
-        df_scores = pd.concat([d for d in df_list], axis=1)
-        return df_scores
-
 
 class SvmScanner(MegaScanner):
     def __init__(self, perimeter=f"data/20??-*-*-*", primary=-1):
@@ -322,17 +324,21 @@ class SvmScanner(MegaScanner):
         self.res_keys = {"test": {}, "val": {}}
         self.data = self.select_dataset()
         self.mega = self.make_mega()
+        self.scores = None#self.compare_scores()
+        self.acc_fig = None#self.acc_bars()
+        self.loss_fig = None#self.loss_bars()
+        self.acc_loss_figs = None#self.acc_loss_subplots()
 
     def scan_results(self):
         self.mega = self.make_mega()
         for i, d in enumerate(self.datasets):
             v = self.versions[i]
-            tCom = ComputeClassifier(algorithm="test", classes=self.classes, res_path=f"{d}/results/test")
+            tCom = ComputeBinary(algorithm="clf", classes=self.classes, res_path=f"{d}/results/test")
             outputs = tCom.upload()
             tCom.load_results(outputs)
             self.mega[v]["res"]["test"] = tCom
 
-            vCom = ComputeClassifier(algorithm="val", classes=self.classes, res_path=f"{d}/results/val")
+            vCom = ComputeBinary(algorithm="clf", classes=self.classes, res_path=f"{d}/results/val", validation=True)
             outputs = vCom.upload()
             vCom.load_results(outputs)
             self.mega[v]["res"]["val"] = vCom

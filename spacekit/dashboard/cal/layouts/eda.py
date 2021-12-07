@@ -3,9 +3,9 @@ from dash import dcc
 from dash import html
 from dash.dependencies import Input, Output
 from spacekit.analyzer.explore import HstCalPlots
-from spacekit.extractor.load_data import import_dataset
+from spacekit.analyzer.scan import import_dataset
 from spacekit.dashboard.cal.app import app
-from spacekit.dashboard.cal.config import scanner, df, hst
+from spacekit.dashboard.cal.config import cal, df, hst
 
 layout = html.Div(
     children=[
@@ -28,9 +28,9 @@ layout = html.Div(
                     dcc.Dropdown(
                         id="dataset-selector",
                         options=[
-                            {"label": n, "value": d} for (n, d) in list(zip(scanner.datasets, list(range(len(scanner.datasets)))))
+                            {"label": n, "value": d} for (n, d) in list(zip(cal.datasets, list(range(len(cal.datasets)))))
                         ],
-                        value=scanner.primary
+                        value=cal.primary
                         )
                     ],
                     style={
@@ -173,10 +173,13 @@ layout = html.Div(
     [Input("dataset-selector", "value")]
 )
 def data_explorer(dataset_selection):
-    scanner.primary = dataset_selection
-    scanner.data = scanner.select_dataset() # "data/2021-11-04-1636048291/latest.csv"
+    global cal
+    global hst
+    global df
+    cal.primary = dataset_selection
+    cal.data = cal.select_dataset(primary=cal.primary) # "data/2021-11-04-1636048291/latest.csv"
     df = import_dataset(
-        filename=scanner.data, kwargs=dict(index_col="ipst"), 
+        filename=cal.data, kwargs=dict(index_col="ipst"), 
         decoder_key={"instr": {0: "acs", 1: "cos", 2: "stis", 3: "wfc3"}}
         )
     hst = HstCalPlots(df)

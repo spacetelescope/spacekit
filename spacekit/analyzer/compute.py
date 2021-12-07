@@ -23,10 +23,11 @@ mpl.rc("font", **font_dict)
 
 
 class Computer(object):
-    def __init__(self, algorithm, res_path=None, show=False):
+    def __init__(self, algorithm, res_path=None, show=False, validation=False):
         self.algorithm = algorithm # test/val; clf/reg
         self.res_path = res_path
         self.show = show
+        self.validation = validation
         self.model_name = None
         self.model = None
         self.history = None
@@ -75,6 +76,8 @@ class Computer(object):
         self.X_test = X_test
         self.y_test = y_test
         self.test_idx = test_idx
+        if self.model_name is None:
+            self.model_name = self.model.name
         return self
 
     def download(self, outputs):
@@ -87,7 +90,7 @@ class Computer(object):
             timestamp = int(dt.datetime.now().timestamp())
             datestamp = dt.date.fromtimestamp(timestamp).isoformat()
             prefix = str(datestamp) + "-" + str(timestamp)
-            self.res_path = os.path.join(".", prefix, "results", self.algorithm)
+            self.res_path = os.path.join(os.getcwd(), prefix, "results", self.algorithm)
         os.makedirs(f"{self.res_path}", exist_ok=True)
         for k, v in outputs.items():
             key = f"{self.res_path}/{k}"
@@ -139,39 +142,6 @@ class Computer(object):
             "test_loss": test_loss,
         }
         return self.acc_loss
-
-    def track_fnfp(self):
-        if self.test_idx is None:
-            print("Test index not found")
-            return
-        try:
-            conf_idx = np.where(self.y_pred != self.test_idx.values)
-        except AttributeError as e:
-            print(
-                f"Test/Val Index should be a pandas series, not {type(self.test_idx)}"
-            )
-            print(e)
-            return
-        pred_proba = np.asarray(self.model.predict(self.X_test).flatten(), "float32")
-        conf_proba = pred_proba[conf_idx]
-        fn_idx = self.test_idx.iloc[conf_idx].loc[self.test_idx == 1].index
-        fp_idx = self.test_idx.iloc[conf_idx].loc[self.test_idx == 0].index
-        self.fnfp = {
-            "pred_proba": pred_proba,
-            "conf_idx": conf_idx,
-            "conf_proba": conf_proba,
-            "fn_idx": fn_idx,
-            "fp_idx": fp_idx,
-        }
-        return self.fnfp
-
-    def print_summary(self):
-        print(f"\n CLASSIFICATION REPORT: \n{self.report}")
-        print(f"\n ACC/LOSS: {self.acc_loss}")
-        print(f"\n ROC_AUC: {self.roc_auc}")
-        print(f"\nFalse -/+\n{self.cmx}")
-        print(f"\nFalse Negatives Index\n{self.fnfp['fn_idx']}\n")
-        print(f"\nFalse Positives Index\n{self.fnfp['fp_idx']}\n")
 
     """ PLOTS """
 
@@ -425,8 +395,8 @@ class Computer(object):
 
 
 class ComputeClassifier(Computer):
-    def __init__(self, algorithm="clf", classes=[0,1,2,3], res_path="results/mem_bin", show=False):
-        super().__init__(algorithm, res_path=res_path, show=show)
+    def __init__(self, algorithm="clf", classes=["2g", "8g", "16g", "64g"], res_path="results/mem_bin", show=False, validation=False):
+        super().__init__(algorithm, res_path=res_path, show=show, validation=validation)
         self.classes = classes
 
     def make_outputs(self, dl=True):
@@ -442,7 +412,7 @@ class ComputeClassifier(Computer):
             "acc_loss": self.acc_loss,
             "report": self.report
             }
-        if self.algorithm != "val":
+        if self.validation is False:
            outputs["history"] = self.history
         if dl:
             super().download(outputs)
@@ -462,16 +432,48 @@ class ComputeClassifier(Computer):
         self.roc_fig = self.make_roc_curve()
         self.pr_fig = self.make_pr_curve()
         self.cm_fig, _ = self.fusion_matrix(self.cmx, self.classes)
-        if self.algorithm != "val" :
+        if self.validation is False:
             self.history = outputs["history"]
             self.acc_fig = self.keras_acc_plot()
             self.loss_fig = self.keras_loss_plot()
         return self
 
+    def track_fnfp(self):
+        if self.test_idx is None:
+            print("Test index not found")
+            return
+        try:
+            conf_idx = np.where(self.y_pred != self.test_idx.values)
+        except AttributeError as e:
+            print(
+                f"Test/Val Index should be a pandas series, not {type(self.test_idx)}"
+            )
+            print(e)
+            return
+        pred_proba = np.asarray(self.model.predict(self.X_test).flatten(), "float32")
+        conf_proba = pred_proba[conf_idx]
+        fn_idx = self.test_idx.iloc[conf_idx].loc[self.test_idx == 1].index
+        fp_idx = self.test_idx.iloc[conf_idx].loc[self.test_idx == 0].index
+        self.fnfp = {
+            "pred_proba": pred_proba,
+            "conf_idx": conf_idx,
+            "conf_proba": conf_proba,
+            "fn_idx": fn_idx,
+            "fp_idx": fp_idx,
+        }
+        return self.fnfp
+
+    def print_summary(self):
+        print(f"\n CLASSIFICATION REPORT: \n{self.report}")
+        print(f"\n ACC/LOSS: {self.acc_loss}")
+        print(f"\n ROC_AUC: {self.roc_auc}")
+        print(f"\nFalse -/+\n{self.cmx}")
+        print(f"\nFalse Negatives Index\n{self.fnfp['fn_idx']}\n")
+        print(f"\nFalse Positives Index\n{self.fnfp['fp_idx']}\n")
+
 class ComputeTest(ComputeClassifier):
     def __init__(
         self,
-        classes,
         model,
         history,
         X_train,
@@ -479,22 +481,28 @@ class ComputeTest(ComputeClassifier):
         X_test,
         y_test,
         test_idx,
+        classes=["aligned", "misaligned"],
+        res_path="results/test",
+        show=False,
+        validation=False
     ):
-        super().__init__("test", classes)
+        super().__init__(algorithm="clf", classes=classes, res_path=res_path, show=show, validation=validation)
         self.inputs(model, history, X_train, y_train, X_test, y_test, test_idx)
-
+        self.classes = classes
 
 class ComputeVal(ComputeClassifier):
     def __init__(
-        self, classes, model, X_test, y_test, X_val, y_val, val_idx
+        self, model, X_test, y_test, X_val, y_val, val_idx, classes=["aligned", "misaligned"], res_path="results/val", show=False, validation=True
     ):
-        super().__init__("val", classes)
+        super().__init__(algorithm="clf", classes=classes, res_path=res_path, show=show, validation=validation)
         self.inputs(model, X_test, y_test, X_val, y_val, val_idx)
 
 
 class ComputeBinary(ComputeClassifier):
-    def __init__(self, algorithm="clf", classes=[0,1], res_path="results/svm_clf", show=False):
-        super().__init__(algorithm=algorithm, classes=classes, res_path=res_path, show=show)
+    def __init__(self, builder=None, algorithm="clf", classes=["aligned", "misaligned"], res_path="results/svm", show=False, validation=False):
+        super().__init__(algorithm=algorithm, classes=classes, res_path=res_path, show=show, validation=validation)
+        if builder:
+            self.inputs(builder.model, builder.X_test, builder.y_test, builder.X_val, builder.y_val, builder.test_idx)
 
     def calculate_results(self, show_summary=True):
         self.y_onehot = self.onehot_y()
@@ -506,14 +514,17 @@ class ComputeBinary(ComputeClassifier):
         self.roc_auc = roc_auc_score(self.y_test, self.y_pred)
         self.acc_loss = self.acc_loss_scores()
         self.cmx = confusion_matrix(self.y_test, self.y_pred)
+        self.cmx_norm = self.fusion_matrix(self.cmx, self.classes)[1]
         self.fnfp = self.track_fnfp()
         if show_summary:
             self.print_summary()
         return self
 
 class ComputeMulti(ComputeClassifier):
-    def __init__(self, algorithm="clf", classes=[0,1,2,3], res_path="results/mem_bin", show=False):
-        super().__init__(algorithm=algorithm, classes=classes, res_path=res_path, show=show)
+    def __init__(self, builder=None, algorithm="clf", classes=["2g", "8g", "16g", "64g"], res_path="results/mem_bin", show=False, validation=False):
+        super().__init__(algorithm=algorithm, classes=classes, res_path=res_path, show=show, validation=validation)
+        if builder:
+            self.inputs(builder.model, builder.X_test, builder.y_test, builder.X_val, builder.y_val, builder.test_idx)
 
     def calculate_multi(self, show_summary=True):
         self.y_onehot = self.onehot_multi()

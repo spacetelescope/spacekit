@@ -32,6 +32,7 @@ DEPTH = DIM * CH
 SHAPE = (DIM, WIDTH, HEIGHT, CH)
 TF_CPP_MIN_LOG_LEVEL = 2
 
+#TODO: K-fold cross-val class
 
 class Builder:
     def __init__(
