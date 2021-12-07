@@ -425,7 +425,7 @@ class Computer(object):
 
 
 class ComputeClassifier(Computer):
-    def __init__(self, algorithm="clf", classes=[0,1,2,3], res_path="results/mem_clf", show=False):
+    def __init__(self, algorithm="clf", classes=[0,1,2,3], res_path="results/mem_bin", show=False):
         super().__init__(algorithm, res_path=res_path, show=show)
         self.classes = classes
 
@@ -529,7 +529,7 @@ class ComputeMulti(ComputeClassifier):
         self.roc_auc = self.roc_auc_multi()
         self.acc_loss = self.acc_loss_scores()
         self.cmx = confusion_matrix(np.argmax(self.y_test, axis=-1), np.argmax(self.y_pred, axis=-1))
-        _, self.cmx_norm = self.fusion_matrix(self.cmx, self.classes)
+        self.cmx_norm = self.fusion_matrix(self.cmx, self.classes)[1]
         self.fnfp = self.fnfp_multi()
         if show_summary:
             self.print_summary()
