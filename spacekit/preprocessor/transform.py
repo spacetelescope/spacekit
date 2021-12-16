@@ -104,8 +104,10 @@ def update_power_transform(df):
 
 
 class Transformer:
-    def __init__(self, data, transformer=PowerTransformer(standardize=False), cols=None):
-        self.data = data # cal: data = x_features
+    def __init__(
+        self, data, transformer=PowerTransformer(standardize=False), cols=None
+    ):
+        self.data = data  # cal: data = x_features
         self.transformer = transformer
         self.cols = cols
         self.matrix = self.frame_to_matrix()
@@ -127,8 +129,7 @@ class Transformer:
             return self.tx_data
         else:
             return None
-        
-    
+
     def frame_to_matrix(self):
         if type(self.data) == pd.DataFrame:
             self.matrix = self.data.values
@@ -151,10 +152,11 @@ class Transformer:
             self.matrix_norm = np.concatenate((normalized, self.matrix_cat), axis=1)
             return self.matrix_norm
         except Exception as e:
-            print("Err: Continuous/Categorical matrices (`matrix_cont`, `matrix_cat`) need to be instantiated.")
+            print(
+                "Err: Continuous/Categorical matrices (`matrix_cont`, `matrix_cat`) need to be instantiated."
+            )
             print(e)
             return None
-
 
     def power_frame(self):
         # data_cont = data[cols]
@@ -170,7 +172,11 @@ class Transformer:
             normalized[:, i] = x
             mu.append(m)
             sig.append(s)
-        self.tx_data = {"lambdas": self.lambdas, "mu": np.array(mu), "sigma": np.array(sig)}
+        self.tx_data = {
+            "lambdas": self.lambdas,
+            "mu": np.array(mu),
+            "sigma": np.array(sig),
+        }
         newcols = [c + "_scl" for c in self.cols]
         df_norm = pd.DataFrame(normalized, index=self.idx, columns=newcols)
         self.data_norm = df_norm.join(self.data_cat, how="left")
@@ -181,12 +187,20 @@ class SvmX(Transformer):
     def __init__(self, data, tx_file=None):
         super.__init__(data)
         self.tx_file = tx_file
-        self.cols = ["numexp", "rms_ra", "rms_dec", "nmatches", "point", "segment", "gaia"]
-        self.matrix_cont = self.data[:, :7] # continuous
-        self.matrix_cat = self.data[:, -3:] # categorical
+        self.cols = [
+            "numexp",
+            "rms_ra",
+            "rms_dec",
+            "nmatches",
+            "point",
+            "segment",
+            "gaia",
+        ]
+        self.matrix_cont = self.data[:, :7]  # continuous
+        self.matrix_cat = self.data[:, -3:]  # categorical
         self.data_cont = self.data[self.cols]
         self.data_cat = self.data.drop(self.cols, axis=1, inplace=False)
-        
+
 
 class CalX(Transformer):
     def __init__(self, data, tx_file=None):
@@ -195,11 +209,13 @@ class CalX(Transformer):
         self.cols = ["n_files", "total_mb"]
         self.tx_data = self.load_transformer_data()
         self.X = self.powerX()
-    
+
     def transform(self):
         if self.tx_data is not None:
             self.inputs = self.scrub_keys()
-            self.lambdas = np.array([self.tx_data["f_lambda"], self.tx_data["s_lambda"]])
+            self.lambdas = np.array(
+                [self.tx_data["f_lambda"], self.tx_data["s_lambda"]]
+            )
             self.f_mean = self.tx_data["f_mean"]
             self.f_sigma = self.tx_data["f_sigma"]
             self.s_mean = self.tx_data["s_mean"]

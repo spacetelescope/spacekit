@@ -272,7 +272,7 @@ def generate_images(outputs, filters=False, pattern=None):
             outpath="./img/filter",
             figsize=(24, 24),
             crpt=0,
-            pattern=pattern
+            pattern=pattern,
         )
 
 
@@ -345,7 +345,9 @@ def run_pipes(datasets, outputs, prc, cfg, pattern):
             for visit in tqdm(visits):
                 run_svm(visit, outputs, pattern)
         if prc["imagegen"]:
-            generate_total_images(outputs, img_out, dataset=dataset, crpt=1, pattern=pattern)
+            generate_total_images(
+                outputs, img_out, dataset=dataset, crpt=1, pattern=pattern
+            )
             # generate_images(dataset, outputs)
         t1 = time.time()
         stopwatch(dataset, t0=t0, t1=t1)
@@ -437,7 +439,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     outputs = args.outputs
     workflow = args.workflow
-    pattern = args.pattern.lstrip('/')
+    pattern = args.pattern.lstrip("/")
     datasets = glob.glob(f"{args.srcpath.rstrip('/')}/{pattern}")
     if len(datasets) < 1:
         print("No datasets found matching the search pattern.")

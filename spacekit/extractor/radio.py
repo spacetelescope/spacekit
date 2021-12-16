@@ -1,5 +1,6 @@
 """
 # class for querying and downloading .fits files from MAST s3 bucket on AWS
+Unlike scrape.py, which is for private s3 buckets, this module is specifically for collecting data from the publicly available MAST website and/or MAST data hosted on s3. Instead of scraping a closed collection, you're receiving data from an open channel - like a radio.
 """
 import os
 import shutil

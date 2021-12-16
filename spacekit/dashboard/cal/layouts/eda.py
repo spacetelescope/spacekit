@@ -1,4 +1,3 @@
-
 from dash import dcc
 from dash import html
 from dash.dependencies import Input, Output
@@ -25,137 +24,146 @@ layout = html.Div(
             children=[
                 html.Div(
                     [
-                    dcc.Dropdown(
-                        id="dataset-selector",
-                        options=[
-                            {"label": n, "value": d} for (n, d) in list(zip(cal.datasets, list(range(len(cal.datasets)))))
-                        ],
-                        value=cal.primary
+                        dcc.Dropdown(
+                            id="dataset-selector",
+                            options=[
+                                {"label": n, "value": d}
+                                for (n, d) in list(
+                                    zip(cal.datasets, list(range(len(cal.datasets))))
+                                )
+                            ],
+                            value=cal.primary,
                         )
                     ],
                     style={
                         "display": "inline-block",
                         "padding": 5,
-                    }
+                    },
                 ),
-        html.Div(
-            children=[
-                # FEATURE COMPARISON SCATTERPLOTS
                 html.Div(
                     children=[
-                        html.Div(
-                            [
-                                dcc.Dropdown(
-                                    id="xaxis-features",
-                                    options=[
-                                        {"label": f, "value": f} for f in hst.feature_list
-                                    ],
-                                    value="n_files",
-                                )
-                            ],
-                            style={
-                                "width": "20%",
-                                "display": "inline-block",
-                                "padding": 5,
-                            },
-                        ),
-                        html.Div(
-                            [
-                                dcc.Dropdown(
-                                    id="yaxis-features",
-                                    options=[
-                                        {"label": f, "value": f} for f in hst.feature_list
-                                    ],
-                                    value="memory",
-                                )
-                            ],
-                            style={
-                                "width": "20%",
-                                "display": "inline-block",
-                                "padding": 5,
-                            },
-                        ),
-                    ]
-                ),
-                dcc.Graph(
-                    id="acs-scatter",
-                    style={"display": "inline-block", "float": "center"},
-                ),
-                dcc.Graph(
-                    id="wfc3-scatter",
-                    style={"display": "inline-block", "float": "center"},
-                ),
-                dcc.Graph(
-                    id="cos-scatter",
-                    style={"display": "inline-block", "float": "center"},
-                ),
-                dcc.Graph(
-                    id="stis-scatter",
-                    style={"display": "inline-block", "float": "center"},
-                ),
-            ],
-            style={"color": "white", "width": "100%"},
-        ),
-        # BOX PLOTS: CONTINUOUS VARS (N_FILES + TOTAL_MB)
-        html.Div(
-            children=[
-                html.Div(
-                    children=[
+                        # FEATURE COMPARISON SCATTERPLOTS
                         html.Div(
                             children=[
                                 html.Div(
                                     [
                                         dcc.Dropdown(
-                                            id="continuous-vars",
+                                            id="xaxis-features",
                                             options=[
-                                                {"label": "Raw Data", "value": "raw"},
-                                                {
-                                                    "label": "Normalized",
-                                                    "value": "norm",
-                                                },
+                                                {"label": f, "value": f}
+                                                for f in hst.feature_list
                                             ],
-                                            value="raw",
+                                            value="n_files",
                                         )
                                     ],
                                     style={
-                                        "width": "40%",
+                                        "width": "20%",
                                         "display": "inline-block",
                                         "padding": 5,
-                                        "float": "center",
-                                        "color": "black",
                                     },
-                                )
+                                ),
+                                html.Div(
+                                    [
+                                        dcc.Dropdown(
+                                            id="yaxis-features",
+                                            options=[
+                                                {"label": f, "value": f}
+                                                for f in hst.feature_list
+                                            ],
+                                            value="memory",
+                                        )
+                                    ],
+                                    style={
+                                        "width": "20%",
+                                        "display": "inline-block",
+                                        "padding": 5,
+                                    },
+                                ),
                             ]
                         ),
                         dcc.Graph(
-                            id="n_files",
-                            style={
-                                "display": "inline-block",
-                                "float": "center",
-                                "width": "50%",
-                            },
+                            id="acs-scatter",
+                            style={"display": "inline-block", "float": "center"},
                         ),
                         dcc.Graph(
-                            id="total_mb",
-                            style={
-                                "display": "inline-block",
-                                "float": "center",
-                                "width": "50%",
-                            },
+                            id="wfc3-scatter",
+                            style={"display": "inline-block", "float": "center"},
+                        ),
+                        dcc.Graph(
+                            id="cos-scatter",
+                            style={"display": "inline-block", "float": "center"},
+                        ),
+                        dcc.Graph(
+                            id="stis-scatter",
+                            style={"display": "inline-block", "float": "center"},
                         ),
                     ],
                     style={"color": "white", "width": "100%"},
-                )
+                ),
+                # BOX PLOTS: CONTINUOUS VARS (N_FILES + TOTAL_MB)
+                html.Div(
+                    children=[
+                        html.Div(
+                            children=[
+                                html.Div(
+                                    children=[
+                                        html.Div(
+                                            [
+                                                dcc.Dropdown(
+                                                    id="continuous-vars",
+                                                    options=[
+                                                        {
+                                                            "label": "Raw Data",
+                                                            "value": "raw",
+                                                        },
+                                                        {
+                                                            "label": "Normalized",
+                                                            "value": "norm",
+                                                        },
+                                                    ],
+                                                    value="raw",
+                                                )
+                                            ],
+                                            style={
+                                                "width": "40%",
+                                                "display": "inline-block",
+                                                "padding": 5,
+                                                "float": "center",
+                                                "color": "black",
+                                            },
+                                        )
+                                    ]
+                                ),
+                                dcc.Graph(
+                                    id="n_files",
+                                    style={
+                                        "display": "inline-block",
+                                        "float": "center",
+                                        "width": "50%",
+                                    },
+                                ),
+                                dcc.Graph(
+                                    id="total_mb",
+                                    style={
+                                        "display": "inline-block",
+                                        "float": "center",
+                                        "width": "50%",
+                                    },
+                                ),
+                            ],
+                            style={"color": "white", "width": "100%"},
+                        )
+                    ],
+                    style={
+                        "backgroundColor": "#242a44",
+                        "color": "white",
+                        "padding": 15,
+                        "display": "inline-block",
+                        "width": "85%",
+                    },
+                ),
             ],
-            style={
-                "backgroundColor": "#242a44",
-                "color": "white",
-                "padding": 15,
-                "display": "inline-block",
-                "width": "85%",
-            },
         ),
-            ])
     ],
     style={
         "backgroundColor": "#242a44",
@@ -169,21 +177,24 @@ layout = html.Div(
 
 # Page 2 EDA callbacks
 @app.callback(
-    [Output("explore-dataset", "children")],
-    [Input("dataset-selector", "value")]
+    [Output("explore-dataset", "children")], [Input("dataset-selector", "value")]
 )
 def data_explorer(dataset_selection):
     global cal
     global hst
     global df
     cal.primary = dataset_selection
-    cal.data = cal.select_dataset(primary=cal.primary) # "data/2021-11-04-1636048291/latest.csv"
+    cal.data = cal.select_dataset(
+        primary=cal.primary
+    )  # "data/2021-11-04-1636048291/latest.csv"
     df = import_dataset(
-        filename=cal.data, kwargs=dict(index_col="ipst"), 
-        decoder_key={"instr": {0: "acs", 1: "cos", 2: "stis", 3: "wfc3"}}
-        )
+        filename=cal.data,
+        kwargs=dict(index_col="ipst"),
+        decoder_key={"instr": {0: "acs", 1: "cos", 2: "stis", 3: "wfc3"}},
+    )
     hst = HstCalPlots(df)
     hst.df_by_instr()
+
 
 # SCATTER CALLBACK
 @app.callback(

@@ -9,6 +9,7 @@ from plotly import subplots
 import plotly.figure_factory as ff
 from spacekit.analyzer.compute import ComputeBinary, ComputeMulti, ComputeRegressor
 
+
 def decode_categorical(df, decoder_key):
     """Returns dataframe with added decoded column (using "{column}_key" suffix)"""
     # instrument_key = {"instr": {0: "acs", 1: "cos", 2: "stis", 3: "wfc3"}}
@@ -37,23 +38,28 @@ def import_dataset(filename=None, kwargs=dict(index_col="ipst"), decoder_key=Non
         df = decode_categorical(df, decoder_key)  # adds instrument label (string)
     return df
 
+
 class MegaScanner:
     def __init__(self, perimeter=f"data/20??-*-*-*", primary=-1):
         self.perimeter = perimeter
         self.datapaths = sorted(list(glob.glob(perimeter)))
-        self.datasets = [d.split('/')[-1] for d in self.datapaths]
-        self.timestamps = [int(t.split('-')[-1]) for t in self.datasets] # [1636048291, 1635457222, 1629663047]
-        self.dates = [str(v)[:10] for v in self.datasets] # ["2021-11-04", "2021-10-28", "2021-08-22"]
+        self.datasets = [d.split("/")[-1] for d in self.datapaths]
+        self.timestamps = [
+            int(t.split("-")[-1]) for t in self.datasets
+        ]  # [1636048291, 1635457222, 1629663047]
+        self.dates = [
+            str(v)[:10] for v in self.datasets
+        ]  # ["2021-11-04", "2021-10-28", "2021-08-22"]
         self.primary = primary
         self.data = None
         self.versions = None
         self.res_keys = None
         self.mega = None
         self.dfs = []
-        self.scores = None#self.compare_scores()
-        self.acc_fig = None#self.acc_bars()
-        self.loss_fig = None#self.loss_bars()
-        self.acc_loss_figs = None#self.acc_loss_subplots()
+        self.scores = None  # self.compare_scores()
+        self.acc_fig = None  # self.acc_bars()
+        self.loss_fig = None  # self.loss_bars()
+        self.acc_loss_figs = None  # self.acc_loss_subplots()
 
     def select_dataset(self, primary=None):
         if primary:
@@ -82,7 +88,7 @@ class MegaScanner:
         if len(versions) > 0:
             self.versions = versions
         return self.mega
-    
+
     def compare_scores(self, target="mem_bin"):
         df_list = []
         for v in self.versions:
@@ -187,7 +193,7 @@ class MegaScanner:
         y = x[::-1].copy()
         z = cmx[::-1]
         z_text = [[str(y) for y in x] for x in z]
-        subplot_titles=subtitles
+        subplot_titles = subtitles
 
         fig = subplots.make_subplots(
             rows=1,
@@ -234,10 +240,10 @@ class MegaScanner:
             zmax = 100
             cmx0, cmx1, cmx2 = coms[0].cmx, coms[1].cmx, coms[2].cmx
         cmx = [cmx0, cmx1, cmx2]
-        classes = coms[0].classes #["2GB", "8GB", "16GB", "64GB"]
+        classes = coms[0].classes  # ["2GB", "8GB", "16GB", "64GB"]
         x = classes
         y = x[::-1].copy()
-        subplot_titles=(self.versions) #("v1", "v2", "v3")
+        subplot_titles = self.versions  # ("v1", "v2", "v3")
         fig = subplots.make_subplots(
             rows=1,
             cols=3,
@@ -255,7 +261,7 @@ class MegaScanner:
         annos = []
         for i in cmx:
             row = 1
-            col = i+1
+            col = i + 1
             z = cmx[i][::-1]
             z_text = [[str(y) for y in x] for x in z]
             cmx_fig = ff.create_annotated_heatmap(
@@ -266,7 +272,7 @@ class MegaScanner:
                 colorscale="Blues",
                 zmin=zmin,
                 zmax=zmax,
-                )
+            )
             fig.add_trace(cmx_fig.data[0], 1, col)
             annot = list(cmx_fig.layout.annotations)
 
@@ -291,16 +297,18 @@ class CalScanner(MegaScanner):
         self.res_keys = {"mem_bin": {}, "memory": {}, "wallclock": {}}
         self.data = self.select_dataset()
         self.mega = self.make_mega()
-        self.scores = None#self.compare_scores()
-        self.acc_fig = None#self.acc_bars()
-        self.loss_fig = None#self.loss_bars()
-        self.acc_loss_figs = None#self.acc_loss_subplots()
-    
+        self.scores = None  # self.compare_scores()
+        self.acc_fig = None  # self.acc_bars()
+        self.loss_fig = None  # self.loss_bars()
+        self.acc_loss_figs = None  # self.acc_loss_subplots()
+
     def scan_results(self):
         self.mega = self.make_mega()
         for i, d in enumerate(self.datapaths):
             v = self.versions[i]
-            bCom = ComputeMulti(algorithm="clf", classes=self.classes, res_path=f"{d}/results/mem_bin")
+            bCom = ComputeMulti(
+                algorithm="clf", classes=self.classes, res_path=f"{d}/results/mem_bin"
+            )
             outputs = bCom.upload()
             bCom.load_results(outputs)
             self.mega[v]["res"]["mem_bin"] = bCom
@@ -324,21 +332,28 @@ class SvmScanner(MegaScanner):
         self.res_keys = {"test": {}, "val": {}}
         self.data = self.select_dataset()
         self.mega = self.make_mega()
-        self.scores = None#self.compare_scores()
-        self.acc_fig = None#self.acc_bars()
-        self.loss_fig = None#self.loss_bars()
-        self.acc_loss_figs = None#self.acc_loss_subplots()
+        self.scores = None  # self.compare_scores()
+        self.acc_fig = None  # self.acc_bars()
+        self.loss_fig = None  # self.loss_bars()
+        self.acc_loss_figs = None  # self.acc_loss_subplots()
 
     def scan_results(self):
         self.mega = self.make_mega()
         for i, d in enumerate(self.datasets):
             v = self.versions[i]
-            tCom = ComputeBinary(algorithm="clf", classes=self.classes, res_path=f"{d}/results/test")
+            tCom = ComputeBinary(
+                algorithm="clf", classes=self.classes, res_path=f"{d}/results/test"
+            )
             outputs = tCom.upload()
             tCom.load_results(outputs)
             self.mega[v]["res"]["test"] = tCom
 
-            vCom = ComputeBinary(algorithm="clf", classes=self.classes, res_path=f"{d}/results/val", validation=True)
+            vCom = ComputeBinary(
+                algorithm="clf",
+                classes=self.classes,
+                res_path=f"{d}/results/val",
+                validation=True,
+            )
             outputs = vCom.upload()
             vCom.load_results(outputs)
             self.mega[v]["res"]["val"] = vCom

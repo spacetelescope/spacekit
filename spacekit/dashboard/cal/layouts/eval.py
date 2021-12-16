@@ -228,7 +228,7 @@ def update_roc_auc(selected_version):
 
 @app.callback(Output("confusion-matrix", "figure"), Input("cmx-type", "value"))
 def update_cmx(cmx_type):
-    #com.cm_fig
+    # com.cm_fig
     v = list(cal.mega.keys())[-1]
     com = cal.mega[v]["res"]["mem_bin"]
     cmx_fig = com.make_cmx_figure(com, cmx_type)

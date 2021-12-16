@@ -172,7 +172,9 @@ def compute_results(
     return com, val
 
 
-def run_training(training_data, img_path, synth_data, norm, model_name, params, output_path):
+def run_training(
+    training_data, img_path, synth_data, norm, model_name, params, output_path
+):
     os.makedirs(output_path, exist_ok=True)
     tv_idx, XTR, YTR, XTS, YTS, XVL, YVL = prep_ensemble_data(
         training_data, img_path, synth=synth_data, norm=norm
@@ -234,7 +236,9 @@ if __name__ == "__main__":
         "-y", "--early_stopping", type=str, default=None, help="early stopping"
     )
     parser.add_argument("-v", "--verbose", type=int, default=2, help="verbosity level")
-    parser.add_argument("-p", "--plots", type=int, default=0, help="draw model performance plots")
+    parser.add_argument(
+        "-p", "--plots", type=int, default=0, help="draw model performance plots"
+    )
     args = parser.parse_args()
     training_data = args.training_data
     img_path = args.img_path
@@ -257,8 +261,9 @@ if __name__ == "__main__":
         verbose=verbose,
         ensemble=True,
     )
-    com, val = run_training(training_data, img_path, synth_data, norm, model_name, params, output_path)
+    com, val = run_training(
+        training_data, img_path, synth_data, norm, model_name, params, output_path
+    )
     if args.plots is True:
         com.draw_plots()
         val.draw_plots()
-

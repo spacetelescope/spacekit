@@ -19,19 +19,20 @@ app.validation_layout = html.Div(
     [url_bar_and_content_div, home.layout, eval.layout, eda.layout, pred.layout]
 )
 
-@app.callback(Output('page-content', 'children'),
-              Input('url', 'pathname'))
+
+@app.callback(Output("page-content", "children"), Input("url", "pathname"))
 def display_page(pathname):
-    if pathname == '/layouts/home':
+    if pathname == "/layouts/home":
         return home.layout
-    elif pathname == '/layouts/eval':
+    elif pathname == "/layouts/eval":
         return eval.layout
-    elif pathname == '/layouts/eda':
+    elif pathname == "/layouts/eda":
         return eda.layout
-    elif pathname == '/layouts/pred':
+    elif pathname == "/layouts/pred":
         return pred.layout
     else:
-        return '404'
+        return "404"
+
 
 # if __name__ == '__main__':
 #     app.run_server(debug=True)
@@ -39,7 +40,9 @@ def display_page(pathname):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--source", choices=["file", "git", "s3"], default="file")
-    parser.add_argument("-u", "--uri", default="data", help="s3 bucketname, filepath, or web uri")
+    parser.add_argument(
+        "-u", "--uri", default="data", help="s3 bucketname, filepath, or web uri"
+    )
     parser.add_argument("-l", "--latest", default=0, help="scrape last 3 timestamps")
     parser.add_argument("-r0", "--results1", default="2021-11-04-1636048291")
     parser.add_argument("-r1", "--results2", default="2021-10-28-1635457222")

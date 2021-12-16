@@ -4,7 +4,7 @@ import importlib.resources
 import numpy as np
 import time
 import datetime as dt
-from tensorflow.keras.utils import plot_model # req: pydot, graphviz
+from tensorflow.keras.utils import plot_model  # req: pydot, graphviz
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.models import Sequential, Model, load_model
 from tensorflow.keras import optimizers, callbacks
@@ -17,9 +17,9 @@ from tensorflow.keras.layers import (
     Dropout,
     Flatten,
     BatchNormalization,
-    Conv3D, 
-    MaxPool3D, 
-    GlobalAveragePooling3D
+    Conv3D,
+    MaxPool3D,
+    GlobalAveragePooling3D,
 )
 from spacekit.preprocessor.augment import augment_data, augment_image
 from spacekit.analyzer.track import stopwatch
@@ -32,7 +32,8 @@ DEPTH = DIM * CH
 SHAPE = (DIM, WIDTH, HEIGHT, CH)
 TF_CPP_MIN_LOG_LEVEL = 2
 
-#TODO: K-fold cross-val class
+# TODO: K-fold cross-val class
+
 
 class Builder:
     def __init__(
@@ -86,7 +87,19 @@ class Builder:
     #     model_path = os.path.join(extract_to, model_base)
     #     return model_path
 
-    def build_params(self, input_shape, kernel_size, activation, strides, optimizer, lr, decay, early_stopping, loss, metrics):
+    def build_params(
+        self,
+        input_shape,
+        kernel_size,
+        activation,
+        strides,
+        optimizer,
+        lr,
+        decay,
+        early_stopping,
+        loss,
+        metrics,
+    ):
         self.input_shape = input_shape
         self.kernel_size = kernel_size
         self.activation = activation
@@ -102,26 +115,24 @@ class Builder:
     def design(self):
         return {
             "mlp": dict(
-                batches=self.batch_mlp(), 
-                steps=self.X_train.shape[0] // self.batch_size
-                ),
+                batches=self.batch_mlp(), steps=self.X_train.shape[0] // self.batch_size
+            ),
             "cnn3d": dict(
-                batches=self.batch_cnn(),
-                steps=self.X_train.shape[0] // self.batch_size
+                batches=self.batch_cnn(), steps=self.X_train.shape[0] // self.batch_size
             ),
             "ensemble": dict(
                 batches=self.batch_ensemble(),
-                steps=self.X_train[0].shape[0] // self.batch_size
+                steps=self.X_train[0].shape[0] // self.batch_size,
             ),
             "cnn2d": dict(
                 batches=self.batch_maker(),
-                steps = self.X_train.shape[1] // self.batch_size
-                )
+                steps=self.X_train.shape[1] // self.batch_size,
+            ),
         }
 
     def batch_steps(self):
-        make_batches = self.design()[self.blueprint]['batches']
-        steps_per_epoch = self.design()[self.blueprint]['steps']
+        make_batches = self.design()[self.blueprint]["batches"]
+        steps_per_epoch = self.design()[self.blueprint]["steps"]
         # if self.blueprint == "mlp":
         #     make_batches = self.batch_mlp()
         #     steps_per_epoch = self.X_train.shape[0] // self.batch_size
@@ -196,8 +207,10 @@ class Builder:
             print("{}{}/".format(indent, os.path.basename(root)))
             for filename in files:
                 print("{}{}".format(indent + "    ", filename))
-    
-    def model_diagram(self, model=None, fname=None, shapes=True, dtype=False, LR=False, expand=True):
+
+    def model_diagram(
+        self, model=None, fname=None, shapes=True, dtype=False, LR=False, expand=True
+    ):
         if model is None:
             model = self.model
         if fname is None:
@@ -216,7 +229,7 @@ class Builder:
             expand_nested=expand,
             dpi=96,
             layer_range=None,
-            )
+        )
 
     # def timer(self, func, model_name):
     #     def wrap():
@@ -294,7 +307,7 @@ class MultiLayerPerceptron(Builder):
         self.blueprint = blueprint
         self.input_shape = X_train.shape[1]
         self.output_shape = 1
-        self.layers = [18, 32, 64, 32, 18] 
+        self.layers = [18, 32, 64, 32, 18]
         self.input_name = "svm_inputs"
         self.output_name = "svm_output"
         self.name = "sequential_mlp"
@@ -304,15 +317,14 @@ class MultiLayerPerceptron(Builder):
         self.optimizer = Adam
         self.loss = "binary_crossentropy"
         self.metrics = ["accuracy"]
-        
 
     def build_mlp(self):
         # visible layer
         inputs = Input(shape=(self.input_shape,), name=self.input_name)
         # hidden layers
-        x = Dense(self.layers[0], activation=self.activation, name=f"1_dense{self.layers[0]}")(
-            inputs
-        )
+        x = Dense(
+            self.layers[0], activation=self.activation, name=f"1_dense{self.layers[0]}"
+        )(inputs)
         for i, layer in enumerate(self.layers[1:]):
             i += 1
             x = Dense(layer, activation=self.activation, name=f"{i+1}_dense{layer}")(x)
@@ -322,7 +334,9 @@ class MultiLayerPerceptron(Builder):
             return self.mlp
         else:
             self.model = Sequential()
-            outputs = Dense(self.output_shape, activation=self.cost_function, name=self.output_name)(x)
+            outputs = Dense(
+                self.output_shape, activation=self.cost_function, name=self.output_name
+            )(x)
             self.model = Model(inputs=inputs, outputs=outputs, name=self.name)
             if self.lr_sched is True:
                 lr_schedule = self.decay_learning_rate()
@@ -374,11 +388,17 @@ class MultiLayerPerceptron(Builder):
 
             yield xb, yb
 
+
 class ImageCNN3D(Builder):
     def __init__(self, X_train, y_train, X_test, y_test, blueprint="cnn3d"):
-        super().__init__(X_train, y_train, X_test, y_test,)
+        super().__init__(
+            X_train,
+            y_train,
+            X_test,
+            y_test,
+        )
         self.blueprint = blueprint
-        self.input_shape = self.X_train.shape[1:] # ens: self.X_train[1].shape[1:]
+        self.input_shape = self.X_train.shape[1:]  # ens: self.X_train[1].shape[1:]
         self.output_shape = 1
         self.data_format = "channels_last"
         self.input_name = "cnn3d_inputs"
@@ -414,7 +434,10 @@ class ImageCNN3D(Builder):
 
         for f in self.filters:
             x = Conv3D(
-                filters=f, kernel_size=self.kernel, padding=self.padding, activation=self.activation
+                filters=f,
+                kernel_size=self.kernel,
+                padding=self.padding,
+                activation=self.activation,
             )(x)
             x = MaxPool3D(pool_size=self.pool)(x)
             x = BatchNormalization()(x)
@@ -427,9 +450,11 @@ class ImageCNN3D(Builder):
             self.cnn = Model(inputs, x, name="cnn_ensemble")
             return self.cnn
         else:
-            outputs = Dense(units=self.output_shape, activation=self.cost_function, name=self.output_name)(
-                x
-            )
+            outputs = Dense(
+                units=self.output_shape,
+                activation=self.cost_function,
+                name=self.output_name,
+            )(x)
             if self.lr_sched is True:
                 lr_schedule = self.decay_learning_rate()
             else:
@@ -583,7 +608,7 @@ class Ensemble(Builder):
             yield [xa, xb], yb
 
 
-class Cnn2D(Builder):
+class Cnn2dBuilder(Builder):
     def __init__(self, X_train, y_train, X_test, y_test, blueprint="cnn2d"):
         super().__init__(self, X_train, y_train, X_test, y_test)
         self.blueprint = blueprint
@@ -607,16 +632,7 @@ class Cnn2D(Builder):
         self.batch_size = 32
         self.cost_function = "sigmoid"
 
-    def build_2D(
-        self,
-        kernel_size=11,
-        activation="relu",
-        strides=4,
-        optimizer=Adam,
-        learning_rate=1e-5,
-        loss="binary_crossentropy",
-        metrics=["accuracy"],
-    ):
+    def build_cnn(self):
         """
         Builds and compiles a 2-dimensional Keras Functional CNN
         """
@@ -627,13 +643,17 @@ class Cnn2D(Builder):
             filters=self.filters[0],
             kernel_size=self.kernel,
             activation=self.activation,
-            input_shape=self.input_shape
-            )(inputs)
+            input_shape=self.input_shape,
+        )(inputs)
         x = MaxPool1D(strides=self.strides)(x)
         x = BatchNormalization()(x)
         count = 1
         for f in self.filters[1:]:
-            x = Conv1D(filters=self.filters[f], kernel_size=self.kernel, activation=self.activation)(x)
+            x = Conv1D(
+                filters=self.filters[f],
+                kernel_size=self.kernel,
+                activation=self.activation,
+            )(x)
             x = MaxPool1D(strides=self.strides)(x)
             if count < len(self.filters):
                 x = BatchNormalization()(x)
@@ -649,7 +669,11 @@ class Cnn2D(Builder):
             return self.cnn
         else:
             print("FULL CONNECTION")
-            outputs = Dense(units=self.output_shape, activation=self.cost_function, name=self.output_name)(x)
+            outputs = Dense(
+                units=self.output_shape,
+                activation=self.cost_function,
+                name=self.output_name,
+            )(x)
             if self.lr_sched is True:
                 lr_schedule = self.decay_learning_rate()
             else:
@@ -659,11 +683,11 @@ class Cnn2D(Builder):
                 loss=self.loss,
                 optimizer=self.optimizer(learning_rate=lr_schedule),
                 metrics=self.metrics,
-                )
+            )
             print("COMPILED")
             return self.model
 
-    def batch_2d(self):
+    def batch_maker(self):
         """
         Gives equal number of positive and negative samples rotating randomly
         The output of the generator must be either
@@ -688,7 +712,8 @@ class Cnn2D(Builder):
         # Returns a new array of given shape and type, without initializing.
         # x_train.shape = (5087, 3197, 2)
         xb = np.empty(
-            (self.batch_size, self.X_train.shape[1], self.X_train.shape[2]), dtype="float32"
+            (self.batch_size, self.X_train.shape[1], self.X_train.shape[2]),
+            dtype="float32",
         )
         # y_train.shape = (5087, 1)
         yb = np.empty((self.batch_size, self.y_train.shape[1]), dtype="float32")
@@ -702,9 +727,9 @@ class Cnn2D(Builder):
             np.random.shuffle(neg)
 
             xb[:hb] = self.X_train[pos[:hb]]
-            xb[hb:] = self.X_train[neg[hb:self.batch_size]]
+            xb[hb:] = self.X_train[neg[hb : self.batch_size]]
             yb[:hb] = self.y_train[pos[:hb]]
-            yb[hb:] = self.y_train[neg[hb:self.batch_size]]
+            yb[hb:] = self.y_train[neg[hb : self.batch_size]]
 
             for i in range(self.batch_size):
                 size = np.random.randint(xb.shape[1])
@@ -715,10 +740,11 @@ class Cnn2D(Builder):
 
 """ Pre-fabricated Networks (hyperparameters tuned for specific projects) """
 
+
 class MemoryClassifier(MultiLayerPerceptron):
     def __init__(self, X_train, y_train, X_test, y_test, blueprint="mlp"):
         super().__init__(X_train, y_train, X_test, y_test, blueprint=blueprint)
-        self.input_shape = X_train.shape[1] # 9
+        self.input_shape = X_train.shape[1]  # 9
         self.output_shape = 4
         self.layers = [18, 32, 64, 32, 18, 9]
         self.input_name = "hst_jobs"
@@ -735,7 +761,7 @@ class MemoryClassifier(MultiLayerPerceptron):
 class MemoryRegressor(MultiLayerPerceptron):
     def __init__(self, X_train, y_train, X_test, y_test, blueprint="mlp"):
         super().__init__(X_train, y_train, X_test, y_test, blueprint=blueprint)
-        self.input_shape = X_train.shape[1] # 9
+        self.input_shape = X_train.shape[1]  # 9
         self.output_shape = 1
         self.layers = [18, 32, 64, 32, 18, 9]
         self.input_name = "hst_jobs"
@@ -752,7 +778,7 @@ class MemoryRegressor(MultiLayerPerceptron):
 class WallclockRegressor(MultiLayerPerceptron):
     def __init__(self, X_train, y_train, X_test, y_test, blueprint="mlp"):
         super().__init__(X_train, y_train, X_test, y_test, blueprint=blueprint)
-        self.input_shape = X_train.shape[1] # 9
+        self.input_shape = X_train.shape[1]  # 9
         self.output_shape = 1
         self.layers = [18, 32, 64, 128, 256, 128, 64, 32, 18, 9]
         self.input_name = "hst_jobs"
@@ -772,7 +798,7 @@ class MosaicMlp(MultiLayerPerceptron):
         self.ensemble = True
         self.input_shape = X_train[0].shape[1]
         self.output_shape = 1
-        self.layers = [18, 32, 64, 32, 18] 
+        self.layers = [18, 32, 64, 32, 18]
         self.input_name = "svm_regression_inputs"
         self.output_name = "svm_regression_output"
         self.name = "svm_mlp"
@@ -783,13 +809,14 @@ class MosaicMlp(MultiLayerPerceptron):
         self.loss = "binary_crossentropy"
         self.metrics = ["accuracy"]
 
+
 class MosaicCnn(ImageCNN3D):
     def __init__(self, X_train, y_train, X_test, y_test, blueprint="ensemble"):
         super().__init__(X_train, y_train, X_test, y_test, blueprint=blueprint)
         self.ensemble = True
         self.input_shape = X_train[1].shape[1:]
         self.output_shape = 1
-        self.layers = [18, 32, 64, 32, 18] 
+        self.layers = [18, 32, 64, 32, 18]
         self.input_name = "svm_image_inputs"
         self.output_name = "svm_image_output"
         self.name = "svm_cnn"
@@ -800,20 +827,21 @@ class MosaicCnn(ImageCNN3D):
         self.loss = "binary_crossentropy"
         self.metrics = ["accuracy"]
 
+
 class SvmClassifier(Ensemble):
     def __init__(self, X_train, y_train, X_test, y_test, blueprint="ensemble"):
         super().__init__(X_train, y_train, X_test, y_test, blueprint=blueprint)
         self.ensemble = True
         self.mlp = MosaicMlp(X_train, y_train, X_test, y_test)
         self.cnn = MosaicCnn(X_train, y_train, X_test, y_test)
-        self.batch_size=32
+        self.batch_size = 32
         self.epochs = 1000
-        self.lr=1e-4
-        self.decay=[100000, 0.96]
-        self.early_stopping=False
-        self.verbose=2
+        self.lr = 1e-4
+        self.decay = [100000, 0.96]
+        self.early_stopping = False
+        self.verbose = 2
         self.output_shape = 1
-        self.layers = [18, 32, 64, 32, 18] 
+        self.layers = [18, 32, 64, 32, 18]
         self.input_name = "svm_mixed_inputs"
         self.output_name = "svm_output"
         self.name = "ensemble_svm"

@@ -10,7 +10,7 @@ from spacekit.dashboard.cal.app import app
 
 global clf
 
-#TODO: search for model paths - use default if none found
+# TODO: search for model paths - use default if none found
 
 model_path = f"data/{selection}/models"
 clf = nodegraph.get_model("mem_clf")
@@ -26,7 +26,9 @@ layout = html.Div(
             children=[
                 html.P("|", style={"display": "inline-block"}),
                 dcc.Link(
-                    "Home", href="/layouts/home", style={"padding": 5, "display": "inline-block"}
+                    "Home",
+                    href="/layouts/home",
+                    style={"padding": 5, "display": "inline-block"},
                 ),
                 html.P("|", style={"display": "inline-block"}),
                 dcc.Link(

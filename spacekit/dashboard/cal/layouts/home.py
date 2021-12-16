@@ -23,8 +23,8 @@ layout = html.Div(
                 html.Br(),
                 dcc.Link("Prediction", href="/page-3"),
             ]
-            )
-        ],
+        ),
+    ],
     style={
         "backgroundColor": "#1b1f34",
         "color": "white",

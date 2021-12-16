@@ -401,7 +401,6 @@ class HstCalPlots(DataPlots):
         self.instr_dict = None
         self.instruments = list(self.df["instr_key"].unique())
         self.feature_list = self.make_feature_list()
-        
 
     def group_keys(self):
         if self.group in ["instr", "instrument"]:
@@ -422,7 +421,7 @@ class HstCalPlots(DataPlots):
         # TODO: filters
         group_keys = dict(enumerate(keys))
         return group_keys
-    
+
     def df_by_instr(self):
         self.acs = self.df.groupby("instr").get_group(0)
         self.cos = self.df.groupby("instr").get_group(1)
@@ -475,7 +474,6 @@ class HstCalPlots(DataPlots):
             fig = go.Figure(data=data, layout=layout)
             continuous_figs.append(fig)
         return continuous_figs
-
 
     def make_scatter_figs(self, xaxis_name, yaxis_name):
         if self.instr_dict is None:

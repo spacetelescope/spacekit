@@ -19,6 +19,7 @@ def get_model(model_name, model_path=None):
     model = tf.keras.models.load_model(model_path)
     return model
 
+
 def read_inputs(
     n_files, total_mb, drizcorr, pctecorr, crsplit, subarray, detector, dtype, instr
 ):
@@ -51,7 +52,7 @@ def regressor(model, data):
 
 
 def make_preds(x_features, NN=None):
-    global clf # need this in other functions
+    global clf  # need this in other functions
     if NN is None:
         clf = get_model("mem_clf")
         mem_reg = get_model("mem_reg")
@@ -61,9 +62,9 @@ def make_preds(x_features, NN=None):
         mem_reg = NN["mem_reg"]
         wall_reg = NN["wall_reg"]
     with importlib.resources.path(
-            "spacekit.skopes.trained_networks.calmodels", "pt_transform"
-        ) as t:
-            tx_file = t
+        "spacekit.skopes.trained_networks.calmodels", "pt_transform"
+    ) as t:
+        tx_file = t
     cal = CalX(x_features, tx_file)
     # Predict Memory Allocation (bin and value preds)
     membin, pred_proba = classifier(clf, cal.X)
