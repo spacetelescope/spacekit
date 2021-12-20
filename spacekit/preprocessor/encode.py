@@ -6,14 +6,13 @@ class Encoder:
         self.df = df
 
 class SvmEncoder(Encoder):
-    def __init__(self, df, join_data=True):
-        super().__init__(df)
-        self.join_data = join_data
+    def __init__(self, data):
+        self.data = data
+        self.df = data.copy()
         self.sep = ";"
+        self.encodings = {"wcstype": "wcs", "cat": "cat", "detector": "det"}
         self.category_keys = self.set_category_keys()
         self.df_cat = self.encode_categories()
-        self.df = self.join_categories()
-        self.encodings = {"wcstype": "wcs", "cat": "cat", "detector": "det"}
     
     def set_category_keys(self):
         self.category_keys = {
@@ -41,11 +40,7 @@ class SvmEncoder(Encoder):
         self.df_cat = pd.DataFrame.from_dict(CAT, orient="index", columns={"cat"})
         print("\nCategory encoding complete.")
         print(self.df_cat["cat"].value_counts())
-        return self.df_cat
-    
-    def join_categories(self):
-        if self.join_data is True:
-            self.df = self.df.join(self.df_cat, how="left")
+        self.df = self.df.join(self.df_cat, how="left")
         return self.df
 
     def encode_features(self):

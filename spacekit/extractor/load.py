@@ -4,141 +4,147 @@ import numpy as np
 from zipfile import ZipFile
 import numpy as np
 from keras.preprocessing import image
-from spacekit.extractor.scrape import JsonScraper
 
-class FileOps:
-    def __init__(self):
-        pass
+from tqdm import tqdm
+import time
 
-class ArrayIO(FileOps):
-    def __init__(self):
-        super().__init__(self)
+from spacekit.analyzer.track import stopwatch
+
+
+class ArrayOps:
+    def __init__(self, data_path=".", idx="ipst", target="mem_bin"):
+        self.data_path = data_path
+        self.idx = idx
+        self.target = target
+        self.X_train = None
+        self.X_test = None
+        self.y_train = None
+        self.y_test = None
+        self.test_idx = None
 
     """Pandas/Numpy File ops"""
-    def load_train_test(data_path=".", idx=True, target="mem_bin"):
-        X_train, y_train = np.load(f"{data_path}/X_train.npy"), np.load(
-            f"{data_path}/y_train.npy"
+    def load_train_test(self):
+        self.X_train, self.y_train = np.load(f"{self.data_path}/X_train.npy"), np.load(
+            f"{self.data_path}/y_train.npy"
         )
-        X_test, y_test = np.load(f"{data_path}/X_test.npy"), np.load(
-            f"{data_path}/y_test.npy"
+        self.X_test, self.y_test = np.load(f"{self.data_path}/X_test.npy"), np.load(
+            f"{self.data_path}/y_test.npy"
         )
-        if idx is True:
-            test_idx = np.load(f"{data_path}/test_idx.npy", allow_pickle=True)
-            if target:
-                test_idx = pd.DataFrame(
-                    np.argmax(y_test, axis=-1), index=idx, columns=[target]
+        if self.idx:
+            self.test_idx = np.load(f"{self.data_path}/test_idx.npy", allow_pickle=True)
+            if self.target:
+                self.test_idx = pd.DataFrame(
+                    np.argmax(self.y_test, axis=-1), index=self.idx, columns=[self.target]
                 )
-            return X_train, y_train, X_test, y_test, test_idx
+            return self.X_train, self.y_train, self.X_test, self.y_test, self.test_idx
         else:
-            return X_train, y_train, X_test, y_test
+            return self.X_train, self.y_train, self.X_test, self.y_test
 
 
-    def save_train_test(X_train, X_test, y_train, y_test, test_idx, dpath):
-        np.save(f"{dpath}/X_train.npy", np.asarray(X_train))
-        np.save(f"{dpath}/X_test.npy", np.asarray(X_test))
-        np.save(f"{dpath}/y_train.npy", y_train)
-        np.save(f"{dpath}/y_test.npy", y_test)
-        np.save(f"{dpath}/test_idx.npy", np.asarray(test_idx.index))
+    def save_train_test(self):
+        np.save(f"{self.data_path}/X_train.npy", np.asarray(self.X_train))
+        np.save(f"{self.data_path}/X_test.npy", np.asarray(self.X_test))
+        np.save(f"{self.data_path}/y_train.npy", self. y_train)
+        np.save(f"{self.data_path}/y_test.npy", self.y_test)
+        np.save(f"{self.data_path}/test_idx.npy", np.asarray(self.test_idx.index))
         print("Train-test data saved as numpy arrays:\n")
-        print(os.listdir(dpath))
-
-class Hdf5IO(FileOps):
-    def __init__(self, h5_file=None, search_path="", patterns=["*_total*_svm_*.json"],  crpt=0, save_file_as="svm_data", outpath=None):
-        super().__init__(self)
-        self.h5_file = h5_file
-        self.data = None
-        self.patterns = patterns
-        self.search_path = search_path
-        self.crpt = crpt
-        self.save_file_as = save_file_as
-        self.outpath = outpath
-
-    def load_h5_file(self):
-        if not self.h5_file.endswith(".h5"):
-            self.h5_file += ".h5"
-        if os.path.exists(self.h5_file):
-            with pd.HDFStore(self.h5_file) as store:
-                self.data = store["mydata"]
-                print(f"Dataframe created: {self.data.shape}")
-        else:
-            errmsg = "HDF5 file {} not found!".format(self.h5_file)
-            print(errmsg)
-            raise Exception(errmsg)
-        return self.data
-
-    def make_h5_file(self):
-        print("\n*** Starting JSON Harvest ***")
-        filename = self.save_file_as.split(".")[0]
-        if self.outpath is None:
-            self.outpath = os.getcwd()
-        self.h5_file = os.path.join(self.outpath, filename)
-        jsc = JsonScraper(search_path=self.search_path, search_patterns=self.patterns, h5_filename=self.h5_file, crpt=self.crpt)
-        self.h5_file = jsc.h5_file
-        self.data = jsc.data
-        return self
+        print(os.listdir(self.data_path))
 
 
+#TODO
 """Image Ops"""
-class ImageIO(FileOps):
-    def __init__(self):
-        super().__init__(self)
 
-    def unzip_images(zip_file):
-        basedir = os.path.dirname(zip_file)
-        key = os.path.basename(zip_file).split(".")[0]
-        image_folder = os.path.join(basedir, key + "/")
-        os.makedirs(image_folder, exist_ok=True)
-        with ZipFile(zip_file, "r") as zip_ref:
-            zip_ref.extractall(basedir)
-        print(len(os.listdir(image_folder)))
-        return image_folder
+def unzip_images(zip_file):
+    basedir = os.path.dirname(zip_file)
+    key = os.path.basename(zip_file).split(".")[0]
+    image_folder = os.path.join(basedir, key + "/")
+    os.makedirs(image_folder, exist_ok=True)
+    with ZipFile(zip_file, "r") as zip_ref:
+        zip_ref.extractall(basedir)
+    print(len(os.listdir(image_folder)))
+    return image_folder
 
+def read_channels(channels, w, h, d, exp=None, color_mode="rgb"):
+    """Loads PNG image data and converts to 3D arrays.
+    **args
+    channels: tuple of image frames (original, source, gaia)
+    w: width
+    h: height
+    d: depth
+    **kwargs
+    exp: "expand" dimensions: (exp, w, h, 3). Set to 3 for predictions, None for training (default)
 
-    def read_channels(channels, w, h, d, exp=None, color_mode="rgb"):
-        """Loads PNG image data and converts to 3D arrays.
-        **args
-        channels: tuple of image frames (original, source, gaia)
-        w: width
-        h: height
-        d: depth
-        **kwargs
-        exp: "expand" dimensions: (exp, w, h, 3). Set to 3 for predictions, None for training (default)
+    """
+    t = (w, h)
+    image_frames = [
+        image.load_img(c, color_mode=color_mode, target_size=t) for c in channels
+    ]
+    img = np.array([image.img_to_array(i) for i in image_frames])
+    if exp is None:
+        img = img.reshape(w, h, d)
+    else:
+        img = img.reshape(exp, w, h, 3)
+    return img
 
-        """
-        t = (w, h)
-        image_frames = [
-            image.load_img(c, color_mode=color_mode, target_size=t) for c in channels
-        ]
-        img = np.array([image.img_to_array(i) for i in image_frames])
-        if exp is None:
-            img = img.reshape(w, h, d)
-        else:
-            img = img.reshape(exp, w, h, 3)
-        return img
+class SVMImages:
+    def __init__(self, img_path, w=128, h=128, d=9):
+        self.img_path = img_path
+        self.w = w
+        self.h = h
+        self.d = d
 
+    def get_labeled_image_paths(self, i):
+        neg = (
+            f"{self.img_path}/0/{i}/{i}.png",
+            f"{self.img_path}/0/{i}/{i}_source.png",
+            f"{self.img_path}/0/{i}/{i}_gaia.png",
+        )
+        pos = (
+            f"{self.img_path}/1/{i}/{i}.png",
+            f"{self.img_path}/1/{i}/{i}_source.png",
+            f"{self.img_path}/1/{i}/{i}_gaia.png",
+        )
+        return neg, pos
 
-# Images saved as numpy arrays:
-#     num_train_samples = 50000
+    def detector_training_images(self, X_data, exp=None):
+        idx = list(X_data.index)
+        files, labels = [], []
+        for i in idx:
+            neg, pos = self.get_labeled_image_paths(i)
+            if os.path.exists(neg[0]):
+                files.append(neg)
+                labels.append(0)
+            elif os.path.exists(pos[0]):
+                files.append(pos)
+                labels.append(1)
+            else:
+                # print(f"missing: {i}")
+                idx.remove(i)
+        img = []
+        for ch1, ch2, ch3 in tqdm(files):
+            img.append(read_channels([ch1, ch2, ch3], self.w, self.h, self.d, exp=exp))
+        X, y = np.array(img, np.float32), np.array(labels)
+        return (idx, X, y)
 
-#     x_train = np.empty((num_train_samples, 3, 32, 32), dtype='uint8')
-#     y_train = np.empty((num_train_samples,), dtype='uint8')
-
-#     for i in range(1, 6):
-#         fpath = os.path.join(path, 'data_batch_' + str(i))
-#         (x_train[(i - 1) * 10000:i * 10000, :, :, :],
-#         y_train[(i - 1) * 10000:i * 10000]) = load_batch(fpath)
-
-#     fpath = os.path.join(path, 'test_batch')
-#     x_test, y_test = load_batch(fpath)
-
-#     y_train = np.reshape(y_train, (len(y_train), 1))
-#     y_test = np.reshape(y_test, (len(y_test), 1))
-
-#     if backend.image_data_format() == 'channels_last':
-#         x_train = x_train.transpose(0, 2, 3, 1)
-#         x_test = x_test.transpose(0, 2, 3, 1)
-
-#     x_test = x_test.astype(x_train.dtype)
-#     y_test = y_test.astype(y_train.dtype)
-
-#     return (x_train, y_train), (x_test, y_test)
+    def detector_prediction_images(self, X_data, exp=3):
+        image_files = []
+        idx = list(X_data.index)
+        for i in idx:
+            img_frames = (
+                f"{self.img_path}/{i}/{i}.png",
+                f"{self.img_path}/{i}/{i}_source.png",
+                f"{self.img_path}/{i}/{i}_gaia.png",
+            )
+            if os.path.exists(img_frames[0]):
+                image_files.append(img_frames)
+            else:
+                idx.remove(i)
+        start = time.time()
+        stopwatch("LOADING IMAGES", t0=start)
+        img = []
+        for ch1, ch2, ch3 in tqdm(image_files):
+            img.append(read_channels([ch1, ch2, ch3], self.w, self.h, self.d, exp=exp))
+        images = np.array(img, np.float32)
+        end = time.time()
+        stopwatch("LOADING IMAGES", t0=start, t1=end)
+        return idx, images

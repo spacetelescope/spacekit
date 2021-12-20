@@ -12,7 +12,7 @@ if __name__ == "__main__":
     # prep
     args = parser.parse_args()
     input_path = args.input_path
-    df = run_preprocessing(input_path)
+    df = run_preprocessing(input_path, h5=None, fname="svm_data", output_path=None, json_pattern="*_total*_svm_*.json", crpt=0)
     # TODO:
     # if train
     # do train
@@ -20,3 +20,4 @@ if __name__ == "__main__":
     # do predict
     # if corrupt 
     # do corrupt
+   

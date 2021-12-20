@@ -12,7 +12,7 @@ import pandas as pd
 import numpy as np
 from stsci.tools import logutil
 from zipfile import ZipFile
-from astropy.io import fits
+# from astropy.io import fits
 from astroquery.mast import Observations
 from progressbar import ProgressBar
 
@@ -157,9 +157,8 @@ class S3Scraper(Scraper):
                 self.fpaths = self.extract_archive()
         return self.fpaths
 
-
 class MastScraper:
-    def __init__(self, df, trg_col="targname", ra_col="ra_targ", dec_col="dec_col"):
+    def __init__(self, df, trg_col="targname", ra_col="ra_targ", dec_col="dec_targ"):
         self.df = df
         self.trg_col = trg_col
         self.ra_col = ra_col
@@ -230,22 +229,45 @@ class ImageScraper(Scraper):
         super().__init__(self)
 
 
-# TODO
 class JsonScraper:
-    def __init__(self, search_path=os.getcwd(), search_patterns=["*_total_*_svm_*.json"], h5_filename="svm_qa_dataframe", crpt=0, save_csv=False):
+    """Searches local files using glob pattern(s) to scrape JSON file data. Optionally can store data in h5 file (default) and/or CSV file; The JSON harvester method returns a Pandas dataframe. This class can also be used to load an h5 file.
+    Parameters
+    ----------
+    search_path : str, optional
+        The full path of the directory that will be searched for json files to process. If not explicitly
+        specified, the current working directory will be used.
+    search_patterns : list, optional
+        list of glob patterns to use for search
+    log_level : int, optional
+        The desired level of verboseness in the log statements displayed on the screen and written to the
+        .log file. Default value is 'INFO'.
+    file_basename : str, optional
+        Name of the output file basename (filename without the extension) for the Hierarchical Data Format
+        version 5 (HDF5) .h5 file that the Pandas DataFrame will be written to. If not explicitly specified,
+        the default filename basename that will be used is "svm_qa_dataframe". The default location that the
+        output file will be written to is the current working directory
+    crpt: bool, optional
+        Uses extended dataframe index name to differentiate from normal svm data
+    data : Pandas DataFrame
+            Pandas DataFrame
+    """
+    def __init__(self, search_path=os.getcwd(), search_patterns=["*_total_*_svm_*.json"], file_basename="svm_data", crpt=0, save_csv=False, store_h5=True, output_path=None):
         self.search_path = search_path
         self.search_patterns = search_patterns
-        self.h5_filename = h5_filename
+        self.file_basename = file_basename
         self.crpt = crpt
         self.save_csv = save_csv
+        self.store_h5 = store_h5
+        self.output_path = output_path
         self.__name__ = "diagnostic_json_harvester"
         self.msg_datefmt = "%Y%j%H%M%S"
         self.splunk_msg_fmt = "%(asctime)s %(levelname)s src=%(name)s- %(message)s"
         self.log_level = logutil.logging.INFO
-        self.log = self.start_logging()
-        self.json_dict = self.get_json_files()
-        self.data = self.json_harvester()
-        self.h5_file = self.h5store()
+        self.keyword_shortlist = ["TARGNAME", "DEC_TARG", "RA_TARG", "NUMEXP", "imgname", "Number of GAIA sources.Number of GAIA sources", "number_of_sources.point", "number_of_sources.segment"]
+        self.log = None
+        self.json_dict = None
+        self.data = None # self.json_harvester()
+        self.h5_file = None # self.h5store()
 
     def start_logging(self):
         self.log = logutil.create_logger(
@@ -350,22 +372,12 @@ class JsonScraper:
 
     def get_json_files(self):
         """use glob to create a list of json files to harvest
-
         This function looks for all the json files containing qa test results generated
         by `runastrodriz` and `runsinglehap`.  The search starts in the directory
         specified in the `search_path` parameter, but will look in immediate
         sub-directories as well if no json files are located in the directory
         specified by `search_path`.
-        Parameters
-        ----------
-        search_path : str, optional
-            directory path to search for .json files. Default value is the current working directory.
-            This serves as the starting directory for finding the .json files, with the
-            search expanding to immediate sub-directories if no .json files are found
-            in this directory.
-        log_level : int, optional
-            The desired level of verboseness in the log statements displayed on the screen and written to the
-            .log file. Default value is 'INFO'.
+        
         Returns
         -------
         out_json_dict : ordered dictionary
@@ -413,55 +425,60 @@ class JsonScraper:
     def h5store(self, **kwargs):
         """Write a pandas Dataframe and metadata to a HDF5 file.
         ----------
-        filename : str
-            Name of the output HDF5 file
-        df : Pandas DataFrame
-            Pandas DataFrame to write to output file
         Returns
         -------
-        Nothing.
+        h5 filepath
         """
-        if not self.h5_filename.endswith(".h5"):
-            self.h5_file = self.h5_filename + ".h5"
-        else:
-            self.h5_file = self.h5_filename
+        if self.output_path is None:
+            self.output_path = os.getcwd()
+        fname = self.file_basename.split('.')[0] + ".h5"
+        self.h5_file = os.path.join(self.output_path, fname)
         if os.path.exists(self.h5_file):
             os.remove(self.h5_file)
-        store = pd.HDFStore(self.h5_file)
-        store.put("mydata", self.data)
-        store.get_storer("mydata").attrs.metadata = kwargs
-        store.close()
-        self.log.info(
-            "Wrote dataframe and metadata to HDF5 file {}".format(self.h5_file)
-        )
+        if self.data is not None:
+            store = pd.HDFStore(self.h5_file)
+            store.put("mydata", self.data)
+            store.get_storer("mydata").attrs.metadata = kwargs
+            store.close()
+            self.log.info(
+                "Wrote dataframe and metadata to HDF5 file {}".format(self.h5_file)
+            ) 
+        else:
+            print("Data unavailable - run `json_scraper` to collect json data.")
         return self.h5_file
+
+    def load_h5_file(self):
+        if self.h5_file is None:
+            if self.output_path is None:
+                self.output_path = os.getcwd()
+            self.h5_file = os.path.join(self.output_path, self.file_basename + ".h5")
+        elif not self.h5_file.endswith(".h5"):
+            self.h5_file += ".h5"
+        if os.path.exists(self.h5_file):
+            with pd.HDFStore(self.h5_file) as store:
+                self.data = store["mydata"]
+                print(f"Dataframe created: {self.data.shape}")
+        else:
+            errmsg = "HDF5 file {} not found!".format(self.h5_file)
+            print(errmsg)
+            raise Exception(errmsg)
+        return self.data
 
     def json_harvester(self):
         """Main calling function
-        Parameters
-        ----------
-        json_search_path : str, optional
-            The full path of the directory that will be searched for json files to process. If not explicitly
-            specified, the current working directory will be used.
-        log_level : int, optional
-            The desired level of verboseness in the log statements displayed on the screen and written to the
-            .log file. Default value is 'INFO'.
-        output_filename_basename : str, optional
-            Name of the output file basename (filename without the extension) for the Hierarchical Data Format
-            version 5 (HDF5) .h5 file that the Pandas DataFrame will be written to. If not explicitly specified,
-            the default filename basename that will be used is "svm_qa_dataframe". The default location that the
-            output file will be written to is the current working directory
         """
+        self.log = self.start_logging()
         self.log.setLevel(self.log_level)
         # Get sorted list of json files
         self.data = None
         # extract all information from all json files related to a specific Pandas DataFrame index value into a
         # single line in the master dataframe
+        self.json_dict = self.get_json_files()
         num_json = len(self.json_dict)
         for n, idx in enumerate(self.json_dict.keys()):
             if ((n / num_json) % 0.1) == 0:
                 self.log.info(f"Harvested {num_json} of the JSON files")
-            ingest_dict = self.make_dataframe_line(self.json_dict[idx], log_level=self.log_level)
+            ingest_dict = self.make_dataframe_line(self.json_dict[idx])
             if ingest_dict:
                 if self.data is not None:
                     self.log.debug("APPENDED DATAFRAME")
@@ -476,13 +493,12 @@ class JsonScraper:
         return self.data
     
     def write_to_csv(self):
-        # optionally also write dataframe out to .csv file for human inspection
-        output_csv_filename = self.h5_filename + ".csv"
+        """optionally also write dataframe out to .csv file for human inspection"""
+        output_csv_filename = self.h5_filename.replace(".h5", ".csv")
         if os.path.exists(output_csv_filename):
             os.remove(output_csv_filename)
         self.data.to_csv(output_csv_filename)
         self.log.info("Wrote dataframe to csv file {}".format(output_csv_filename))
-
 
     def make_dataframe_line(self, json_filename_list):
         """extracts information from the json files specified by the input list *json_filename_list*.
@@ -490,9 +506,6 @@ class JsonScraper:
         ----------
         json_filename_list : list
             list of json files to process
-        log_level : int, optional
-            The desired level of verboseness in the log statements displayed on the screen and written to the
-            .log file. Default value is 'INFO'.
         Returns
         -------
         ingest_dict : collections.OrderedDict
@@ -504,8 +517,8 @@ class JsonScraper:
         gen_info_ingested = False
         ingest_dict = collections.OrderedDict()
         ingest_dict["data"] = collections.OrderedDict()
-        ingest_dict["descriptions"] = collections.OrderedDict()
-        ingest_dict["units"] = collections.OrderedDict()
+        # ingest_dict["descriptions"] = collections.OrderedDict()
+        # ingest_dict["units"] = collections.OrderedDict()
         for json_filename in json_filename_list:
             # This is to differentiate point catalog compare_sourcelists columns from segment catalog
             # compare_sourcelists columns in the dataframe
@@ -517,10 +530,9 @@ class JsonScraper:
                 title_suffix = ""
             json_data = self.read_json_file(json_filename)
             # add information from "header" section to ingest_dict just once
+            keyword_shortlist = ["TARGNAME", "DEC_TARG", "RA_TARG", "NUMEXP", "imgname"]
             if not header_ingested:
-                # filter out ALL header keywords not included in 'header_keywords_to_keep'
-                keyword_shortlist = ["TARGNAME", "DEC_TARG", "RA_TARG", "NUMEXP", "imgname"]
-
+                # filter out ALL header keywords not included in 'keyword_shortlist'
                 for header_item in json_data["header"].keys():
                     if header_item in keyword_shortlist:
                         # if header_item in header_keywords_to_keep:
@@ -540,23 +552,23 @@ class JsonScraper:
 
             # recursively flatten nested "data" section dictionaries and build ingest_dict
             flattened_data = self.flatten_dict(json_data["data"])
-            # flattened_descriptions = flatten_dict(json_data["descriptions"])
-            # flattened_units = flatten_dict(json_data["units"])
+            # flattened_descriptions = self.flatten_dict(json_data["descriptions"])
+            # flattened_units = self.flatten_dict(json_data["units"])
             for fd_key in flattened_data.keys():
                 json_data_item = flattened_data[fd_key]
                 ingest_key = fd_key.replace(" ", "_")
-                if str(type(json_data_item)) == "<class 'astropy.table.table.Table'>":
-                    for coltitle in json_data_item.colnames:
-                        ingest_value = json_data_item[coltitle].tolist()
-                        id_key = title_suffix + ingest_key + "." + coltitle
-                        ingest_dict["data"][id_key] = [ingest_value]
-
-                else:
-                    ingest_value = json_data_item
-                    id_key = title_suffix + ingest_key
-                    if str(type(ingest_value)) == "<class 'list'>":
-                        ingest_dict["data"][id_key] = [ingest_value]
+                key_suffix = ingest_key.split(".")[-1]
+                if key_suffix not in ["data", "unit", "format", "dtype"]:
+                    if str(type(json_data_item)) == "<class 'astropy.table.table.Table'>":
+                        for coltitle in json_data_item.colnames:
+                            ingest_value = json_data_item[coltitle].tolist()
+                            id_key = title_suffix + ingest_key + "." + coltitle
+                            ingest_dict["data"][id_key] = [ingest_value]
                     else:
-                        ingest_dict["data"][id_key] = ingest_value
-
+                        ingest_value = json_data_item
+                        id_key = title_suffix + ingest_key
+                        if str(type(ingest_value)) == "<class 'list'>":
+                            ingest_dict["data"][id_key] = [ingest_value]
+                        else:
+                            ingest_dict["data"][id_key] = ingest_value
         return ingest_dict

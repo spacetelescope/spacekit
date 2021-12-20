@@ -14,10 +14,11 @@ from tqdm import tqdm
 from spacekit.analyzer.track import stopwatch
 
 class DrawMosaics:
-    def __init__(self, input_path, output_path=None, filename=None, visit=None, pattern="", gen=3, size=(24,24), crpt=0):
+    def __init__(self, input_path, output_path=None, fname=None, visit=None, pattern="", gen=3, size=(24,24), crpt=0):
         self.input_path = input_path
-        self.output_path = self.checkout_output(output_path)
-        self.filename = filename
+        self.output_path = output_path
+        self.check_output()
+        self.fname = fname
         self.visit = visit
         self.pattern = pattern
         self.gen = gen
@@ -25,15 +26,15 @@ class DrawMosaics:
         self.crpt = crpt
         self.datasets = self.get_datasets()
 
-    def check_output(self, output_path):
-        if output_path is None:
+    def check_output(self):
+        if self.output_path is None:
             self.output_path = os.path.join(os.getcwd(), "img")
             # TODO if permission error, write to /tmp 
-        os.makedirs(self.output_path)
+        os.makedirs(self.output_path, exist_ok=True)
         return self.output_path
 
     def get_datasets(self):
-        if self.filename:
+        if self.fname:
             return self.load_from_file()
         elif self.visit:
             return [self.visit]
@@ -41,7 +42,9 @@ class DrawMosaics:
             return self.local_search()
 
     def load_from_file(self):
-        df = pd.read_csv(self.filename, index_col="index")
+        if not self.fname.endswith("csv"):
+            self.fname += ".csv"
+        df = pd.read_csv(self.fname, index_col="index")
         idx = list(df.index)
         self.datasets = []
         skip = 0
@@ -135,7 +138,7 @@ class DrawMosaics:
             name = f"{name}_{sfx}"
         img_out = f"{self.output_path}/{name}"
         os.makedirs(img_out, exist_ok=True)
-        imgpath = os.path.join(self.output_path, f"{name}{catstr}")
+        imgpath = os.path.join(img_out, f"{name}{catstr}")
         return imgpath
 
     def generate_total_images(self):
@@ -179,7 +182,7 @@ class DrawMosaics:
         corrs: determines png file naming convention
 
         PNG naming convention is based on fits file unless corrs=1:
-        ./input_path/dataset/filename.fits >> ./img_path/dataset/filename.png
+        ./input_path/dataset/fname.fits >> ./img_path/dataset/fname.png
 
         catalog overlay pngs have an additional suffix:
         P=1: _point.png
@@ -337,7 +340,7 @@ if __name__ == "__main__":
         "--fname",
         type=str,
         default=None,
-        help="csv (dataframe) filename for generating specific list of datasets",
+        help="csv (dataframe) fname for generating specific list of datasets",
     )
     parser.add_argument(
         "-v",
