@@ -4,24 +4,6 @@ from spacekit.extractor.scrape import JsonScraper
 from spacekit.preprocessor.scrub import ScrubSvm
 from spacekit.generator.draw import DrawMosaics
 
-def prep_mlp_data(
-    input_path, h5=None, fname="svm_data", output_path=None, json_pattern="*_total*_svm_*.json", crpt=0
-    ):
-    fname = os.path.basename(fname)
-    if output_path is None:
-        output_path = os.getcwd()
-    os.makedirs(output_path, exist_ok=True)
-    if h5 is None:
-        patterns = json_pattern.split(",")
-        jsc = JsonScraper(search_path=input_path, search_patterns=patterns, file_basename=fname, crpt=crpt, output_path=output_path)
-        jsc.json_harvester()
-        jsc.h5store()
-    else:
-        jsc = JsonScraper(h5_file=h5).load_h5_file()
-    df = ScrubSvm(jsc.data, input_path, output_path, fname).preprocess_data()
-    return df
-
-
 def run_preprocessing(input_path, h5=None, fname="svm_data", output_path=None, json_pattern="*_total*_svm_*.json", crpt=0):
     """[summary]
     Scrapes SVM data from raw files, preprocesses dataframe for MLP classifier and generates png images for image classifier.
@@ -38,11 +20,22 @@ def run_preprocessing(input_path, h5=None, fname="svm_data", output_path=None, j
     """
     if output_path is None:
         output_path = os.getcwd()
-    df = prep_mlp_data(input_path, h5=h5, fname=fname, output_path=output_path, json_pattern=json_pattern, crpt=crpt)
+    os.makedirs(output_path, exist_ok=True)
+    fname = os.path.basename(fname)
+    if h5 is None:
+        patterns = json_pattern.split(",")
+        jsc = JsonScraper(search_path=input_path, search_patterns=patterns, file_basename=fname, crpt=crpt, output_path=output_path)
+        jsc.json_harvester()
+        jsc.h5store()
+    else:
+        jsc = JsonScraper(h5_file=h5).load_h5_file()
+    scrub = ScrubSvm(jsc.data, input_path, output_path, fname)
+    scrub.preprocess_data()
+    fname = scrub.data_path
     img_outputs = os.path.join(output_path, "img")
     draw = DrawMosaics(input_path, output_path=img_outputs, fname=fname, gen=3, size=(24,24), crpt=crpt)
     draw.generate_total_images()
-    return df
+    return fname
 
 
 if __name__ == "__main__":

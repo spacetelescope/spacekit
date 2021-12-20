@@ -6,7 +6,7 @@ import os
 import sys
 import datetime as dt
 import importlib.resources
-from spacekit.extractor.load_images import SVMImages
+from spacekit.extractor.load import SVMImages
 
 DIM = 3
 CH = 3
@@ -140,7 +140,7 @@ def save_preds(X_data, y_pred, y_proba, output_path):
     return preds
 
 
-def main(model_path, data_file, img_path, output_path):
+def predict_alignment(model_path, data_file, img_path, output_path):
     ens_clf = get_model(model_path)
     X_data, X_img = load_mixed_inputs(data_file, img_path)
     X = make_ensemble_data(X_data, X_img)
@@ -157,11 +157,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "data_file",
         type=str,
-        default="./svm_unlabeled.csv",
+        default="svm_unlabeled.csv",
         help="path to preprocessed mosaic data csv file",
     )
     parser.add_argument(
-        "img_path", type=str, default="./img", help="path to PNG mosaic images"
+        "img_path", type=str, default="img", help="path to PNG mosaic images"
     )
     parser.add_argument(
         "-m",
@@ -182,4 +182,4 @@ if __name__ == "__main__":
     img_path = args.img_path
     model_path = args.model_path
     output_path = args.output_path
-    main(model_path, data_file, img_path, output_path)
+    predict_alignment(model_path, data_file, img_path, output_path)

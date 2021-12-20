@@ -125,13 +125,13 @@ class ScrubFits:
 
 
 class ScrubSvm:
-    def __init__(self, df, input_path, output_path=None, output_file="svm_data", save_raw=True, save_csv=True, make_pos_list=True, crpt=False, make_subsamples=False):
+    def __init__(self, df, input_path, output_path=None, output_file="svm_data", save_raw=True, make_pos_list=True, crpt=False, make_subsamples=False):
         self.df = df
         self.input_path = input_path
         self.output_path = output_path
         self.output_file = output_file
         self.save_raw = save_raw
-        self.save_csv = save_csv
+        self.data_path = None
         self.make_pos_list = make_pos_list
         self.crpt = crpt
         self.make_subsamples = make_subsamples
@@ -150,19 +150,18 @@ class ScrubSvm:
             self.df = self.add_crpt_labels()
         if self.make_subsamples:
             self.find_subsamples()
-        if self.save_csv is True:
-            self.save_csv_file()
-        return self.df
+        self.save_csv_file()
 
     def save_csv_file(self, raw=False):
         if raw is True:
-            data_path = f"{self.output_path}/raw_{self.output_file}.csv"
+            self.data_path = f"{self.output_path}/raw_{self.output_file}.csv"
         else:
-            data_path = f"{self.output_path}/{self.output_file}.csv"
+            self.data_path = f"{self.output_path}/{self.output_file}.csv"
         self.df["index"] = self.df.index
-        self.df.to_csv(data_path, index=False)
-        print("Data saved to: ", data_path)
+        self.df.to_csv(self.data_path, index=False)
+        print("Data saved to: ", self.data_path)
         self.df.drop("index", axis=1, inplace=True)
+        return self.data_path
 
     def drop_and_set_cols(self):
         column_order = [

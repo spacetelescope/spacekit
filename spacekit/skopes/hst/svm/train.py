@@ -4,14 +4,14 @@ import pandas as pd
 import time
 import datetime as dt
 from sklearn.model_selection import train_test_split
-from spacekit.preprocessor.augment import training_data_aug, training_img_aug
+from spacekit.generator.augment import training_data_aug, training_img_aug
 from spacekit.preprocessor.transform import (
     apply_power_transform,
     power_transform_matrix,
 )
 from spacekit.builder.networks import Ensemble
 from spacekit.analyzer.compute import ComputeTest, ComputeVal
-from spacekit.extractor.load_images import SVMImages
+from spacekit.extractor.load import SVMImages
 from spacekit.analyzer.track import stopwatch
 
 DIM = 3
