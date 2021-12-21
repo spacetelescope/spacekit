@@ -110,14 +110,15 @@ class WebScraper(Scraper):
                 os.remove(f"{self.cache_subdir}/{fname}")
         return self.fpaths
 
+# TODO
 class S3Scraper(Scraper):
     def __init__(self, bucket, pfx="archive", dataset=None, cache_dir="~", cache_subdir="data", format="zip", extract=True):
         super().__init__(cache_dir=cache_dir, cache_subdir=cache_subdir, format=format, extract=extract)
         self.bucket = bucket
         self.pfx = pfx
         self.dataset = dataset
-    
-    def make_s3_keys(self, fnames=["2021-11-04-1636048291.zip"]):
+
+    def make_s3_keys(self, fnames=["2021-11-04-1636048291.zip", "2021-10-28-1635457222.zip", "2021-08-22-1629663047.zip"]):
         self.dataset = {}
         for key, fname in enumerate(fnames):
             self.dataset[str(key)] = {"fname": fname, "pfx": self.pfx}

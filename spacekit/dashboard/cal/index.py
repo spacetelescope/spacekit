@@ -5,7 +5,8 @@ from dash.dependencies import Input, Output
 
 from app import app
 from layouts import home, eval, eda, pred
-from spacekit.skopes.hst.cal.datasets import get_sample_data, scrape_s3
+from spacekit.datasets.hst_cal import calcloud_data, calcloud_uri
+from spacekit.extractor.scrape import WebScraper, S3Scraper
 
 url_bar_and_content_div = html.Div(
     [dcc.Location(id="url", refresh=False), html.Div(id="page-content")]
@@ -49,8 +50,11 @@ if __name__ == "__main__":
     parser.add_argument("-r2", "--results3", default="2021-08-22-1629663047")
     args = parser.parse_args()
     if args.src == "git":
-        fpaths = get_sample_data()
+        fpaths = WebScraper(calcloud_uri, calcloud_data).scrape_repo()
         print(fpaths)
     elif args.src == "s3":
-        scrape_s3(args.uri, get_latest=args.latest, results=[args.r0, args.r1, args.r2])
+        scraper = S3Scraper(args.uri, pfx="archive")
+        scraper.dataset = scraper.make_s3_keys(fnames=[args.r0, args.r1, args.r2])
+        fpaths = scraper.scrape_s3()
+        print(fpaths)
     app.run_server(host="0.0.0.0", port=8050, debug=True)
