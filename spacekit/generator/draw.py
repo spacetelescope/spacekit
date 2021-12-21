@@ -200,7 +200,11 @@ class DrawMosaics:
         saves as >> ./{imgdir}/hst_f110w_all_stoc_uvis_total_ib1f0a/hst_f110w_all_stoc_uvis_total_ib1f0a.png
         """
         # allows for corruption subdir names e.g. ia0m04_f110w_all_stat and ia0m04
-        subdir, dname = f"{self.input_path}/{dataset}", dataset.split("_")[0]
+        if self.pattern:
+            subdir = f"{self.input_path}/{self.pattern}/{dataset}"
+        else:
+            subdir = f"{self.input_path}/{dataset}"
+        dname = dataset.split("_")[0]
         hfiles = glob.glob(f"{subdir}/*total_{dname}_dr?.fits")
         if len(hfiles) > 0:
             for hfile in hfiles:
@@ -374,7 +378,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "-t",
-        "--imgtype",
+        "--img_type",
         type=str,
         choices=["total", "filter"],
         default="total",

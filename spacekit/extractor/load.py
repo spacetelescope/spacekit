@@ -2,12 +2,9 @@ import os
 import pandas as pd
 import numpy as np
 from zipfile import ZipFile
-import numpy as np
 from keras.preprocessing import image
-
 from tqdm import tqdm
 import time
-
 from spacekit.analyzer.track import stopwatch
 
 
@@ -49,9 +46,43 @@ class ArrayOps:
         np.save(f"{self.data_path}/test_idx.npy", np.asarray(self.test_idx.index))
         print("Train-test data saved as numpy arrays:\n")
         print(os.listdir(self.data_path))
+    
+    def save_compressed(self, arrs, names):
+        for arr, name in list(zip(arrs, names)):
+            np.savez_compressed(f"{self.data_path}/{name}.npz", arr)
+        print("Train-test data saved as compressed numpy arrays:\n")
+        print(os.listdir(self.data_path))
+    
+    def save_ensemble_data(self):
+        X_train_mlp = np.asarray(self.X_train[0])
+        X_train_img = np.asarray(self.X_train[1])
+        X_test_mlp = np.asarray(self.X_test[0])
+        X_test_img = np.asarray(self.X_test[1])
+        y_train = np.asarray(self.y_train)
+        y_test = np.asarray(self.y_test)
+        test_idx = np.asarray(self.test_idx)
+        arrays = [
+            X_train_mlp, X_train_img, X_test_mlp, X_test_img, y_train, y_test, test_idx
+            ]
+        names = [
+            "X_train_mlp", "X_train_img", "X_test_mlp", "X_test_img", "y_train", "y_test", "test_idx"
+            ]
+        self.save_compressed(arrays, names)
+
+    def load_ensemble_data(self):
+        X_train_mlp, X_train_img = np.load(f"{self.data_path}/X_train_mlp.npz"), np.load(
+            f"{self.data_path}/X_train_img.npz"
+        )
+        X_test_mlp, X_test_img = np.load(f"{self.data_path}/X_test_mlp.npz"), np.load(
+            f"{self.data_path}/X_test_img.npz"
+        )
+        self.X_train = [X_train_mlp["arr_0"], X_train_img["arr_0"]]
+        self.X_test = [X_test_mlp["arr_0"], X_test_img["arr_0"]]
+        self.y_train = np.load(f"{self.data_path}/y_train.npz")["arr_0"]
+        self.y_test = np.load(f"{self.data_path}/y_test.npz")["arr_0"]
+        self.test_idx = np.load(f"{self.data_path}/test_idx.npz")["arr_0"]
 
 
-#TODO
 """Image Ops"""
 
 def unzip_images(zip_file):
