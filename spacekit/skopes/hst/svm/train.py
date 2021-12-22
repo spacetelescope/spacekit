@@ -173,7 +173,7 @@ def compute_results(
 
 
 def run_training(
-    training_data, img_path, synth_data, norm, model_name, params, output_path
+    training_data, img_path, synth_data=None, norm=0, model_name=None, params=None, output_path=None
 ):
     os.makedirs(output_path, exist_ok=True)
     tv_idx, XTR, YTR, XTS, YTS, XVL, YVL = prep_ensemble_data(
@@ -240,29 +240,21 @@ if __name__ == "__main__":
         "-p", "--plots", type=int, default=0, help="draw model performance plots"
     )
     args = parser.parse_args()
-    training_data = args.training_data
-    img_path = args.img_path
     model_name = args.model_name
     timestamp = str(int(dt.datetime.now().timestamp()))
     output_path = os.path.join(args.output_path, f"mml_{timestamp}")
-    synth_data = args.synthetic_data
-    norm = args.normalize
-    verbose = args.verbose
     # SET MODEL FIT PARAMS
-    BATCHSIZE = args.batchsize
-    EPOCHS = args.epochs
-    EARLY = args.early_stopping
     params = dict(
-        batch_size=BATCHSIZE,
-        epochs=EPOCHS,
+        batch_size=args.batchsize,
+        epochs=args.epochs,
         lr=1e-4,
         decay=[100000, 0.96],
-        early_stopping=EARLY,
-        verbose=verbose,
+        early_stopping=args.early_stopping,
+        verbose=args.verbose,
         ensemble=True,
     )
     com, val = run_training(
-        training_data, img_path, synth_data, norm, model_name, params, output_path
+        args.training_data, args.img_path, synth_data=args.synthetic_data, norm=args.normalize, model_name=args.model_name, params=params, output_path=output_path
     )
     if args.plots is True:
         com.draw_plots()

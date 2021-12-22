@@ -21,7 +21,7 @@ from tensorflow.keras.layers import (
     MaxPool3D,
     GlobalAveragePooling3D,
 )
-from spacekit.preprocessor.augment import augment_data, augment_image
+from spacekit.generator.augment import augment_data, augment_image
 from spacekit.analyzer.track import stopwatch
 
 DIM = 3
