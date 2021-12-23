@@ -4,7 +4,15 @@ from spacekit.extractor.scrape import JsonScraper
 from spacekit.preprocessor.scrub import ScrubSvm
 from spacekit.generator.draw import DrawMosaics
 
-def run_preprocessing(input_path, h5=None, fname="svm_data", output_path=None, json_pattern="*_total*_svm_*.json", crpt=0):
+
+def run_preprocessing(
+    input_path,
+    h5=None,
+    fname="svm_data",
+    output_path=None,
+    json_pattern="*_total*_svm_*.json",
+    crpt=0,
+):
     """[summary]
     Scrapes SVM data from raw files, preprocesses dataframe for MLP classifier and generates png images for image classifier.
     Args:
@@ -21,10 +29,16 @@ def run_preprocessing(input_path, h5=None, fname="svm_data", output_path=None, j
     if output_path is None:
         output_path = os.getcwd()
     os.makedirs(output_path, exist_ok=True)
-    fname = os.path.basename(fname)
+    fname = os.path.basename(fname).split(".")[0]
     if h5 is None:
         patterns = json_pattern.split(",")
-        jsc = JsonScraper(search_path=input_path, search_patterns=patterns, file_basename=fname, crpt=crpt, output_path=output_path)
+        jsc = JsonScraper(
+            search_path=input_path,
+            search_patterns=patterns,
+            file_basename=fname,
+            crpt=crpt,
+            output_path=output_path,
+        )
         jsc.json_harvester()
         jsc.h5store()
     else:
@@ -33,7 +47,14 @@ def run_preprocessing(input_path, h5=None, fname="svm_data", output_path=None, j
     scrub.preprocess_data()
     fname = scrub.data_path
     img_outputs = os.path.join(output_path, "img")
-    draw = DrawMosaics(input_path, output_path=img_outputs, fname=fname, gen=3, size=(24,24), crpt=crpt)
+    draw = DrawMosaics(
+        input_path,
+        output_path=img_outputs,
+        fname=fname,
+        gen=3,
+        size=(24, 24),
+        crpt=crpt,
+    )
     draw.generate_total_images()
     return fname
 
@@ -43,9 +64,7 @@ if __name__ == "__main__":
         prog="spacekit SVM",
         usage="python prep.py path/to/raw_data -f=svm_data.csv",
     )
-    parser.add_argument(
-        "input_path", type=str, help="path to SVM dataset directory"
-    )
+    parser.add_argument("input_path", type=str, help="path to SVM dataset directory")
     parser.add_argument(
         "--hdf5",
         type=str,
@@ -54,10 +73,10 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "-f",
-        "--filename",
+        "--fname",
         type=str,
-        default="svm_data.csv",
-        help="csv output filepath to create",
+        default="svm_data",
+        help="csv output filename to create",
     )
     parser.add_argument("-j", "--json_pattern", type=str, default="*_total*_svm_*.json")
     parser.add_argument(
@@ -70,8 +89,10 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     input_path = args.input_path
-    h5 = args.h5
-    filename = args.filename
+    h5 = args.hdf5
+    fname = args.fname
     json_pattern = args.json_pattern
     crpt = args.crpt
-    run_preprocessing(input_path, h5=h5, filename=filename, json_pattern=json_pattern, crpt=crpt)
+    run_preprocessing(
+        input_path, h5=h5, fname=fname, json_pattern=json_pattern, crpt=crpt
+    )

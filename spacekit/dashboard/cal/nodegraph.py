@@ -51,8 +51,7 @@ def regressor(model, data):
     return pred
 
 
-def make_preds(x_features, NN=None):
-    global clf  # need this in other functions
+def make_preds(x_features, tx_file, NN=None):
     if NN is None:
         clf = get_model("mem_clf")
         mem_reg = get_model("mem_reg")
@@ -61,10 +60,6 @@ def make_preds(x_features, NN=None):
         clf = NN["clf"]
         mem_reg = NN["mem_reg"]
         wall_reg = NN["wall_reg"]
-    with importlib.resources.path(
-        "spacekit.skopes.trained_networks.calmodels", "pt_transform"
-    ) as t:
-        tx_file = t
     cal = CalX(x_features, tx_file)
     # Predict Memory Allocation (bin and value preds)
     membin, pred_proba = classifier(clf, cal.X)
@@ -346,8 +341,8 @@ def make_node_groups():
         "outputs",
     ]
     node_groups = []
-    for l, n, p in zip(layers, neurons, parents):
-        group = make_nodes(l, n, p)
+    for lyr, nrn, prt in zip(layers, neurons, parents):
+        group = make_nodes(lyr, nrn, prt)
         for id, label, parent, x, y in group:
             node_groups.append((id, label, parent, x, y))
     return node_groups
@@ -488,7 +483,7 @@ def activate_neurons(parent_nodes, node_groups, edge_pairs, neurons):
 def make_styles():
     styles = {
         "pre": {
-            #'border': 'thin lightgrey solid',
+            # 'border': 'thin lightgrey solid',
             "overflowX": "scroll",
             "display": "inline-block",
             "float": "left",
@@ -513,10 +508,10 @@ def make_styles():
             "display": "inline-block",
             "float": "left",
             "padding": 5,
-            #'background-color': '#242a44',
+            # 'background-color': '#242a44',
             "background-color": "linear-gradient(145deg, rgba(0, 234, 100, 0.5) 0%, rgba(0, 234, 100, 0.4) 100%)",
             "background-image": "rgb(0, 0, 0)",
-            #'background-image': 'linear-gradient(145deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.4) 100%)',
+            # 'background-image': 'linear-gradient(145deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.4) 100%)',
             "background-blend-mode": "overlay",
             "box-shadow": "rgb(0 0 0 / 45%) 2px 2px 6px 1px, rgb(255 255 255 / 30%) 1px 1px 2px 0px inset, rgb(0 0 0 / 60%) 1px 1px 1px 0px, rgb(0 234 100) 0px 0px 3px 0px",
         },
@@ -573,10 +568,12 @@ def make_stylesheet():
     return stylesheet
 
 
-def make_neural_graph(NN=None, neurons=None):
-    if NN is None:
-        global clf
-        clf = get_model("./models/mem_clf")
+def make_neural_graph(model=None, neurons=None):
+    global clf
+    if model is None:
+        clf = get_model("mem_clf")
+    else:
+        clf = model  # NN["clf"]
     weights = make_weights()
     edge_pairs = make_edges(weights)
     parent_nodes = make_parent_nodes()

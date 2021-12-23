@@ -13,8 +13,19 @@ from tqdm import tqdm
 
 from spacekit.analyzer.track import stopwatch
 
+
 class DrawMosaics:
-    def __init__(self, input_path, output_path=None, fname=None, visit=None, pattern="", gen=3, size=(24,24), crpt=0):
+    def __init__(
+        self,
+        input_path,
+        output_path=None,
+        fname=None,
+        visit=None,
+        pattern="",
+        gen=3,
+        size=(24, 24),
+        crpt=0,
+    ):
         self.input_path = input_path
         self.output_path = output_path
         self.check_output()
@@ -29,7 +40,7 @@ class DrawMosaics:
     def check_output(self):
         if self.output_path is None:
             self.output_path = os.path.join(os.getcwd(), "img")
-            # TODO if permission error, write to /tmp 
+            # TODO if permission error, write to /tmp
         os.makedirs(self.output_path, exist_ok=True)
         return self.output_path
 
@@ -149,7 +160,7 @@ class DrawMosaics:
             sys.exit(1)
 
         print(f"Generating images for {len(self.datasets)} datasets.")
-        
+
         for dataset in tqdm(self.datasets):
             if self.gen == 3:  # original, point-segment, and GAIA
                 self.draw_total_images(dataset)
@@ -338,7 +349,9 @@ class DrawMosaics:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("input_path", type=str, help="path to datasets directory")
-    parser.add_argument("-o", "--output_path", type=str, help="directory path to save png images")
+    parser.add_argument(
+        "-o", "--output_path", type=str, help="directory path to save png images"
+    )
     parser.add_argument(
         "-f",
         "--fname",
@@ -393,7 +406,16 @@ if __name__ == "__main__":
     gen = args.generator
     size = (args.size, args.size)
     crpt = args.corruptions
-    draw = DrawMosaics(input_path, output_path=output_path, fname=fname, visit=visit, pattern=pattern, gen=gen, size=size, crpt=crpt)
+    draw = DrawMosaics(
+        input_path,
+        output_path=output_path,
+        fname=fname,
+        visit=visit,
+        pattern=pattern,
+        gen=gen,
+        size=size,
+        crpt=crpt,
+    )
     if args.img_type == "total":
         draw.generate_total_images()
     else:

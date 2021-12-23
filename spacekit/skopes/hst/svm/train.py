@@ -173,7 +173,13 @@ def compute_results(
 
 
 def run_training(
-    training_data, img_path, synth_data=None, norm=0, model_name=None, params=None, output_path=None
+    training_data,
+    img_path,
+    synth_data=None,
+    norm=0,
+    model_name=None,
+    params=None,
+    output_path=None,
 ):
     os.makedirs(output_path, exist_ok=True)
     tv_idx, XTR, YTR, XTS, YTS, XVL, YVL = prep_ensemble_data(
@@ -254,7 +260,13 @@ if __name__ == "__main__":
         ensemble=True,
     )
     com, val = run_training(
-        args.training_data, args.img_path, synth_data=args.synthetic_data, norm=args.normalize, model_name=args.model_name, params=params, output_path=output_path
+        args.training_data,
+        args.img_path,
+        synth_data=args.synthetic_data,
+        norm=args.normalize,
+        model_name=args.model_name,
+        params=params,
+        output_path=output_path,
     )
     if args.plots is True:
         com.draw_plots()

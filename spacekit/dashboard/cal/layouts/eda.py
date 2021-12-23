@@ -4,7 +4,7 @@ from dash.dependencies import Input, Output
 from spacekit.analyzer.explore import HstCalPlots
 from spacekit.analyzer.scan import import_dataset
 from spacekit.dashboard.cal.app import app
-from spacekit.dashboard.cal.config import cal, df, hst
+from spacekit.dashboard.cal.config import cal, hst
 
 layout = html.Div(
     children=[
@@ -175,14 +175,15 @@ layout = html.Div(
     },
 )
 
+
 # Page 2 EDA callbacks
+
+
 @app.callback(
     [Output("explore-dataset", "children")], [Input("dataset-selector", "value")]
 )
 def data_explorer(dataset_selection):
-    global cal
     global hst
-    global df
     cal.primary = dataset_selection
     cal.data = cal.select_dataset(
         primary=cal.primary
@@ -194,6 +195,7 @@ def data_explorer(dataset_selection):
     )
     hst = HstCalPlots(df)
     hst.df_by_instr()
+    return hst
 
 
 # SCATTER CALLBACK

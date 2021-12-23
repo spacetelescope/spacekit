@@ -5,8 +5,8 @@ import os
 import pandas as pd
 import glob
 import plotly.graph_objs as go
-from plotly import subplots
 import plotly.figure_factory as ff
+from plotly import subplots
 from spacekit.analyzer.compute import ComputeBinary, ComputeMulti, ComputeRegressor
 
 
@@ -40,7 +40,7 @@ def import_dataset(filename=None, kwargs=dict(index_col="ipst"), decoder_key=Non
 
 
 class MegaScanner:
-    def __init__(self, perimeter=f"data/20??-*-*-*", primary=-1):
+    def __init__(self, perimeter="data/20??-*-*-*", primary=-1):
         self.perimeter = perimeter
         self.datapaths = sorted(list(glob.glob(perimeter)))
         self.datasets = [d.split("/")[-1] for d in self.datapaths]
@@ -260,7 +260,6 @@ class MegaScanner:
         )
         annos = []
         for i in cmx:
-            row = 1
             col = i + 1
             z = cmx[i][::-1]
             z_text = [[str(y) for y in x] for x in z]
@@ -291,7 +290,7 @@ class MegaScanner:
 
 
 class CalScanner(MegaScanner):
-    def __init__(self, perimeter=f"data/20??-*-*-*", primary=-1):
+    def __init__(self, perimeter="data/20??-*-*-*", primary=-1):
         super().__init__(perimeter=perimeter, primary=primary)
         self.classes = ["2g", "8g", "16g", "64g"]
         self.res_keys = {"mem_bin": {}, "memory": {}, "wallclock": {}}
@@ -326,7 +325,7 @@ class CalScanner(MegaScanner):
 
 
 class SvmScanner(MegaScanner):
-    def __init__(self, perimeter=f"data/20??-*-*-*", primary=-1):
+    def __init__(self, perimeter="data/20??-*-*-*", primary=-1):
         super().__init__(perimeter=perimeter, primary=primary)
         self.classes = ["aligned", "misaligned"]
         self.res_keys = {"test": {}, "val": {}}

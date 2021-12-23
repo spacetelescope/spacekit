@@ -13,7 +13,10 @@
 # import os
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
-
+import datetime
+import os
+from configparser import ConfigParser
+import stsci_rtd_theme
 
 # -- Project information -----------------------------------------------------
 # General information about the project
@@ -32,17 +35,6 @@ release = '0.2.7'
 # The short X.Y version.
 version = '.'.join(release.split('.')[:2])
 
-import datetime
-import os
-import sys
-import sphinx
-from configparser import ConfigParser
-from distutils.version import LooseVersion
-from pkg_resources import get_distribution
-
-import stsci_rtd_theme
-
-
 def setup(app):
     app.add_css_file("stsci.css")
 
@@ -50,7 +42,7 @@ def setup(app):
 # -- General configuration ------------------------------------------------
 conf = ConfigParser()
 conf.read([os.path.join(os.path.dirname(__file__), '..', 'setup.cfg')])
-setup_cfg = dict(conf.items('metadata'))
+# setup_cfg = dict(conf.items('metadata'))
 
 
 # on_rtd = os.environ.get('READTHEDOCS', None) == 'True'

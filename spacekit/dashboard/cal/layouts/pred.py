@@ -7,17 +7,25 @@ from dash.exceptions import PreventUpdate
 
 from spacekit.dashboard.cal import nodegraph
 from spacekit.dashboard.cal.app import app
+from spacekit.dashboard.cal.config import NN, tx_file, df
+from spacekit.preprocessor.transform import CalX
 
-global clf
+# global clf
+# clf = nodegraph.get_model(f"{model_path}/mem_clf")
 
-# TODO: search for model paths - use default if none found
+# global mem_reg
+# mem_reg = nodegraph.get_model(f"{model_path}/mem_reg")
 
-model_path = f"data/{selection}/models"
-clf = nodegraph.get_model("mem_clf")
+# global wall_reg
+# wall_reg = nodegraph.get_model(f"{model_path}/wall_reg")
+
+# global tx_file
+# tx_file = f"{model_path}/pt_transform"
+
 
 stylesheet = nodegraph.make_stylesheet()
 styles = nodegraph.make_styles()
-edges, nodes = nodegraph.make_neural_graph()
+edges, nodes = nodegraph.make_neural_graph(NN=NN)
 
 layout = html.Div(
     children=[
@@ -266,7 +274,7 @@ layout = html.Div(
                                 "padding": 5,
                                 "width": 270,
                             },
-                        ),  #'border': 'thin lightgrey solid',
+                        ),  # 'border': 'thin lightgrey solid',
                         # INPUTS RIGHT COL
                         html.Div(
                             id="inputs-two",
@@ -433,7 +441,7 @@ layout = html.Div(
                                 "padding": 5,
                                 "width": 270,
                             },
-                        ),  #'border': 'thin lightgrey solid',
+                        ),  # 'border': 'thin lightgrey solid',
                         # END FEATURE INPUTS
                     ],
                     style={
@@ -446,7 +454,7 @@ layout = html.Div(
                         "background-color": "#242a44",
                         "min-height": 311,
                     },
-                ),  #'border': 'thin lightgreen solid',
+                ),  # 'border': 'thin lightgreen solid',
                 # MEMORY PRED VS ACTUAL
                 html.Div(
                     children=[
@@ -517,7 +525,7 @@ layout = html.Div(
                                 "padding": 5,
                                 "width": 140,
                             },
-                        ),  #'border': 'thin lightgrey solid',
+                        ),  # 'border': 'thin lightgrey solid',
                         # Probabilities
                         html.Div(
                             children=[
@@ -595,7 +603,7 @@ layout = html.Div(
                                 "padding": 5,
                                 "width": 190,
                             },
-                        ),  #'border': 'thin lightgrey solid',
+                        ),  # 'border': 'thin lightgrey solid',
                     ],
                     style={
                         "display": "inline-block",
@@ -607,7 +615,7 @@ layout = html.Div(
                         "background-color": "#242a44",
                         "min-height": 326,
                     },
-                ),  #'border': 'thin lightgreen solid',
+                ),  # 'border': 'thin lightgreen solid',
                 # Memory GAUGE Predicted vs Actual
                 html.Div(
                     children=[
@@ -617,7 +625,7 @@ layout = html.Div(
                                     children=[
                                         daq.Gauge(
                                             id="memory-gauge-predicted",
-                                            color="#2186f4",  #'#00EA64',
+                                            color="#2186f4",  # '#00EA64',
                                             label="Memory (pred)",
                                             labelPosition="bottom",
                                             units="GB",
@@ -643,7 +651,7 @@ layout = html.Div(
                                     children=[
                                         daq.Gauge(
                                             id="wallclock-gauge-predicted",
-                                            color="#2186f4",  #'#00EA64',
+                                            color="#2186f4",  # '#00EA64',
                                             value=4500,
                                             label="Wallclock (pred)",
                                             labelPosition="bottom",
@@ -673,7 +681,7 @@ layout = html.Div(
                                 "padding": 5,
                                 "width": 440,
                             },
-                        )  #'border': 'thin lightgrey solid',
+                        )  # 'border': 'thin lightgrey solid',
                     ],
                     style={
                         "display": "inline-block",
@@ -685,7 +693,7 @@ layout = html.Div(
                         "background-color": "#242a44",
                         "min-height": 326,
                     },
-                ),  #'border': 'thin lightgreen solid',
+                ),  # 'border': 'thin lightgreen solid',
                 # END Controls and Outputs
             ],
             style={
@@ -705,7 +713,10 @@ layout = html.Div(
     },
 )
 
+
 # PAGE 3 CALLBACKS
+
+
 @app.callback(
     [
         Output("prediction-bin-output", "value"),
@@ -743,11 +754,11 @@ def update_xi_predictions(
     if n_clicks == 0:
         raise PreventUpdate
     # if n_clicks > 0:
-    x_features = predictor.read_inputs(
+    x_features = nodegraph.read_inputs(
         n_files, total_mb, drizcorr, pctecorr, crsplit, subarray, detector, dtype, instr
     )
-    m_preds = predictor.make_preds(
-        x_features
+    m_preds = nodegraph.make_preds(
+        x_features, tx_file, NN=NN
     )  # [membin, memval, clocktime, p0, p1, p2, p3]
     n_clicks = 0
     m_preds.append(0)  # reset `activate` toggle switch = off
@@ -784,11 +795,9 @@ def update_ipst(selected_ipst):
         data = df.loc[selected_ipst]
         for key in list(inputs.keys()):
             inputs[key] = data[key]
-
         return list(inputs.values())
 
 
-#
 @app.callback(
     Output("cytoscape-compound", "elements"),
     Input("activate-button-state", "on"),
@@ -805,8 +814,8 @@ def update_ipst(selected_ipst):
 def activate_network(
     on, n_files, total_mb, drizcorr, pctecorr, crsplit, subarray, detector, dtype, instr
 ):
-    if on == True:
-        x_features = predictor.read_inputs(
+    if on is True:
+        x_features = nodegraph.read_inputs(
             n_files,
             total_mb,
             drizcorr,
@@ -817,14 +826,11 @@ def activate_network(
             dtype,
             instr,
         )
-        prep = predictor.Preprocess(x_features)
-        prep.inputs = prep.scrub_keys()
-        prep.load_pt_data()
-        X = prep.transformer()
-        neurons = predictor.calculate_neurons(X)
-        edges, nodes = nodegraph.make_neural_graph(neurons=neurons)
+        modX = CalX(x_features, tx_file)
+        neurons = nodegraph.calculate_neurons(modX.X)
+        edges, nodes = nodegraph.make_neural_graph(model=NN["mem_clf"], neurons=neurons)
     else:
-        edges, nodes = nodegraph.make_neural_graph(neurons=None)
+        edges, nodes = nodegraph.make_neural_graph(model=NN["mem_clf"], neurons=None)
     return edges + nodes
 
 
@@ -858,7 +864,7 @@ def displayTapEdgeData(data):
     Output("cytoscape-mouseoverNodeData-output", "children"),
     Input("cytoscape-compound", "mouseoverNodeData"),
 )
-def displayTapNodeData(data):
+def displayMouseNodeData(data):
     if data:
         node = data["id"]
         if node[0] not in ["x", "i"]:
@@ -872,7 +878,7 @@ def displayTapNodeData(data):
     Output("cytoscape-mouseoverEdgeData-output", "children"),
     Input("cytoscape-compound", "mouseoverEdgeData"),
 )
-def displayTapEdgeData(data):
+def displayMouseEdgeData(data):
     if data:
         src = data["source"]  # x1
         trg = data["target"]  # h1-1

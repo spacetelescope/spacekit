@@ -7,6 +7,8 @@ from sklearn.preprocessing import LabelEncoder
 import tensorflow as tf
 
 # TODO: update code elsewhere to use class method versions instead of static functions
+
+
 def apply_power_transform(
     data, cols=["numexp", "rms_ra", "rms_dec", "nmatches", "point", "segment", "gaia"]
 ):

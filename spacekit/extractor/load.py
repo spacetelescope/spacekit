@@ -20,6 +20,7 @@ class ArrayOps:
         self.test_idx = None
 
     """Pandas/Numpy File ops"""
+
     def load_train_test(self):
         self.X_train, self.y_train = np.load(f"{self.data_path}/X_train.npy"), np.load(
             f"{self.data_path}/y_train.npy"
@@ -31,28 +32,29 @@ class ArrayOps:
             self.test_idx = np.load(f"{self.data_path}/test_idx.npy", allow_pickle=True)
             if self.target:
                 self.test_idx = pd.DataFrame(
-                    np.argmax(self.y_test, axis=-1), index=self.idx, columns=[self.target]
+                    np.argmax(self.y_test, axis=-1),
+                    index=self.idx,
+                    columns=[self.target],
                 )
             return self.X_train, self.y_train, self.X_test, self.y_test, self.test_idx
         else:
             return self.X_train, self.y_train, self.X_test, self.y_test
 
-
     def save_train_test(self):
         np.save(f"{self.data_path}/X_train.npy", np.asarray(self.X_train))
         np.save(f"{self.data_path}/X_test.npy", np.asarray(self.X_test))
-        np.save(f"{self.data_path}/y_train.npy", self. y_train)
+        np.save(f"{self.data_path}/y_train.npy", self.y_train)
         np.save(f"{self.data_path}/y_test.npy", self.y_test)
         np.save(f"{self.data_path}/test_idx.npy", np.asarray(self.test_idx.index))
         print("Train-test data saved as numpy arrays:\n")
         print(os.listdir(self.data_path))
-    
+
     def save_compressed(self, arrs, names):
         for arr, name in list(zip(arrs, names)):
             np.savez_compressed(f"{self.data_path}/{name}.npz", arr)
         print("Train-test data saved as compressed numpy arrays:\n")
         print(os.listdir(self.data_path))
-    
+
     def save_ensemble_data(self):
         X_train_mlp = np.asarray(self.X_train[0])
         X_train_img = np.asarray(self.X_train[1])
@@ -62,17 +64,29 @@ class ArrayOps:
         y_test = np.asarray(self.y_test)
         test_idx = np.asarray(self.test_idx)
         arrays = [
-            X_train_mlp, X_train_img, X_test_mlp, X_test_img, y_train, y_test, test_idx
-            ]
+            X_train_mlp,
+            X_train_img,
+            X_test_mlp,
+            X_test_img,
+            y_train,
+            y_test,
+            test_idx,
+        ]
         names = [
-            "X_train_mlp", "X_train_img", "X_test_mlp", "X_test_img", "y_train", "y_test", "test_idx"
-            ]
+            "X_train_mlp",
+            "X_train_img",
+            "X_test_mlp",
+            "X_test_img",
+            "y_train",
+            "y_test",
+            "test_idx",
+        ]
         self.save_compressed(arrays, names)
 
     def load_ensemble_data(self):
-        X_train_mlp, X_train_img = np.load(f"{self.data_path}/X_train_mlp.npz"), np.load(
-            f"{self.data_path}/X_train_img.npz"
-        )
+        X_train_mlp, X_train_img = np.load(
+            f"{self.data_path}/X_train_mlp.npz"
+        ), np.load(f"{self.data_path}/X_train_img.npz")
         X_test_mlp, X_test_img = np.load(f"{self.data_path}/X_test_mlp.npz"), np.load(
             f"{self.data_path}/X_test_img.npz"
         )
@@ -85,6 +99,7 @@ class ArrayOps:
 
 """Image Ops"""
 
+
 def unzip_images(zip_file):
     basedir = os.path.dirname(zip_file)
     key = os.path.basename(zip_file).split(".")[0]
@@ -94,6 +109,7 @@ def unzip_images(zip_file):
         zip_ref.extractall(basedir)
     print(len(os.listdir(image_folder)))
     return image_folder
+
 
 def read_channels(channels, w, h, d, exp=None, color_mode="rgb"):
     """Loads PNG image data and converts to 3D arrays.
@@ -116,6 +132,7 @@ def read_channels(channels, w, h, d, exp=None, color_mode="rgb"):
     else:
         img = img.reshape(exp, w, h, 3)
     return img
+
 
 class SVMImages:
     def __init__(self, img_path, w=128, h=128, d=9):

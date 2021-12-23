@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 import datetime as dt
 import matplotlib as mpl
-from plotly import subplots
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 from sklearn.metrics import (

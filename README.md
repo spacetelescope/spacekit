@@ -89,10 +89,14 @@ $ python -m spacekit.skopes.hst.svm.prep path/to/svmdata -f=svm_data.csv
 ```python
 from spacekit.skopes.hst.svm.prep import run_preprocessing
 input_path = "/path/to/svm/datasets"
-run_preprocessing(input_path)
+fname = run_preprocessing(input_path)
+print(fname)
+# svm_data.csv
 
 # This is equivalent to using the default kwargs:
-run_preprocessing(input_path, h5=None, fname="svm_data", output_path=None, json_pattern="*_total*_svm_*.json", crpt=0)
+fname = run_preprocessing(input_path, h5=None, fname="svm_data", output_path=None, json_pattern="*_total*_svm_*.json", crpt=0)
+print(fname)
+# default is "svm_data.csv"; customize filename and path using kwargs `fname` and `output_path`
 ```
 
 Outputs:
@@ -113,8 +117,8 @@ $ python -m spacekit.skopes.hst.svm.predict svm_data.csv img
 
 ```python
 from spacekit.skopes.hst.svm.predict import predict_alignment
-data_file = "svm_data.csv"
-img_path = "img"
+data_file = "svm_data.csv" # same as `fname` returned in `prep.py` above
+img_path = "img" # default image foldername created above
 predict_alignment(data_file, img_path)
 
 # This is equivalent to using the default kwargs:

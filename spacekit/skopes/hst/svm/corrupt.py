@@ -263,9 +263,24 @@ def generate_images(outputs, filters=False, pattern="*", visit=None):
     input_path = outputs
     img_out = os.path.join(os.path.dirname(outputs), "img/1")
     if visit is None:
-        draw = DrawMosaics(input_path, output_path=img_out, pattern=pattern, gen=3, size=(24,24), crpt=1)
+        draw = DrawMosaics(
+            input_path,
+            output_path=img_out,
+            pattern=pattern,
+            gen=3,
+            size=(24, 24),
+            crpt=1,
+        )
     else:
-        draw = DrawMosaics(input_path, output_path=img_out, pattern=pattern, visit=visit, gen=3, size=(24,24), crpt=1)
+        draw = DrawMosaics(
+            input_path,
+            output_path=img_out,
+            pattern=pattern,
+            visit=visit,
+            gen=3,
+            size=(24, 24),
+            crpt=1,
+        )
     draw.generate_total_images()
     if filters is True:
         draw.generate_filter_images()
@@ -294,8 +309,14 @@ def get_datasets(search_pattern="*", srcpath=None, outputs="synthetic"):
 
 
 def make_process_config(
-    crpt=1, runsvm=0, imagegen=0, palette="multi", expos="all", mode="stoc", threshold="any"
-    ):
+    crpt=1,
+    runsvm=0,
+    imagegen=0,
+    palette="multi",
+    expos="all",
+    mode="stoc",
+    threshold="any",
+):
     """Generates process and configuration dictionaries for running workflows.
     Returns
         prc (dict)
@@ -369,9 +390,7 @@ def run_pipes(prc, cfg, pattern, srcpath=None, outputs="synthetic"):
             for visit in tqdm(visits):
                 run_svm(visit, outputs, pattern)
         if prc["imagegen"]:
-            generate_images(
-                outputs, visit=dataset, pattern=pattern
-            )
+            generate_images(outputs, visit=dataset, pattern=pattern)
         t1 = time.time()
         stopwatch(dataset, t0=t0, t1=t1)
     end = time.time()
@@ -467,9 +486,13 @@ if __name__ == "__main__":
         palette=args.palette,
         expos=args.expos,
         mode=args.mode,
-        threshold=args.threshold
-        )
+        threshold=args.threshold,
+    )
     if args.workflow == "block":
-        run_blocks(prc, cfg, args.search_pattern, srcpath=args.srcpath, outputs=args.outputs)
+        run_blocks(
+            prc, cfg, args.search_pattern, srcpath=args.srcpath, outputs=args.outputs
+        )
     else:
-        run_pipes(prc, cfg, args.search_pattern, srcpath=args.srcpath, outputs=args.outputs)
+        run_pipes(
+            prc, cfg, args.search_pattern, srcpath=args.srcpath, outputs=args.outputs
+        )

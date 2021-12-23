@@ -108,6 +108,7 @@ def save_preds(X_data, y_pred, y_proba, output_path):
     print("Y_PRED + Probabilities added. Dataframe saved to: ", output_file)
     return preds
 
+
 def classification_report(df, output_path):
     P, T = df["y_pred"], df["det"].value_counts()
     C = df.loc[P == 1.0]
@@ -124,10 +125,10 @@ def classification_report(df, output_path):
         print(separator)
         print("Aligned ('0.0') vs Misaligned ('1.0')")
         cnt_pct = pd.concat(
-                [P.value_counts(), P.value_counts(normalize=True)],
-                axis=1,
-                keys=["cnt", "pct"],
-            )
+            [P.value_counts(), P.value_counts(normalize=True)],
+            axis=1,
+            keys=["cnt", "pct"],
+        )
         print(cnt_pct)
         print(separator)
         print("Misalignment counts by Detector")
@@ -146,7 +147,9 @@ def classification_report(df, output_path):
     print(f"\nSuspicious/Compromised List created: {output_path}/compromised.txt")
 
 
-def predict_alignment(data_file, img_path, model_path=None, output_path=None, size=None):
+def predict_alignment(
+    data_file, img_path, model_path=None, output_path=None, size=None
+):
     ens_clf = get_model(model_path=model_path)
     X_data, X_img = load_mixed_inputs(data_file, img_path, size=size)
     X = make_ensemble_data(X_data, X_img)
@@ -170,9 +173,7 @@ if __name__ == "__main__":
         default="svm_data.csv",
         help="path to preprocessed mosaic data csv file",
     )
-    parser.add_argument(
-        "img_path", type=str, help="path to PNG mosaic images"
-    )
+    parser.add_argument("img_path", type=str, help="path to PNG mosaic images")
     parser.add_argument(
         "-m",
         "--model_path",
@@ -192,12 +193,14 @@ if __name__ == "__main__":
         "--size",
         type=int,
         default=None,
-        help="image size (width and height). Default is None (128)."
-        )
+        help="image size (width and height). Default is None (128).",
+    )
     args = parser.parse_args()
     data_file = args.data_file
     img_path = args.img_path
     model_path = args.model_path
     output_path = args.output_path
     size = args.size
-    predict_alignment(data_file, img_path, model_path=model_path, output_path=output_path, size=size)
+    predict_alignment(
+        data_file, img_path, model_path=model_path, output_path=output_path, size=size
+    )

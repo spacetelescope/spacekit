@@ -1,9 +1,11 @@
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 
+
 class Encoder:
     def __init__(self, df):
         self.df = df
+
 
 class SvmEncoder(Encoder):
     def __init__(self, data):
@@ -13,7 +15,7 @@ class SvmEncoder(Encoder):
         self.encodings = {"wcstype": "wcs", "cat": "cat", "detector": "det"}
         self.category_keys = self.set_category_keys()
         self.df_cat = self.encode_categories()
-    
+
     def set_category_keys(self):
         self.category_keys = {
             "CALIBRATION": "C",

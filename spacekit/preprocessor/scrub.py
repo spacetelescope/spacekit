@@ -10,11 +10,11 @@ class ScrubCols:
     def __init__(self, data, dropnans=True):
         self.data = data
         self.dropnans = dropnans
-        self.df = self.data.copy() #self.scrub_columns()
+        self.df = self.data.copy()  # self.scrub_columns()
         self.new_cols = self.set_new_cols()
         self.col_pfx = self.set_prefix_cols()
-        self.raw_cols = self.get_raw_cols()    
-    
+        self.raw_cols = self.get_raw_cols()
+
     def scrub_columns(self):
         """Main calling function"""
         self.df = self.rename_cols()
@@ -43,11 +43,11 @@ class ScrubCols:
 
     def set_prefix_cols(self):
         self.col_pfx = [
-            "header", 
-            "gen_info", 
-            "number_of_sources", 
-            "Number_of_GAIA_sources." # incl. trailing period
-            ]
+            "header",
+            "gen_info",
+            "number_of_sources",
+            "Number_of_GAIA_sources.",  # incl. trailing period
+        ]
         return self.col_pfx
 
     def get_raw_cols(self):
@@ -92,7 +92,7 @@ class ScrubFits:
         self.input_path = input_path
         self.fits_keys = ["rms_ra", "rms_dec", "nmatches", "wcstype"]
         self.drz_paths = self.find_drz_paths()
-        #self.data = self.extract_fits_data()
+        # self.data = self.extract_fits_data()
 
     def find_drz_paths(self):
         self.drz_paths = {}
@@ -103,7 +103,7 @@ class ScrubFits:
             path = os.path.join(self.input_path, dname, drz)
             self.drz_paths[idx] = path
         return self.drz_paths
-    
+
     def scrub_fits(self):
         print("\n*** Extracting fits data ***")
         fits_dct = {}
@@ -125,7 +125,17 @@ class ScrubFits:
 
 
 class ScrubSvm:
-    def __init__(self, df, input_path, output_path=None, output_file="svm_data", save_raw=True, make_pos_list=True, crpt=False, make_subsamples=False):
+    def __init__(
+        self,
+        df,
+        input_path,
+        output_path=None,
+        output_file="svm_data",
+        save_raw=True,
+        make_pos_list=True,
+        crpt=False,
+        make_subsamples=False,
+    ):
         self.df = df
         self.input_path = input_path
         self.output_path = output_path
@@ -135,7 +145,7 @@ class ScrubSvm:
         self.make_pos_list = make_pos_list
         self.crpt = crpt
         self.make_subsamples = make_subsamples
-    
+
     def preprocess_data(self):
         """Main calling function"""
         self.df = ScrubCols(self.df).scrub_columns()

@@ -5,13 +5,11 @@ import numpy as np
 import pandas as pd
 import collections
 import glob
-import os
 import sys
 import json
-import pandas as pd
-import numpy as np
 from stsci.tools import logutil
 from zipfile import ZipFile
+
 # from astropy.io import fits
 from astroquery.mast import Observations
 from progressbar import ProgressBar
@@ -19,6 +17,7 @@ from progressbar import ProgressBar
 # from botocore import Config
 # retry_config = Config(retries={"max_attempts": 3})
 client = boto3.client("s3")  # , config=retry_config)
+
 
 def scrape_web(key, uri):
     fname = key["fname"]
@@ -78,15 +77,30 @@ def scrape_s3(bucket, results=[]):
 
 class Scraper:
     def __init__(self, cache_dir="~", cache_subdir="data", format="zip", extract=True):
-        self.cache_dir = cache_dir # root path for downloads (home)
-        self.cache_subdir = cache_subdir # subfolder
+        self.cache_dir = cache_dir  # root path for downloads (home)
+        self.cache_subdir = cache_subdir  # subfolder
         self.format = format
-        self.extract = extract # extract if zip/tar archive
+        self.extract = extract  # extract if zip/tar archive
         self.fpaths = None
 
+
 class WebScraper(Scraper):
-    def __init__(self, uri, dataset, hash_algorithm="sha256", cache_dir="~", cache_subdir="data", format="zip", extract=True):
-        super().__init__(cache_dir=cache_dir, cache_subdir=cache_subdir, format=format, extract=extract)
+    def __init__(
+        self,
+        uri,
+        dataset,
+        hash_algorithm="sha256",
+        cache_dir="~",
+        cache_subdir="data",
+        format="zip",
+        extract=True,
+    ):
+        super().__init__(
+            cache_dir=cache_dir,
+            cache_subdir=cache_subdir,
+            format=format,
+            extract=extract,
+        )
         self.uri = uri
         self.dataset = dataset
         self.hash_algorithm = hash_algorithm
@@ -106,35 +120,57 @@ class WebScraper(Scraper):
                 archive_format=self.format,
             )
             self.fpaths.append(fpath)
-            if os.path.exists(fpath): # delete archive
+            if os.path.exists(fpath):  # delete archive
                 os.remove(f"{self.cache_subdir}/{fname}")
         return self.fpaths
 
+
 # TODO
 class S3Scraper(Scraper):
-    def __init__(self, bucket, pfx="archive", dataset=None, cache_dir="~", cache_subdir="data", format="zip", extract=True):
-        super().__init__(cache_dir=cache_dir, cache_subdir=cache_subdir, format=format, extract=extract)
+    def __init__(
+        self,
+        bucket,
+        pfx="archive",
+        dataset=None,
+        cache_dir="~",
+        cache_subdir="data",
+        format="zip",
+        extract=True,
+    ):
+        super().__init__(
+            cache_dir=cache_dir,
+            cache_subdir=cache_subdir,
+            format=format,
+            extract=extract,
+        )
         self.bucket = bucket
         self.pfx = pfx
         self.dataset = dataset
 
-    def make_s3_keys(self, fnames=["2021-11-04-1636048291.zip", "2021-10-28-1635457222.zip", "2021-08-22-1629663047.zip"]):
+    def make_s3_keys(
+        self,
+        fnames=[
+            "2021-11-04-1636048291.zip",
+            "2021-10-28-1635457222.zip",
+            "2021-08-22-1629663047.zip",
+        ],
+    ):
         self.dataset = {}
         for key, fname in enumerate(fnames):
             self.dataset[str(key)] = {"fname": fname, "pfx": self.pfx}
         return self.dataset
-    
+
     def extract_archive(self):
         extracted_fpaths = []
         for fpath in self.fpaths:
             with ZipFile(fpath, "r") as zip_ref:
                 zip_ref.extractall()
-            fname = fpath.split('.')[0]
-            if os.path.exists(fname): # delete archive
+            fname = fpath.split(".")[0]
+            if os.path.exists(fname):  # delete archive
                 os.remove(fpath)
                 extracted_fpaths.append(fname)
         self.fpaths = extracted_fpaths
-        return self.fpaths      
+        return self.fpaths
 
     def scrape_s3(self):
         err = None
@@ -158,6 +194,7 @@ class S3Scraper(Scraper):
                 self.fpaths = self.extract_archive()
         return self.fpaths
 
+
 class MastScraper:
     def __init__(self, df, trg_col="targname", ra_col="ra_targ", dec_col="dec_targ"):
         self.df = df
@@ -165,11 +202,13 @@ class MastScraper:
         self.ra_col = ra_col
         self.dec_col = dec_col
         self.targets = self.df[self.trg_col].unique()
-        self.targ_any = self.df.loc[df[self.trg_col] == "ANY"][[self.ra_col, self.dec_col]]
+        self.targ_any = self.df.loc[df[self.trg_col] == "ANY"][
+            [self.ra_col, self.dec_col]
+        ]
         self.target_categories = {}
         self.other_cat = {}
         self.categories = {}
-    
+
     def scrape_mast(self):
         self.target_categories = self.scrape_target_categories()
         self.other_cat = self.scrape_other_targets()
@@ -183,7 +222,9 @@ class MastScraper:
         for x, targ in zip(bar(range(len(self.targets))), self.targets):
             if targ != "ANY":
                 obs = Observations.query_criteria(target_name=targ)
-                cat = obs[np.where(obs["target_classification"])]["target_classification"]
+                cat = obs[np.where(obs["target_classification"])][
+                    "target_classification"
+                ]
                 if len(cat) > 0:
                     self.target_categories[targ] = cat[0]
                 else:
@@ -197,12 +238,18 @@ class MastScraper:
         if len(self.targ_any) > 0:
             print(f"Other targets (ANY): {len(self.targ_any)}")
             bar = ProgressBar().start()
-            for x, (idx, row) in zip(bar(range(len(self.targ_any))), self.targ_any.iterrows()):
+            for x, (idx, row) in zip(
+                bar(range(len(self.targ_any))), self.targ_any.iterrows()
+            ):
                 self.other_cat[idx] = {}
                 propid = str(idx).split("_")[1]
                 ra, dec = row[self.ra_col], row[self.dec_col]
-                obs = Observations.query_criteria(proposal_id=propid, s_ra=ra, s_dec=dec)
-                cat = obs[np.where(obs["target_classification"])]["target_classification"]
+                obs = Observations.query_criteria(
+                    proposal_id=propid, s_ra=ra, s_dec=dec
+                )
+                cat = obs[np.where(obs["target_classification"])][
+                    "target_classification"
+                ]
                 if len(cat) > 0:
                     self.other_cat[idx] = cat[0]
                 else:
@@ -217,14 +264,16 @@ class MastScraper:
             for i in idx:
                 self.categories[i] = v
         self.categories.update(self.other_cat)
-        cat = pd.DataFrame.from_dict(self.categories, orient="index", columns={"category"})
+        cat = pd.DataFrame.from_dict(
+            self.categories, orient="index", columns={"category"}
+        )
         print("\nTarget Categories Assigned.")
         print(cat["category"].value_counts())
         self.df = self.df.join(cat, how="left")
         return self.df
 
 
-#TODO
+# TODO
 class ImageScraper(Scraper):
     def __init__(self):
         super().__init__(self)
@@ -252,7 +301,17 @@ class JsonScraper:
     data : Pandas DataFrame
             Pandas DataFrame
     """
-    def __init__(self, search_path=os.getcwd(), search_patterns=["*_total_*_svm_*.json"], file_basename="svm_data", crpt=0, save_csv=False, store_h5=True, output_path=None):
+
+    def __init__(
+        self,
+        search_path=os.getcwd(),
+        search_patterns=["*_total_*_svm_*.json"],
+        file_basename="svm_data",
+        crpt=0,
+        save_csv=False,
+        store_h5=True,
+        output_path=None,
+    ):
         self.search_path = search_path
         self.search_patterns = search_patterns
         self.file_basename = file_basename
@@ -264,11 +323,20 @@ class JsonScraper:
         self.msg_datefmt = "%Y%j%H%M%S"
         self.splunk_msg_fmt = "%(asctime)s %(levelname)s src=%(name)s- %(message)s"
         self.log_level = logutil.logging.INFO
-        self.keyword_shortlist = ["TARGNAME", "DEC_TARG", "RA_TARG", "NUMEXP", "imgname", "Number of GAIA sources.Number of GAIA sources", "number_of_sources.point", "number_of_sources.segment"]
+        self.keyword_shortlist = [
+            "TARGNAME",
+            "DEC_TARG",
+            "RA_TARG",
+            "NUMEXP",
+            "imgname",
+            "Number of GAIA sources.Number of GAIA sources",
+            "number_of_sources.point",
+            "number_of_sources.segment",
+        ]
         self.log = None
         self.json_dict = None
-        self.data = None # self.json_harvester()
-        self.h5_file = None # self.h5store()
+        self.data = None  # self.json_harvester()
+        self.h5_file = None  # self.h5store()
 
     def start_logging(self):
         self.log = logutil.create_logger(
@@ -361,7 +429,9 @@ class JsonScraper:
                 elif (
                     json_data["data"][datakey]["original format"] == "<class 'tuple'>"
                 ):  # Extract tuples
-                    out_dict["data"][datakey] = tuple(json_data["data"][datakey]["data"])
+                    out_dict["data"][datakey] = tuple(
+                        json_data["data"][datakey]["data"]
+                    )
                 else:  # Catchall for everything else
                     out_dict["data"][datakey] = json_data["data"][datakey]["data"]
 
@@ -378,7 +448,7 @@ class JsonScraper:
         specified in the `search_path` parameter, but will look in immediate
         sub-directories as well if no json files are located in the directory
         specified by `search_path`.
-        
+
         Returns
         -------
         out_json_dict : ordered dictionary
@@ -394,7 +464,9 @@ class JsonScraper:
                 search_string = os.path.join(self.search_path, "*", search_pattern)
                 search_results = glob.glob(search_string)
 
-            self.log.info("{} files found: {}".format(search_pattern, len(search_results)))
+            self.log.info(
+                "{} files found: {}".format(search_pattern, len(search_results))
+            )
             if len(search_results) > 0:
                 json_list += search_results
 
@@ -432,7 +504,7 @@ class JsonScraper:
         """
         if self.output_path is None:
             self.output_path = os.getcwd()
-        fname = self.file_basename.split('.')[0] + ".h5"
+        fname = self.file_basename.split(".")[0] + ".h5"
         self.h5_file = os.path.join(self.output_path, fname)
         if os.path.exists(self.h5_file):
             os.remove(self.h5_file)
@@ -443,7 +515,7 @@ class JsonScraper:
             store.close()
             self.log.info(
                 "Wrote dataframe and metadata to HDF5 file {}".format(self.h5_file)
-            ) 
+            )
         else:
             print("Data unavailable - run `json_scraper` to collect json data.")
         return self.h5_file
@@ -466,8 +538,7 @@ class JsonScraper:
         return self.data
 
     def json_harvester(self):
-        """Main calling function
-        """
+        """Main calling function"""
         self.log = self.start_logging()
         self.log.setLevel(self.log_level)
         # Get sorted list of json files
@@ -492,7 +563,7 @@ class JsonScraper:
         if self.save_csv:
             self.write_to_csv()
         return self.data
-    
+
     def write_to_csv(self):
         """optionally also write dataframe out to .csv file for human inspection"""
         output_csv_filename = self.h5_filename.replace(".h5", ".csv")
@@ -537,9 +608,9 @@ class JsonScraper:
                 for header_item in json_data["header"].keys():
                     if header_item in keyword_shortlist:
                         # if header_item in header_keywords_to_keep:
-                        ingest_dict["data"]["header." + header_item] = json_data["header"][
-                            header_item
-                        ]
+                        ingest_dict["data"]["header." + header_item] = json_data[
+                            "header"
+                        ][header_item]
                 header_ingested = True
 
             # add information from "general information" section to ingest_dict just once
@@ -560,7 +631,10 @@ class JsonScraper:
                 ingest_key = fd_key.replace(" ", "_")
                 key_suffix = ingest_key.split(".")[-1]
                 if key_suffix not in ["data", "unit", "format", "dtype"]:
-                    if str(type(json_data_item)) == "<class 'astropy.table.table.Table'>":
+                    if (
+                        str(type(json_data_item))
+                        == "<class 'astropy.table.table.Table'>"
+                    ):
                         for coltitle in json_data_item.colnames:
                             ingest_value = json_data_item[coltitle].tolist()
                             id_key = title_suffix + ingest_key + "." + coltitle

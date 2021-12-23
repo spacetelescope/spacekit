@@ -8,6 +8,7 @@ from spacekit.builder.networks import Cnn2dBuilder
 from spacekit.datasets.k2_exo import k2_uri, k2_data
 from spacekit.extractor.scrape import WebScraper
 
+
 class LaunchK2:
     def __init__(self, fpaths):
         self.fpaths = fpaths
@@ -17,7 +18,7 @@ class LaunchK2:
         self.y_test = None
         self.builder = None
         self.history = None
-    
+
     def launch_prep(self):
         self.X_train, self.X_test, self.y_train, self.y_test = self.split_data()
         self.X_train, self.X_test = self.scale_data()
@@ -27,11 +28,13 @@ class LaunchK2:
     def split_data(self):
         print("Splitting train-test feature and target data...")
         for fpath in self.fpaths:
-            if fpath.endswith('Train'):
+            if fpath.endswith("Train"):
                 train = fpath
             else:
                 test = fpath
-        self.X_train, self.X_test, self.y_train, self.y_test = hypersonic_pliers(train, test)
+        self.X_train, self.X_test, self.y_train, self.y_test = hypersonic_pliers(
+            train, test
+        )
         print("Data split successful")
         return self.X_train, self.X_test, self.y_train, self.y_test
 
@@ -46,14 +49,17 @@ class LaunchK2:
         self.X_train, self.X_test = babel_fish_dispenser(self.X_train, self.X_test)
         print("Noise filter added successfully.")
         return self.X_train, self.X_test
-    
+
     def deploy(self):
-        self.builder = Cnn2dBuilder(self.X_train, self.y_train, self.X_test, self.y_test)
+        self.builder = Cnn2dBuilder(
+            self.X_train, self.y_train, self.X_test, self.y_test
+        )
         self.builder.build_cnn()
         return self.builder
 
     def takeoff(self):
         self.history = self.builder.batch_fit()
+
 
 if __name__ == "__main__":
     home = os.getcwd()
