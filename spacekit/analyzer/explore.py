@@ -51,14 +51,6 @@ class Preview(ImagePlots):
         plt.show()
 
 
-class ImagePlots:
-    def __init__(self, X, y):
-        self.X = X
-        self.y = y
-        self.X_prime = None
-        self.y_prime = None
-
-
 class DataPlots:
     def __init__(self, df, width=1300, height=700, show=True, save_html="."):
         self.df = df
@@ -144,8 +136,6 @@ class DataPlots:
         marker_size=15,
         cmap=["cyan", "fuchsia"],
         categories=None,
-        show=True,
-        save_html=None,
     ):
         if categories is None:
             categories = {"all": self.df}
@@ -180,14 +170,14 @@ class DataPlots:
                 height=500,
             )
             fig = go.Figure(data=traces, layout=layout)
-            if show:
+            if self.show:
                 fig.show()
-            if save_html:
+            if self.save_html:
                 if not os.path.exists(self.save_html):
                     os.makedirs(self.save_html, exist_ok=True)
                 pyo.plot(
                     fig,
-                    filename=f"{save_html}/{key}-{xaxis_name}-{yaxis_name}-scatter.html",
+                    filename=f"{self.save_html}/{key}-{xaxis_name}-{yaxis_name}-scatter.html",
                 )
             scatter_figs.append(fig)
         return scatter_figs
@@ -292,8 +282,10 @@ class DataPlots:
 
 
 class SingleVisitMosaic(DataPlots):
-    def __init__(self, df, group="det"):
-        super().__init__(df)
+    def __init__(
+        self, df, group="det", width=1300, height=700, show=True, save_html=None
+    ):
+        super().__init__(df, width=width, height=height, show=show, save_html=save_html)
         self.group = group
         self.telescope = "HST"
         self.target = "label"
@@ -324,10 +316,10 @@ class SingleVisitMosaic(DataPlots):
 
     def alignment_scatters(self):
         rms_scatter = self.make_scatter_figs(
-            "rms_ra", "rms_dec", categories=self.categories, save_html=self.save_html
+            "rms_ra", "rms_dec", categories=self.categories
         )
         source_scatter = self.make_scatter_figs(
-            "point", "segment", categories=self.categories, save_html=self.save_html
+            "point", "segment", categories=self.categories
         )
         scatters = [rms_scatter, source_scatter]
         return scatters
@@ -360,6 +352,21 @@ class SingleVisitMosaic(DataPlots):
             ]
         group_keys = dict(enumerate(keys))
         return group_keys
+
+    def df_by_detector(self):
+        self.hrc = self.df.groupby("det").get_group(0)
+        self.ir = self.df.groupby("det").get_group(1)
+        self.sbc = self.df.groupby("det").get_group(2)
+        self.uvis = self.df.groupby("det").get_group(3)
+        self.wfc = self.df.groupby("det").get_group(4)
+        self.instr_dict = {
+            "hrc": [self.hrc, "#119dff"],  # lightblue
+            "ir": [self.ir, "salmon"],
+            "sbc": [self.sbc, "#66c2a5"],  # lightgreen
+            "uvis": [self.uvis, "fuchsia"],
+            "wfc": [self.wfc, "#f4d365"],  # softgold
+        }
+        return self
 
     # TODO generalize and move up to main class
     def grouped_barplot(self, save=False):
