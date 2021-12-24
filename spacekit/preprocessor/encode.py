@@ -1,5 +1,20 @@
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
+from tensorflow.keras.utils import to_categorical
+
+def encode_target_data(y_train, y_test):
+    # label encode class values as integers
+    encoder = LabelEncoder()
+    encoder.fit(y_train)
+    y_train_enc = encoder.transform(y_train)
+    y_train = to_categorical(y_train_enc)
+    # test set
+    encoder.fit(y_test)
+    y_test_enc = encoder.transform(y_test)
+    y_test = to_categorical(y_test_enc)
+    # ensure train/test targets have correct shape (4 bins)
+    print(y_train.shape, y_test.shape)
+    return y_train, y_test
 
 
 class Encoder:

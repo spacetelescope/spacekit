@@ -3,106 +3,7 @@ import pandas as pd
 import numpy as np
 from scipy.ndimage.filters import uniform_filter1d
 from sklearn.preprocessing import PowerTransformer
-from sklearn.preprocessing import LabelEncoder
 import tensorflow as tf
-
-# TODO: update code elsewhere to use class method versions instead of static functions
-
-
-def apply_power_transform(
-    data, cols=["numexp", "rms_ra", "rms_dec", "nmatches", "point", "segment", "gaia"]
-):
-    data_cont = data[cols]
-    idx = data_cont.index
-    pt = PowerTransformer(standardize=False)
-    pt.fit(data_cont)
-    input_matrix = pt.transform(data_cont)
-    lambdas = pt.lambdas_
-    normalized = np.empty((len(data), len(cols)))
-    mu, sig = [], []
-    for i in range(len(cols)):
-        v = input_matrix[:, i]
-        m, s = np.mean(v), np.std(v)
-        x = (v - m) / s
-        normalized[:, i] = x
-        mu.append(m)
-        sig.append(s)
-    pt_dict = {"lambdas": lambdas, "mu": np.array(mu), "sigma": np.array(sig)}
-    newcols = [c + "_scl" for c in cols]
-    df_norm = pd.DataFrame(normalized, index=idx, columns=newcols)
-    df = data.drop(cols, axis=1, inplace=False)
-    df = df_norm.join(df, how="left")
-    return df, pt_dict
-
-
-def power_transform_matrix(data, pt_data):
-    if type(data) == pd.DataFrame:
-        data = data.values
-    data_cont = data[:, :7]
-    data_cat = data[:, -3:]
-    nrows = data_cont.shape[0]
-    ncols = data_cont.shape[1]
-    pt = PowerTransformer(standardize=False)
-    pt.fit(data_cont)
-    pt.lambdas_ = pt_data["lambdas"]
-    input_matrix = pt.transform(data_cont)
-    normalized = np.empty((nrows, ncols))
-    for i in range(data_cont.shape[1]):
-        v = input_matrix[:, i]
-        m = pt_data["mu"][i]
-        s = pt_data["sigma"][i]
-        x = (v - m) / s
-        normalized[:, i] = x
-    data_norm = np.concatenate((normalized, data_cat), axis=1)
-    return data_norm
-
-
-def encode_target_data(y_train, y_test):
-    # label encode class values as integers
-    encoder = LabelEncoder()
-    encoder.fit(y_train)
-    y_train_enc = encoder.transform(y_train)
-    y_train = tf.keras.utils.to_categorical(y_train_enc)
-    # test set
-    encoder.fit(y_test)
-    y_test_enc = encoder.transform(y_test)
-    y_test = tf.keras.utils.to_categorical(y_test_enc)
-    # ensure train/test targets have correct shape (4 bins)
-    print(y_train.shape, y_test.shape)
-    return y_train, y_test
-
-
-def update_power_transform(df):
-    pt = PowerTransformer(standardize=False)
-    df_cont = df[["n_files", "total_mb"]]
-    pt.fit(df_cont)
-    input_matrix = pt.transform(df_cont)
-    # FILES (n_files)
-    f_mean = np.mean(input_matrix[:, 0])
-    f_sigma = np.std(input_matrix[:, 0])
-    # SIZE (total_mb)
-    s_mean = np.mean(input_matrix[:, 1])
-    s_sigma = np.std(input_matrix[:, 1])
-    files = input_matrix[:, 0]
-    size = input_matrix[:, 1]
-    x_files = (files - f_mean) / f_sigma
-    x_size = (size - s_mean) / s_sigma
-    normalized = np.stack([x_files, x_size], axis=1)
-    idx = df_cont.index
-    df_norm = pd.DataFrame(normalized, index=idx, columns=["x_files", "x_size"])
-    df["x_files"] = df_norm["x_files"]
-    df["x_size"] = df_norm["x_size"]
-    lambdas = pt.lambdas_
-    pt_transform = {
-        "f_lambda": lambdas[0],
-        "s_lambda": lambdas[1],
-        "f_mean": f_mean,
-        "f_sigma": f_sigma,
-        "s_mean": s_mean,
-        "s_sigma": s_sigma,
-    }
-    print(pt_transform)
-    return df, pt_transform
 
 
 class Transformer:
@@ -266,6 +167,90 @@ class CalX(Transformer):
             return self.X
 
 
+# TODO: update code elsewhere to use class method versions instead of static functions
+
+
+def apply_power_transform(
+    data, cols=["numexp", "rms_ra", "rms_dec", "nmatches", "point", "segment", "gaia"]
+):
+    data_cont = data[cols]
+    idx = data_cont.index
+    pt = PowerTransformer(standardize=False)
+    pt.fit(data_cont)
+    input_matrix = pt.transform(data_cont)
+    lambdas = pt.lambdas_
+    normalized = np.empty((len(data), len(cols)))
+    mu, sig = [], []
+    for i in range(len(cols)):
+        v = input_matrix[:, i]
+        m, s = np.mean(v), np.std(v)
+        x = (v - m) / s
+        normalized[:, i] = x
+        mu.append(m)
+        sig.append(s)
+    pt_dict = {"lambdas": lambdas, "mu": np.array(mu), "sigma": np.array(sig)}
+    newcols = [c + "_scl" for c in cols]
+    df_norm = pd.DataFrame(normalized, index=idx, columns=newcols)
+    df = data.drop(cols, axis=1, inplace=False)
+    df = df_norm.join(df, how="left")
+    return df, pt_dict
+
+
+def power_transform_matrix(data, pt_data):
+    if type(data) == pd.DataFrame:
+        data = data.values
+    data_cont = data[:, :7]
+    data_cat = data[:, -3:]
+    nrows = data_cont.shape[0]
+    ncols = data_cont.shape[1]
+    pt = PowerTransformer(standardize=False)
+    pt.fit(data_cont)
+    pt.lambdas_ = pt_data["lambdas"]
+    input_matrix = pt.transform(data_cont)
+    normalized = np.empty((nrows, ncols))
+    for i in range(data_cont.shape[1]):
+        v = input_matrix[:, i]
+        m = pt_data["mu"][i]
+        s = pt_data["sigma"][i]
+        x = (v - m) / s
+        normalized[:, i] = x
+    data_norm = np.concatenate((normalized, data_cat), axis=1)
+    return data_norm
+
+
+def update_power_transform(df):
+    pt = PowerTransformer(standardize=False)
+    df_cont = df[["n_files", "total_mb"]]
+    pt.fit(df_cont)
+    input_matrix = pt.transform(df_cont)
+    # FILES (n_files)
+    f_mean = np.mean(input_matrix[:, 0])
+    f_sigma = np.std(input_matrix[:, 0])
+    # SIZE (total_mb)
+    s_mean = np.mean(input_matrix[:, 1])
+    s_sigma = np.std(input_matrix[:, 1])
+    files = input_matrix[:, 0]
+    size = input_matrix[:, 1]
+    x_files = (files - f_mean) / f_sigma
+    x_size = (size - s_mean) / s_sigma
+    normalized = np.stack([x_files, x_size], axis=1)
+    idx = df_cont.index
+    df_norm = pd.DataFrame(normalized, index=idx, columns=["x_files", "x_size"])
+    df["x_files"] = df_norm["x_files"]
+    df["x_size"] = df_norm["x_size"]
+    lambdas = pt.lambdas_
+    pt_transform = {
+        "f_lambda": lambdas[0],
+        "s_lambda": lambdas[1],
+        "f_mean": f_mean,
+        "f_sigma": f_sigma,
+        "s_mean": s_mean,
+        "s_sigma": s_sigma,
+    }
+    print(pt_transform)
+    return df, pt_transform
+
+
 def make_tensors(X_train, y_train, X_test, y_test):
     """Convert Arrays to Tensors"""
     X_train = tf.convert_to_tensor(X_train, dtype=tf.float32)
@@ -274,6 +259,10 @@ def make_tensors(X_train, y_train, X_test, y_test):
     y_test = tf.convert_to_tensor(y_test, dtype=tf.float32)
     return X_train, y_train, X_test, y_test
 
+def array_to_tensor(arr):
+    """Convert Arrays to Tensors"""
+    tensor = tf.convert_to_tensor(arr, dtype=tf.float32)
+    return tensor
 
 def make_arrays(X_train, y_train, X_test, y_test):
     X_train = X_train.values

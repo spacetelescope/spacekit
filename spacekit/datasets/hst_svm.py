@@ -1,7 +1,7 @@
 # tmp
-svm_uri = "https://raw.githubusercontent.com/alphasentaurii/spacekit/dashboard/spacekit/dashboard/svm/data"
+svm_uri = "https://raw.githubusercontent.com/alphasentaurii/spacekit/dashboard/spacekit/datasets/hst/svm"
 
-# "https://raw.githubusercontent.com/alphasentaurii/spacekit/main/dashboard/svm/data/"
+# "https://raw.githubusercontent.com/alphasentaurii/spacekit/main/datasets/hst/svm/"
 
 svm_data = {
     "d0": {

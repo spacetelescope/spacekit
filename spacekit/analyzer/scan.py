@@ -24,8 +24,7 @@ def import_dataset(filename=None, kwargs=dict(index_col="ipst"), decoder_key=Non
     """Imports and loads dataset from csv file via local, https, s3, or dynamodb.
     Returns Pandas dataframe.
     *args*
-    src: data source ("file", "s3", or "ddb")
-    uri: local file path
+    filename: path to csv file
     kwargs: dict of keyword args to pass into pandas read_csv method e.g. set index_col: kwargs=dict(index_col="ipst")
     decoder_key: nested dict of column and key value pairs for decoding a categorical feature into strings
     Ex: {"instr": {{0: "acs", 1: "cos", 2: "stis", 3: "wfc3"}}}

@@ -1,7 +1,7 @@
 # tmp
-calcloud_uri = "https://raw.githubusercontent.com/alphasentaurii/spacekit/dashboard/spacekit/dashboard/cal/data"
+calcloud_uri = "https://raw.githubusercontent.com/alphasentaurii/spacekit/dashboard/spacekit/datasets/hst/calcloud"
 
-# "https://raw.githubusercontent.com/alphasentaurii/spacekit/main/dashboard/cal/data/"
+# "https://raw.githubusercontent.com/alphasentaurii/spacekit/main/datasets/hst/calcloud/"
 
 calcloud_data = {
     "d0": {

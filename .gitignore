@@ -50,9 +50,11 @@ crds_cache
 svm-data/
 docker/dev/
 cal-data/
-2021-11-04-1636048291/
-2021-10-28-1635457222/
-2021-08-22-1629663047/
+*/dashboard/cal/data/*
+# 2021-11-04-1636048291/
+# 2021-10-28-1635457222/
+# 2021-08-22-1629663047/
+*/dashboard/svm/data/*
 # Mac OSX
 .DS_Store
 *.pyc

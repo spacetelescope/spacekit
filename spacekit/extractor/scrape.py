@@ -19,6 +19,33 @@ from progressbar import ProgressBar
 client = boto3.client("s3")  # , config=retry_config)
 
 
+def extract_archives(zipfiles, extract_to="data", delete_archive=False):
+    fpaths = []
+    os.makedirs(extract_to, exist_ok=True)
+    for z in zipfiles:
+        fname = os.path.basename(z).split(".")[0]
+        fpath = os.path.join(extract_to, fname)
+        with ZipFile(z, "r") as zip_ref:
+            zip_ref.extractall(extract_to)
+        # check just in case 
+        if os.path.exists(fpath):
+            fpaths.append(fpath)
+            if delete_archive is True:
+                os.remove(z)
+    return fpaths
+
+
+# def unzip_images(zip_file):
+#     basedir = os.path.dirname(zip_file)
+#     key = os.path.basename(zip_file).split(".")[0]
+#     image_folder = os.path.join(basedir, key + "/")
+#     os.makedirs(image_folder, exist_ok=True)
+#     with ZipFile(zip_file, "r") as zip_ref:
+#         zip_ref.extractall(basedir)
+#     print(len(os.listdir(image_folder)))
+#     return image_folder
+
+
 def scrape_web(key, uri):
     fname = key["fname"]
     origin = f"{uri}/{fname}"
@@ -49,6 +76,7 @@ def get_training_data(dataset=None, uri=None):
     return fpaths
 
 
+# TODO: delete (use s3scraper class below for new results file structure)
 def scrape_s3(bucket, results=[]):
     res_keys = {}
     for r in results:

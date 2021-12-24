@@ -9,10 +9,10 @@ from spacekit.analyzer.track import stopwatch
 
 
 class ArrayOps:
-    def __init__(self, data_path=".", idx="ipst", target="mem_bin"):
+    def __init__(self, data_path=".", idx=None, targets=None):
         self.data_path = data_path
         self.idx = idx
-        self.target = target
+        self.targets = targets
         self.X_train = None
         self.X_test = None
         self.y_train = None
@@ -20,34 +20,61 @@ class ArrayOps:
         self.test_idx = None
 
     """Pandas/Numpy File ops"""
+    def save_train_test(self, target=None):
+        np.save(f"{self.data_path}/X_train.npy", np.asarray(self.X_train))
+        np.save(f"{self.data_path}/X_test.npy", np.asarray(self.X_test))
+        if self.test_idx:
+            np.save(f"{self.data_path}/test_idx.npy", np.asarray(self.test_idx.index))
+        if target:
+            target_path = os.makedirs(f"{self.data_path}/{target}", exist_ok=True)
+            np.save(f"{target_path}/y_train.npy", self.y_train)
+            np.save(f"{target_path}/y_test.npy", self.y_test)
+        else:
+            np.save(f"{self.data_path}/y_train.npy", self.y_train)
+            np.save(f"{self.data_path}/y_test.npy", self.y_test)
+        print("Train-test data saved as numpy arrays:\n")
+        print(os.listdir(self.data_path))
 
-    def load_train_test(self):
-        self.X_train, self.y_train = np.load(f"{self.data_path}/X_train.npy"), np.load(
-            f"{self.data_path}/y_train.npy"
-        )
-        self.X_test, self.y_test = np.load(f"{self.data_path}/X_test.npy"), np.load(
-            f"{self.data_path}/y_test.npy"
-        )
+    def load_train_test(self, target=None):
+        self.X_train, self.X_test = self.load_X_train_test()
+        self.y_train, self.y_test = self.load_y_train_test(target=target)
         if self.idx:
-            self.test_idx = np.load(f"{self.data_path}/test_idx.npy", allow_pickle=True)
-            if self.target:
-                self.test_idx = pd.DataFrame(
-                    np.argmax(self.y_test, axis=-1),
-                    index=self.idx,
-                    columns=[self.target],
-                )
+            self.test_idx = self.load_test_index(self, target=target, y=None)
             return self.X_train, self.y_train, self.X_test, self.y_test, self.test_idx
         else:
             return self.X_train, self.y_train, self.X_test, self.y_test
 
-    def save_train_test(self):
-        np.save(f"{self.data_path}/X_train.npy", np.asarray(self.X_train))
-        np.save(f"{self.data_path}/X_test.npy", np.asarray(self.X_test))
-        np.save(f"{self.data_path}/y_train.npy", self.y_train)
-        np.save(f"{self.data_path}/y_test.npy", self.y_test)
-        np.save(f"{self.data_path}/test_idx.npy", np.asarray(self.test_idx.index))
-        print("Train-test data saved as numpy arrays:\n")
-        print(os.listdir(self.data_path))
+    def load_X_train_test(self):
+        self.X_train = np.load(f"{self.data_path}/X_train.npy")
+        self.X_test = np.load(f"{self.data_path}/X_test.npy")
+        return self.X_train, self.X_test
+    
+    def load_y_train_test(self, target=None):
+        if target:
+            target_path = os.path.join(self.data_path, target)
+            os.makedirs(target_path, exist_ok=True)
+            np.save(f"{target_path}/y_train.npy", self.y_train)
+            np.save(f"{target_path}/y_test.npy", self.y_test)
+        else:
+            np.save(f"{self.data_path}/y_train.npy", self.y_train)
+            np.save(f"{self.data_path}/y_test.npy", self.y_test)
+        return self.y_train, self.y_test
+
+    def load_test_index(self, target=None, y=None):
+        if target:
+            idx_path = f"{self.data_path}/{target}/test_idx.npy"
+        else:
+            idx_path = f"{self.data_path}/test_idx.npy"
+        if os.path.exists(idx_path):
+            test_idx = np.load(idx_path, allow_pickle=True)
+            if y is None:
+                y = self.y_test
+            test_idx = pd.DataFrame(
+                    np.argmax(y, axis=-1),
+                    index=test_idx,
+                    columns=[target],
+                )
+            return test_idx
 
     def save_compressed(self, arrs, names):
         for arr, name in list(zip(arrs, names)):
@@ -55,6 +82,37 @@ class ArrayOps:
         print("Train-test data saved as compressed numpy arrays:\n")
         print(os.listdir(self.data_path))
 
+# TODO
+class HstCalData(ArrayOps):
+    def __init__(self, data_path=".", idx="ipst", targets=["mem_bin", "memory", "wallclock"]):
+        super().init(data_path=data_path, idx=idx, targets=targets)
+        self.y_bin_train = None
+        self.y_bin_test = None
+        self.y_mem_train = None
+        self.y_mem_test = None
+        self.y_wall_train = None
+        self.y_wall_test = None
+        self.bin_test_idx = None
+        self.mem_test_idx = None
+        self.wall_test_idx = None
+    
+    def load_training_data(self):
+        self.X_train, self.X_test = self.load_X_train_test(self)
+        self.y_bin_train, self.y_bin_test = self.load_y_train_test(target="mem_bin")
+        self.y_mem_train, self.y_mem_test = self.load_y_train_test(target="memory")
+        self.y_wall_train, self.y_wall_test = self.load_y_train_test(target="wallclock")
+        self.bin_test_idx = self.load_test_index(target="mem_bin", y=self.y_bin_test)
+        self.mem_test_idx = self.load_test_index(target="memory", y=self.y_mem_test)
+        self.wall_test_idx = self.load_test_index(target="wallclock", y=self.y_wall_test)
+        return self
+    
+
+
+# TODO
+class HstSvmData(ArrayOps):
+    def __init__(self, data_path=".", idx="index", targets=["label"]):
+        super().init(data_path=data_path, idx=idx, targets=targets)
+    
     def save_ensemble_data(self):
         X_train_mlp = np.asarray(self.X_train[0])
         X_train_img = np.asarray(self.X_train[1])
@@ -98,18 +156,6 @@ class ArrayOps:
 
 
 """Image Ops"""
-
-
-def unzip_images(zip_file):
-    basedir = os.path.dirname(zip_file)
-    key = os.path.basename(zip_file).split(".")[0]
-    image_folder = os.path.join(basedir, key + "/")
-    os.makedirs(image_folder, exist_ok=True)
-    with ZipFile(zip_file, "r") as zip_ref:
-        zip_ref.extractall(basedir)
-    print(len(os.listdir(image_folder)))
-    return image_folder
-
 
 def read_channels(channels, w, h, d, exp=None, color_mode="rgb"):
     """Loads PNG image data and converts to 3D arrays.

@@ -1,10 +1,10 @@
 from dash import dcc
 from dash import html
 from dash.dependencies import Input, Output
-from spacekit.analyzer.explore import HstCalPlots
-from spacekit.analyzer.scan import import_dataset
+# from spacekit.analyzer.explore import HstCalPlots
+# from spacekit.analyzer.scan import import_dataset
 from spacekit.dashboard.cal.app import app
-from spacekit.dashboard.cal.config import cal, hst
+from spacekit.dashboard.cal.config import hst #cal
 
 layout = html.Div(
     children=[
@@ -22,24 +22,24 @@ layout = html.Div(
         html.Div(
             id="explore-dataset",
             children=[
-                html.Div(
-                    [
-                        dcc.Dropdown(
-                            id="dataset-selector",
-                            options=[
-                                {"label": n, "value": d}
-                                for (n, d) in list(
-                                    zip(cal.datasets, list(range(len(cal.datasets))))
-                                )
-                            ],
-                            value=cal.primary,
-                        )
-                    ],
-                    style={
-                        "display": "inline-block",
-                        "padding": 5,
-                    },
-                ),
+                # html.Div(
+                #     [
+                #         dcc.Dropdown(
+                #             id="dataset-selector",
+                #             options=[
+                #                 {"label": n, "value": d}
+                #                 for (n, d) in list(
+                #                     zip(cal.datasets, list(range(len(cal.datasets))))
+                #                 )
+                #             ],
+                #             value=cal.primary,
+                #         )
+                #     ],
+                #     style={
+                #         "display": "inline-block",
+                #         "padding": 5,
+                #     },
+                # ),
                 html.Div(
                     children=[
                         # FEATURE COMPARISON SCATTERPLOTS
@@ -179,23 +179,23 @@ layout = html.Div(
 # Page 2 EDA callbacks
 
 
-@app.callback(
-    [Output("explore-dataset", "children")], [Input("dataset-selector", "value")]
-)
-def data_explorer(dataset_selection):
-    global hst
-    cal.primary = dataset_selection
-    cal.data = cal.select_dataset(
-        primary=cal.primary
-    )  # "data/2021-11-04-1636048291/latest.csv"
-    df = import_dataset(
-        filename=cal.data,
-        kwargs=dict(index_col="ipst"),
-        decoder_key={"instr": {0: "acs", 1: "cos", 2: "stis", 3: "wfc3"}},
-    )
-    hst = HstCalPlots(df)
-    hst.df_by_instr()
-    return hst
+# @app.callback(
+#     [Output("explore-dataset", "children")], [Input("dataset-selector", "value")]
+# )
+# def data_explorer(dataset_selection):
+#     global hst
+#     cal.primary = dataset_selection
+#     cal.data = cal.select_dataset(
+#         primary=cal.primary
+#     )  # "data/2021-11-04-1636048291/latest.csv"
+#     df = import_dataset(
+#         filename=cal.data,
+#         kwargs=dict(index_col="ipst"),
+#         decoder_key={"instr": {0: "acs", 1: "cos", 2: "stis", 3: "wfc3"}},
+#     )
+#     hst = HstCalPlots(df)
+#     hst.df_by_instr()
+#     return hst
 
 
 # SCATTER CALLBACK

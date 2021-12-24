@@ -1,4 +1,5 @@
 k2_uri = "https://github.com/alphasentaurii/starskope/raw/master/data"
+# k2_uri = "https://github.com/alphasentaurii/spacekit/main/datasets/k2/exo/"
 
 k2_data = {
     "train": {
