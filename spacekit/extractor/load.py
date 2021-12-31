@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 import numpy as np
-from zipfile import ZipFile
+# from zipfile import ZipFile
 from keras.preprocessing import image
 from tqdm import tqdm
 import time
@@ -21,19 +21,48 @@ class ArrayOps:
 
     """Pandas/Numpy File ops"""
     def save_train_test(self, target=None):
-        np.save(f"{self.data_path}/X_train.npy", np.asarray(self.X_train))
-        np.save(f"{self.data_path}/X_test.npy", np.asarray(self.X_test))
+        self.save_X_train_test()
         if self.test_idx:
-            np.save(f"{self.data_path}/test_idx.npy", np.asarray(self.test_idx.index))
-        if target:
-            target_path = os.makedirs(f"{self.data_path}/{target}", exist_ok=True)
-            np.save(f"{target_path}/y_train.npy", self.y_train)
-            np.save(f"{target_path}/y_test.npy", self.y_test)
-        else:
-            np.save(f"{self.data_path}/y_train.npy", self.y_train)
-            np.save(f"{self.data_path}/y_test.npy", self.y_test)
+            self.save_test_index(target=target)
+        self.save_y_train_test(target=target)
         print("Train-test data saved as numpy arrays:\n")
         print(os.listdir(self.data_path))
+
+    # def save_train_test(self, target=None):
+    #     np.save(f"{self.data_path}/X_train.npy", np.asarray(self.X_train))
+    #     np.save(f"{self.data_path}/X_test.npy", np.asarray(self.X_test))
+    #     if self.test_idx:
+    #         np.save(f"{self.data_path}/test_idx.npy", np.asarray(self.test_idx.index))
+    #     if target:
+    #         target_path = os.makedirs(f"{self.data_path}/{target}", exist_ok=True)
+    #         np.save(f"{target_path}/y_train.npy", self.y_train)
+    #         np.save(f"{target_path}/y_test.npy", self.y_test)
+    #     else:
+    #         np.save(f"{self.data_path}/y_train.npy", self.y_train)
+    #         np.save(f"{self.data_path}/y_test.npy", self.y_test)
+    #     print("Train-test data saved as numpy arrays:\n")
+    #     print(os.listdir(self.data_path))
+    
+    def save_X_train_test(self):
+        np.save(f"{self.data_path}/X_train.npy", np.asarray(self.X_train))
+        np.save(f"{self.data_path}/X_test.npy", np.asarray(self.X_test))
+
+    def save_y_train_test(self, target=None):
+        if target:
+            data_path = os.path.join(self.data_path, target)
+        else:
+            data_path = self.data_path
+        os.makedirs(data_path, exist_ok=True)
+        np.save(f"{data_path}/y_train.npy", self.y_train)
+        np.save(f"{data_path}/y_test.npy", self.y_test)
+
+    def save_test_index(self, target=None):
+        if target:
+            idx_path = f"{self.data_path}/{target}/test_idx.npy"
+        else:
+            idx_path = f"{self.data_path}/test_idx.npy"
+        os.makedirs(idx_path, exist_ok=True)
+        np.save(idx_path, np.asarray(self.test_idx.index))
 
     def load_train_test(self, target=None):
         self.X_train, self.X_test = self.load_X_train_test()
@@ -45,20 +74,19 @@ class ArrayOps:
             return self.X_train, self.y_train, self.X_test, self.y_test
 
     def load_X_train_test(self):
-        self.X_train = np.load(f"{self.data_path}/X_train.npy")
-        self.X_test = np.load(f"{self.data_path}/X_test.npy")
-        return self.X_train, self.X_test
+        X_train = np.load(f"{self.data_path}/X_train.npy")
+        X_test = np.load(f"{self.data_path}/X_test.npy")
+        return X_train, X_test
     
     def load_y_train_test(self, target=None):
         if target:
             target_path = os.path.join(self.data_path, target)
-            os.makedirs(target_path, exist_ok=True)
-            np.save(f"{target_path}/y_train.npy", self.y_train)
-            np.save(f"{target_path}/y_test.npy", self.y_test)
+            y_train = np.load(f"{target_path}/y_train.npy")
+            y_test = np.load(f"{target_path}/y_test.npy")
         else:
-            np.save(f"{self.data_path}/y_train.npy", self.y_train)
-            np.save(f"{self.data_path}/y_test.npy", self.y_test)
-        return self.y_train, self.y_test
+            y_train = np.load(f"{self.data_path}/y_train.npy")
+            y_test = np.load(f"{self.data_path}/y_test.npy")
+        return y_train, y_test
 
     def load_test_index(self, target=None, y=None):
         if target:
@@ -76,16 +104,43 @@ class ArrayOps:
                 )
             return test_idx
 
-    def save_compressed(self, arrs, names):
-        for arr, name in list(zip(arrs, names)):
-            np.savez_compressed(f"{self.data_path}/{name}.npz", arr)
-        print("Train-test data saved as compressed numpy arrays:\n")
-        print(os.listdir(self.data_path))
+    # TODO
+    def save_compressed(self, y_dict=None, idx_dict=None):
+        """Store compressed data to disk
+        """
+        np.savez(f'{self.data_path}/X.npz', X_train=self.X_train, X_test=self.X_test)
+        if y_dict:
+            np.savez(f'{self.data_path}/y.npz', **y_dict)
+        else:
+            np.savez(f'{self.data_path}/y.npz', y_train=self.y_train, y_test=self.y_test)
+        if idx_dict:
+            np.savez(f'{self.data_path}/idx.npz', **idx_dict)
+        else:
+            np.savez(f'{self.data_path}/idx.npz', test_idx=self.test_idx)
+
+    def load_compressed(self):
+        """Store compressed data to disk
+        """
+        X_data = np.load(f'{self.data_path}/X.npz')
+
+        self.X_train = X_data['X_train']
+        self.X_test = X_data['X_test']
+        X_data.close()
+
+        y_data = np.load(f'{self.data_path}/y.npz')
+        self.y_train = y_data['y_train']
+        self.y_test = y_data['y_test']
+        y_data.close()
+
+        idx = np.load(f'{self.data_path}/idx.npz')
+        self.test_idx = idx['test_idx']
+        return self
+
 
 # TODO
 class HstCalData(ArrayOps):
     def __init__(self, data_path=".", idx="ipst", targets=["mem_bin", "memory", "wallclock"]):
-        super().init(data_path=data_path, idx=idx, targets=targets)
+        super().__init__(data_path=data_path, idx=idx, targets=targets)
         self.y_bin_train = None
         self.y_bin_test = None
         self.y_mem_train = None
@@ -97,7 +152,7 @@ class HstCalData(ArrayOps):
         self.wall_test_idx = None
     
     def load_training_data(self):
-        self.X_train, self.X_test = self.load_X_train_test(self)
+        self.X_train, self.X_test = self.load_X_train_test()
         self.y_bin_train, self.y_bin_test = self.load_y_train_test(target="mem_bin")
         self.y_mem_train, self.y_mem_test = self.load_y_train_test(target="memory")
         self.y_wall_train, self.y_wall_test = self.load_y_train_test(target="wallclock")
@@ -106,12 +161,29 @@ class HstCalData(ArrayOps):
         self.wall_test_idx = self.load_test_index(target="wallclock", y=self.y_wall_test)
         return self
     
+    def load_compressed(self):
+        """Store compressed data to disk
+        """
+        data = np.load(f'{self.data_path}/train_test.npz')
+
+        self.X_train, self.X_test = data['X_train'], data['X_test']
+        self.y_bin_train, self.y_bin_test = data['y_bin_train'], data['y_bin_test']
+        self.y_mem_train, self.y_mem_test = data['y_mem_train'], data['y_mem_test']
+        self.y_wall_train, self.y_wall_test = data['y_wall_train'], data['y_wall_test']
+        data.close()
+
+        idx = np.load(f'{self.data_path}/idx.npz')
+        self.bin_test_idx = idx['bin_test_idx']
+        self.mem_test_idx = idx['mem_test_idx']
+        self.wall_test_idx = idx['wall_test_idx']
+        idx.close()
+        return self
 
 
 # TODO
 class HstSvmData(ArrayOps):
     def __init__(self, data_path=".", idx="index", targets=["label"]):
-        super().init(data_path=data_path, idx=idx, targets=targets)
+        super().__init__(data_path=data_path, idx=idx, targets=targets)
     
     def save_ensemble_data(self):
         X_train_mlp = np.asarray(self.X_train[0])

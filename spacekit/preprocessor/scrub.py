@@ -255,7 +255,7 @@ class ScrubCal:
         self.bin_test_idx = None
         self.mem_test_idx = None
         self.wall_test_idx = None
-    
+
     def prep_data(self):
         """main calling function"""
         self.X_train, self.X_test, y_train, y_test = self.stratify_split(self.mem_bin)
@@ -269,10 +269,10 @@ class ScrubCal:
             self.X_train = array_to_tensor(self.X_train)
             self.X_test = array_to_tensor(self.X_test)
         return self
-    
+
     def stratify_split(self, y):
         return train_test_split(self.X, y, test_size=0.2, stratify=y)
-    
+
     def make_test_index(self, y, target_col="mem_bin"):
         test_idx = pd.DataFrame(y, index=y.index, columns={target_col})
         return test_idx
@@ -283,7 +283,7 @@ class ScrubCal:
             y_train = array_to_tensor(y_train)
             y_test = array_to_tensor(y_test)
         return y_train, y_test
-    
+
     def prep_reg(self, target_col="memory"):
         y_test = self.data.loc[self.test_idx.index][target_col]
         y_train = self.data.loc[self.train_idx.index][target_col]

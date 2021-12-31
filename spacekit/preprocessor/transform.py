@@ -264,6 +264,13 @@ def array_to_tensor(arr):
     tensor = tf.convert_to_tensor(arr, dtype=tf.float32)
     return tensor
 
+def tensor_to_array(tensor, reshape=False):
+    if reshape:
+        arr = np.asarray(tensor).reshape(-1, 1)
+    else:
+        arr = np.asarray(tensor)
+    return arr
+
 def make_arrays(X_train, y_train, X_test, y_test):
     X_train = X_train.values
     y_train = y_train.values.reshape(-1, 1)

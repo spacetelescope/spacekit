@@ -16,10 +16,12 @@ from sklearn.metrics import (
     classification_report,
     confusion_matrix,
 )
-
+from sklearn.metrics import mean_squared_error as MSE
 plt.style.use("seaborn-bright")
 font_dict = {"family": '"Titillium Web", monospace', "size": 16}
 mpl.rc("font", **font_dict)
+
+from spacekit.preprocessor.transform import make_arrays
 
 
 class Computer(object):
@@ -596,10 +598,10 @@ class ComputeMulti(ComputeClassifier):
         if builder:
             self.inputs(
                 builder.model,
+                builder.X_train,
+                builder.y_train,
                 builder.X_test,
                 builder.y_test,
-                builder.X_val,
-                builder.y_val,
                 builder.test_idx,
             )
 
@@ -683,16 +685,81 @@ class ComputeMulti(ComputeClassifier):
 
 
 class ComputeRegressor(Computer):
-    def __init__(self, algorithm="reg", res_path="results/memory"):
-        super().__init__(algorithm, res_path=res_path)
+    def __init__(self, builder=None, algorithm="reg", res_path="results/memory"):
+        super().__init__(algorithm=algorithm, res_path=res_path)
+        if builder:
+            self.inputs(
+                builder.model,
+                builder.history,
+                builder.X_train,
+                builder.y_train,
+                builder.X_test,
+                builder.y_test,
+                builder.test_idx
+            )
+        self.scores = None
         self.predictions = None
         self.residuals = None
-        self.scores = None
+        self.L2 = None
+
+    def calculate_results(self):
+        self.acc_loss = self.get_scores()
+        self.X_train, self.y_train, self.X_test, self.y_test = make_arrays()
+        self.predictions = self.predict_reg()
+        self.residuals = self.get_resid()
+        self.L2 = self.calculate_L2()
+        return self
+    
+    def make_arrays(self):
+        X_train = np.asarray(self.X_train, dtype="float32")
+        y_train = np.asarray(self.y_train, dtype="float32")
+        X_test = np.asarray(self.X_test, dtype="float32")
+        y_test = np.asarray(self.y_test, dtype="float32")
+        return X_train, y_train, X_test, y_test
+
+    def get_scores(self):
+        train_scores = self.model.evaluate(self.X_train, self.y_train, verbose=2)
+        test_scores = self.model.evaluate(self.X_test, self.y_test, verbose=2)
+        train_acc = np.round(train_scores[1], 2)
+        train_loss = np.round(train_scores[0], 2)
+        test_acc = np.round(test_scores[1], 2)
+        test_loss = np.round(test_scores[0], 2)
+        self.acc_loss = {"train_acc": train_acc, "train_loss": train_loss, "test_acc": test_acc, "test_loss": test_loss}
+        return self.acc_loss
+    
+    def predict_reg(self, model, X_train, y_train, X_test, y_test):
+        # predict results of training set
+        y_hat = model.predict(X_train)
+        rmse_train = np.sqrt(MSE(y_train, y_hat))
+        print("RMSE Train : % f" % (rmse_train))
+        # # predict results of test set
+        y_pred = model.predict(X_test)
+        # RMSE Computation
+        rmse_test = np.sqrt(MSE(y_test, y_pred))
+        print("RMSE Test : % f" % (rmse_test))
+        np.set_printoptions(precision=2)
+        self.predictions = np.concatenate((y_pred.reshape(len(y_pred), 1), y_test.reshape(len(y_test), 1)), 1)
+        return self.predictions
+
+    def get_resid(self):
+        self.residuals = []
+        for p, a in self.predictions:
+            # predicted - actual
+            r = p - a
+            self.residuals.append(r)
+        return self.residuals
+
+    def calculate_L2(self):
+        try:
+            self.L2 = np.linalg.norm([p - a for p, a in self.predictions])
+            print("Cost (L2 Norm): ", self.L2)
+        except Exception as e:
+            print(e)
+        return self.L2
 
     def make_outputs(self, dl=True):
         outputs = {
-            "y_scores": self.y_scores,
-            "y_pred": self.y_pred,
+            "predictions": self.predictions,
             "test_idx": self.test_idx,
             "acc_loss": self.acc_loss,
             "residuals": self.residuals,
@@ -704,8 +771,7 @@ class ComputeRegressor(Computer):
         return outputs
 
     def load_results(self, outputs):
-        self.y_scores = outputs["y_scores"]
-        self.y_pred = outputs["y_pred"]
+        self.predictions = outputs["predictions"]
         self.acc_loss = outputs["acc_loss"]
         self.residuals = outputs["residuals"]
         if "test_idx" in outputs:
