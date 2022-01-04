@@ -8,6 +8,7 @@ import datetime as dt
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
+import plotly.express as px
 from sklearn.metrics import (
     roc_curve,
     roc_auc_score,
@@ -685,8 +686,8 @@ class ComputeMulti(ComputeClassifier):
 
 
 class ComputeRegressor(Computer):
-    def __init__(self, builder=None, algorithm="reg", res_path="results/memory"):
-        super().__init__(algorithm=algorithm, res_path=res_path)
+    def __init__(self, builder=None, algorithm="reg", res_path="results/memory", show=False, validation=False):
+        super().__init__(algorithm=algorithm, res_path=res_path, show=show, validation=validation)
         if builder:
             self.inputs(
                 builder.model,
@@ -697,20 +698,36 @@ class ComputeRegressor(Computer):
                 builder.y_test,
                 builder.test_idx
             )
+        self.y_pred = None
         self.scores = None
+        self.rmse = None
         self.predictions = None
         self.residuals = None
         self.L2 = None
+        self.r_stats = None
 
     def calculate_results(self):
+        """Main calling function to compute regression model scores, including residuals, root mean squared error and L2 cost function. Uses parent class method to save and/or load results to/from disk. Once calculated or loaded, other parent class methods can be used to generate various plots.
+
+        Returns:
+            Compute object: ComputeRegressor object for quick evaluation of model performance. 
+        """
+        if self.X_test is None:
+            print("No training data - please add inputs first.")
+            return
         self.acc_loss = self.get_scores()
         self.X_train, self.y_train, self.X_test, self.y_test = make_arrays()
+        self.y_pred = self.model.predict(self.X_test)
         self.predictions = self.predict_reg()
         self.residuals = self.get_resid()
-        self.L2 = self.calculate_L2()
+        self.rmse = self.calculate_rmse()
         return self
     
     def make_arrays(self):
+        """Converts tensors into arrays, which is necessary for certain computations.
+        Returns:
+            Arrays (4): X_train, y_train, X_test, y_test (arrays)
+        """
         X_train = np.asarray(self.X_train, dtype="float32")
         y_train = np.asarray(self.y_train, dtype="float32")
         X_test = np.asarray(self.X_test, dtype="float32")
@@ -718,6 +735,11 @@ class ComputeRegressor(Computer):
         return X_train, y_train, X_test, y_test
 
     def get_scores(self):
+        """Calculates training and test set accuracy and loss scores. Loss is a more important metric for regression models, but accuracy is included for consistency with other compute objects (and for thoroughness). Use `calculate_rmse` for Root Mean Squared Error calculations.
+
+        Returns:
+            Dictionary: model training accuracy and loss scores based on Keras history
+        """
         train_scores = self.model.evaluate(self.X_train, self.y_train, verbose=2)
         test_scores = self.model.evaluate(self.X_test, self.y_test, verbose=2)
         train_acc = np.round(train_scores[1], 2)
@@ -726,321 +748,169 @@ class ComputeRegressor(Computer):
         test_loss = np.round(test_scores[0], 2)
         self.acc_loss = {"train_acc": train_acc, "train_loss": train_loss, "test_acc": test_acc, "test_loss": test_loss}
         return self.acc_loss
-    
-    def predict_reg(self, model, X_train, y_train, X_test, y_test):
-        # predict results of training set
-        y_hat = model.predict(X_train)
-        rmse_train = np.sqrt(MSE(y_train, y_hat))
-        print("RMSE Train : % f" % (rmse_train))
-        # # predict results of test set
-        y_pred = model.predict(X_test)
-        # RMSE Computation
-        rmse_test = np.sqrt(MSE(y_test, y_pred))
-        print("RMSE Test : % f" % (rmse_test))
+
+    def predict_reg(self):
+        """Compare ground-truth and prediction values of a regression model side-by-side. Used for calculating residuals (see `get_resid` method below).
+
+        Returns:
+            2d-array: Concatenation of ground truth (`y_test`) and prediction (`y_pred`) arrays.
+        """
+        if self.y_pred is None:
+            self.y_pred = self.model.predict(self.X_test)
         np.set_printoptions(precision=2)
-        self.predictions = np.concatenate((y_pred.reshape(len(y_pred), 1), y_test.reshape(len(y_test), 1)), 1)
+        self.predictions = np.concatenate((self.y_pred.reshape(len(self.y_pred), 1), self.y_test.reshape(len(self.y_test), 1)), 1)
         return self.predictions
 
     def get_resid(self):
+        """Calculate residual error between ground truth (`y_test`) and prediction values of a regression model. 
+        Residuals are a measure of how far from the regression line the data points are.
+
+        Returns:
+            Array: residual error values for a given test set
+        """
         self.residuals = []
+        if self.predictions is None:
+            self.predictions = self.predict_reg()
         for p, a in self.predictions:
             # predicted - actual
             r = p - a
             self.residuals.append(r)
         return self.residuals
+    
+    def calculate_L2(self, subset=None):
+        """Calculate the L2 Normalization score of a regression model.
+        L2 norm is the square root of the sum of the squared vector values (also known as the Euclidean norm or Euclidean distance from the origin).
+        This metric is often used when fitting ML algorithms as a regularization method to keep the coefficients of the model small, i.e. to make the model less complex.
 
-    def calculate_L2(self):
-        try:
-            self.L2 = np.linalg.norm([p - a for p, a in self.predictions])
-            print("Cost (L2 Norm): ", self.L2)
-        except Exception as e:
-            print(e)
+        Returns:
+            Int: L2 norm
+        """
+        if subset is not None:
+            return np.linalg.norm(np.asarray(subset))
+        if self.residuals is None:
+            self.residuals = self.get_resid()
+        self.L2 = np.linalg.norm(self.residuals)
+        print("Cost (L2 Norm): ", self.L2)
         return self.L2
+    
+    def calculate_rmse(self, subsets=True, incl_train=True, L2=True):
+        """Compute the Root Mean Squared Error (RMSE) of a regression model (using test set).
+        RMSE is a measure of how spread out the residuals are (i.e. how concentrated the data is around the line of best fit).
+
+        Args:
+            subsets (bool, optional): also calculate RMSE for subsets of residuals above and below regression line. Defaults to True.
+            incl_train (bool, optional): also calculate RMSE for training set. Defaults to True.
+            L2 (bool, optional): also calculate L2 Norm
+
+        Returns:
+            Dictionary: RMSE for test set (plus training, pos and neg subsets, and L2 norm values if set to `True`).
+        """
+        # RMSE Computation
+        if self.y_test is None:
+            if self.predictions:
+                self.y_test = self.predictions[:, 1]
+                self.y_pred = self.predictions[:, 0]
+            elif self.X_test:
+                self.y_pred = self.model.predict(self.X_test)
+            else:
+                print("y_test and y_pred values are required for RMSE.")
+                return
+        rmse_test = np.sqrt(MSE(self.y_test, self.y_pred))
+        print("RMSE Test : % f" % (rmse_test))
+        self.rmse = {"rmse_test": rmse_test}
+        # include training set rmse if available
+        if incl_train is True:
+            if self.X_train:
+                y_hat = self.model.predict(self.X_train)
+                rmse_train = np.sqrt(MSE(self.y_train, y_hat))
+                print("RMSE Train : % f" % (rmse_train))
+                self.rmse["rmse_train"] = rmse_train
+        if subsets is True:
+            if self.residuals is None:
+                self.residuals = self.get_resid()
+            over, under = [], []
+            for r in self.residuals:
+                if r > 0:
+                    over.append(r)
+                else:
+                    under.append(r)
+            self.rmse["rmse_over"] = np.sqrt(np.mean(np.asarray(over)**2))
+            # subset below regression line (underestimations)
+            self.rmse["rmse_under"] = np.sqrt(np.mean(np.asarray(under)**2))
+        if L2 is True:
+            self.rmse["L2_norm"] = self.calculate_L2()
+            self.rmse["L2_over"] = self.calculate_L2(subset=over)
+            self.rmse["L2_under"] = self.calculate_L2(subset=under)
+        return self.rmse
+    
+    def resid_plot(self):
+        """Plot the residual error for a regression model.
+
+        Args:
+            show (bool, optional): Show the interactive plot. Defaults to False.
+
+        Returns:
+            Plotly figure object: interactive plotly scatter fig  
+        """
+        if self.predictions is not None:
+            y = self.predictions[:,1]
+            p = self.predictions[:,0]
+        else:
+            y = self.y_test.reshape(1,-1)
+            p = self.y_pred
+        fig = px.scatter(x=y, y=p, labels={'x': 'ground truth', 'y': 'prediction'})
+        fig.add_shape(
+            type="line", line=dict(dash='dash'),
+            x0=self.y_test.min(), y0=self.y_test.min(),
+            x1=self.y_test.max(), y1=self.y_test.max()
+        )
+        if self.show is True:
+            fig.show()
+        return fig
 
     def make_outputs(self, dl=True):
+        """Create a dictionary of results calculated for a regression model. Used for saving results to disk. 
+
+        Args:
+            dl (bool, optional): download (save) to disk. Defaults to True.
+
+        Returns:
+            Dictionary: outputs stored in a single dictionary for convenience.
+        """
         outputs = {
             "predictions": self.predictions,
             "test_idx": self.test_idx,
             "acc_loss": self.acc_loss,
             "residuals": self.residuals,
+            "rmse": self.rmse,
+            "L2": self.L2
         }
-        if self.algorithm != "val":
+        if self.validation is False:
             outputs["history"] = self.history
         if dl:
             super().download(outputs)
         return outputs
 
     def load_results(self, outputs):
+        """Load previously calculated results/scores into Compute object (for comparing to other models and/or drawing plots).
+
+        Args:
+            outputs (dict): dictionary of results (generated via `make_outputs` method above)
+
+        Returns:
+            ComputeRegressor object with results attributes
+        """
         self.predictions = outputs["predictions"]
         self.acc_loss = outputs["acc_loss"]
         self.residuals = outputs["residuals"]
+        self.rmse = outputs["rmse"]
+        self.L2 = outputs["L2"]
         if "test_idx" in outputs:
             self.test_idx = outputs["test_idx"]
-        if self.algorithm != "val":
+        if self.validation is False:
+            self.history = outputs["history"]
             self.acc_fig = self.keras_acc_plot()
             self.loss_fig = self.keras_loss_plot()
-            self.history = outputs["history"]
             if "kfold" in outputs:
                 self.kfold = outputs["kfold"]
         return self
-
-# class AnalogComputer:
-#     """Classic matplotlib plots"""
-
-#     def __init__(self, X, y, model, history, verbose=False):
-#         self.X = X
-#         self.y = y
-#         self.model = model
-#         self.history = history
-#         self.verbose = False
-#         self.y_pred = None
-#         self.fnfp_dict = None
-#         self.keras_fig = None
-#         self.cmx = None
-#         self.roc_fig = None
-#         self.results = None
-
-#     def compute(
-#         self,
-#         preds=True,
-#         summary=True,
-#         cmx=True,
-#         classes=None,
-#         report=True,
-#         roc=True,
-#         hist=True,
-#     ):
-#         """
-#         evaluates model predictions and stores the output in a dict
-#         returns `results`
-#         """
-#         res = {}
-#         res["model"] = self.model.name
-
-#         # class predictions
-#         if preds:
-#             res["preds"] = self.get_preds()
-
-#         if summary:
-#             res["summary"] = self.model.summary
-
-#         # FUSION MATRIX
-#         if cmx:
-#             if classes is None:
-#                 classes = set(self.y)
-#                 # classes=['0','1']
-#             else:
-#                 classes = classes
-#             # Plot fusion matrix
-#             res["FM"] = self.fusion_matrix(
-#                 matrix=(self.y.flatten(), self.y_pred), classes=classes
-#             )
-
-#         # ROC Area Under Curve
-#         if roc:
-#             res["ROC"] = self.roc_plots(self.X, self.y, self.model)
-
-#         # CLASSIFICATION REPORT
-#         if report:
-#             num_dashes = 20
-#             print("\n")
-#             print("---" * num_dashes)
-#             print("\tCLASSIFICATION REPORT:")
-#             print("---" * num_dashes)
-#             # generate report
-#             res["report"] = classification_report(self.y.flatten(), self.y_pred)
-#             print(report)
-
-#         # save to dict:
-#         res["jaccard"] = jaccard_score(self.y, self.y_pred)
-#         res["fowlkes"] = fowlkes_mallows_score(self.y, self.y_pred)
-#         res["accuracy"] = accuracy_score(self.y, self.y_pred)
-#         res["recall"] = recall_score(self.y, self.y_pred)
-
-#         # Plot Model Training Results (PLOT KERAS HISTORY)
-#         if hist:
-#             res["HIST"] = self.keras_history(self.history)
-#         return res
-
-#     @staticmethod
-#     def get_preds(self):
-#         # class predictions
-#         # self.y_pred = self.model.predict_classes(self.X).flatten()
-#         self.y_pred = np.round(self.model.predict(self.X))
-#         if self.verbose:
-#             pred_count = pd.Series(self.y_pred).value_counts(normalize=False)
-#             print(f"y_pred:\n {pred_count}")
-#             print("\n")
-#         return self.y_pred
-
-#     def fnfp(self, training=False):
-#         if self.y_pred is None:
-#             self.y_pred = np.round(self.model.predict(self.X))
-
-#         pos_idx = self.y == 1
-#         neg_idx = self.y == 0
-
-#         # tp = np.sum(y_pred[pos_idx]==1)/y_pred.shape[0]
-#         fn = np.sum(self.y_pred[pos_idx] == 0) / self.y_pred.shape[0]
-#         # tn = np.sum(y_pred[neg_idx]==0)/y_pred.shape[0]
-#         fp = np.sum(self.y_pred[neg_idx] == 1) / self.y_pred.shape[0]
-
-#         if training:
-#             print(f"FN Rate (Training): {round(fn*100,4)}%")
-#             print(f"FP Rate (Training): {round(fp*100,4)}%")
-#         else:
-#             print(f"FN Rate (Test): {round(fn*100,4)}%")
-#             print(f"FP Rate (Test): {round(fp*100,4)}%")
-
-#         self.fnfp_dict = {"fn": fn, "fp": fp}
-#         return self.fnfp_dict
-
-#     def keras_history(self, figsize=(15, 6), show=True):
-#         """
-#         side by side sublots of training val accuracy and loss (left and right respectively)
-#         """
-#         fig, axes = plt.subplots(ncols=2, figsize=figsize)
-#         axes = axes.flatten()
-
-#         ax = axes[0]
-#         ax.plot(self.history.history["accuracy"])
-#         ax.plot(self.history.history["val_accuracy"])
-#         ax.set_title("Model Accuracy")
-#         ax.set_ylabel("Accuracy")
-#         ax.set_xlabel("Epoch")
-#         ax.legend(["Train", "Test"], loc="upper left")
-
-#         ax = axes[1]
-#         ax.plot(self.history.history["loss"])
-#         ax.plot(self.history.history["val_loss"])
-#         ax.set_title("Model Loss")
-#         ax.set_ylabel("Loss")
-#         ax.set_xlabel("Epoch")
-#         ax.legend(["Train", "Test"], loc="upper left")
-#         if show is True:
-#             fig.show()
-#         return fig
-
-#     def fusion_matrix(self, matrix, classes=None, normalize=True, cmap="Blues"):
-#         # make matrix if tuple passed to matrix:
-#         if isinstance(matrix, tuple):
-#             y_true = matrix[0].copy()
-#             y_pred = matrix[1].copy()
-
-#             if y_true.ndim > 1:
-#                 y_true = y_true.argmax(axis=1)
-#             if y_pred.ndim > 1:
-#                 y_pred = y_pred.argmax(axis=1)
-#             fusion = confusion_matrix(y_true, y_pred)
-#         else:
-#             fusion = matrix
-
-#         # INTEGER LABELS
-#         if classes is None:
-#             classes = list(range(len(matrix)))
-
-#         # NORMALIZING
-#         # Check if normalize is set to True
-#         # If so, normalize the raw fusion matrix before visualizing
-#         if normalize:
-#             fusion = fusion.astype("float") / fusion.sum(axis=1)[:, np.newaxis]
-#             thresh = 0.5
-#             fmt = ".2f"
-#         else:
-#             fmt = "d"
-#             thresh = fusion.max() / 2.0
-
-#         # PLOT
-#         fig = plt.subplots(figsize=(10, 10))
-#         plt.imshow(fusion, cmap=cmap, aspect="equal")
-
-#         # Add title and axis labels
-#         plt.title("Confusion Matrix")
-#         plt.ylabel("TRUE")
-#         plt.xlabel("PRED")
-
-#         # Add appropriate axis scales
-#         tick_marks = np.arange(len(classes))
-#         plt.xticks(tick_marks, classes, rotation=45)
-#         plt.yticks(tick_marks, classes)
-#         # ax.set_ylim(len(fusion), -.5,.5) ## <-- This was messing up the plots!
-
-#         # Text formatting
-#         fmt = ".2f" if normalize else "d"
-#         # Add labels to each cell
-#         # thresh = fusion.max() / 2.
-#         # iterate thru matrix and append labels
-#         for i, j in itertools.product(range(fusion.shape[0]), range(fusion.shape[1])):
-#             plt.text(
-#                 j,
-#                 i,
-#                 format(fusion[i, j], fmt),
-#                 horizontalalignment="center",
-#                 color="white" if fusion[i, j] > thresh else "black",
-#                 size=14,
-#                 weight="bold",
-#             )
-
-#         # Add a legend
-#         plt.colorbar()
-#         plt.show()
-#         return fusion, fig
-
-# def roc_plots(self):
-# """
-# Calculates ROC_AUC score and plots Receiver Operator Characteristics (ROC)
-
-# Arguments:
-#     X {feature set} -- typically X_test
-#     y {labels} -- typically y_test
-#     model {classifier} -- the model name for which you are calculting roc score
-
-# Returns:
-#     roc -- roc_auc_score (via sklearn)
-# """
-# fpr, tpr, thresholds = roc_curve(self.y.flatten(), self.y_pred)
-
-# # Threshold Cutoff for predictions
-# crossover_index = np.min(np.where(1.0 - fpr <= tpr))
-# crossover_cutoff = thresholds[crossover_index]
-# crossover_specificity = 1.0 - fpr[crossover_index]
-
-# fig, axes = plt.subplots(ncols=2, figsize=(15, 6))
-# axes = axes.flatten()
-
-# ax = axes[0]
-# ax.plot(thresholds, 1.0 - fpr)
-# ax.plot(thresholds, tpr)
-# ax.set_title(
-#     "Crossover at {0:.2f}, Specificity {1:.2f}".format(
-#         crossover_cutoff, crossover_specificity
-#     )
-# )
-
-# ax = axes[1]
-# ax.plot(fpr, tpr)
-# ax.set_title(
-#     "ROC area under curve: {0:.2f}".format(
-#         roc_auc_score(self.y.flatten(), self.y_pred)
-#     )
-# )
-# fig.show()
-
-# roc = roc_auc_score(self.y.flatten(), self.y_pred)
-
-# return roc
-
-
-# testing
-# import argparse
-# if __name__ == '__main__':
-#     parser = argparse.ArgumentParser()
-#     parser.add_argument("res_path")
-#     args = parser.parse_args()
-#     res_path = args.res_path
-#     algorithm = "clf"
-#     classes = ["2g", "8g", "16g", "64g"]
-#     com = ComputeClassifier(algorithm=algorithm, classes=classes, res_path=res_path)
-#     com.upload()
-#     print(com.report)
-#     print(com.roc_auc)

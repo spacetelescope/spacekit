@@ -67,3 +67,4 @@ __pycache__
 .eggs
 .teal
 .config
+clocktime.txt
