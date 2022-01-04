@@ -808,7 +808,7 @@ class ComputeRegressor(Computer):
         self.rmse = {"rmse_test": rmse_test}
         # include training set rmse if available
         if incl_train is True:
-            if self.X_train:
+            if self.X_train is not None:
                 y_hat = self.model.predict(self.X_train)
                 rmse_train = np.sqrt(MSE(self.y_train, y_hat))
                 print("RMSE Train : % f" % (rmse_train))
@@ -823,7 +823,6 @@ class ComputeRegressor(Computer):
                 else:
                     under.append(r)
             self.rmse["rmse_over"] = np.sqrt(np.mean(np.asarray(over)**2))
-            # subset below regression line (underestimations)
             self.rmse["rmse_under"] = np.sqrt(np.mean(np.asarray(under)**2))
         if L2 is True:
             self.rmse["L2_norm"] = self.calculate_L2()

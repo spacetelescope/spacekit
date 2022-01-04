@@ -58,7 +58,3 @@ wall.test_idx = data.wall_test_idx
 wCom = ComputeRegressor(builder=wall, res_path=f"{res_path}/wallclock")
 wCom.calculate_results()
 wall_outputs = wCom.make_outputs()
-
-# # 5 - export/save
-# # save test index to disk (useful for analyzing FN/FP)
-# np.save(f"{data_path}/test_idx.npy", np.asarray(data.test_idx.index))
