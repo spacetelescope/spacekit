@@ -1,3 +1,6 @@
-********************************
-spacekit.preprocessor.encode api
-********************************
+****************************
+spacekit.preprocessor.encode
+****************************
+
+.. automodule:: spacekit.preprocessor.encode
+   :members:

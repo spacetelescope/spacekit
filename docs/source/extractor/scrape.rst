@@ -1,3 +1,6 @@
-*****************************
-spacekit.extractor.scrape api
-*****************************
+*************************
+spacekit.extractor.scrape
+*************************
+
+.. automodule:: spacekit.extractor.scrape
+   :members:

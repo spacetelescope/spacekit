@@ -768,11 +768,11 @@ class MemoryRegressor(MultiLayerPerceptron):
         self.output_name = "mem_reg"
         self.name = "memory_regressor"
         self.activation = "relu"
-        self.cost_function = "sigmoid"
+        self.cost_function = "relu"
         self.lr_sched = False
         self.optimizer = Adam
         self.loss = "mean_squared_error"
-        self.metrics = ["accuracy"]
+        self.metrics = ["mean_squared_error"] # metrics=[tf.keras.metrics.RootMeanSquaredError()]
 
 
 class WallclockRegressor(MultiLayerPerceptron):
@@ -785,11 +785,11 @@ class WallclockRegressor(MultiLayerPerceptron):
         self.output_name = "wall_reg"
         self.name = "wallclock_regressor"
         self.activation = "relu"
-        self.cost_function = "sigmoid"
+        self.cost_function = "relu"
         self.lr_sched = False
         self.optimizer = Adam
-        self.loss = "mean_squared_error"
-        self.metrics = ["accuracy"]
+        self.loss = "mse"
+        self.metrics = ["mean_squared_error"] # metrics=[tf.keras.metrics.RootMeanSquaredError()]
 
 
 class MosaicMlp(MultiLayerPerceptron):

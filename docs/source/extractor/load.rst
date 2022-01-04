@@ -1,3 +1,6 @@
-***************************
-spacekit.extractor.load api
-***************************
+***********************
+spacekit.extractor.load
+***********************
+
+.. automodule:: spacekit.extractor.load
+   :members:

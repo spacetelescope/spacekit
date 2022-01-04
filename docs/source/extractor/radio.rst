@@ -1,3 +1,6 @@
-****************************
-spacekit.extractor.radio api
-****************************
+************************
+spacekit.extractor.radio
+************************
+
+.. automodule:: spacekit.extractor.radio
+   :members:

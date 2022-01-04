@@ -1,3 +1,6 @@
-***********************************
-spacekit.preprocessor.transform api
-***********************************
+*******************************
+spacekit.preprocessor.transform
+*******************************
+
+.. automodule:: spacekit.preprocessor.transform
+   :members:

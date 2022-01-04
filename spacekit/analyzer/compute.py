@@ -22,7 +22,7 @@ plt.style.use("seaborn-bright")
 font_dict = {"family": '"Titillium Web", monospace', "size": 16}
 mpl.rc("font", **font_dict)
 
-from spacekit.preprocessor.transform import make_arrays
+from spacekit.preprocessor.transform import tensors_to_arrays
 
 
 class Computer(object):
@@ -700,11 +700,10 @@ class ComputeRegressor(Computer):
             )
         self.y_pred = None
         self.scores = None
-        self.rmse = None
         self.predictions = None
         self.residuals = None
-        self.L2 = None
-        self.r_stats = None
+        self.rmse = None
+
 
     def calculate_results(self):
         """Main calling function to compute regression model scores, including residuals, root mean squared error and L2 cost function. Uses parent class method to save and/or load results to/from disk. Once calculated or loaded, other parent class methods can be used to generate various plots.
@@ -713,26 +712,15 @@ class ComputeRegressor(Computer):
             Compute object: ComputeRegressor object for quick evaluation of model performance. 
         """
         if self.X_test is None:
-            print("No training data - please add inputs first.")
+            print("No training data - please instantiate the inputs.")
             return
         self.acc_loss = self.get_scores()
-        self.X_train, self.y_train, self.X_test, self.y_test = make_arrays()
         self.y_pred = self.model.predict(self.X_test)
+        self.X_train, self.y_train, self.X_test, self.y_test = tensors_to_arrays(self.X_train, self.y_train, self.X_test, self.y_test)
         self.predictions = self.predict_reg()
         self.residuals = self.get_resid()
         self.rmse = self.calculate_rmse()
         return self
-    
-    def make_arrays(self):
-        """Converts tensors into arrays, which is necessary for certain computations.
-        Returns:
-            Arrays (4): X_train, y_train, X_test, y_test (arrays)
-        """
-        X_train = np.asarray(self.X_train, dtype="float32")
-        y_train = np.asarray(self.y_train, dtype="float32")
-        X_test = np.asarray(self.X_test, dtype="float32")
-        y_test = np.asarray(self.y_test, dtype="float32")
-        return X_train, y_train, X_test, y_test
 
     def get_scores(self):
         """Calculates training and test set accuracy and loss scores. Loss is a more important metric for regression models, but accuracy is included for consistency with other compute objects (and for thoroughness). Use `calculate_rmse` for Root Mean Squared Error calculations.
@@ -882,8 +870,7 @@ class ComputeRegressor(Computer):
             "test_idx": self.test_idx,
             "acc_loss": self.acc_loss,
             "residuals": self.residuals,
-            "rmse": self.rmse,
-            "L2": self.L2
+            "rmse": self.rmse
         }
         if self.validation is False:
             outputs["history"] = self.history
@@ -904,7 +891,6 @@ class ComputeRegressor(Computer):
         self.acc_loss = outputs["acc_loss"]
         self.residuals = outputs["residuals"]
         self.rmse = outputs["rmse"]
-        self.L2 = outputs["L2"]
         if "test_idx" in outputs:
             self.test_idx = outputs["test_idx"]
         if self.validation is False:

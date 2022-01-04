@@ -1,3 +1,6 @@
-*****************************
-spacekit.builder.networks api
-*****************************
+*************************
+spacekit.builder.networks
+*************************
+
+.. automodule:: spacekit.builder.networks
+   :members:

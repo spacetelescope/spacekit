@@ -271,6 +271,17 @@ def tensor_to_array(tensor, reshape=False):
         arr = np.asarray(tensor)
     return arr
 
+def tensors_to_arrays(X_train, y_train, X_test, y_test):
+    """Converts tensors into arrays, which is necessary for certain computations.
+    Returns:
+        Arrays (4): X_train, y_train, X_test, y_test (arrays)
+    """
+    X_train = tensor_to_array(X_train)
+    y_train = tensor_to_array(y_train, reshape=True)
+    X_test = tensor_to_array(X_test)
+    y_test = tensor_to_array(y_test, reshape=True)
+    return X_train, y_train, X_test, y_test
+
 def make_arrays(X_train, y_train, X_test, y_test):
     X_train = X_train.values
     y_train = y_train.values.reshape(-1, 1)

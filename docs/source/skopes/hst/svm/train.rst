@@ -1,3 +1,6 @@
-*********************************
-spacekit.skopes.hst.svm.train api
-*********************************
+*****************************
+spacekit.skopes.hst.svm.train
+*****************************
+
+.. automodule:: spacekit.skopes.hst.svm.train
+   :members:

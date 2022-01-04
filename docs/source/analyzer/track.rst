@@ -1,3 +1,6 @@
-***************************
-spacekit.analyzer.track api
-***************************
+***********************
+spacekit.analyzer.track
+***********************
+
+.. automodule:: spacekit.analyzer.track
+   :members:

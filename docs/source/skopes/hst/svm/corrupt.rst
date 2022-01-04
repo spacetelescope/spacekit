@@ -1,3 +1,6 @@
-***********************************
-spacekit.skopes.hst.svm.corrupt api
-***********************************
+*******************************
+spacekit.skopes.hst.svm.corrupt
+*******************************
+
+.. automodule:: spacekit.skopes.hst.svm.corrupt
+   :members:

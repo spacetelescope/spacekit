@@ -1,3 +1,6 @@
-*******************************
-spacekit.preprocessor.scrub api
-*******************************
+***************************
+spacekit.preprocessor.scrub
+***************************
+
+.. automodule:: spacekit.preprocessor.scrub
+   :members:

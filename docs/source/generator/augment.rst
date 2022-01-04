@@ -1,3 +1,6 @@
-******************************
-spacekit.generator.augment api
-******************************
+**************************
+spacekit.generator.augment
+**************************
+
+.. automodule:: spacekit.generator.augment
+   :members:

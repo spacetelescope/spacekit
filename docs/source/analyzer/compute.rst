@@ -1,3 +1,6 @@
-*****************************
-spacekit.analyzer.compute api
-*****************************
+*************************
+spacekit.analyzer.compute
+*************************
+
+.. automodule:: spacekit.analyzer.compute
+   :members:

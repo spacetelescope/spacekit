@@ -1,3 +1,6 @@
-***************************
-spacekit.generator.draw api
-***************************
+***********************
+spacekit.generator.draw
+***********************
+
+.. automodule:: spacekit.generator.draw
+   :members:
