@@ -25,36 +25,48 @@ res_path = f"{selection}/results"
 
 # 4 - build & train models; compute results
 ## 4a: Memory Bin Classifier
-clf = MemoryClassifier(data.X_train, data.y_bin_train, data.X_test, data.y_bin_test)
+clf = MemoryClassifier(data.X_train, data.y_bin_train, data.X_test, data.y_bin_test, test_idx=data.bin_test_idx)
 clf.build_mlp()
 clf.fit()
-clf.test_idx = data.bin_test_idx
 bCom = ComputeMulti(builder=clf, res_path=f"{res_path}/mem_bin")
 bCom.calculate_multi()
-bin_outputs = bCom.make_outputs()
-
-## 4b: Memory Regressor
-mem = MemoryRegressor(data.X_train, data.y_mem_train, data.X_test, data.y_mem_test)
-mem.build_mlp()
-mem.fit()
-mem.test_idx = data.mem_test_idx
-mCom = ComputeRegressor(builder=mem, res_path=f"{res_path}/memory")
-mCom.calculate_results()
-mem_outputs = mCom.make_outputs()
+bCom.make_outputs()
 
 """
-## once saved, these can easily be re-loaded later in a separate session:
-# mCom2 = ComputeRegressor(res_path=f"{res_path}/memory")
-# res = mCom2.upload()
-# mCom2.load_results(res)
+## to load results from disk in a separate session (for plotting, etc):
+# bcom2 = ComputeMulti(res_path=f"{res_path}/mem_bin")
+# bin_out = bcom2.upload()
+# bcom2.load_results(bin_out)
+"""
+
+## 4b: Memory Regressor
+mem = MemoryRegressor(data.X_train, data.y_mem_train, data.X_test, data.y_mem_test, test_idx=data.mem_test_idx)
+mem.build_mlp()
+mem.fit() # using default fit params
+mCom = ComputeRegressor(builder=mem, res_path=f"{res_path}/memory")
+mCom.calculate_results()
+mCom.make_outputs()
+
+"""
+## to load results from disk in a separate session (for plotting, etc):
+# mcom2 = ComputeRegressor(res_path=f"{res_path}/memory")
+# mem_out = mcom2.upload()
+# mcom2.load_results(mem_out)
 """
 
 ## 4c: Wallclock Regressor
-wall = WallclockRegressor(data.X_train, data.y_wall_train, data.X_test, data.y_wall_test)
+wall = WallclockRegressor(data.X_train, data.y_wall_train, data.X_test, data.y_wall_test, test_idx=data.wall_test_idx)
 wall.build_mlp()
-wall.fit_params(batch_size=64, epochs=300, lr=1e-4)
+wall.fit_params(batch_size=64, epochs=300)
 wall.fit()
-wall.test_idx = data.wall_test_idx
 wCom = ComputeRegressor(builder=wall, res_path=f"{res_path}/wallclock")
 wCom.calculate_results()
-wall_outputs = wCom.make_outputs()
+wCom.make_outputs()
+
+"""
+## to load results from disk in a separate session (for plotting, etc):
+# wcom2 = ComputeRegressor(res_path=f"{res_path}/wallclock")
+# wall_out = wcom2.upload()
+# wcom2.load_results(wall_out)
+"""
+

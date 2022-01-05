@@ -21,6 +21,7 @@ from tensorflow.keras.layers import (
     MaxPool3D,
     GlobalAveragePooling3D,
 )
+from tensorflow.keras.metrics import RootMeanSquaredError as RMSE
 from spacekit.generator.augment import augment_data, augment_image
 from spacekit.analyzer.track import stopwatch
 
@@ -272,10 +273,17 @@ class Builder:
         self.model.summary()
         return self.history
 
-    def fit(self):
+    def fit(self, params=None):
+        """Fit a model to the training data.
+
+        Args:
+            params (Dict, optional): [description]. Defaults to None.
+
+        Returns:
+            object: keras history (training and validation metrics for each epoch) 
         """
-        Fits model and returns keras history
-        """
+        if params is not None:
+            self.fit_params(**params)
         model_name = str(self.model.name_scope().rstrip("/").upper())
         print("FITTING MODEL...")
         validation_data = (self.X_test, self.y_test)
@@ -742,7 +750,12 @@ class Cnn2dBuilder(Builder):
 
 
 class MemoryClassifier(MultiLayerPerceptron):
-    def __init__(self, X_train, y_train, X_test, y_test, blueprint="mlp"):
+    """Builds an MLP neural network classifier object with pre-tuned params for Calcloud's Memory Bin classifier
+
+    Args:
+        MultiLayerPerceptron (object): mlp multi-classification builder object
+    """
+    def __init__(self, X_train, y_train, X_test, y_test, blueprint="mlp", test_idx=None):
         super().__init__(X_train, y_train, X_test, y_test, blueprint=blueprint)
         self.input_shape = X_train.shape[1]  # 9
         self.output_shape = 4
@@ -756,10 +769,16 @@ class MemoryClassifier(MultiLayerPerceptron):
         self.optimizer = Adam
         self.loss = "categorical_crossentropy"
         self.metrics = ["accuracy"]
+        self.test_idx = test_idx
 
 
 class MemoryRegressor(MultiLayerPerceptron):
-    def __init__(self, X_train, y_train, X_test, y_test, blueprint="mlp"):
+    """Builds an MLP neural network regressor object with pre-tuned params for estimating memory allocation (GB) in Calcloud
+
+    Args:
+        MultiLayerPerceptron (object): mlp linear regression builder object
+    """
+    def __init__(self, X_train, y_train, X_test, y_test, blueprint="mlp", test_idx=None):
         super().__init__(X_train, y_train, X_test, y_test, blueprint=blueprint)
         self.input_shape = X_train.shape[1]  # 9
         self.output_shape = 1
@@ -771,12 +790,18 @@ class MemoryRegressor(MultiLayerPerceptron):
         self.cost_function = "relu"
         self.lr_sched = False
         self.optimizer = Adam
-        self.loss = "mean_squared_error"
-        self.metrics = ["mean_squared_error"] # metrics=[tf.keras.metrics.RootMeanSquaredError()]
+        self.loss = "mse"
+        self.metrics = [RMSE(name="rmse")]
+        self.test_idx = test_idx
 
 
 class WallclockRegressor(MultiLayerPerceptron):
-    def __init__(self, X_train, y_train, X_test, y_test, blueprint="mlp"):
+    """Builds an MLP neural network regressor object with pre-tuned params for estimating wallclock allocation (minimum execution time in seconds) in Calcloud
+
+    Args:
+        MultiLayerPerceptron (object): mlp linear regression builder object
+    """
+    def __init__(self, X_train, y_train, X_test, y_test, blueprint="mlp", test_idx=None):
         super().__init__(X_train, y_train, X_test, y_test, blueprint=blueprint)
         self.input_shape = X_train.shape[1]  # 9
         self.output_shape = 1
@@ -789,7 +814,8 @@ class WallclockRegressor(MultiLayerPerceptron):
         self.lr_sched = False
         self.optimizer = Adam
         self.loss = "mse"
-        self.metrics = ["mean_squared_error"] # metrics=[tf.keras.metrics.RootMeanSquaredError()]
+        self.metrics = [RMSE(name="rmse")]
+        self.test_idx = test_idx
 
 
 class MosaicMlp(MultiLayerPerceptron):

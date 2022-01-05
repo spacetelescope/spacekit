@@ -17,12 +17,11 @@ from sklearn.metrics import (
     classification_report,
     confusion_matrix,
 )
-from sklearn.metrics import mean_squared_error as MSE
+from tensorflow.python.ops.numpy_ops import np_config
 plt.style.use("seaborn-bright")
 font_dict = {"family": '"Titillium Web", monospace', "size": 16}
 mpl.rc("font", **font_dict)
 
-from spacekit.preprocessor.transform import tensors_to_arrays
 
 
 class Computer(object):
@@ -102,6 +101,8 @@ class Computer(object):
         print(f"Results saved to: {self.res_path}")
 
     def upload(self):
+        """Imports model training results (`outputs` previously calculated by Computer obj) from local pickle objects. These can then be used for plotting/analysis.
+        """
         if self.res_path is None:
             try:
                 self.res_path = glob.glob(f"data/*/results/{self.algorithm}")[0]
@@ -120,10 +121,23 @@ class Computer(object):
     """ MODEL PERFORMANCE METRICS """
 
     def onehot_y(self, prefix="lab"):
+        """Generates onehot-encoded dataframe of categorical target class values (for multiclassification models).
+
+        Args:
+            prefix (str, optional): abbreviated string prefix for target class name. Defaults to "lab" (abbr for "label").
+
+        Returns:
+            Pandas Dataframe: Dummy-coded data
+        """
         self.y_onehot = pd.get_dummies(self.y_test.ravel(), prefix=prefix)
         return self.y_onehot
 
     def score_y(self):
+        """Probability scores for classification model predictions (`y_pred` probabilities) 
+
+        Returns:
+            numpy.ndarray: y_scores probabilities array
+        """
         self.y_scores = self.model.predict(self.X_test)
         if self.y_scores.shape[1] < 2:
             self.y_scores = np.concatenate(
@@ -132,6 +146,11 @@ class Computer(object):
         return self.y_scores
 
     def acc_loss_scores(self):
+        """Calculate overall accuracy and loss metrics of training and test sets. 
+
+        Returns:
+            Dictionary: mean accuracy and loss scores of training and test sets (generated via Keras history) 
+        """
         train_scores = self.model.evaluate(self.X_train, self.y_train, verbose=2)
         test_scores = self.model.evaluate(self.X_test, self.y_test, verbose=2)
         train_acc = np.round(train_scores[1], 2)
@@ -149,6 +168,11 @@ class Computer(object):
     """ PLOTS """
 
     def draw_plots(self):
+        """Generate standard classification model plots (keras accuracy and loss, ROC-AUC curve, Precision-Recall curve, Confusion Matrix)
+
+        Returns:
+            self: Computer class object updated with standard plot attribute values
+        """
         self.acc_fig = self.keras_acc_plot()
         self.loss_fig = self.keras_loss_plot()
         self.roc_fig = self.make_roc_curve()
@@ -265,25 +289,26 @@ class Computer(object):
         return fig
 
     def keras_acc_plot(self):
-        acc_train = self.history["accuracy"]
-        acc_test = self.history["val_accuracy"]
+        keys = list(self.history.keys())
+        acc_train = self.history[keys[0]]
+        acc_test = self.history[keys[2]]
         n_epochs = list(range(len(acc_train)))
         data = [
             go.Scatter(
                 x=n_epochs,
                 y=acc_train,
-                name="Training Accuracy",
+                name=f"Training {keys[0].title()}",
                 marker=dict(color="#119dff"),
             ),
             go.Scatter(
                 x=n_epochs,
                 y=acc_test,
-                name="Test Accuracy",
+                name=f"Test {keys[0].title()}",
                 marker=dict(color="#66c2a5"),
             ),
         ]
         layout = go.Layout(
-            title="Accuracy",
+            title=f"{keys[0].title()}",
             xaxis={"title": "n_epochs"},
             yaxis={"title": "score"},
             width=800,
@@ -298,19 +323,23 @@ class Computer(object):
         return fig
 
     def keras_loss_plot(self):
-        loss_train = self.history["loss"]
-        loss_test = self.history["val_loss"]
+        keys = list(self.history.keys())
+        loss_train =  self.history[keys[1]]
+        loss_test = self.history[keys[3]]
         n_epochs = list(range(len(loss_train)))
 
         data = [
             go.Scatter(
                 x=n_epochs,
                 y=loss_train,
-                name="Training Loss",
+                name=f"Training {keys[0].title()}",
                 marker=dict(color="#119dff"),
             ),
             go.Scatter(
-                x=n_epochs, y=loss_test, name="Test Loss", marker=dict(color="#66c2a5")
+                x=n_epochs, 
+                y=loss_test, 
+                name=f"Test {keys[0].title()}", 
+                marker=dict(color="#66c2a5")
             ),
         ]
         layout = go.Layout(
@@ -325,6 +354,46 @@ class Computer(object):
         )
         fig = go.Figure(data=data, layout=layout)
         if self.show:
+            fig.show()
+        return fig
+    
+    def resid_plot(self):
+        """Plot the residual error for a regression model.
+
+        Returns:
+            Plotly figure object: interactive plotly scatter fig  
+        """
+        if self.predictions is not None:
+            y = self.predictions[:,1]
+            p = self.predictions[:,0]
+        else:
+            np_config.enable_numpy_behavior()
+            y = self.y_test.reshape(1,-1)
+            p = self.y_pred
+
+        data = go.Scatter(
+                x=y,
+                y=p,
+                name="y-y_hat",
+                marker=dict(color="red"),
+            )
+        layout = go.Layout(
+            title="Residual Error",
+            xaxis={"title": "y (ground truth)"},
+            yaxis={"title": "y_hat (prediction)"},
+            width=800,
+            height=500,
+            paper_bgcolor="#242a44",
+            plot_bgcolor="#242a44",
+            font={"color": "#ffffff"},
+        )
+        fig = go.Figure(data=data, layout=layout)
+        fig.add_shape(
+            type="line", line=dict(dash='dash'),
+            x0=y.min(), y0=y.min(),
+            x1=y.max(), y1=y.max()
+        )
+        if self.show is True:
             fig.show()
         return fig
 
@@ -698,72 +767,63 @@ class ComputeRegressor(Computer):
                 builder.y_test,
                 builder.test_idx
             )
-        self.y_pred = None
-        self.scores = None
-        self.predictions = None
-        self.residuals = None
-        self.rmse = None
+        self.y_pred = self.compute_preds()
+        self.predictions = self.yhat_matrix()
+        self.residuals = self.get_resid()
+        self.loss = self.compute_scores()
 
 
     def calculate_results(self):
         """Main calling function to compute regression model scores, including residuals, root mean squared error and L2 cost function. Uses parent class method to save and/or load results to/from disk. Once calculated or loaded, other parent class methods can be used to generate various plots.
 
         Returns:
-            Compute object: ComputeRegressor object for quick evaluation of model performance. 
+            Compute object (self): ComputeRegressor object with calculated model evaluation metrics attributes. 
         """
         if self.X_test is None:
             print("No training data - please instantiate the inputs.")
             return
-        self.acc_loss = self.get_scores()
-        self.y_pred = self.model.predict(self.X_test)
-        self.X_train, self.y_train, self.X_test, self.y_test = tensors_to_arrays(self.X_train, self.y_train, self.X_test, self.y_test)
-        self.predictions = self.predict_reg()
+        self.y_pred = self.compute_preds()
+        self.predictions = self.yhat_matrix()
         self.residuals = self.get_resid()
-        self.rmse = self.calculate_rmse()
+        self.loss = self.compute_scores()        
         return self
-
-    def get_scores(self):
-        """Calculates training and test set accuracy and loss scores. Loss is a more important metric for regression models, but accuracy is included for consistency with other compute objects (and for thoroughness). Use `calculate_rmse` for Root Mean Squared Error calculations.
+    
+    def compute_preds(self):
+        """Get predictions (`y_pred`) based on regression model test inputs (`X_test`).
 
         Returns:
-            Dictionary: model training accuracy and loss scores based on Keras history
+            numpy.ndarray: predicted values for y (target)
         """
-        train_scores = self.model.evaluate(self.X_train, self.y_train, verbose=2)
-        test_scores = self.model.evaluate(self.X_test, self.y_test, verbose=2)
-        train_acc = np.round(train_scores[1], 2)
-        train_loss = np.round(train_scores[0], 2)
-        test_acc = np.round(test_scores[1], 2)
-        test_loss = np.round(test_scores[0], 2)
-        self.acc_loss = {"train_acc": train_acc, "train_loss": train_loss, "test_acc": test_acc, "test_loss": test_loss}
-        return self.acc_loss
+        if self.X_test is not None:
+            self.y_pred = self.model.predict(self.X_test)
+            return self.y_pred
 
-    def predict_reg(self):
+    def yhat_matrix(self):
         """Compare ground-truth and prediction values of a regression model side-by-side. Used for calculating residuals (see `get_resid` method below).
 
         Returns:
             2d-array: Concatenation of ground truth (`y_test`) and prediction (`y_pred`) arrays.
         """
-        if self.y_pred is None:
-            self.y_pred = self.model.predict(self.X_test)
-        np.set_printoptions(precision=2)
-        self.predictions = np.concatenate((self.y_pred.reshape(len(self.y_pred), 1), self.y_test.reshape(len(self.y_test), 1)), 1)
-        return self.predictions
+        if self.y_pred is not None:
+            np_config.enable_numpy_behavior()
+            np.set_printoptions(precision=2)
+            self.predictions = np.concatenate((self.y_pred.reshape(len(self.y_pred), 1), self.y_test.reshape(len(self.y_test), 1)), 1)
+            return self.predictions
 
     def get_resid(self):
         """Calculate residual error between ground truth (`y_test`) and prediction values of a regression model. 
         Residuals are a measure of how far from the regression line the data points are.
 
         Returns:
-            Array: residual error values for a given test set
+            List: residual error values for a given test set
         """
-        self.residuals = []
-        if self.predictions is None:
-            self.predictions = self.predict_reg()
-        for p, a in self.predictions:
-            # predicted - actual
-            r = p - a
-            self.residuals.append(r)
-        return self.residuals
+        if self.predictions is not None:
+            self.residuals = []
+            for p, a in self.predictions:
+                # predicted - actual
+                r = p - a
+                self.residuals.append(r)
+            return self.residuals
     
     def calculate_L2(self, subset=None):
         """Calculate the L2 Normalization score of a regression model.
@@ -775,85 +835,65 @@ class ComputeRegressor(Computer):
         """
         if subset is not None:
             return np.linalg.norm(np.asarray(subset))
-        if self.residuals is None:
-            self.residuals = self.get_resid()
-        self.L2 = np.linalg.norm(self.residuals)
-        print("Cost (L2 Norm): ", self.L2)
-        return self.L2
+        else:
+            return np.linalg.norm(self.residuals)
     
-    def calculate_rmse(self, subsets=True, incl_train=True, L2=True):
-        """Compute the Root Mean Squared Error (RMSE) of a regression model (using test set).
-        RMSE is a measure of how spread out the residuals are (i.e. how concentrated the data is around the line of best fit).
+    def compute_scores(self, error_stats=True):
+        """Calculate overall loss metrics of training and test sets. Default for regression is MSE (mean squared error) and RMSE (root MSE).
+        RMSE is a measure of how spread out the residuals are (i.e. how concentrated the data is around the line of best fit). Note: RMSE is better in terms of reflecting performance when dealing with large error values (penalizes large errors) while MSE tends to be biased for high values.
 
         Args:
-            subsets (bool, optional): also calculate RMSE for subsets of residuals above and below regression line. Defaults to True.
-            incl_train (bool, optional): also calculate RMSE for training set. Defaults to True.
-            L2 (bool, optional): also calculate L2 Norm
+            error_stats (bool, optional): include RMSE and L2 norm for positive and negative groups of residuals in the test set (here "positive" means above the regression line (>0), "negative" means below (<0)). This can be useful when consequences might be more severe for underestimating vs. overestimating. 
 
         Returns:
-            Dictionary: RMSE for test set (plus training, pos and neg subsets, and L2 norm values if set to `True`).
+            Dictionary: model training loss scores (MSE and RMSE); if error_stats=True, 
         """
-        # RMSE Computation
-        if self.y_test is None:
-            if self.predictions:
-                self.y_test = self.predictions[:, 1]
-                self.y_pred = self.predictions[:, 0]
-            elif self.X_test:
-                self.y_pred = self.model.predict(self.X_test)
-            else:
-                print("y_test and y_pred values are required for RMSE.")
-                return
-        rmse_test = np.sqrt(MSE(self.y_test, self.y_pred))
-        print("RMSE Test : % f" % (rmse_test))
-        self.rmse = {"rmse_test": rmse_test}
-        # include training set rmse if available
-        if incl_train is True:
-            if self.X_train is not None:
-                y_hat = self.model.predict(self.X_train)
-                rmse_train = np.sqrt(MSE(self.y_train, y_hat))
-                print("RMSE Train : % f" % (rmse_train))
-                self.rmse["rmse_train"] = rmse_train
-        if subsets is True:
-            if self.residuals is None:
-                self.residuals = self.get_resid()
-            over, under = [], []
+        if self.X_test is None:
+            return None
+        train_scores = self.model.evaluate(self.X_train, self.y_train, verbose=2)
+        test_scores = self.model.evaluate(self.X_test, self.y_test, verbose=2)
+        self.loss = {
+            "train_loss": np.round(train_scores[0], 2),
+            "train_rmse": np.round(train_scores[1], 2),
+            "test_loss": np.round(test_scores[0], 2),
+            "test_rmse": np.round(test_scores[1], 2)
+            }
+        if error_stats is True and self.residuals is not None:
+            pos, neg = [], []
             for r in self.residuals:
                 if r > 0:
-                    over.append(r)
+                    pos.append(r)
                 else:
-                    under.append(r)
-            self.rmse["rmse_over"] = np.sqrt(np.mean(np.asarray(over)**2))
-            self.rmse["rmse_under"] = np.sqrt(np.mean(np.asarray(under)**2))
-        if L2 is True:
-            self.rmse["L2_norm"] = self.calculate_L2()
-            self.rmse["L2_over"] = self.calculate_L2(subset=over)
-            self.rmse["L2_under"] = self.calculate_L2(subset=under)
-        return self.rmse
+                    neg.append(r)
+            self.loss["rmse_pos"] = np.sqrt(np.mean(np.asarray(pos)**2))
+            self.loss["rmse_neg"] = np.sqrt(np.mean(np.asarray(neg)**2))
+            self.loss["l2_norm"] = self.calculate_L2()
+            self.loss["l2_pos"] = self.calculate_L2(subset=pos)
+            self.loss["l2_neg"] = self.calculate_L2(subset=neg)
+        return self.loss
     
-    def resid_plot(self):
-        """Plot the residual error for a regression model.
+    # def resid_plot(self):
+    #     """Plot the residual error for a regression model.
 
-        Args:
-            show (bool, optional): Show the interactive plot. Defaults to False.
-
-        Returns:
-            Plotly figure object: interactive plotly scatter fig  
-        """
-        if self.predictions is not None:
-            y = self.predictions[:,1]
-            p = self.predictions[:,0]
-        else:
-            y = self.y_test.reshape(1,-1)
-            p = self.y_pred
-        fig = px.scatter(x=y, y=p, labels={'x': 'ground truth', 'y': 'prediction'})
-        fig.add_shape(
-            type="line", line=dict(dash='dash'),
-            x0=self.y_test.min(), y0=self.y_test.min(),
-            x1=self.y_test.max(), y1=self.y_test.max()
-        )
-        if self.show is True:
-            fig.show()
-        return fig
+    #     Returns:
+    #         Plotly figure object: interactive plotly scatter fig  
+    #     """
+    #     if self.predictions is not None:
+    #         y = self.predictions[:,1]
+    #         p = self.predictions[:,0]
+    #     else:
+    #         np_config.enable_numpy_behavior()
+    #         y = self.y_test.reshape(1,-1)
+    #         p = self.y_pred
+    #     fig = px.scatter(x=y, y=p, labels={'x': 'ground truth', 'y': 'prediction'})
+    #     fig.add_shape(
+    #         type="line", line=dict(dash='dash'),
+    #         x0=self.y_test.min(), y0=self.y_test.min(),
+    #         x1=self.y_test.max(), y1=self.y_test.max()
+    #     )
+    #     if self.show is True:
+    #         fig.show()
+    #     return fig
 
     def make_outputs(self, dl=True):
         """Create a dictionary of results calculated for a regression model. Used for saving results to disk. 
@@ -867,9 +907,8 @@ class ComputeRegressor(Computer):
         outputs = {
             "predictions": self.predictions,
             "test_idx": self.test_idx,
-            "acc_loss": self.acc_loss,
             "residuals": self.residuals,
-            "rmse": self.rmse
+            "loss": self.loss
         }
         if self.validation is False:
             outputs["history"] = self.history
@@ -887,9 +926,9 @@ class ComputeRegressor(Computer):
             ComputeRegressor object with results attributes
         """
         self.predictions = outputs["predictions"]
-        self.acc_loss = outputs["acc_loss"]
+        self.loss = outputs["loss"]
         self.residuals = outputs["residuals"]
-        self.rmse = outputs["rmse"]
+        self.res_fig = self.resid_plot()
         if "test_idx" in outputs:
             self.test_idx = outputs["test_idx"]
         if self.validation is False:
