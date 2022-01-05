@@ -8,7 +8,6 @@ import datetime as dt
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
-import plotly.express as px
 from sklearn.metrics import (
     roc_curve,
     roc_auc_score,
@@ -18,10 +17,10 @@ from sklearn.metrics import (
     confusion_matrix,
 )
 from tensorflow.python.ops.numpy_ops import np_config
+
 plt.style.use("seaborn-bright")
 font_dict = {"family": '"Titillium Web", monospace', "size": 16}
 mpl.rc("font", **font_dict)
-
 
 
 class Computer(object):
@@ -101,8 +100,7 @@ class Computer(object):
         print(f"Results saved to: {self.res_path}")
 
     def upload(self):
-        """Imports model training results (`outputs` previously calculated by Computer obj) from local pickle objects. These can then be used for plotting/analysis.
-        """
+        """Imports model training results (`outputs` previously calculated by Computer obj) from local pickle objects. These can then be used for plotting/analysis."""
         if self.res_path is None:
             try:
                 self.res_path = glob.glob(f"data/*/results/{self.algorithm}")[0]
@@ -133,7 +131,7 @@ class Computer(object):
         return self.y_onehot
 
     def score_y(self):
-        """Probability scores for classification model predictions (`y_pred` probabilities) 
+        """Probability scores for classification model predictions (`y_pred` probabilities)
 
         Returns:
             numpy.ndarray: y_scores probabilities array
@@ -146,10 +144,10 @@ class Computer(object):
         return self.y_scores
 
     def acc_loss_scores(self):
-        """Calculate overall accuracy and loss metrics of training and test sets. 
+        """Calculate overall accuracy and loss metrics of training and test sets.
 
         Returns:
-            Dictionary: mean accuracy and loss scores of training and test sets (generated via Keras history) 
+            Dictionary: mean accuracy and loss scores of training and test sets (generated via Keras history)
         """
         train_scores = self.model.evaluate(self.X_train, self.y_train, verbose=2)
         test_scores = self.model.evaluate(self.X_test, self.y_test, verbose=2)
@@ -324,7 +322,7 @@ class Computer(object):
 
     def keras_loss_plot(self):
         keys = list(self.history.keys())
-        loss_train =  self.history[keys[1]]
+        loss_train = self.history[keys[1]]
         loss_test = self.history[keys[3]]
         n_epochs = list(range(len(loss_train)))
 
@@ -336,10 +334,10 @@ class Computer(object):
                 marker=dict(color="#119dff"),
             ),
             go.Scatter(
-                x=n_epochs, 
-                y=loss_test, 
-                name=f"Test {keys[0].title()}", 
-                marker=dict(color="#66c2a5")
+                x=n_epochs,
+                y=loss_test,
+                name=f"Test {keys[0].title()}",
+                marker=dict(color="#66c2a5"),
             ),
         ]
         layout = go.Layout(
@@ -356,27 +354,22 @@ class Computer(object):
         if self.show:
             fig.show()
         return fig
-    
+
     def resid_plot(self):
         """Plot the residual error for a regression model.
 
         Returns:
-            Plotly figure object: interactive plotly scatter fig  
+            Plotly figure object: interactive plotly scatter fig
         """
         if self.predictions is not None:
-            y = self.predictions[:,1]
-            p = self.predictions[:,0]
+            y = self.predictions[:, 1]
+            p = self.predictions[:, 0]
         else:
             np_config.enable_numpy_behavior()
-            y = self.y_test.reshape(1,-1)
+            y = self.y_test.reshape(1, -1)
             p = self.y_pred
 
-        data = go.Scatter(
-                x=y,
-                y=p,
-                name="y-y_hat",
-                marker=dict(color="red"),
-            )
+        data = go.Scatter(x=y, y=p, name="y-y_hat", marker=dict(color="red"))
         layout = go.Layout(
             title="Residual Error",
             xaxis={"title": "y (ground truth)"},
@@ -389,9 +382,12 @@ class Computer(object):
         )
         fig = go.Figure(data=data, layout=layout)
         fig.add_shape(
-            type="line", line=dict(dash='dash'),
-            x0=y.min(), y0=y.min(),
-            x1=y.max(), y1=y.max()
+            type="line",
+            line=dict(dash="dash"),
+            x0=y.min(),
+            y0=y.min(),
+            x1=y.max(),
+            y1=y.max(),
         )
         if self.show is True:
             fig.show()
@@ -755,8 +751,17 @@ class ComputeMulti(ComputeClassifier):
 
 
 class ComputeRegressor(Computer):
-    def __init__(self, builder=None, algorithm="reg", res_path="results/memory", show=False, validation=False):
-        super().__init__(algorithm=algorithm, res_path=res_path, show=show, validation=validation)
+    def __init__(
+        self,
+        builder=None,
+        algorithm="reg",
+        res_path="results/memory",
+        show=False,
+        validation=False,
+    ):
+        super().__init__(
+            algorithm=algorithm, res_path=res_path, show=show, validation=validation
+        )
         if builder:
             self.inputs(
                 builder.model,
@@ -765,19 +770,18 @@ class ComputeRegressor(Computer):
                 builder.y_train,
                 builder.X_test,
                 builder.y_test,
-                builder.test_idx
+                builder.test_idx,
             )
         self.y_pred = self.compute_preds()
         self.predictions = self.yhat_matrix()
         self.residuals = self.get_resid()
         self.loss = self.compute_scores()
 
-
     def calculate_results(self):
         """Main calling function to compute regression model scores, including residuals, root mean squared error and L2 cost function. Uses parent class method to save and/or load results to/from disk. Once calculated or loaded, other parent class methods can be used to generate various plots.
 
         Returns:
-            Compute object (self): ComputeRegressor object with calculated model evaluation metrics attributes. 
+            Compute object (self): ComputeRegressor object with calculated model evaluation metrics attributes.
         """
         if self.X_test is None:
             print("No training data - please instantiate the inputs.")
@@ -785,9 +789,9 @@ class ComputeRegressor(Computer):
         self.y_pred = self.compute_preds()
         self.predictions = self.yhat_matrix()
         self.residuals = self.get_resid()
-        self.loss = self.compute_scores()        
+        self.loss = self.compute_scores()
         return self
-    
+
     def compute_preds(self):
         """Get predictions (`y_pred`) based on regression model test inputs (`X_test`).
 
@@ -807,11 +811,17 @@ class ComputeRegressor(Computer):
         if self.y_pred is not None:
             np_config.enable_numpy_behavior()
             np.set_printoptions(precision=2)
-            self.predictions = np.concatenate((self.y_pred.reshape(len(self.y_pred), 1), self.y_test.reshape(len(self.y_test), 1)), 1)
+            self.predictions = np.concatenate(
+                (
+                    self.y_pred.reshape(len(self.y_pred), 1),
+                    self.y_test.reshape(len(self.y_test), 1),
+                ),
+                1,
+            )
             return self.predictions
 
     def get_resid(self):
-        """Calculate residual error between ground truth (`y_test`) and prediction values of a regression model. 
+        """Calculate residual error between ground truth (`y_test`) and prediction values of a regression model.
         Residuals are a measure of how far from the regression line the data points are.
 
         Returns:
@@ -824,7 +834,7 @@ class ComputeRegressor(Computer):
                 r = p - a
                 self.residuals.append(r)
             return self.residuals
-    
+
     def calculate_L2(self, subset=None):
         """Calculate the L2 Normalization score of a regression model.
         L2 norm is the square root of the sum of the squared vector values (also known as the Euclidean norm or Euclidean distance from the origin).
@@ -837,16 +847,16 @@ class ComputeRegressor(Computer):
             return np.linalg.norm(np.asarray(subset))
         else:
             return np.linalg.norm(self.residuals)
-    
+
     def compute_scores(self, error_stats=True):
         """Calculate overall loss metrics of training and test sets. Default for regression is MSE (mean squared error) and RMSE (root MSE).
         RMSE is a measure of how spread out the residuals are (i.e. how concentrated the data is around the line of best fit). Note: RMSE is better in terms of reflecting performance when dealing with large error values (penalizes large errors) while MSE tends to be biased for high values.
 
         Args:
-            error_stats (bool, optional): include RMSE and L2 norm for positive and negative groups of residuals in the test set (here "positive" means above the regression line (>0), "negative" means below (<0)). This can be useful when consequences might be more severe for underestimating vs. overestimating. 
+            error_stats (bool, optional): include RMSE and L2 norm for positive and negative groups of residuals in the test set (here "positive" means above the regression line (>0), "negative" means below (<0)). This can be useful when consequences might be more severe for underestimating vs. overestimating.
 
         Returns:
-            Dictionary: model training loss scores (MSE and RMSE); if error_stats=True, 
+            Dictionary: model training loss scores (MSE and RMSE)
         """
         if self.X_test is None:
             return None
@@ -856,8 +866,8 @@ class ComputeRegressor(Computer):
             "train_loss": np.round(train_scores[0], 2),
             "train_rmse": np.round(train_scores[1], 2),
             "test_loss": np.round(test_scores[0], 2),
-            "test_rmse": np.round(test_scores[1], 2)
-            }
+            "test_rmse": np.round(test_scores[1], 2),
+        }
         if error_stats is True and self.residuals is not None:
             pos, neg = [], []
             for r in self.residuals:
@@ -865,18 +875,18 @@ class ComputeRegressor(Computer):
                     pos.append(r)
                 else:
                     neg.append(r)
-            self.loss["rmse_pos"] = np.sqrt(np.mean(np.asarray(pos)**2))
-            self.loss["rmse_neg"] = np.sqrt(np.mean(np.asarray(neg)**2))
+            self.loss["rmse_pos"] = np.sqrt(np.mean(np.asarray(pos) ** 2))
+            self.loss["rmse_neg"] = np.sqrt(np.mean(np.asarray(neg) ** 2))
             self.loss["l2_norm"] = self.calculate_L2()
             self.loss["l2_pos"] = self.calculate_L2(subset=pos)
             self.loss["l2_neg"] = self.calculate_L2(subset=neg)
         return self.loss
-    
+
     # def resid_plot(self):
     #     """Plot the residual error for a regression model.
 
     #     Returns:
-    #         Plotly figure object: interactive plotly scatter fig  
+    #         Plotly figure object: interactive plotly scatter fig
     #     """
     #     if self.predictions is not None:
     #         y = self.predictions[:,1]
@@ -896,7 +906,7 @@ class ComputeRegressor(Computer):
     #     return fig
 
     def make_outputs(self, dl=True):
-        """Create a dictionary of results calculated for a regression model. Used for saving results to disk. 
+        """Create a dictionary of results calculated for a regression model. Used for saving results to disk.
 
         Args:
             dl (bool, optional): download (save) to disk. Defaults to True.
@@ -908,7 +918,7 @@ class ComputeRegressor(Computer):
             "predictions": self.predictions,
             "test_idx": self.test_idx,
             "residuals": self.residuals,
-            "loss": self.loss
+            "loss": self.loss,
         }
         if self.validation is False:
             outputs["history"] = self.history

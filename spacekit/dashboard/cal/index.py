@@ -46,7 +46,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "-u", "--uri", default="data", help="filepath, web uri, or s3 bucketname"
     )
-    parser.add_argument("-l", "--latest", default=0, help="scrape last 3 timestamps")  # TODO
+    parser.add_argument(
+        "-l", "--latest", default=0, help="scrape last 3 timestamps"
+    )  # TODO
     parser.add_argument("-r0", "--results1", default="2021-11-04-1636048291")
     parser.add_argument("-r1", "--results2", default="2021-10-28-1635457222")
     parser.add_argument("-r2", "--results3", default="2021-08-22-1629663047")

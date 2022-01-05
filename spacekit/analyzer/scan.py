@@ -11,9 +11,18 @@ from spacekit.analyzer.compute import ComputeBinary, ComputeMulti, ComputeRegres
 
 
 def decode_categorical(df, decoder_key):
-    """Returns dataframe with added decoded column (using "{column}_key" suffix)"""
-    # instrument_key = {"instr": {0: "acs", 1: "cos", 2: "stis", 3: "wfc3"}}
-    # detector_key = {"det": {0: "hrc", 1: "ir", 2: "sbc", 3: "uvis", 4: "wfc"}}
+    """Add decoded column (using "{column}_key" suffix) to dataframe.
+
+    Parameters:
+        df (Dataframe) :
+        decoder_key (Dictionary): key-value pairs of encoding integers and strings
+            Ex. (decoder_key)
+            instrument_key = {"instr": {0: "acs", 1: "cos", 2: "stis", 3: "wfc3"}}
+            detector_key = {"det": {0: "hrc", 1: "ir", 2: "sbc", 3: "uvis", 4: "wfc"}}
+
+    Returns:
+        df (Pandas Dataframe): dataframe with additional categorical column (object dtype) based on encoding pairs.
+    """
     for key, pairs in decoder_key.items():
         for i, name in pairs.items():
             df.loc[df[key] == i, f"{key}_key"] = name
@@ -21,13 +30,17 @@ def decode_categorical(df, decoder_key):
 
 
 def import_dataset(filename=None, kwargs=dict(index_col="ipst"), decoder_key=None):
-    """Imports and loads dataset from csv file via local, https, s3, or dynamodb.
-    Returns Pandas dataframe.
-    *args*
-    filename: path to csv file
-    kwargs: dict of keyword args to pass into pandas read_csv method e.g. set index_col: kwargs=dict(index_col="ipst")
-    decoder_key: nested dict of column and key value pairs for decoding a categorical feature into strings
-    Ex: {"instr": {{0: "acs", 1: "cos", 2: "stis", 3: "wfc3"}}}
+    """Imports and loads dataset from csv file. Optionally decodes an encoded feature back into strings.
+
+    Parameters:
+        filename (path, optional) path to csv file. Defaults to None.
+        kwargs (dictionary, optional): dict of keyword args to pass into pandas read_csv method.
+            Ex: to set the index_col attribute: kwargs=dict(index_col="ipst")
+        decoder_key (dict, optional): nested dict of column and key value pairs for decoding a categorical feature into strings.
+            Ex: {"instr": {{0: "acs", 1: "cos", 2: "stis", 3: "wfc3"}}}
+
+    Returns:
+        df (Pandas dataframe): dataframe of imported csv file
     """
     if not os.path.exists(filename):
         print("File could not be found")

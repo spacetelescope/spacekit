@@ -280,7 +280,7 @@ class Builder:
             params (Dict, optional): [description]. Defaults to None.
 
         Returns:
-            object: keras history (training and validation metrics for each epoch) 
+            object: keras history (training and validation metrics for each epoch)
         """
         if params is not None:
             self.fit_params(**params)
@@ -755,7 +755,10 @@ class MemoryClassifier(MultiLayerPerceptron):
     Args:
         MultiLayerPerceptron (object): mlp multi-classification builder object
     """
-    def __init__(self, X_train, y_train, X_test, y_test, blueprint="mlp", test_idx=None):
+
+    def __init__(
+        self, X_train, y_train, X_test, y_test, blueprint="mlp", test_idx=None
+    ):
         super().__init__(X_train, y_train, X_test, y_test, blueprint=blueprint)
         self.input_shape = X_train.shape[1]  # 9
         self.output_shape = 4
@@ -778,7 +781,10 @@ class MemoryRegressor(MultiLayerPerceptron):
     Args:
         MultiLayerPerceptron (object): mlp linear regression builder object
     """
-    def __init__(self, X_train, y_train, X_test, y_test, blueprint="mlp", test_idx=None):
+
+    def __init__(
+        self, X_train, y_train, X_test, y_test, blueprint="mlp", test_idx=None
+    ):
         super().__init__(X_train, y_train, X_test, y_test, blueprint=blueprint)
         self.input_shape = X_train.shape[1]  # 9
         self.output_shape = 1
@@ -801,7 +807,10 @@ class WallclockRegressor(MultiLayerPerceptron):
     Args:
         MultiLayerPerceptron (object): mlp linear regression builder object
     """
-    def __init__(self, X_train, y_train, X_test, y_test, blueprint="mlp", test_idx=None):
+
+    def __init__(
+        self, X_train, y_train, X_test, y_test, blueprint="mlp", test_idx=None
+    ):
         super().__init__(X_train, y_train, X_test, y_test, blueprint=blueprint)
         self.input_shape = X_train.shape[1]  # 9
         self.output_shape = 1

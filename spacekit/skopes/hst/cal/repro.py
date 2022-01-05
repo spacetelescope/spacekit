@@ -2,7 +2,11 @@ from spacekit.datasets.hst_cal import calcloud_data, calcloud_uri
 from spacekit.extractor.scrape import WebScraper
 from spacekit.analyzer.scan import CalScanner, import_dataset
 from spacekit.preprocessor.scrub import ScrubCal
-from spacekit.builder.networks import MemoryClassifier, MemoryRegressor, WallclockRegressor
+from spacekit.builder.networks import (
+    MemoryClassifier,
+    MemoryRegressor,
+    WallclockRegressor,
+)
 from spacekit.analyzer.compute import ComputeMulti, ComputeRegressor
 
 # 1 - get data archives (job data, models, results)
@@ -24,8 +28,14 @@ data_path = f"{selection}/data"
 res_path = f"{selection}/results"
 
 # 4 - build & train models; compute results
-## 4a: Memory Bin Classifier
-clf = MemoryClassifier(data.X_train, data.y_bin_train, data.X_test, data.y_bin_test, test_idx=data.bin_test_idx)
+# 4a: Memory Bin Classifier
+clf = MemoryClassifier(
+    data.X_train,
+    data.y_bin_train,
+    data.X_test,
+    data.y_bin_test,
+    test_idx=data.bin_test_idx,
+)
 clf.build_mlp()
 clf.fit()
 bCom = ComputeMulti(builder=clf, res_path=f"{res_path}/mem_bin")
@@ -39,10 +49,16 @@ bCom.make_outputs()
 # bcom2.load_results(bin_out)
 """
 
-## 4b: Memory Regressor
-mem = MemoryRegressor(data.X_train, data.y_mem_train, data.X_test, data.y_mem_test, test_idx=data.mem_test_idx)
+# 4b: Memory Regressor
+mem = MemoryRegressor(
+    data.X_train,
+    data.y_mem_train,
+    data.X_test,
+    data.y_mem_test,
+    test_idx=data.mem_test_idx,
+)
 mem.build_mlp()
-mem.fit() # using default fit params
+mem.fit()  # using default fit params
 mCom = ComputeRegressor(builder=mem, res_path=f"{res_path}/memory")
 mCom.calculate_results()
 mCom.make_outputs()
@@ -54,8 +70,14 @@ mCom.make_outputs()
 # mcom2.load_results(mem_out)
 """
 
-## 4c: Wallclock Regressor
-wall = WallclockRegressor(data.X_train, data.y_wall_train, data.X_test, data.y_wall_test, test_idx=data.wall_test_idx)
+# 4c: Wallclock Regressor
+wall = WallclockRegressor(
+    data.X_train,
+    data.y_wall_train,
+    data.X_test,
+    data.y_wall_test,
+    test_idx=data.wall_test_idx,
+)
 wall.build_mlp()
 wall.fit_params(batch_size=64, epochs=300)
 wall.fit()
@@ -69,4 +91,3 @@ wCom.make_outputs()
 # wall_out = wcom2.upload()
 # wcom2.load_results(wall_out)
 """
-

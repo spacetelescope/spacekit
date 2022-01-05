@@ -8,6 +8,7 @@ from spacekit.preprocessor.encode import SvmEncoder
 from spacekit.preprocessor.encode import encode_target_data
 from spacekit.preprocessor.transform import array_to_tensor
 
+
 class ScrubCols:
     def __init__(self, data, dropnans=True):
         self.data = data
@@ -233,14 +234,25 @@ class ScrubSvm:
             for s in subsamples:
                 f.writelines(f"{s}\n")
 
+
 class ScrubCal:
     def __init__(self, data, tensors=True):
         self.data = data
         self.tensors = tensors
-        self.mem_bin = data['mem_bin']
-        self.memory = data['memory']
-        self.wallclock = data['wallclock']
-        self.input_cols = ["x_files", "x_size", "drizcorr", "pctecorr", "crsplit", "subarray", "detector", "dtype", "instr"]
+        self.mem_bin = data["mem_bin"]
+        self.memory = data["memory"]
+        self.wallclock = data["wallclock"]
+        self.input_cols = [
+            "x_files",
+            "x_size",
+            "drizcorr",
+            "pctecorr",
+            "crsplit",
+            "subarray",
+            "detector",
+            "dtype",
+            "instr",
+        ]
         self.X = self.data[self.input_cols]
         self.X_train = None
         self.X_test = None
@@ -263,8 +275,12 @@ class ScrubCal:
         self.train_idx = self.make_test_index(y_train)
         self.bin_test_idx = self.test_idx
         self.y_bin_train, self.y_bin_test = self.encode_y(y_train, y_test)
-        self.y_mem_train, self.y_mem_test, self.mem_test_idx = self.prep_reg(target_col="memory")
-        self.y_wall_train, self.y_wall_test, self.wall_test_idx = self.prep_reg(target_col="wallclock")
+        self.y_mem_train, self.y_mem_test, self.mem_test_idx = self.prep_reg(
+            target_col="memory"
+        )
+        self.y_wall_train, self.y_wall_test, self.wall_test_idx = self.prep_reg(
+            target_col="wallclock"
+        )
         if self.tensors is True:
             self.X_train = array_to_tensor(self.X_train)
             self.X_test = array_to_tensor(self.X_test)

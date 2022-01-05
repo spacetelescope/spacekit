@@ -1,10 +1,11 @@
 from dash import dcc
 from dash import html
 from dash.dependencies import Input, Output
+
 # from spacekit.analyzer.explore import HstCalPlots
 # from spacekit.analyzer.scan import import_dataset
 from spacekit.dashboard.cal.app import app
-from spacekit.dashboard.cal.config import hst #cal
+from spacekit.dashboard.cal.config import hst
 
 layout = html.Div(
     children=[

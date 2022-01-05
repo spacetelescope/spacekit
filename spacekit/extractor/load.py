@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import numpy as np
+
 # from zipfile import ZipFile
 from keras.preprocessing import image
 from tqdm import tqdm
@@ -20,6 +21,7 @@ class ArrayOps:
         self.test_idx = None
 
     """Pandas/Numpy File ops"""
+
     def save_train_test(self, target=None):
         self.save_X_train_test()
         if self.test_idx:
@@ -42,7 +44,7 @@ class ArrayOps:
     #         np.save(f"{self.data_path}/y_test.npy", self.y_test)
     #     print("Train-test data saved as numpy arrays:\n")
     #     print(os.listdir(self.data_path))
-    
+
     def save_X_train_test(self):
         np.save(f"{self.data_path}/X_train.npy", np.asarray(self.X_train))
         np.save(f"{self.data_path}/X_test.npy", np.asarray(self.X_test))
@@ -77,7 +79,7 @@ class ArrayOps:
         X_train = np.load(f"{self.data_path}/X_train.npy")
         X_test = np.load(f"{self.data_path}/X_test.npy")
         return X_train, X_test
-    
+
     def load_y_train_test(self, target=None):
         if target:
             target_path = os.path.join(self.data_path, target)
@@ -98,48 +100,50 @@ class ArrayOps:
             if y is None:
                 y = self.y_test
             test_idx = pd.DataFrame(
-                    np.argmax(y, axis=-1),
-                    index=test_idx,
-                    columns=[target],
-                )
+                np.argmax(y, axis=-1),
+                index=test_idx,
+                columns=[target],
+            )
             return test_idx
 
     # TODO
     def save_compressed(self, y_dict=None, idx_dict=None):
-        """Store compressed data to disk
-        """
-        np.savez(f'{self.data_path}/X.npz', X_train=self.X_train, X_test=self.X_test)
+        """Store compressed data to disk"""
+        np.savez(f"{self.data_path}/X.npz", X_train=self.X_train, X_test=self.X_test)
         if y_dict:
-            np.savez(f'{self.data_path}/y.npz', **y_dict)
+            np.savez(f"{self.data_path}/y.npz", **y_dict)
         else:
-            np.savez(f'{self.data_path}/y.npz', y_train=self.y_train, y_test=self.y_test)
+            np.savez(
+                f"{self.data_path}/y.npz", y_train=self.y_train, y_test=self.y_test
+            )
         if idx_dict:
-            np.savez(f'{self.data_path}/idx.npz', **idx_dict)
+            np.savez(f"{self.data_path}/idx.npz", **idx_dict)
         else:
-            np.savez(f'{self.data_path}/idx.npz', test_idx=self.test_idx)
+            np.savez(f"{self.data_path}/idx.npz", test_idx=self.test_idx)
 
     def load_compressed(self):
-        """Store compressed data to disk
-        """
-        X_data = np.load(f'{self.data_path}/X.npz')
+        """Store compressed data to disk"""
+        X_data = np.load(f"{self.data_path}/X.npz")
 
-        self.X_train = X_data['X_train']
-        self.X_test = X_data['X_test']
+        self.X_train = X_data["X_train"]
+        self.X_test = X_data["X_test"]
         X_data.close()
 
-        y_data = np.load(f'{self.data_path}/y.npz')
-        self.y_train = y_data['y_train']
-        self.y_test = y_data['y_test']
+        y_data = np.load(f"{self.data_path}/y.npz")
+        self.y_train = y_data["y_train"]
+        self.y_test = y_data["y_test"]
         y_data.close()
 
-        idx = np.load(f'{self.data_path}/idx.npz')
-        self.test_idx = idx['test_idx']
+        idx = np.load(f"{self.data_path}/idx.npz")
+        self.test_idx = idx["test_idx"]
         return self
 
 
 # TODO
 class HstCalData(ArrayOps):
-    def __init__(self, data_path=".", idx="ipst", targets=["mem_bin", "memory", "wallclock"]):
+    def __init__(
+        self, data_path=".", idx="ipst", targets=["mem_bin", "memory", "wallclock"]
+    ):
         super().__init__(data_path=data_path, idx=idx, targets=targets)
         self.y_bin_train = None
         self.y_bin_test = None
@@ -150,7 +154,7 @@ class HstCalData(ArrayOps):
         self.bin_test_idx = None
         self.mem_test_idx = None
         self.wall_test_idx = None
-    
+
     def load_training_data(self):
         self.X_train, self.X_test = self.load_X_train_test()
         self.y_bin_train, self.y_bin_test = self.load_y_train_test(target="mem_bin")
@@ -158,24 +162,25 @@ class HstCalData(ArrayOps):
         self.y_wall_train, self.y_wall_test = self.load_y_train_test(target="wallclock")
         self.bin_test_idx = self.load_test_index(target="mem_bin", y=self.y_bin_test)
         self.mem_test_idx = self.load_test_index(target="memory", y=self.y_mem_test)
-        self.wall_test_idx = self.load_test_index(target="wallclock", y=self.y_wall_test)
+        self.wall_test_idx = self.load_test_index(
+            target="wallclock", y=self.y_wall_test
+        )
         return self
-    
-    def load_compressed(self):
-        """Store compressed data to disk
-        """
-        data = np.load(f'{self.data_path}/train_test.npz')
 
-        self.X_train, self.X_test = data['X_train'], data['X_test']
-        self.y_bin_train, self.y_bin_test = data['y_bin_train'], data['y_bin_test']
-        self.y_mem_train, self.y_mem_test = data['y_mem_train'], data['y_mem_test']
-        self.y_wall_train, self.y_wall_test = data['y_wall_train'], data['y_wall_test']
+    def load_compressed(self):
+        """Store compressed data to disk"""
+        data = np.load(f"{self.data_path}/train_test.npz")
+
+        self.X_train, self.X_test = data["X_train"], data["X_test"]
+        self.y_bin_train, self.y_bin_test = data["y_bin_train"], data["y_bin_test"]
+        self.y_mem_train, self.y_mem_test = data["y_mem_train"], data["y_mem_test"]
+        self.y_wall_train, self.y_wall_test = data["y_wall_train"], data["y_wall_test"]
         data.close()
 
-        idx = np.load(f'{self.data_path}/idx.npz')
-        self.bin_test_idx = idx['bin_test_idx']
-        self.mem_test_idx = idx['mem_test_idx']
-        self.wall_test_idx = idx['wall_test_idx']
+        idx = np.load(f"{self.data_path}/idx.npz")
+        self.bin_test_idx = idx["bin_test_idx"]
+        self.mem_test_idx = idx["mem_test_idx"]
+        self.wall_test_idx = idx["wall_test_idx"]
         idx.close()
         return self
 
@@ -184,7 +189,7 @@ class HstCalData(ArrayOps):
 class HstSvmData(ArrayOps):
     def __init__(self, data_path=".", idx="index", targets=["label"]):
         super().__init__(data_path=data_path, idx=idx, targets=targets)
-    
+
     def save_ensemble_data(self):
         X_train_mlp = np.asarray(self.X_train[0])
         X_train_img = np.asarray(self.X_train[1])
@@ -228,6 +233,7 @@ class HstSvmData(ArrayOps):
 
 
 """Image Ops"""
+
 
 def read_channels(channels, w, h, d, exp=None, color_mode="rgb"):
     """Loads PNG image data and converts to 3D arrays.

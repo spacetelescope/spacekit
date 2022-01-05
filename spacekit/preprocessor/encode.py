@@ -2,6 +2,7 @@ import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 from tensorflow.keras.utils import to_categorical
 
+
 def encode_target_data(y_train, y_test):
     # label encode class values as integers
     encoder = LabelEncoder()

@@ -27,7 +27,7 @@ def extract_archives(zipfiles, extract_to="data", delete_archive=False):
         fpath = os.path.join(extract_to, fname)
         with ZipFile(z, "r") as zip_ref:
             zip_ref.extractall(extract_to)
-        # check just in case 
+        # check just in case
         if os.path.exists(fpath):
             fpaths.append(fpath)
             if delete_archive is True:

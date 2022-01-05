@@ -259,10 +259,12 @@ def make_tensors(X_train, y_train, X_test, y_test):
     y_test = tf.convert_to_tensor(y_test, dtype=tf.float32)
     return X_train, y_train, X_test, y_test
 
+
 def array_to_tensor(arr):
     """Convert Arrays to Tensors"""
     tensor = tf.convert_to_tensor(arr, dtype=tf.float32)
     return tensor
+
 
 def tensor_to_array(tensor, reshape=False):
     if reshape:
@@ -270,6 +272,7 @@ def tensor_to_array(tensor, reshape=False):
     else:
         arr = np.asarray(tensor)
     return arr
+
 
 def tensors_to_arrays(X_train, y_train, X_test, y_test):
     """Converts tensors into arrays, which is necessary for certain computations.
@@ -281,6 +284,7 @@ def tensors_to_arrays(X_train, y_train, X_test, y_test):
     X_test = tensor_to_array(X_test)
     y_test = tensor_to_array(y_test, reshape=True)
     return X_train, y_train, X_test, y_test
+
 
 def make_arrays(X_train, y_train, X_test, y_test):
     X_train = X_train.values
