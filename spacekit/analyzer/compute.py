@@ -168,9 +168,12 @@ class Computer(object):
     def draw_plots(self):
         """Generate standard classification model plots (keras accuracy and loss, ROC-AUC curve, Precision-Recall curve, Confusion Matrix)
 
-        Returns:
-            self: Computer class object updated with standard plot attribute values
+        Returns
+        -------
+        Computer object
+            updated with standard plot attribute values
         """
+
         self.acc_fig = self.keras_acc_plot()
         self.loss_fig = self.keras_loss_plot()
         self.roc_fig = self.make_roc_curve()
@@ -180,15 +183,14 @@ class Computer(object):
 
     # Matplotlib "static" alternative to interactive plotly version
     def roc_plots(self):
-        """Calculates ROC_AUC score and plots Receiver Operator Characteristics (ROC)
+        """Calculates ROC_AUC score and plots Receiver Operator Characteristics (ROC).
 
-        Arguments:
-            X {feature set} -- typically X_test
-            y {labels} -- typically y_test
-            model {classifier} -- the model name for which you are calculting roc score
-
-        Returns:
-            roc -- roc_auc_score (via sklearn)
+        Returns
+        -------
+        int
+            roc_auc_score (via sklearn)
+        Figure
+            receiver-operator characteristic area under the curve (ROC-AUC) plot
         """
         y_true = self.y_test.flatten()
         y_hat = self.model.predict(self.X_test)

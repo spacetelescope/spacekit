@@ -72,6 +72,7 @@ class MegaScanner:
         self.acc_fig = None  # self.acc_bars()
         self.loss_fig = None  # self.loss_bars()
         self.acc_loss_figs = None  # self.acc_loss_subplots()
+        self.res_fig = None # TODO
 
     def select_dataset(self, primary=None):
         if primary:
@@ -101,10 +102,10 @@ class MegaScanner:
             self.versions = versions
         return self.mega
 
-    def compare_scores(self, target="mem_bin"):
+    def compare_scores(self, target="mem_bin", score_type="acc_loss"):
         df_list = []
         for v in self.versions:
-            score_dict = self.mega[v]["res"][target]["acc_loss"]
+            score_dict = self.mega[v]["res"][target][score_type]
             df = pd.DataFrame.from_dict(score_dict, orient="index", columns=[v])
             df_list.append(df)
         self.scores = pd.concat([d for d in df_list], axis=1)
@@ -320,18 +321,18 @@ class CalScanner(MegaScanner):
             bCom = ComputeMulti(
                 algorithm="clf", classes=self.classes, res_path=f"{d}/results/mem_bin"
             )
-            outputs = bCom.upload()
-            bCom.load_results(outputs)
+            bin_out = bCom.upload()
+            bCom.load_results(bin_out)
             self.mega[v]["res"]["mem_bin"] = bCom
 
             mCom = ComputeRegressor(algorithm="reg", res_path=f"{d}/results/memory")
-            outputs = mCom.upload()
-            mCom.load_results(outputs)
+            mem_out = mCom.upload()
+            mCom.load_results(mem_out)
             self.mega[v]["res"]["memory"] = mCom
 
             wCom = ComputeRegressor(algorithm="reg", res_path=f"{d}/results/wallclock")
-            outputs = wCom.upload()
-            wCom.load_results(outputs)
+            wall_out = wCom.upload()
+            wCom.load_results(wall_out)
             self.mega[v]["res"]["wallclock"] = wCom
         return self.mega
 
