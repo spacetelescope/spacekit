@@ -58,17 +58,27 @@ class Computer(object):
         results which can then be retrieved by Computer separately (without training vars) from pickle objects using
         the `upload()` method.
 
-        Args:
-            model (object): Keras functional model
-            history (dict): model training history
-            X_train (dataframe or array): training feature data
-            y_train (dataframe or array): training target data
-            X_test (dataframe or array): test feature data
-            y_test (dataframe or array): test target data
-            test_idx (pandas Series): test data index and ground truth values (used for FNFP)
+        Parameters
+        ----------
+        model : object
+            Keras functional model
+        history : dict
+            model training history
+        X_train : Pandas dataframe or Numpy array
+            training feature data
+        y_train : Pandas dataframe or Numpy array
+            training target data
+        X_test : Pandas dataframe or Numpy array
+            test/validation feature data
+        y_test : Pandas dataframe or Numpy array
+            test/validation target data
+        test_idx : Pandas series
+            test data index and ground truth values (y_test)
 
-        Returns:
-            class object (self): updated Computer object with model attributes used for calculating results
+        Returns
+        -------
+        Computer object (self)
+            updated with model attributes used for calculating results
         """
         self.model = model
         self.history = history.history
@@ -774,10 +784,10 @@ class ComputeRegressor(Computer):
                 builder.y_test,
                 builder.test_idx,
             )
-        self.y_pred = self.compute_preds()
-        self.predictions = self.yhat_matrix()
-        self.residuals = self.get_resid()
-        self.loss = self.compute_scores()
+        self.y_pred = None
+        self.predictions = None
+        self.residuals = None
+        self.loss = None
 
     def calculate_results(self):
         """Main calling function to compute regression model scores, including residuals, root mean squared error and L2 cost function. Uses parent class method to save and/or load results to/from disk. Once calculated or loaded, other parent class methods can be used to generate various plots.

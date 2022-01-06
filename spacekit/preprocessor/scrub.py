@@ -304,6 +304,7 @@ class ScrubCal:
         y_test = self.data.loc[self.test_idx.index][target_col]
         y_train = self.data.loc[self.train_idx.index][target_col]
         test_idx = self.make_test_index(y_test, target_col=target_col)
+        y_train, y_test = y_train.reshape(-1, 1), y_test.reshape(-1, 1)
         if self.tensors is True:
             y_train, y_test = array_to_tensor(y_train), array_to_tensor(y_test)
         return y_train, y_test, test_idx
