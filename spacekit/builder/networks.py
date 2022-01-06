@@ -67,6 +67,7 @@ class Builder:
         self.name = None
         self.model_path = None
 
+    # TODO: add params for loading other default pkg models (hstcal)
     def load_saved_model(self):
         if self.model_path is None:
             model_src = "spacekit.skopes.trained_networks"
@@ -153,7 +154,7 @@ class Builder:
         decay=[100000, 0.96],
         early_stopping=None,
         verbose=2,
-        ensemble=True,
+        ensemble=False,
     ):
         self.batch_size = batch_size
         self.epochs = epochs
@@ -176,7 +177,9 @@ class Builder:
 
     def set_callbacks(self):
         """
-        early_stopping: 'val_accuracy' or 'val_loss'
+        early_stopping: 
+            clf: 'val_accuracy' or 'val_loss'
+            reg: 'val_loss' or 'val_rmse'
         """
         model_name = str(self.model.name_scope().rstrip("/").upper())
         checkpoint_cb = callbacks.ModelCheckpoint(
@@ -819,7 +822,7 @@ class WallclockRegressor(MultiLayerPerceptron):
         self.output_name = "wall_reg"
         self.name = "wallclock_regressor"
         self.activation = "relu"
-        self.cost_function = "relu"
+        self.cost_function = None
         self.lr_sched = False
         self.optimizer = Adam
         self.loss = "mse"
