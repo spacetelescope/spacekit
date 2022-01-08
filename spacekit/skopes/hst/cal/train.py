@@ -1,8 +1,6 @@
 from argparse import ArgumentParser
 import os
-from spacekit.datasets.hst_cal import calcloud_data, calcloud_uri
-from spacekit.extractor.scrape import WebScraper
-from spacekit.analyzer.scan import CalScanner, import_dataset
+from spacekit.datasets import hst_cal
 from spacekit.preprocessor.scrub import ScrubCal
 from spacekit.builder.networks import (
     MemoryClassifier,
@@ -18,24 +16,14 @@ from spacekit.analyzer.compute import ComputeMulti, ComputeRegressor
 # bcom2.load_results(bin_out)
 """
 
-def preprocess_data(source_data="data", primary=-1):
-    # 1 - get data archives (job data, models, results)
-    if source_data == "github":
-        _ = WebScraper(calcloud_uri, calcloud_data).scrape_repo()
-        data_dir = "data"
-    else:
-        data_dir = source_data
-    # 2 - import data
-    cal = CalScanner(perimeter=f"{data_dir}/20??-*-*-*", primary=primary)
-    df = import_dataset(
-        filename=cal.data,
-        kwargs=dict(index_col="ipst"),
-        decoder_key={"instr": {0: "acs", 1: "cos", 2: "stis", 3: "wfc3"}},
-    )
-     # 3 - data preprocessing
+def load_and_prep(source_dir="data", dataset="2021-11-04-1636048291", fname="latest.csv"):
+    # 1 - import data
+    base_dir = os.path.join(source_dir, dataset)
+    fpath = os.path.join(base_dir, "data", fname)
+    df = hst_cal.load_data(fpath=fpath)
+     # 2 - data preprocessing
     data = ScrubCal(df).prep_data()
-    selection = cal.datapaths[cal.primary]
-    res_path = f"{selection}/results"
+    res_path = f"{base_dir}/results"
     return data, res_path
 
 def train_memory_classifier(data, res_path, save_model_path=None, save_results=True):
@@ -99,36 +87,36 @@ def train_wallclock_regressor(data, res_path, save_model_path=None, save_results
     return wall, wCom
 
 def train_models(mem_clf=1, mem_reg=1, wall_reg=1, mp=None, res=1):
+    model_objects = {}
     if mem_clf:
         clf, bCom = train_memory_classifier(data, res_path, save_model_path=mp, save_results=res)
+        model_objects["mem_clf"] = {"model": clf, "results": bCom}
     if mem_reg:
         mem, mCom = train_memory_regressor(data, res_path, save_model_path=mp, save_results=res)
+        model_objects["mem_reg"] = {"model": mem, "results": mCom}
     if wall_reg:
         wall, wCom = train_wallclock_regressor(data, res_path, save_model_path=mp, save_results=res)
+        model_objects["wall_reg"] = {"model": wall, "results": wCom}
+    return model_objects
 
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("--source_data", type=str, default="data", help="path to dataset directory")
-    parser.add_argument("--primary", type=int, default=-1)
-    parser.add_argument("--mem_clf", type=int, default=1)
-    parser.add_argument("--mem_reg", type=int, default=1)
-    parser.add_argument("--wall_reg", type=int, default=1)
-    parser.add_argument("--save_model_path", type=str, default=None)
-    parser.add_argument("--save_results", type=int, default=1)
+    parser.add_argument("--base_path", type=str, default="data", help="source data base directory path")
+    parser.add_argument("--dataset", type=str, default="2021-11-04-1636048291", help="training data timestamp (and subdirectory name)")
+    parser.add_argument("--fname", type=str, default="latest.csv", help="name of training data csv file")
+    parser.add_argument("--mem_clf", type=int, default=1, help="bool: train memory bin classifier")
+    parser.add_argument("--mem_reg", type=int, default=1, help="bool: train memory regressor")
+    parser.add_argument("--wall_reg", type=int, default=1, help="bool: train wallclock regressor")
+    parser.add_argument("--save_models", type=str, default=0, help="save trained models and weights to disk")
+    parser.add_argument("--save_results", type=int, default=1, help="bool: save training results metrics to disk")
     args = parser.parse_args()
     # import and preprocess data
-    data, res_path = preprocess_data(source_data=args.source_data, primary=args.primary)
-    # train models (save results)
-    mp = args.save_model_path
-    res = args.save_results
-    # clf, bCom = train_memory_classifier(data, res_path, save_model_path=mp, save_results=res)
-    # mem, mCom = train_memory_regressor(data, res_path, save_model_path=mp, save_results=res)
-    # wall, wCom = train_wallclock_regressor(data, res_path, save_model_path=mp, save_results=res)
-    train_models(
+    data, res_path = load_and_prep(source_dir=args.base_path, dataset=args.dataset, fname=args.fname)
+    model_objects = train_models(
         mem_clf=args.mem_clf,
         mem_reg=args.mem_reg,
         wall_reg=args.wall_reg,
-        mp=mp,
-        res=res
+        mp=args.save_model_path,
+        res=args.save_results
     )

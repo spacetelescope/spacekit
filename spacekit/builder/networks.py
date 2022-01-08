@@ -796,7 +796,7 @@ class MemoryRegressor(MultiLayerPerceptron):
         self.output_name = "mem_reg"
         self.name = "memory_regressor"
         self.activation = "relu"
-        self.cost_function = "relu"
+        self.cost_function = "linear"
         self.lr_sched = False
         self.optimizer = Adam
         self.loss = "mse"
@@ -822,7 +822,7 @@ class WallclockRegressor(MultiLayerPerceptron):
         self.output_name = "wall_reg"
         self.name = "wallclock_regressor"
         self.activation = "relu"
-        self.cost_function = None
+        self.cost_function = "linear"
         self.lr_sched = False
         self.optimizer = Adam
         self.loss = "mse"
