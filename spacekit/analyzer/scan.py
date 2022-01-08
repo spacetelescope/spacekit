@@ -72,7 +72,7 @@ class MegaScanner:
         self.acc_fig = None  # self.acc_bars()
         self.loss_fig = None  # self.loss_bars()
         self.acc_loss_figs = None  # self.acc_loss_subplots()
-        self.res_fig = None # TODO
+        self.res_fig = None  # TODO
 
     def select_dataset(self, primary=None):
         if primary:

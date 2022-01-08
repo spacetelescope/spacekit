@@ -676,6 +676,7 @@ class ComputeMulti(ComputeClassifier):
         if builder:
             self.inputs(
                 builder.model,
+                builder.history,
                 builder.X_train,
                 builder.y_train,
                 builder.X_test,

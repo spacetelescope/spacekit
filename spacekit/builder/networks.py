@@ -177,7 +177,7 @@ class Builder:
 
     def set_callbacks(self):
         """
-        early_stopping: 
+        early_stopping:
             clf: 'val_accuracy' or 'val_loss'
             reg: 'val_loss' or 'val_rmse'
         """
@@ -767,8 +767,8 @@ class MemoryClassifier(MultiLayerPerceptron):
         self.output_shape = 4
         self.layers = [18, 32, 64, 32, 18, 9]
         self.input_name = "hst_jobs"
-        self.output_name = "mem_clf"
-        self.name = "memory_classifier"
+        self.output_name = "memory_classifier"
+        self.name = "mem_clf"
         self.activation = "relu"
         self.cost_function = "softmax"
         self.lr_sched = False
@@ -776,6 +776,9 @@ class MemoryClassifier(MultiLayerPerceptron):
         self.loss = "categorical_crossentropy"
         self.metrics = ["accuracy"]
         self.test_idx = test_idx
+        self.epochs = 60
+        self.batch_size = 32
+        self.algorithm = "multiclass"
 
 
 class MemoryRegressor(MultiLayerPerceptron):
@@ -793,8 +796,8 @@ class MemoryRegressor(MultiLayerPerceptron):
         self.output_shape = 1
         self.layers = [18, 32, 64, 32, 18, 9]
         self.input_name = "hst_jobs"
-        self.output_name = "mem_reg"
-        self.name = "memory_regressor"
+        self.output_name = "memory_regressor"
+        self.name = "mem_reg"
         self.activation = "relu"
         self.cost_function = "linear"
         self.lr_sched = False
@@ -802,6 +805,9 @@ class MemoryRegressor(MultiLayerPerceptron):
         self.loss = "mse"
         self.metrics = [RMSE(name="rmse")]
         self.test_idx = test_idx
+        self.epochs = 60
+        self.batch_size = 32
+        self.algorithm = "linreg"
 
 
 class WallclockRegressor(MultiLayerPerceptron):
@@ -819,8 +825,8 @@ class WallclockRegressor(MultiLayerPerceptron):
         self.output_shape = 1
         self.layers = [18, 32, 64, 128, 256, 128, 64, 32, 18, 9]
         self.input_name = "hst_jobs"
-        self.output_name = "wall_reg"
-        self.name = "wallclock_regressor"
+        self.output_name = "wallclock_regressor"
+        self.name = "wall_reg"
         self.activation = "relu"
         self.cost_function = "linear"
         self.lr_sched = False
@@ -828,6 +834,9 @@ class WallclockRegressor(MultiLayerPerceptron):
         self.loss = "mse"
         self.metrics = [RMSE(name="rmse")]
         self.test_idx = test_idx
+        self.epochs = 300
+        self.batch_size = 64
+        self.algorithm = "linreg"
 
 
 class MosaicMlp(MultiLayerPerceptron):

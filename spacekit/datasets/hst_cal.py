@@ -27,7 +27,7 @@ def download_single_archive(date_key=None):
         # default to most recent
         date_key = sorted(list(calcloud_data.keys()))[-1]
     # limit data download to single archive
-    dataset = {date_key : calcloud_data[date_key]}
+    dataset = {date_key: calcloud_data[date_key]}
     scraper = WebScraper(calcloud_uri, dataset).scrape_repo()
     fpath = scraper.fpaths[0]
     print(fpath)
