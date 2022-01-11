@@ -39,7 +39,7 @@ spacekit
     └── skopes
         └── hst
             └── cal
-                └── repro.py
+                └── train.py
             └── svm
                     └── corrupt.py
                     └── predict.py

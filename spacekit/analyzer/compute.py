@@ -90,6 +90,13 @@ class Computer(object):
         if self.model_name is None:
             self.model_name = self.model.name
         return self
+    
+    def val_inputs(self, X_val, y_val):
+        self.X_train = self.X_test
+        self.y_train = self.y_test
+        self.X_test = X_val
+        self.y_test = y_val
+        return self
 
     def download(self, outputs):
         """Downloads model training results (`outputs` calculated by Computer obj) to local pickle objects for later retrieval and plotting/analysis.
@@ -559,56 +566,6 @@ class ComputeClassifier(Computer):
         print(f"\nFalse Positives Index\n{self.fnfp['fp_idx']}\n")
 
 
-class ComputeTest(ComputeClassifier):
-    def __init__(
-        self,
-        model,
-        history,
-        X_train,
-        y_train,
-        X_test,
-        y_test,
-        test_idx,
-        classes=["aligned", "misaligned"],
-        res_path="results/test",
-        show=False,
-        validation=False,
-    ):
-        super().__init__(
-            algorithm="clf",
-            classes=classes,
-            res_path=res_path,
-            show=show,
-            validation=validation,
-        )
-        self.inputs(model, history, X_train, y_train, X_test, y_test, test_idx)
-        self.classes = classes
-
-
-class ComputeVal(ComputeClassifier):
-    def __init__(
-        self,
-        model,
-        X_test,
-        y_test,
-        X_val,
-        y_val,
-        val_idx,
-        classes=["aligned", "misaligned"],
-        res_path="results/val",
-        show=False,
-        validation=True,
-    ):
-        super().__init__(
-            algorithm="clf",
-            classes=classes,
-            res_path=res_path,
-            show=show,
-            validation=validation,
-        )
-        self.inputs(model, X_test, y_test, X_val, y_val, val_idx)
-
-
 class ComputeBinary(ComputeClassifier):
     def __init__(
         self,
@@ -629,12 +586,15 @@ class ComputeBinary(ComputeClassifier):
         if builder:
             self.inputs(
                 builder.model,
+                builder.history,
+                builder.X_train,
+                builder.y_train,
                 builder.X_test,
                 builder.y_test,
-                builder.X_val,
-                builder.y_val,
                 builder.test_idx,
             )
+        if validation is True:
+            self.val_inputs(self, builder=builder)
 
     def calculate_results(self, show_summary=True):
         self.y_onehot = self.onehot_y()

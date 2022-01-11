@@ -10,7 +10,7 @@ from spacekit.preprocessor.transform import (
     power_transform_matrix,
 )
 from spacekit.builder.networks import Ensemble
-from spacekit.analyzer.compute import ComputeTest, ComputeVal
+from spacekit.analyzer.compute import ComputeBinary
 from spacekit.extractor.load import SVMImages
 from spacekit.analyzer.track import stopwatch
 
@@ -126,7 +126,7 @@ def prep_ensemble_data(filename, img_path, synth=None, norm=False):
     return tv_idx, XTR, YTR, XTS, YTS, XVL, YVL
 
 
-def train_ensemble(XTR, YTR, XTS, YTS, model_name, params=None, output_path=None):
+def train_ensemble(XTR, YTR, XTS, YTS, model_name="ensembleSVM", params=None, output_path=None):
     if params is None:
         params = dict(
             batch_size=32,
@@ -147,38 +147,35 @@ def train_ensemble(XTR, YTR, XTS, YTS, model_name, params=None, output_path=None
         output_name="svm_output",
         name="ensemble_svm",
     )
+    ens.build_ensemble()
+    ens.batch_fit()
     if output_path is None:
         output_path = os.getcwd()
     model_outpath = os.path.join(output_path, os.path.dirname(model_name))
-    ens.build_ensemble()
-    ens.batch_fit()
     ens.save_model(weights=True, output_path=model_outpath)
     return ens
 
 
-def compute_results(
-    model, history, model_name, tv_idx, res_path, XTR, YTR, XTS, YTS, XVL, YVL
-):
-    com = ComputeTest(
-        model_name,
-        ["aligned", "misaligned"],
-        model,
-        history,
-        XTR,
-        YTR,
-        XTS,
-        YTS,
-        tv_idx[0],
-    )
-    com.res_path = res_path
+def compute_results(ens, tv_idx, output_path=None, xval=None, yval=None):
+    if output_path is None:
+        output_path = os.getcwd()
+    res_path = os.path.join(output_path, "results")
+    # test set
+    ens.test_idx = tv_idx[0]
+    #tcom = ComputeBinary()
+    #tcom.inputs(ens.model, ens.history, ens.X_train, ens.y_train, ens.X_test, ens.y_test, ens.test_idx)
+    com = ComputeBinary(builder=ens, res_path=f"{res_path}/test")
     com.calculate_results()
-    com.download()
-    val = ComputeVal(
-        model_name, ["aligned", "misaligned"], model, XTS, YTS, XVL, YVL, tv_idx[1]
-    )
-    val.res_path = res_path
+    _ = com.make_outputs()
+    if xval is not None:
+        # validation set
+        ens.test_idx = tv_idx[1]
+        # val = ComputeBinary()
+        # val.inputs(ens.model, ens.history, ens.X_test, ens.y_test, ens.X_val, ens.y_val, ens.test_idx)
+        val = ComputeBinary(builder=ens, res_path=f"{res_path}/val", validation=True)
+        val.val_inputs(xval, yval)
     val.calculate_results()
-    val.download()
+    _ = val.make_outputs()
     return com, val
 
 
@@ -191,26 +188,12 @@ def run_training(
     params=None,
     output_path=None,
 ):
-    os.makedirs(output_path, exist_ok=True)
     tv_idx, XTR, YTR, XTS, YTS, XVL, YVL = prep_ensemble_data(
         training_data, img_path, synth=synth_data, norm=norm
     )
-    ens = train_ensemble(XTR, YTR, XTS, YTS, model_name, params)
-    res_path = os.path.join(output_path, "results")
-    com, val = compute_results(
-        ens.model,
-        ens.history,
-        model_name,
-        tv_idx,
-        res_path,
-        XTR,
-        YTR,
-        XTS,
-        YTS,
-        XVL,
-        YVL,
-    )
-    return com, val
+    ens = train_ensemble(XTR, YTR, XTS, YTS, model_name=model_name, params=params, output_path=output_path)
+    com, val = compute_results(ens, tv_idx, output_path=output_path, xval=XVL, yval=YVL)
+    return ens, com, val
 
 
 if __name__ == "__main__":
@@ -272,7 +255,7 @@ if __name__ == "__main__":
         verbose=args.verbose,
         ensemble=True,
     )
-    com, val = run_training(
+    ens, com, val = run_training(
         args.training_data,
         args.img_path,
         synth_data=args.synthetic_data,
