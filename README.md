@@ -94,9 +94,9 @@ print(fname)
 # svm_data.csv
 
 # This is equivalent to using the default kwargs:
-fname = run_preprocessing(input_path, h5=None, fname="svm_data", output_path=None, json_pattern="*_total*_svm_*.json", crpt=0)
+fname = run_preprocessing(input_path, h5=None, fname="svm_data", output_path=None, json_pattern="*_total*_svm_*.json", crpt=0, draw_images=1)
 print(fname)
-# default is "svm_data.csv"; customize filename and path using kwargs `fname` and `output_path`
+# default is "svm_data.csv"; customize filename and location using kwargs `fname` and `output_path`
 ```
 
 Outputs:

@@ -48,7 +48,7 @@ class Builder:
         self.X_test = X_test
         self.y_train = y_train
         self.y_test = y_test
-        self.blueprint = "ensemble"  # "ensemble", "cnn3d", "mlp" "cnn2d"
+        #self.blueprint = "ensemble"  # "ensemble", "cnn3d", "mlp" "cnn2d"
         self.batch_size = 32
         self.epochs = 60
         self.lr = 1e-4
@@ -319,8 +319,8 @@ class MultiLayerPerceptron(Builder):
         self.input_shape = X_train.shape[1]
         self.output_shape = 1
         self.layers = [18, 32, 64, 32, 18]
-        self.input_name = "svm_inputs"
-        self.output_name = "svm_output"
+        self.input_name = "mlp_inputs"
+        self.output_name = "mlp_output"
         self.name = "sequential_mlp"
         self.activation = "leaky_relu"
         self.cost_function = "sigmoid"
@@ -340,7 +340,7 @@ class MultiLayerPerceptron(Builder):
             i += 1
             x = Dense(layer, activation=self.activation, name=f"{i+1}_dense{layer}")(x)
         # output layer
-        if self.ensemble is True:
+        if self.blueprint == "ensemble":
             self.mlp = Model(inputs, x, name="mlp_ensemble")
             return self.mlp
         else:
@@ -529,38 +529,82 @@ class ImageCNN3D(Builder):
 
 
 class Ensemble(Builder):
-    def __init__(self, X_train, y_train, X_test, y_test, params=None):
+    def __init__(self, X_train, y_train, X_test, y_test, params=None, input_name="svm_mixed_inputs", output_name="ensemble_output", name="ensembl4D"):
         super().__init__(X_train, y_train, X_test, y_test)
-        self.name = "ensemble4d"
+        self.input_name = input_name
+        self.output_name = output_name
+        self.name = name
+        self.blueprint = "ensemble"
         self.ensemble = True
         self.lr_sched = True
-        self.mlp = MultiLayerPerceptron(
-            X_train, y_train, X_test, y_test, blueprint="ensemble"
-        )
-        self.mlp.input_shape = self.X_train[0].shape[1]
-        self.cnn = ImageCNN3D(X_train, y_train, X_test, y_test, blueprint="ensemble")
-        self.cnn.input_shape = self.X_train[1].shape[1:]
         self.params = params
-        if params is not None:
-            self.fit_params(**params)
-        else:
-            self.params = None
         self.loss = "binary_crossentropy"
         self.optimizer = Adam
         self.metrics = ["accuracy"]
         self.activation = "leaky_relu"
         self.cost_function = "sigmoid"
-        self.input_name = "mixed_inputs"
-        self.output_name = "ensemble_output"
+        # default params:
+        self.batch_size = 32
+        self.epochs = 1000
+        self.lr = 1e-4
+        self.decay = [100000, 0.96]
+        self.early_stopping = False
+        self.verbose = 2
+        self.output_shape = 1
+        self.layers = [18, 32, 64, 32, 18]
+        if params is not None:
+            self.fit_params(**params)
+
+    def ensemble_mlp(self):
+        self.mlp = MultiLayerPerceptron(
+            self.X_train[0], self.y_train, self.X_test[0], self.y_test, blueprint="ensemble"
+        )
+        self.mlp.input_name = "svm_regression_inputs"
+        self.mlp.output_name = "svm_regression_output"
+        self.mlp.name = "svm_mlp"
+        self.mlp.ensemble = True
+        self.mlp.input_shape = self.X_train[0].shape[1]
+        # default attributes for MLP:
+        self.cnn.output_shape = 1
+        self.mlp.layers = [18, 32, 64, 32, 18]
+        self.mlp.activation = "leaky_relu"
+        self.mlp.cost_function = "sigmoid"
+        self.mlp.lr_sched = True
+        self.mlp.optimizer = Adam
+        self.mlp.loss = "binary_crossentropy"
+        self.mlp.metrics = ["accuracy"]
+        # compile the MLP branch
+        self.mlp.model = self.mlp.build_mlp()
+        return self.mlp
+    
+    def ensemble_cnn(self):
+        self.cnn = ImageCNN3D(self.X_train[1], self.y_train, self.X_test[1], self.y_test, blueprint="ensemble")
+        self.cnn.input_name = "svm_image_inputs"
+        self.cnn.output_name = "svm_image_output"
+        self.cnn.name = "svm_cnn"
+        self.cnn.ensemble = True
+        self.cnn.input_shape = self.X_train[1].shape[1:]
+        # default attributes for CNN:
+        self.cnn.output_shape = 1
+        self.cnn.layers = [18, 32, 64, 32, 18]
+        self.cnn.activation = "leaky_relu"
+        self.cnn.cost_function = "sigmoid"
+        self.cnn.lr_sched = True
+        self.cnn.optimizer = Adam
+        self.cnn.loss = "binary_crossentropy"
+        self.cnn.metrics = ["accuracy"]
+        # compile the CNN branch
+        self.cnn.model = self.cnn.build_3D()
+        return self.cnn
 
     def build_ensemble(self):
-        self.mlp.build_mlp()
-        self.cnn.build_3D()
-        combinedInput = concatenate([self.mlp.output, self.cnn.output])
+        self.mlp = self.ensemble_mlp()
+        self.cnn = self.ensemble_cnn()
+        combinedInput = concatenate([self.mlp.model.output, self.cnn.model.output])
         x = Dense(9, activation="leaky_relu", name=self.input_name)(combinedInput)
         x = Dense(1, activation="sigmoid", name=self.output_name)(x)
         self.model = Model(
-            inputs=[self.mlp.input, self.cnn.input], outputs=x, name=self.name
+            inputs=[self.mlp.model.input, self.cnn.model.input], outputs=x, name=self.name
         )
         if self.lr_sched is True:
             lr_schedule = self.decay_learning_rate()
@@ -837,64 +881,3 @@ class WallclockRegressor(MultiLayerPerceptron):
         self.epochs = 300
         self.batch_size = 64
         self.algorithm = "linreg"
-
-
-class MosaicMlp(MultiLayerPerceptron):
-    def __init__(self, X_train, y_train, X_test, y_test, blueprint="ensemble"):
-        super().__init__(X_train, y_train, X_test, y_test, blueprint=blueprint)
-        self.ensemble = True
-        self.input_shape = X_train[0].shape[1]
-        self.output_shape = 1
-        self.layers = [18, 32, 64, 32, 18]
-        self.input_name = "svm_regression_inputs"
-        self.output_name = "svm_regression_output"
-        self.name = "svm_mlp"
-        self.activation = "leaky_relu"
-        self.cost_function = "sigmoid"
-        self.lr_sched = True
-        self.optimizer = Adam
-        self.loss = "binary_crossentropy"
-        self.metrics = ["accuracy"]
-
-
-class MosaicCnn(ImageCNN3D):
-    def __init__(self, X_train, y_train, X_test, y_test, blueprint="ensemble"):
-        super().__init__(X_train, y_train, X_test, y_test, blueprint=blueprint)
-        self.ensemble = True
-        self.input_shape = X_train[1].shape[1:]
-        self.output_shape = 1
-        self.layers = [18, 32, 64, 32, 18]
-        self.input_name = "svm_image_inputs"
-        self.output_name = "svm_image_output"
-        self.name = "svm_cnn"
-        self.activation = "leaky_relu"
-        self.cost_function = "sigmoid"
-        self.lr_sched = True
-        self.optimizer = Adam
-        self.loss = "binary_crossentropy"
-        self.metrics = ["accuracy"]
-
-
-class SvmClassifier(Ensemble):
-    def __init__(self, X_train, y_train, X_test, y_test, blueprint="ensemble"):
-        super().__init__(X_train, y_train, X_test, y_test, blueprint=blueprint)
-        self.ensemble = True
-        self.mlp = MosaicMlp(X_train, y_train, X_test, y_test)
-        self.cnn = MosaicCnn(X_train, y_train, X_test, y_test)
-        self.batch_size = 32
-        self.epochs = 1000
-        self.lr = 1e-4
-        self.decay = [100000, 0.96]
-        self.early_stopping = False
-        self.verbose = 2
-        self.output_shape = 1
-        self.layers = [18, 32, 64, 32, 18]
-        self.input_name = "svm_mixed_inputs"
-        self.output_name = "svm_output"
-        self.name = "ensemble_svm"
-        self.activation = "leaky_relu"
-        self.cost_function = "sigmoid"
-        self.lr_sched = True
-        self.optimizer = Adam
-        self.loss = "binary_crossentropy"
-        self.metrics = ["accuracy"]

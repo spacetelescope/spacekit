@@ -1,3 +1,14 @@
+"""
+Spacekit HST Single Visit Mosaic Data/Image Preprocessing
+
+Ex 1:
+input_path = "path/to/datasets"
+data_file = run_preprocessing(input_path, fname="svm_data")
+
+Ex 2: synthetic (artificially corrupted) data:
+data_file = run_preprocessing(input_path, fname=fname, json_pattern="*_total*_svm_*.json", crpt=1, draw_images=0)
+"""
+
 import argparse
 import os
 from spacekit.extractor.scrape import JsonScraper
@@ -12,10 +23,11 @@ def run_preprocessing(
     output_path=None,
     json_pattern="*_total*_svm_*.json",
     crpt=0,
+    draw_images=True
 ):
-    """[summary]
+    """
     Scrapes SVM data from raw files, preprocesses dataframe for MLP classifier and generates png images for image classifier.
-    Args:
+    Parameters:
         input_path ([type]): [description]
         h5 ([type], optional): [description]. Defaults to None.
         fname (str, optional): [description]. Defaults to "svm_data".
@@ -23,8 +35,9 @@ def run_preprocessing(
         json_pattern (str, optional): [description]. Defaults to "*_total*_svm_*.json".
         crpt (int, optional): [description]. Defaults to 0.
 
-    Returns:
-        [Pandas dataframe]: preprocessed dataframe for SVM QA data
+    Returns
+    -------
+    str: path to csv file of preprocessed Pandas dataframe
     """
     if output_path is None:
         output_path = os.getcwd()
@@ -43,33 +56,38 @@ def run_preprocessing(
         jsc.h5store()
     else:
         jsc = JsonScraper(h5_file=h5).load_h5_file()
+    # TODO: append label=1 if crpt=1
+    if crpt == 1:
+        jsc.data["label"] = 1
     scrub = ScrubSvm(jsc.data, input_path, output_path, fname)
     scrub.preprocess_data()
     fname = scrub.data_path
-    img_outputs = os.path.join(output_path, "img")
-    draw = DrawMosaics(
-        input_path,
-        output_path=img_outputs,
-        fname=fname,
-        gen=3,
-        size=(24, 24),
-        crpt=crpt,
-    )
-    draw.generate_total_images()
+    if draw_images is True:
+        img_outputs = os.path.join(output_path, "img")
+        draw = DrawMosaics(
+            input_path,
+            output_path=img_outputs,
+            fname=fname,
+            gen=3,
+            size=(24, 24),
+            crpt=crpt,
+        )
+        draw.generate_total_images()
     return fname
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         prog="spacekit SVM",
-        usage="python prep.py path/to/raw_data -f=svm_data.csv",
+        usage="python -m spacekit.skopes.hst.svm.prep path/to/raw_data",
     )
     parser.add_argument("input_path", type=str, help="path to SVM dataset directory")
+    parser.add_argument("-o", "--output_path", type=str, default=None, help="where to save output files. Defaults to current working directory.")
     parser.add_argument(
         "--hdf5",
         type=str,
         default=None,
-        help="hdf5 file to create (or load if already exists)",
+        help="hdf5 file to load if already exists",
     )
     parser.add_argument(
         "-f",
@@ -87,12 +105,8 @@ if __name__ == "__main__":
         choices=[0, 1],
         help="set to 1 if using synthetic corruption data",
     )
+    parser.add_argument("-d", "--draw", type=int, default=1, help="bool: draw png images")
     args = parser.parse_args()
-    input_path = args.input_path
-    h5 = args.hdf5
-    fname = args.fname
-    json_pattern = args.json_pattern
-    crpt = args.crpt
     run_preprocessing(
-        input_path, h5=h5, fname=fname, json_pattern=json_pattern, crpt=crpt
+        args.input_path, h5=args.h5, fname=args.fname, json_pattern=args.json_pattern, crpt=args.crpt, draw_images=args.draw
     )

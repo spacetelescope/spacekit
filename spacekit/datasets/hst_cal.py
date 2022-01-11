@@ -39,8 +39,8 @@ def download_archives():
 
     Returns
     -------
-    [type]
-        [description]
+    list
+        list of paths to extracted dataset archives
     """
     fpaths = WebScraper(calcloud_uri, calcloud_data).scrape_repo()
     return fpaths

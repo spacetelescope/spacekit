@@ -235,6 +235,7 @@ class DrawMosaics:
                     ax = fig.add_subplot(111, projection=wcs, frameon=False)
                     plt.axis(False)
                     interval = ZScaleInterval()
+                    # TODO: alt settings (a few images come out and require manual param adjustments)
                     _, vmax = interval.get_limits(hdu.data)
                     norm = ImageNormalize(hdu.data, vmin=0, vmax=vmax * 2, clip=True)
                     ax.imshow(hdu.data, origin="lower", norm=norm, cmap="gray")
@@ -276,7 +277,7 @@ class DrawMosaics:
                                         alpha=0.5,
                                     )
                 if G:
-                    g_cat = glob.glob(f"{subdir}/*_{detector}_*GAIAeDR3_ref_cat.ecsv")
+                    g_cat = glob.glob(f"{subdir}/*_{detector}_*G*_ref_cat.ecsv")
                     if len(g_cat) > 0:
                         if os.path.exists(g_cat[0]):
                             gaia = ascii.read(g_cat[0]).to_pandas()

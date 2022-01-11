@@ -113,11 +113,11 @@ def prep_ensemble_data(filename, img_path, synth=None, norm=False):
         *image_sets, img_path=img_path, w=WIDTH, h=HEIGHT, d=DEPTH
     )
     # MLP DATA
-    print("\nPerforming Data Augmentation on X_train DATA")
+    print("\nPerforming Regression Data Augmentation")
     X_train, _ = training_data_aug(X_train, X_test, X_val, y_train, y_test, y_val)
     if norm:
         X_train, X_test, X_val = normalize_data(df, X_train, X_test, X_val)
-    print("\nPerforming Data Augmentation on X_train IMAGES")
+    print("\nPerforming Image Data Augmentation")
     img_idx, X_tr, y_tr, X_ts, y_ts, X_vl, y_vl = training_img_aug(train, test, val)
     XTR, YTR, XTS, YTS, XVL, YVL = make_ensembles(
         X_tr, X_ts, X_vl, X_train, X_test, X_val, y_tr, y_ts, y_vl
@@ -126,7 +126,7 @@ def prep_ensemble_data(filename, img_path, synth=None, norm=False):
     return tv_idx, XTR, YTR, XTS, YTS, XVL, YVL
 
 
-def train_ensemble(XTR, YTR, XTS, YTS, model_name, params=None):
+def train_ensemble(XTR, YTR, XTS, YTS, model_name, params=None, output_path=None):
     if params is None:
         params = dict(
             batch_size=32,
@@ -137,13 +137,14 @@ def train_ensemble(XTR, YTR, XTS, YTS, model_name, params=None):
             verbose=1,
             ensemble=True,
         )
-    ens = Ensemble(XTR, YTR, XTS, YTS, params=params)
-    name, outpath = os.path.basename(model_name), os.path.dirname(model_name)
-    ens.name = name
-    ens.build_ensemble(lr_sched=True)
+    ens = Ensemble(XTR, YTR, XTS, YTS, params=params, input_name="svm_mixed_inputs", output_name="svm_output", name="ensemble_svm")
+    if output_path is None:
+        output_path = os.getcwd()
+    model_outpath = os.path.join(output_path, os.path.dirname(model_name))
+    ens.build_ensemble()
     ens.batch_fit()
-    ens.save_model(weights=True, output_path=outpath)
-    return ens.model, ens.history
+    ens.save_model(weights=True, output_path=model_outpath)
+    return ens
 
 
 def compute_results(
@@ -185,11 +186,11 @@ def run_training(
     tv_idx, XTR, YTR, XTS, YTS, XVL, YVL = prep_ensemble_data(
         training_data, img_path, synth=synth_data, norm=norm
     )
-    ens_model, ens_history = train_ensemble(XTR, YTR, XTS, YTS, model_name, params)
+    ens = train_ensemble(XTR, YTR, XTS, YTS, model_name, params)
     res_path = os.path.join(output_path, "results")
     com, val = compute_results(
-        ens_model,
-        ens_history,
+        ens.model,
+        ens.history,
         model_name,
         tv_idx,
         res_path,
@@ -206,7 +207,7 @@ def run_training(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         prog="spacekit",
-        usage="python -m spacekit.skopes.hst.svm.train training_data.csv path/to/img",
+        usage="python -m spacekit.skopes.hst.svm.train svm_train.csv path/to/img",
     )
     parser.add_argument(
         "training_data", type=str, help="path to training data csv file(s)"
@@ -226,8 +227,8 @@ if __name__ == "__main__":
         "-o",
         "--output_path",
         type=str,
-        default=os.getcwd(),
-        help="path to synthetic/corruption csv file (if saved separately)",
+        default=None,
+        help="filepath location to save outputs",
     )
     parser.add_argument(
         "-n",
@@ -248,7 +249,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
     model_name = args.model_name
     timestamp = str(int(dt.datetime.now().timestamp()))
-    output_path = os.path.join(args.output_path, f"mml_{timestamp}")
+    if args.output_path is None:
+        output_path = os.path.join(os.getcwd(), f"mml_{timestamp}")
+    else:
+        output_path = args.output_path
     # SET MODEL FIT PARAMS
     params = dict(
         batch_size=args.batchsize,
