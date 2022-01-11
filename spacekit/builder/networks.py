@@ -409,7 +409,7 @@ class ImageCNN3D(Builder):
             y_test,
         )
         self.blueprint = blueprint
-        self.input_shape = self.X_train.shape[1:]  # ens: self.X_train[1].shape[1:]
+        self.input_shape = self.X_train.shape[1:]
         self.output_shape = 1
         self.data_format = "channels_last"
         self.input_name = "cnn3d_inputs"
@@ -579,7 +579,7 @@ class Ensemble(Builder):
         self.mlp.ensemble = True
         self.mlp.input_shape = self.X_train[0].shape[1]
         # default attributes for MLP:
-        self.cnn.output_shape = 1
+        self.mlp.output_shape = 1
         self.mlp.layers = [18, 32, 64, 32, 18]
         self.mlp.activation = "leaky_relu"
         self.mlp.cost_function = "sigmoid"
