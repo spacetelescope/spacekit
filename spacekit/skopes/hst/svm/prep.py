@@ -23,7 +23,7 @@ def run_preprocessing(
     output_path=None,
     json_pattern="*_total*_svm_*.json",
     crpt=0,
-    draw_images=True
+    draw_images=True,
 ):
     """
     Scrapes SVM data from raw files, preprocesses dataframe for MLP classifier and generates png images for image classifier.
@@ -82,7 +82,13 @@ if __name__ == "__main__":
         usage="python -m spacekit.skopes.hst.svm.prep path/to/raw_data",
     )
     parser.add_argument("input_path", type=str, help="path to SVM dataset directory")
-    parser.add_argument("-o", "--output_path", type=str, default=None, help="where to save output files. Defaults to current working directory.")
+    parser.add_argument(
+        "-o",
+        "--output_path",
+        type=str,
+        default=None,
+        help="where to save output files. Defaults to current working directory.",
+    )
     parser.add_argument(
         "--hdf5",
         type=str,
@@ -105,8 +111,15 @@ if __name__ == "__main__":
         choices=[0, 1],
         help="set to 1 if using synthetic corruption data",
     )
-    parser.add_argument("-d", "--draw", type=int, default=1, help="bool: draw png images")
+    parser.add_argument(
+        "-d", "--draw", type=int, default=1, help="bool: draw png images"
+    )
     args = parser.parse_args()
     run_preprocessing(
-        args.input_path, h5=args.h5, fname=args.fname, json_pattern=args.json_pattern, crpt=args.crpt, draw_images=args.draw
+        args.input_path,
+        h5=args.h5,
+        fname=args.fname,
+        json_pattern=args.json_pattern,
+        crpt=args.crpt,
+        draw_images=args.draw,
     )
