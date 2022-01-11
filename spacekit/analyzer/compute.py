@@ -90,7 +90,7 @@ class Computer(object):
         if self.model_name is None:
             self.model_name = self.model.name
         return self
-    
+
     def val_inputs(self, X_val, y_val):
         self.X_train = self.X_test
         self.y_train = self.y_test

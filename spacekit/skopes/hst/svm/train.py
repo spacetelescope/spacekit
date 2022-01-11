@@ -56,7 +56,7 @@ def make_image_sets(X_train, X_test, X_val, img_path=".", w=128, h=128, d=9, exp
     stopwatch("LOADING IMAGES", t0=start)
 
     print("\n*** Training Set ***")
-    svm_img = SVMImages(img_path, w, h, d)
+    svm_img = SVMImages(img_path, w=w, h=h, d=d)
     train = svm_img.detector_training_images(X_train, exp=exp)  # (idx, X, y)
     print("\n*** Test Set ***")
     test = svm_img.detector_training_images(X_test, exp=exp)
@@ -93,7 +93,7 @@ def make_ensembles(
     return XTR, YTR, XTS, YTS, XVL, YVL
 
 
-def prep_ensemble_data(filename, img_path, synth=None, norm=False):
+def load_ensemble_data(filename, img_path, synth=None, norm=False):
     print("[i] Importing Regression Test Data")
     df = pd.read_csv(filename, index_col="index")
     print("\tREG DATA: ", df.shape)
@@ -126,7 +126,9 @@ def prep_ensemble_data(filename, img_path, synth=None, norm=False):
     return tv_idx, XTR, YTR, XTS, YTS, XVL, YVL
 
 
-def train_ensemble(XTR, YTR, XTS, YTS, model_name="ensembleSVM", params=None, output_path=None):
+def train_ensemble(
+    XTR, YTR, XTS, YTS, model_name="ensembleSVM", params=None, output_path=None
+):
     if params is None:
         params = dict(
             batch_size=32,
@@ -162,8 +164,8 @@ def compute_results(ens, tv_idx, output_path=None, xval=None, yval=None):
     res_path = os.path.join(output_path, "results")
     # test set
     ens.test_idx = tv_idx[0]
-    #tcom = ComputeBinary()
-    #tcom.inputs(ens.model, ens.history, ens.X_train, ens.y_train, ens.X_test, ens.y_test, ens.test_idx)
+    # com = ComputeBinary()
+    # com.inputs(ens.model, ens.history, ens.X_train, ens.y_train, ens.X_test, ens.y_test, ens.test_idx)
     com = ComputeBinary(builder=ens, res_path=f"{res_path}/test")
     com.calculate_results()
     _ = com.make_outputs()
@@ -188,10 +190,18 @@ def run_training(
     params=None,
     output_path=None,
 ):
-    tv_idx, XTR, YTR, XTS, YTS, XVL, YVL = prep_ensemble_data(
+    tv_idx, XTR, YTR, XTS, YTS, XVL, YVL = load_ensemble_data(
         training_data, img_path, synth=synth_data, norm=norm
     )
-    ens = train_ensemble(XTR, YTR, XTS, YTS, model_name=model_name, params=params, output_path=output_path)
+    ens = train_ensemble(
+        XTR,
+        YTR,
+        XTS,
+        YTS,
+        model_name=model_name,
+        params=params,
+        output_path=output_path,
+    )
     com, val = compute_results(ens, tv_idx, output_path=output_path, xval=XVL, yval=YVL)
     return ens, com, val
 
