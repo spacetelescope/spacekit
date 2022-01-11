@@ -3,9 +3,8 @@ Spacekit HST "Calibration in the Cloud" (calcloud) Job Resource Allocation Model
 
 This script imports and preprocesses job metadata for the Hubble Space Telescope data calibration pipeline,
 which is then used as inputs to build, train and evaluate 3 neural networks for estimating AWS batch compute job resource requirements.
-The networks include one multi-class classifier and two linear regression estimators. The classifier predicts which of 4 possible
-memory bin sizes (and therefore compute instance type) is most appropriate for reprocessing a given ipppssoot (i.e. "job"). 
-The wallclock regressor estimates the maximum execution time ("wallclock" or "kill" time) in seconds needed to complete the job.
+
+The networks include one multi-class classifier and two linear regression estimators. The classifier predicts which of 4 possible memory bin sizes (and therefore compute instance type) is most appropriate for reprocessing a given ipppssoot (i.e. "job"). The wallclock regressor estimates the maximum execution time ("wallclock" or "kill" time) in seconds needed to complete the job.
 
 Memory Bin Classifier
 ---------------------

@@ -48,7 +48,7 @@ class Builder:
         self.X_test = X_test
         self.y_train = y_train
         self.y_test = y_test
-        #self.blueprint = "ensemble"  # "ensemble", "cnn3d", "mlp" "cnn2d"
+        # self.blueprint = "ensemble"  # "ensemble", "cnn3d", "mlp" "cnn2d"
         self.batch_size = 32
         self.epochs = 60
         self.lr = 1e-4
@@ -529,7 +529,17 @@ class ImageCNN3D(Builder):
 
 
 class Ensemble(Builder):
-    def __init__(self, X_train, y_train, X_test, y_test, params=None, input_name="svm_mixed_inputs", output_name="ensemble_output", name="ensembl4D"):
+    def __init__(
+        self,
+        X_train,
+        y_train,
+        X_test,
+        y_test,
+        params=None,
+        input_name="svm_mixed_inputs",
+        output_name="ensemble_output",
+        name="ensembl4D",
+    ):
         super().__init__(X_train, y_train, X_test, y_test)
         self.input_name = input_name
         self.output_name = output_name
@@ -557,7 +567,11 @@ class Ensemble(Builder):
 
     def ensemble_mlp(self):
         self.mlp = MultiLayerPerceptron(
-            self.X_train[0], self.y_train, self.X_test[0], self.y_test, blueprint="ensemble"
+            self.X_train[0],
+            self.y_train,
+            self.X_test[0],
+            self.y_test,
+            blueprint="ensemble",
         )
         self.mlp.input_name = "svm_regression_inputs"
         self.mlp.output_name = "svm_regression_output"
@@ -576,9 +590,15 @@ class Ensemble(Builder):
         # compile the MLP branch
         self.mlp.model = self.mlp.build_mlp()
         return self.mlp
-    
+
     def ensemble_cnn(self):
-        self.cnn = ImageCNN3D(self.X_train[1], self.y_train, self.X_test[1], self.y_test, blueprint="ensemble")
+        self.cnn = ImageCNN3D(
+            self.X_train[1],
+            self.y_train,
+            self.X_test[1],
+            self.y_test,
+            blueprint="ensemble",
+        )
         self.cnn.input_name = "svm_image_inputs"
         self.cnn.output_name = "svm_image_output"
         self.cnn.name = "svm_cnn"
@@ -604,7 +624,9 @@ class Ensemble(Builder):
         x = Dense(9, activation="leaky_relu", name=self.input_name)(combinedInput)
         x = Dense(1, activation="sigmoid", name=self.output_name)(x)
         self.model = Model(
-            inputs=[self.mlp.model.input, self.cnn.model.input], outputs=x, name=self.name
+            inputs=[self.mlp.model.input, self.cnn.model.input],
+            outputs=x,
+            name=self.name,
         )
         if self.lr_sched is True:
             lr_schedule = self.decay_learning_rate()

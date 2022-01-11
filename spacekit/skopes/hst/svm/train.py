@@ -137,7 +137,16 @@ def train_ensemble(XTR, YTR, XTS, YTS, model_name, params=None, output_path=None
             verbose=1,
             ensemble=True,
         )
-    ens = Ensemble(XTR, YTR, XTS, YTS, params=params, input_name="svm_mixed_inputs", output_name="svm_output", name="ensemble_svm")
+    ens = Ensemble(
+        XTR,
+        YTR,
+        XTS,
+        YTS,
+        params=params,
+        input_name="svm_mixed_inputs",
+        output_name="svm_output",
+        name="ensemble_svm",
+    )
     if output_path is None:
         output_path = os.getcwd()
     model_outpath = os.path.join(output_path, os.path.dirname(model_name))
