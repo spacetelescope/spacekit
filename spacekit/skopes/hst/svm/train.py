@@ -36,6 +36,7 @@ def import_dataset(filename, synth=None):
     print(f"\nClass Labels (0=Aligned, 1=Misaligned)\n{df['label'].value_counts()}")
     return df
 
+
 def split_datasets(df):
     print("Splitting Data ---> X-y ---> Train-Test-Val")
     y = df["label"]
@@ -182,16 +183,40 @@ def compute_results(ens, tv_idx, output_path=None):
 
 
 def run_training(
-    training_data,
+    data_file,
     img_path,
     synth_data=None,
-    norm=0,
+    norm=False,
     model_name=None,
     params=None,
     output_path=None,
 ):
+    """Main calling function to load and prep the data, train the model, compute results and save to disk.
+
+    Parameters
+    ----------
+    data_file : str (path)
+        path to preprocessed dataframe csv file
+    img_path : str (path)
+        path to png images parent directory
+    synth_data : str (path), optional
+        path to additional (synthetic/corrupted) dataframe csv file, by default None
+    norm : bool, optional
+        apply normalization step, by default False
+    model_name : str, optional
+        custom name to assign to model, by default None
+    params : dict, optional
+        custom training hyperparameters dictionary, by default None
+    output_path : str (path), optional
+        custom path for saving model, results, by default None (current working directory)
+
+    Returns
+    -------
+    builder.networks.Ensemble, analyzer.compute.BinaryCompute, analyzer.compute.BinaryCompute
+        ensemble builder object, binary compute object, validation compute object
+    """
     tv_idx, XTR, YTR, XTS, YTS, XVL, YVL = load_ensemble_data(
-        training_data, img_path, synth=synth_data, norm=norm
+        data_file, img_path, synth=synth_data, norm=norm
     )
     ens = train_ensemble(
         XTR,
@@ -212,9 +237,7 @@ if __name__ == "__main__":
         prog="spacekit",
         usage="python -m spacekit.skopes.hst.svm.train svm_train.csv path/to/img",
     )
-    parser.add_argument(
-        "training_data", type=str, help="path to training data csv file(s)"
-    )
+    parser.add_argument("data_file", type=str, help="path to training data csv file(s)")
     parser.add_argument("img_path", type=str, help="path to training image directory")
     parser.add_argument(
         "-m", "--model_name", type=str, default="ensembleSVM", help="name to give model"
@@ -267,7 +290,7 @@ if __name__ == "__main__":
         ensemble=True,
     )
     ens, com, val = run_training(
-        args.training_data,
+        args.data_file,
         args.img_path,
         synth_data=args.synthetic_data,
         norm=args.normalize,

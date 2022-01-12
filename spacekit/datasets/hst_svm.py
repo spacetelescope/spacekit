@@ -1,19 +1,14 @@
-# tmp
-svm_uri = "https://raw.githubusercontent.com/alphasentaurii/spacekit/dashboard/spacekit/datasets/hst/svm"
-
-# "https://raw.githubusercontent.com/alphasentaurii/spacekit/main/datasets/hst/svm/"
+svm_uri = (
+    "https://raw.githubusercontent.com/alphasentaurii/spacekit/main/datasets/hst/svm/"
+)
 
 svm_data = {
-    "d0": {
-        "fname": "2021-07-28-0123456789.zip",
-        "hash": "",
+    "2021-07-28": {
+        "fname": "svm_2021-07-28.csv",
+        "hash": "575e5d9c928279917e225f66adbc44f7e31824bb",
     },
-    "d1": {
-        "fname": "2021-10-06-0123456789.zip",
-        "hash": "",
-    },
-    "d2": {
-        "fname": "2021-12-18-0123456789.zip",
-        "hash": "",
+    "2021-10-06": {
+        "fname": "svm_2021-10-06.csv",
+        "hash": "cca34022ca896d35b9ebbbd502b1dc22d0df34a1",
     },
 }

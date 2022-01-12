@@ -117,13 +117,11 @@ class Builder:
     def design(self):
         if self.blueprint == "mlp":
             return dict(
-                batches=self.batch_mlp(), 
-                steps=self.X_train.shape[0] // self.batch_size
+                batches=self.batch_mlp(), steps=self.X_train.shape[0] // self.batch_size
             )
         elif self.blueprint == "image3d":
             return dict(
-                batches=self.batch_cnn(), 
-                steps=self.X_train.shape[0] // self.batch_size
+                batches=self.batch_cnn(), steps=self.X_train.shape[0] // self.batch_size
             )
         elif self.blueprint == "ensemble":
             return dict(
