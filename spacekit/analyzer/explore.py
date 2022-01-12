@@ -51,14 +51,6 @@ class Preview(ImagePlots):
         plt.show()
 
 
-class ImagePlots:
-    def __init__(self, X, y):
-        self.X = X
-        self.y = y
-        self.X_prime = None
-        self.y_prime = None
-
-
 class DataPlots:
     def __init__(self, df, width=1300, height=700, show=True, save_html="."):
         self.df = df
@@ -144,8 +136,6 @@ class DataPlots:
         marker_size=15,
         cmap=["cyan", "fuchsia"],
         categories=None,
-        show=True,
-        save_html=None,
     ):
         if categories is None:
             categories = {"all": self.df}
@@ -180,14 +170,14 @@ class DataPlots:
                 height=500,
             )
             fig = go.Figure(data=traces, layout=layout)
-            if show:
+            if self.show:
                 fig.show()
-            if save_html:
+            if self.save_html:
                 if not os.path.exists(self.save_html):
                     os.makedirs(self.save_html, exist_ok=True)
                 pyo.plot(
                     fig,
-                    filename=f"{save_html}/{key}-{xaxis_name}-{yaxis_name}-scatter.html",
+                    filename=f"{self.save_html}/{key}-{xaxis_name}-{yaxis_name}-scatter.html",
                 )
             scatter_figs.append(fig)
         return scatter_figs
@@ -292,8 +282,10 @@ class DataPlots:
 
 
 class SingleVisitMosaic(DataPlots):
-    def __init__(self, df, group="det"):
-        super().__init__(df)
+    def __init__(
+        self, df, group="det", width=1300, height=700, show=True, save_html=None
+    ):
+        super().__init__(df, width=width, height=height, show=show, save_html=save_html)
         self.group = group
         self.telescope = "HST"
         self.target = "label"
@@ -324,10 +316,10 @@ class SingleVisitMosaic(DataPlots):
 
     def alignment_scatters(self):
         rms_scatter = self.make_scatter_figs(
-            "rms_ra", "rms_dec", categories=self.categories, save_html=self.save_html
+            "rms_ra", "rms_dec", categories=self.categories
         )
         source_scatter = self.make_scatter_figs(
-            "point", "segment", categories=self.categories, save_html=self.save_html
+            "point", "segment", categories=self.categories
         )
         scatters = [rms_scatter, source_scatter]
         return scatters
@@ -361,6 +353,21 @@ class SingleVisitMosaic(DataPlots):
         group_keys = dict(enumerate(keys))
         return group_keys
 
+    def df_by_detector(self):
+        self.hrc = self.df.groupby("det").get_group(0)
+        self.ir = self.df.groupby("det").get_group(1)
+        self.sbc = self.df.groupby("det").get_group(2)
+        self.uvis = self.df.groupby("det").get_group(3)
+        self.wfc = self.df.groupby("det").get_group(4)
+        self.instr_dict = {
+            "hrc": [self.hrc, "#119dff"],  # lightblue
+            "ir": [self.ir, "salmon"],
+            "sbc": [self.sbc, "#66c2a5"],  # lightgreen
+            "uvis": [self.uvis, "fuchsia"],
+            "wfc": [self.wfc, "#f4d365"],  # softgold
+        }
+        return self
+
     # TODO generalize and move up to main class
     def grouped_barplot(self, save=False):
         df = self.df
@@ -384,7 +391,7 @@ class SingleVisitMosaic(DataPlots):
 
 
 # TODO
-class CalcloudRepro(DataPlots):
+class HstCalPlots(DataPlots):
     def __init__(self, df, group="instr"):
         super().__init__(df)
         self.telescope = "HST"
@@ -394,6 +401,13 @@ class CalcloudRepro(DataPlots):
         self.labels = ["2g", "8g", "16g", "64g"]
         self.gkeys = self.group_keys()
         self.categories = self.feature_subset()
+        self.acs = None
+        self.cos = None
+        self.stis = None
+        self.wfc3 = None
+        self.instr_dict = None
+        self.instruments = list(self.df["instr_key"].unique())
+        self.feature_list = self.make_feature_list()
 
     def group_keys(self):
         if self.group in ["instr", "instrument"]:
@@ -414,6 +428,87 @@ class CalcloudRepro(DataPlots):
         # TODO: filters
         group_keys = dict(enumerate(keys))
         return group_keys
+
+    def df_by_instr(self):
+        self.acs = self.df.groupby("instr").get_group(0)
+        self.cos = self.df.groupby("instr").get_group(1)
+        self.stis = self.df.groupby("instr").get_group(2)
+        self.wfc3 = self.df.groupby("instr").get_group(3)
+        self.instr_dict = {
+            "acs": [self.acs, "#119dff"],
+            "wfc3": [self.wfc3, "salmon"],
+            "cos": [self.cos, "#66c2a5"],
+            "stis": [self.stis, "fuchsia"],
+        }
+        return self
+
+    def make_feature_list(self):
+        self.feature_list = [
+            "x_files",
+            "x_size",
+            "drizcorr",
+            "pctecorr",
+            "crsplit",
+            "subarray",
+            "detector",
+            "dtype",
+            "instr",
+            "n_files",
+            "total_mb",
+            "mem_bin",
+            "memory",
+            "wallclock",
+        ]
+        return self.feature_list
+
+    def make_continuous_figs(self, vars):
+        continuous_figs = []
+
+        for v in vars:
+            data = [
+                go.Box(y=self.acs[v], name="acs"),
+                go.Box(y=self.cos[v], name="cos"),
+                go.Box(y=self.stis[v], name="stis"),
+                go.Box(y=self.wfc3[v], name="wfc3"),
+            ]
+            layout = go.Layout(
+                title=f"{v} by instrument",
+                hovermode="closest",
+                paper_bgcolor="#242a44",
+                plot_bgcolor="#242a44",
+                font={"color": "#ffffff"},
+            )
+            fig = go.Figure(data=data, layout=layout)
+            continuous_figs.append(fig)
+        return continuous_figs
+
+    def make_scatter_figs(self, xaxis_name, yaxis_name):
+        if self.instr_dict is None:
+            self.df_by_instr()
+        scatter_figs = []
+        for instr, (data, color) in self.instr_dict.items():
+            trace = go.Scatter(
+                x=data[xaxis_name],
+                y=data[yaxis_name],
+                text=data.index,
+                mode="markers",
+                opacity=0.7,
+                marker={"size": 15, "color": color},
+                name=instr,
+            )
+            layout = go.Layout(
+                xaxis={"title": xaxis_name},
+                yaxis={"title": yaxis_name},
+                title=instr,
+                # margin={'l': 40, 'b': 40, 't': 10, 'r': 0},
+                hovermode="closest",
+                paper_bgcolor="#242a44",
+                plot_bgcolor="#242a44",
+                font={"color": "#ffffff"},
+            )
+            fig = go.Figure(data=trace, layout=layout)
+            scatter_figs.append(fig)
+        return scatter_figs
 
 
 class SignalPlots:

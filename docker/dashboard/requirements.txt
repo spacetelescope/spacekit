@@ -1,0 +1,5 @@
+spacekit
+sklearn
+dash==2.0.0
+dash-cytoscape==0.3.0
+dash-daq==0.5.0

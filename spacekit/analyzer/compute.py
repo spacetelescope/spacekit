@@ -1,9 +1,10 @@
 import os
-import sys
+import glob
 import pickle
 import itertools
-import pandas as pd
 import numpy as np
+import pandas as pd
+import datetime as dt
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
@@ -14,24 +15,21 @@ from sklearn.metrics import (
     average_precision_score,
     classification_report,
     confusion_matrix,
-    jaccard_score,
-    accuracy_score,
-    recall_score,
-    fowlkes_mallows_score,
 )
+from tensorflow.python.ops.numpy_ops import np_config
 
 plt.style.use("seaborn-bright")
 font_dict = {"family": '"Titillium Web", monospace', "size": 16}
 mpl.rc("font", **font_dict)
 
 
-class Computer:
-    def __init__(self, model_name, computation, classes, show=False):
-        self.model_name = model_name
-        self.computation = computation
-        self.classes = classes
+class Computer(object):
+    def __init__(self, algorithm, res_path=None, show=False, validation=False):
+        self.algorithm = algorithm  # test/val; clf/reg
+        self.res_path = res_path
         self.show = show
-        self.res_path = None
+        self.validation = validation
+        self.model_name = None
         self.model = None
         self.history = None
         self.X_train = None
@@ -39,11 +37,13 @@ class Computer:
         self.X_test = None
         self.y_test = None
         self.test_idx = None
-        self.y_onehot = None
-        self.y_scores = None
         self.y_pred = None
-        self.cmx = None
+        self.y_scores = None
+        self.y_onehot = None
         self.fnfp = None
+        self.cmx = None
+        self.cmx_norm = None
+        self.cm_fig = None
         self.report = None
         self.roc_auc = None
         self.acc_loss = None
@@ -51,134 +51,137 @@ class Computer:
         self.loss_fig = None
         self.roc_fig = None
         self.pr_fig = None
-        self.cm_fig = None
-        self.cmx_norm = None
 
     def inputs(self, model, history, X_train, y_train, X_test, y_test, test_idx):
+        """Instantiates training vars as attributes. By default, a Computer object is instantiated without these - they are only needed for calculating and storing
+        results which can then be retrieved by Computer separately (without training vars) from pickle objects using
+        the `upload()` method.
+
+        Parameters
+        ----------
+        model : object
+            Keras functional model
+        history : dict
+            model training history
+        X_train : Pandas dataframe or Numpy array
+            training feature data
+        y_train : Pandas dataframe or Numpy array
+            training target data
+        X_test : Pandas dataframe or Numpy array
+            test/validation feature data
+        y_test : Pandas dataframe or Numpy array
+            test/validation target data
+        test_idx : Pandas series
+            test data index and ground truth values (y_test)
+
+        Returns
+        -------
+        Computer object (self)
+            updated with model attributes used for calculating results
+        """
         self.model = model
         self.history = history.history
+        self.test_idx = test_idx
         self.X_train = X_train
         self.y_train = y_train
         self.X_test = X_test
         self.y_test = y_test
-        self.test_idx = test_idx
+        if self.model_name is None:
+            self.model_name = self.model.name
         return self
 
-    def store_results(self):
-        # model_name, compute, training_date, etc
-        outputs = {
-            "predictions": {
-                "y_onehot": self.y_onehot,
-                "y_scores": self.y_scores,
-                "y_pred": self.y_pred,
-                "cmx": self.cmx,
-                "cmx_norm": self.cmx_norm,
-                "fnfp": self.fnfp,
-            },
-            "scores": {
-                "roc_auc": self.roc_auc,
-                "acc_loss": self.acc_loss,
-                "report": self.report,
-            },
-        }
-        if self.computation == "val":
-            outputs["plots"] = {
-                "roc_fig": self.roc_fig,
-                "pr_fig": self.pr_fig,
-                "cm_fig": self.cm_fig,
-            }
-        else:
-            outputs["plots"] = {
-                "keras_acc": self.acc_fig,
-                "keras_loss": self.loss_fig,
-                "roc_fig": self.roc_fig,
-                "pr_fig": self.pr_fig,
-                "cm_fig": self.cm_fig,
-            }
-        return outputs
+    def builder_inputs(self, builder=None):
+        """produces same result as `inputs` method, using a builder object's attributes instead. Allows for automatic switch to validation set."""
+        if builder:
+            if self.validation is True:
+                try:
+                    self.X_test = builder.X_val
+                    self.y_test = builder.y_val
+                    self.X_train = builder.X_test
+                    self.y_train = builder.y_test
+                except Exception as e:
+                    print(e)
+                    print("Validation attributes not set.")
+            else:
+                self.X_train = builder.X_train
+                self.y_train = builder.y_train
+                self.X_test = builder.X_test
+                self.y_test = builder.y_test
+            self.model = builder.model
+            self.history = builder.history.history
+            self.test_idx = builder.test_idx
+            if self.model_name is None:
+                self.model_name = builder.model.name
+        return self
 
-    def download(self):
-        outputs = self.store_results()
+    def download(self, outputs):
+        """Downloads model training results (`outputs` calculated by Computer obj) to local pickle objects for later retrieval and plotting/analysis.
+
+        Args:
+            outputs (dict): Outputs created by their respective subclasses (due to distinct diffs btw clf and reg models).
+        """
         if self.res_path is None:
-            self.res_path = os.path.join("./results", self.model_name, self.computation)
+            timestamp = int(dt.datetime.now().timestamp())
+            datestamp = dt.date.fromtimestamp(timestamp).isoformat()
+            prefix = str(datestamp) + "-" + str(timestamp)
+            self.res_path = os.path.join(os.getcwd(), prefix, "results", self.algorithm)
         os.makedirs(f"{self.res_path}", exist_ok=True)
         for k, v in outputs.items():
             key = f"{self.res_path}/{k}"
-            with open(key, "wb") as file_pi:
-                pickle.dump(v, file_pi)
+            with open(key, "wb") as pyfi:
+                pickle.dump(v, pyfi)
         print(f"Results saved to: {self.res_path}")
 
-        out = sys.stdout
-        with open(f"{self.res_path}/metrics_report.txt", "w") as f:
-            sys.stdout = f
-            print(self.report)
-            sys.stdout = out
-
     def upload(self):
+        """Imports model training results (`outputs` previously calculated by Computer obj) from local pickle objects. These can then be used for plotting/analysis."""
         if self.res_path is None:
-            self.res_path = os.path.join("./results", self.model_name, self.computation)
-        if os.path.exists(self.res_path):
-            res = {}
-            for r in os.listdir(self.res_path):
-                key = os.path.join(self.res_path, r)
-                with open(key, "rb") as py_fi:
-                    res[r] = pickle.load(py_fi)
-            self.outputs(res)
+            try:
+                self.res_path = glob.glob(f"data/*/results/{self.algorithm}")[0]
+            except Exception as e:
+                print(f"No results found @ {self.res_path} \n", e)
+        if not os.path.exists(self.res_path):
+            print(f"Path DNE @ {self.res_path}")
         else:
-            print(f"No results found @ {self.res_path}")
-        return self
-
-    def outputs(self, res):
-        self.y_onehot = res["predictions"]["y_onehot"]
-        self.y_scores = res["predictions"]["y_scores"]
-        self.y_pred = res["predictions"]["y_pred"]
-        self.cmx = res["predictions"]["cmx"]
-        self.cmx_norm = res["predictions"]["cmx_norm"]
-        self.fnfp = res["predictions"]["fnfp"]
-        # self.report = res['scores']['report']
-        self.roc_auc = res["scores"]["roc_auc"]
-        self.acc_loss = res["scores"]["acc_loss"]
-        self.roc_fig = res["plots"]["roc_fig"]
-        self.pr_fig = res["plots"]["pr_fig"]
-        self.cm_fig = res["plots"]["cm_fig"]
-        if self.computation == "test":
-            self.acc_fig = res["plots"]["acc_fig"]
-            self.loss_fig = res["plots"]["loss_fig"]
-        with open(f"{self.res_path}/metrics_report.txt", "r") as f:
-            self.report = f.read()
-        return self
+            outputs = {}
+            for r in glob.glob(f"{self.res_path}/*"):
+                key = r.split("/")[-1]
+                with open(r, "rb") as pyfi:
+                    outputs[key] = pickle.load(pyfi)
+        return outputs
 
     """ MODEL PERFORMANCE METRICS """
 
-    def calculate_results(self, show_summary=True):
-        self.y_onehot = self.onehot_y()
-        self.y_scores = self.score_y()
-        self.y_pred = self.y_scores[:, 1]
-        self.report = classification_report(
-            self.y_test, self.y_pred, labels=[0, 1], target_names=self.classes
-        )
-        self.roc_auc = roc_auc_score(self.y_test, self.y_pred)
-        self.acc_loss = self.acc_loss_scores()
-        self.cmx = confusion_matrix(self.y_test, self.y_pred)
-        self.fnfp = self.track_fnfp()
+    def onehot_y(self, prefix="lab"):
+        """Generates onehot-encoded dataframe of categorical target class values (for multiclassification models).
 
-        if show_summary:
-            self.print_summary()
+        Args:
+            prefix (str, optional): abbreviated string prefix for target class name. Defaults to "lab" (abbr for "label").
 
-        return self
-
-    def onehot_y(self):
-        self.y_onehot = pd.get_dummies(self.y_test.ravel(), prefix="lab")
+        Returns:
+            Pandas Dataframe: Dummy-coded data
+        """
+        self.y_onehot = pd.get_dummies(self.y_test.ravel(), prefix=prefix)
         return self.y_onehot
 
     def score_y(self):
-        y_scores = self.model.predict(self.X_test)
-        self.y_scores = np.concatenate(
-            [np.round(1 - y_scores), np.round(y_scores)], axis=1
-        )
+        """Probability scores for classification model predictions (`y_pred` probabilities)
+
+        Returns:
+            numpy.ndarray: y_scores probabilities array
+        """
+        self.y_scores = self.model.predict(self.X_test)
+        if self.y_scores.shape[1] < 2:
+            self.y_scores = np.concatenate(
+                [np.round(1 - self.y_scores), np.round(self.y_scores)], axis=1
+            )
         return self.y_scores
 
     def acc_loss_scores(self):
+        """Calculate overall accuracy and loss metrics of training and test sets.
+
+        Returns:
+            Dictionary: mean accuracy and loss scores of training and test sets (generated via Keras history)
+        """
         train_scores = self.model.evaluate(self.X_train, self.y_train, verbose=2)
         test_scores = self.model.evaluate(self.X_test, self.y_test, verbose=2)
         train_acc = np.round(train_scores[1], 2)
@@ -193,125 +196,34 @@ class Computer:
         }
         return self.acc_loss
 
-    def track_fnfp(self):
-        if self.test_idx is None:
-            print("Test index not found")
-            return
-        try:
-            conf_idx = np.where(self.y_pred != self.test_idx.values)
-        except AttributeError as e:
-            print(
-                f"Test/Val Index should be a pandas series, not {type(self.test_idx)}"
-            )
-            print(e)
-            return
-        pred_proba = np.asarray(self.model.predict(self.X_test).flatten(), "float32")
-        conf_proba = pred_proba[conf_idx]
-        fn_idx = self.test_idx.iloc[conf_idx].loc[self.test_idx == 1].index
-        fp_idx = self.test_idx.iloc[conf_idx].loc[self.test_idx == 0].index
-        self.fnfp = {
-            "pred_proba": pred_proba,
-            "conf_idx": conf_idx,
-            "conf_proba": conf_proba,
-            "fn_idx": fn_idx,
-            "fp_idx": fp_idx,
-        }
-        return self.fnfp
-
-    def print_summary(self):
-        print(f"\n CLASSIFICATION REPORT: \n{self.report}")
-        print(f"\n ACC/LOSS: {self.acc_loss}")
-        print(f"\n ROC_AUC: {self.roc_auc}")
-        print(f"\nFalse -/+\n{self.cmx}")
-        print(f"\nFalse Negatives Index\n{self.fnfp['fn_idx']}\n")
-
     """ PLOTS """
 
     def draw_plots(self):
+        """Generate standard classification model plots (keras accuracy and loss, ROC-AUC curve, Precision-Recall curve, Confusion Matrix)
+
+        Returns
+        -------
+        Computer object
+            updated with standard plot attribute values
+        """
+
         self.acc_fig = self.keras_acc_plot()
         self.loss_fig = self.keras_loss_plot()
         self.roc_fig = self.make_roc_curve()
         self.pr_fig = self.make_pr_curve()
-        self.cm_fig, self.cmx_norm = self.fusion_matrix(self.cm, self.classes)
+        self.cm_fig, self.cmx_norm = self.fusion_matrix(self.cmx, self.classes)
         return self
 
-    def fusion_matrix(self, cm, classes, normalize=True, cmap="Blues"):
-        """
-        FUSION MATRIX!
-        -------------
-
-        matrix: can pass in matrix or a tuple (ytrue,ypred) to create on the fly
-        classes: class names for target variables
-        """
-        # make matrix if tuple passed to matrix:
-        if isinstance(cm, tuple):
-            y_true = cm[0].copy()
-            y_pred = cm[1].copy()
-
-            if y_true.ndim > 1:
-                y_true = y_true.argmax(axis=1)
-            if y_pred.ndim > 1:
-                y_pred = y_pred.argmax(axis=1)
-            fusion = confusion_matrix(y_true, y_pred)
-        else:
-            fusion = cm
-        # INTEGER LABELS
-        if classes is None:
-            classes = list(range(len(fusion)))
-
-        if normalize:
-            fusion = fusion.astype("float") / fusion.sum(axis=1)[:, np.newaxis]
-            fmt = ".2f"
-        else:
-            fmt = "d"
-
-        # PLOT
-        fig, _ = plt.subplots(figsize=(10, 10))
-        plt.imshow(fusion, cmap=cmap, aspect="equal")
-
-        # Add title and axis labels
-        plt.title("Confusion Matrix")
-        plt.ylabel("TRUE")
-        plt.xlabel("PRED")
-
-        # Add appropriate axis scales
-        tick_marks = np.arange(len(classes))
-        plt.xticks(tick_marks, classes, rotation=45)
-        plt.yticks(tick_marks, classes)
-
-        # Text formatting
-        fmt = ".2f" if normalize else "d"
-        # Add labels to each cell
-        thresh = fusion.max() / 2.0
-        # iterate thru matrix and append labels
-        for i, j in itertools.product(range(fusion.shape[0]), range(fusion.shape[1])):
-            plt.text(
-                j,
-                i,
-                format(fusion[i, j], fmt),
-                horizontalalignment="center",
-                color="white" if fusion[i, j] > thresh else "black",
-                size=14,
-                weight="bold",
-            )
-
-        # Add a legend
-        plt.colorbar()
-        if self.show:
-            fig.show()
-
-        return fig, fusion
-
+    # Matplotlib "static" alternative to interactive plotly version
     def roc_plots(self):
-        """Calculates ROC_AUC score and plots Receiver Operator Characteristics (ROC)
+        """Calculates ROC_AUC score and plots Receiver Operator Characteristics (ROC).
 
-        Arguments:
-            X {feature set} -- typically X_test
-            y {labels} -- typically y_test
-            model {classifier} -- the model name for which you are calculting roc score
-
-        Returns:
-            roc -- roc_auc_score (via sklearn)
+        Returns
+        -------
+        int
+            roc_auc_score (via sklearn)
+        Figure
+            receiver-operator characteristic area under the curve (ROC-AUC) plot
         """
         y_true = self.y_test.flatten()
         y_hat = self.model.predict(self.X_test)
@@ -410,25 +322,26 @@ class Computer:
         return fig
 
     def keras_acc_plot(self):
-        acc_train = self.history["accuracy"]
-        acc_test = self.history["val_accuracy"]
+        keys = list(self.history.keys())
+        acc_train = self.history[keys[0]]
+        acc_test = self.history[keys[2]]
         n_epochs = list(range(len(acc_train)))
         data = [
             go.Scatter(
                 x=n_epochs,
                 y=acc_train,
-                name="Training Accuracy",
+                name=f"Training {keys[0].title()}",
                 marker=dict(color="#119dff"),
             ),
             go.Scatter(
                 x=n_epochs,
                 y=acc_test,
-                name="Test Accuracy",
+                name=f"Test {keys[0].title()}",
                 marker=dict(color="#66c2a5"),
             ),
         ]
         layout = go.Layout(
-            title="Accuracy",
+            title=f"{keys[0].title()}",
             xaxis={"title": "n_epochs"},
             yaxis={"title": "score"},
             width=800,
@@ -443,19 +356,23 @@ class Computer:
         return fig
 
     def keras_loss_plot(self):
-        loss_train = self.history["loss"]
-        loss_test = self.history["val_loss"]
+        keys = list(self.history.keys())
+        loss_train = self.history[keys[1]]
+        loss_test = self.history[keys[3]]
         n_epochs = list(range(len(loss_train)))
 
         data = [
             go.Scatter(
                 x=n_epochs,
                 y=loss_train,
-                name="Training Loss",
+                name=f"Training {keys[0].title()}",
                 marker=dict(color="#119dff"),
             ),
             go.Scatter(
-                x=n_epochs, y=loss_test, name="Test Loss", marker=dict(color="#66c2a5")
+                x=n_epochs,
+                y=loss_test,
+                name=f"Test {keys[0].title()}",
+                marker=dict(color="#66c2a5"),
             ),
         ]
         layout = go.Layout(
@@ -473,174 +390,54 @@ class Computer:
             fig.show()
         return fig
 
+    def resid_plot(self):
+        """Plot the residual error for a regression model.
 
-class ComputeTest(Computer):
-    def __init__(
-        self,
-        model_name,
-        classes,
-        model,
-        history,
-        X_train,
-        y_train,
-        X_test,
-        y_test,
-        test_idx,
-    ):
-        super().__init__(model_name, "test", classes)
-        self.inputs(model, history, X_train, y_train, X_test, y_test, test_idx)
-
-
-class ComputeVal(Computer):
-    def __init__(
-        self, model_name, classes, model, X_test, y_test, X_val, y_val, val_idx
-    ):
-        super().__init__(model_name, "val", classes)
-        self.inputs(model, X_test, y_test, X_val, y_val, val_idx)
-
-
-class AnalogComputer:
-    """Classic matplotlib plots"""
-
-    def __init__(self, X, y, model, history, verbose=False):
-        self.X = X
-        self.y = y
-        self.model = model
-        self.history = history
-        self.verbose = False
-        self.y_pred = None
-        self.fnfp_dict = None
-        self.keras_fig = None
-        self.cmx = None
-        self.roc_fig = None
-        self.results = None
-
-    def compute(
-        self,
-        preds=True,
-        summary=True,
-        cmx=True,
-        classes=None,
-        report=True,
-        roc=True,
-        hist=True,
-    ):
+        Returns:
+            Plotly figure object: interactive plotly scatter fig
         """
-        evaluates model predictions and stores the output in a dict
-        returns `results`
-        """
-        res = {}
-        res["model"] = self.model.name
-
-        # class predictions
-        if preds:
-            res["preds"] = self.get_preds()
-
-        if summary:
-            res["summary"] = self.model.summary
-
-        # FUSION MATRIX
-        if cmx:
-            if classes is None:
-                classes = set(self.y)
-                # classes=['0','1']
-            else:
-                classes = classes
-            # Plot fusion matrix
-            res["FM"] = self.fusion_matrix(
-                matrix=(self.y.flatten(), self.y_pred), classes=classes
-            )
-
-        # ROC Area Under Curve
-        if roc:
-            res["ROC"] = self.roc_plots(self.X, self.y, self.model)
-
-        # CLASSIFICATION REPORT
-        if report:
-            num_dashes = 20
-            print("\n")
-            print("---" * num_dashes)
-            print("\tCLASSIFICATION REPORT:")
-            print("---" * num_dashes)
-            # generate report
-            res["report"] = classification_report(self.y.flatten(), self.y_pred)
-            print(report)
-
-        # save to dict:
-        res["jaccard"] = jaccard_score(self.y, self.y_pred)
-        res["fowlkes"] = fowlkes_mallows_score(self.y, self.y_pred)
-        res["accuracy"] = accuracy_score(self.y, self.y_pred)
-        res["recall"] = recall_score(self.y, self.y_pred)
-
-        # Plot Model Training Results (PLOT KERAS HISTORY)
-        if hist:
-            res["HIST"] = self.keras_history(self.history)
-        return res
-
-    @staticmethod
-    def get_preds(self):
-        # class predictions
-        # self.y_pred = self.model.predict_classes(self.X).flatten()
-        self.y_pred = np.round(self.model.predict(self.X))
-        if self.verbose:
-            pred_count = pd.Series(self.y_pred).value_counts(normalize=False)
-            print(f"y_pred:\n {pred_count}")
-            print("\n")
-        return self.y_pred
-
-    def fnfp(self, training=False):
-        if self.y_pred is None:
-            self.y_pred = np.round(self.model.predict(self.X))
-
-        pos_idx = self.y == 1
-        neg_idx = self.y == 0
-
-        # tp = np.sum(y_pred[pos_idx]==1)/y_pred.shape[0]
-        fn = np.sum(self.y_pred[pos_idx] == 0) / self.y_pred.shape[0]
-        # tn = np.sum(y_pred[neg_idx]==0)/y_pred.shape[0]
-        fp = np.sum(self.y_pred[neg_idx] == 1) / self.y_pred.shape[0]
-
-        if training:
-            print(f"FN Rate (Training): {round(fn*100,4)}%")
-            print(f"FP Rate (Training): {round(fp*100,4)}%")
+        if self.predictions is not None:
+            y = self.predictions[:, 1]
+            p = self.predictions[:, 0]
         else:
-            print(f"FN Rate (Test): {round(fn*100,4)}%")
-            print(f"FP Rate (Test): {round(fp*100,4)}%")
+            np_config.enable_numpy_behavior()
+            y = self.y_test.reshape(1, -1)
+            p = self.y_pred
 
-        self.fnfp_dict = {"fn": fn, "fp": fp}
-        return self.fnfp_dict
-
-    def keras_history(self, figsize=(15, 6), show=True):
-        """
-        side by side sublots of training val accuracy and loss (left and right respectively)
-        """
-        fig, axes = plt.subplots(ncols=2, figsize=figsize)
-        axes = axes.flatten()
-
-        ax = axes[0]
-        ax.plot(self.history.history["accuracy"])
-        ax.plot(self.history.history["val_accuracy"])
-        ax.set_title("Model Accuracy")
-        ax.set_ylabel("Accuracy")
-        ax.set_xlabel("Epoch")
-        ax.legend(["Train", "Test"], loc="upper left")
-
-        ax = axes[1]
-        ax.plot(self.history.history["loss"])
-        ax.plot(self.history.history["val_loss"])
-        ax.set_title("Model Loss")
-        ax.set_ylabel("Loss")
-        ax.set_xlabel("Epoch")
-        ax.legend(["Train", "Test"], loc="upper left")
-        if show is True:
+        data = go.Scatter(x=y, y=p, name="y-y_hat", marker=dict(color="red"))
+        layout = go.Layout(
+            title="Residual Error",
+            xaxis={"title": "y (ground truth)"},
+            yaxis={"title": "y_hat (prediction)"},
+            width=800,
+            height=500,
+            paper_bgcolor="#242a44",
+            plot_bgcolor="#242a44",
+            font={"color": "#ffffff"},
+        )
+        fig = go.Figure(data=data, layout=layout)
+        fig.add_shape(
+            type="line",
+            line=dict(dash="dash"),
+            x0=y.min(),
+            y0=y.min(),
+            x1=y.max(),
+            y1=y.max(),
+        )
+        if self.show is True:
             fig.show()
         return fig
 
-    def fusion_matrix(self, matrix, classes=None, normalize=True, cmap="Blues"):
+    # Matplotlib "static" alternative to interactive plotly version
+    def fusion_matrix(self, cm, classes, normalize=True, cmap="Blues"):
+        """
+        Confusion Matrix. Can pass in matrix or a tuple (ytrue,ypred) to create on the fly
+        classes: class names for target variables
+        """
         # make matrix if tuple passed to matrix:
-        if isinstance(matrix, tuple):
-            y_true = matrix[0].copy()
-            y_pred = matrix[1].copy()
+        if isinstance(cm, tuple):
+            y_true = cm[0].copy()
+            y_pred = cm[1].copy()
 
             if y_true.ndim > 1:
                 y_true = y_true.argmax(axis=1)
@@ -648,25 +445,19 @@ class AnalogComputer:
                 y_pred = y_pred.argmax(axis=1)
             fusion = confusion_matrix(y_true, y_pred)
         else:
-            fusion = matrix
-
+            fusion = cm
         # INTEGER LABELS
         if classes is None:
-            classes = list(range(len(matrix)))
+            classes = list(range(len(fusion)))
 
-        # NORMALIZING
-        # Check if normalize is set to True
-        # If so, normalize the raw fusion matrix before visualizing
         if normalize:
             fusion = fusion.astype("float") / fusion.sum(axis=1)[:, np.newaxis]
-            thresh = 0.5
             fmt = ".2f"
         else:
             fmt = "d"
-            thresh = fusion.max() / 2.0
 
         # PLOT
-        fig = plt.subplots(figsize=(10, 10))
+        fig, _ = plt.subplots(figsize=(10, 10))
         plt.imshow(fusion, cmap=cmap, aspect="equal")
 
         # Add title and axis labels
@@ -678,12 +469,11 @@ class AnalogComputer:
         tick_marks = np.arange(len(classes))
         plt.xticks(tick_marks, classes, rotation=45)
         plt.yticks(tick_marks, classes)
-        # ax.set_ylim(len(fusion), -.5,.5) ## <-- This was messing up the plots!
 
         # Text formatting
         fmt = ".2f" if normalize else "d"
         # Add labels to each cell
-        # thresh = fusion.max() / 2.
+        thresh = fusion.max() / 2.0
         # iterate thru matrix and append labels
         for i, j in itertools.product(range(fusion.shape[0]), range(fusion.shape[1])):
             plt.text(
@@ -698,48 +488,438 @@ class AnalogComputer:
 
         # Add a legend
         plt.colorbar()
-        plt.show()
-        return fusion, fig
+        if self.show:
+            fig.show()
 
-    def roc_plots(self):
-        """Calculates ROC_AUC score and plots Receiver Operator Characteristics (ROC)
+        return fig, fusion
 
-        Arguments:
-            X {feature set} -- typically X_test
-            y {labels} -- typically y_test
-            model {classifier} -- the model name for which you are calculting roc score
+
+class ComputeClassifier(Computer):
+    def __init__(
+        self,
+        algorithm="clf",
+        classes=["2g", "8g", "16g", "64g"],
+        res_path="results/mem_bin",
+        show=False,
+        validation=False,
+    ):
+        super().__init__(algorithm, res_path=res_path, show=show, validation=validation)
+        self.classes = classes
+
+    def make_outputs(self, dl=True):
+        outputs = {
+            "y_onehot": self.y_onehot,
+            "y_scores": self.y_scores,
+            "y_pred": self.y_pred,
+            "cmx": self.cmx,
+            "cmx_norm": self.cmx_norm,
+            "fnfp": self.fnfp,
+            "test_idx": self.test_idx,
+            "roc_auc": self.roc_auc,
+            "acc_loss": self.acc_loss,
+            "report": self.report,
+        }
+        if self.validation is False:
+            outputs["history"] = self.history
+        if dl:
+            super().download(outputs)
+        return outputs
+
+    def load_results(self, outputs):
+        self.y_onehot = outputs["y_onehot"]
+        self.y_scores = outputs["y_scores"]
+        self.y_pred = outputs["y_pred"]
+        self.cmx = outputs["cmx"]
+        self.cmx_norm = outputs["cmx_norm"]
+        self.report = outputs["report"]
+        self.roc_auc = outputs["roc_auc"]
+        self.acc_loss = outputs["acc_loss"]
+        if "fnfp" in outputs:
+            self.fnfp = outputs["fnfp"]
+        self.roc_fig = self.make_roc_curve()
+        self.pr_fig = self.make_pr_curve()
+        self.cm_fig, _ = self.fusion_matrix(self.cmx, self.classes)
+        if self.validation is False:
+            self.history = outputs["history"]
+            self.acc_fig = self.keras_acc_plot()
+            self.loss_fig = self.keras_loss_plot()
+        return self
+
+    def track_fnfp(self):
+        if self.test_idx is None:
+            print("Test index not found")
+            return
+        try:
+            conf_idx = np.where(self.y_pred != self.test_idx.values)
+        except AttributeError as e:
+            print(
+                f"Test/Val Index should be a pandas series, not {type(self.test_idx)}"
+            )
+            print(e)
+            return
+        pred_proba = np.asarray(self.model.predict(self.X_test).flatten(), "float32")
+        conf_proba = pred_proba[conf_idx]
+        fn_idx = self.test_idx.iloc[conf_idx].loc[self.test_idx == 1].index
+        fp_idx = self.test_idx.iloc[conf_idx].loc[self.test_idx == 0].index
+        self.fnfp = {
+            "pred_proba": pred_proba,
+            "conf_idx": conf_idx,
+            "conf_proba": conf_proba,
+            "fn_idx": fn_idx,
+            "fp_idx": fp_idx,
+        }
+        return self.fnfp
+
+    def print_summary(self):
+        print(f"\n CLASSIFICATION REPORT: \n{self.report}")
+        print(f"\n ACC/LOSS: {self.acc_loss}")
+        print(f"\n ROC_AUC: {self.roc_auc}")
+        print(f"\nFalse -/+\n{self.cmx}")
+        print(f"\nFalse Negatives Index\n{self.fnfp['fn_idx']}\n")
+        print(f"\nFalse Positives Index\n{self.fnfp['fp_idx']}\n")
+
+
+class ComputeBinary(ComputeClassifier):
+    def __init__(
+        self,
+        builder=None,
+        algorithm="clf",
+        classes=["aligned", "misaligned"],
+        res_path="results/svm",
+        show=False,
+        validation=False,
+    ):
+        super().__init__(
+            algorithm=algorithm,
+            classes=classes,
+            res_path=res_path,
+            show=show,
+            validation=validation,
+        )
+        self.builder_inputs(builder=builder)
+
+    def calculate_results(self, show_summary=True):
+        self.y_onehot = self.onehot_y()
+        self.y_scores = self.score_y()
+        self.y_pred = self.y_scores[:, 1]
+        self.report = classification_report(
+            self.y_test,
+            self.y_pred,
+            labels=list(range(len(self.classes))),
+            target_names=self.classes,
+        )
+        self.roc_auc = roc_auc_score(self.y_test, self.y_pred)
+        self.acc_loss = self.acc_loss_scores()
+        self.cmx = confusion_matrix(self.y_test, self.y_pred)
+        self.cmx_norm = self.fusion_matrix(self.cmx, self.classes)[1]
+        self.fnfp = self.track_fnfp()
+        if show_summary:
+            self.print_summary()
+        return self
+
+
+class ComputeMulti(ComputeClassifier):
+    def __init__(
+        self,
+        builder=None,
+        algorithm="clf",
+        classes=["2g", "8g", "16g", "64g"],
+        res_path="results/mem_bin",
+        show=False,
+        validation=False,
+    ):
+        super().__init__(
+            algorithm=algorithm,
+            classes=classes,
+            res_path=res_path,
+            show=show,
+            validation=validation,
+        )
+        if builder:
+            self.inputs(
+                builder.model,
+                builder.history,
+                builder.X_train,
+                builder.y_train,
+                builder.X_test,
+                builder.y_test,
+                builder.test_idx,
+            )
+
+    def calculate_multi(self, show_summary=True):
+        self.y_onehot = self.onehot_multi()
+        self.y_scores = self.model.predict(self.X_test)
+        self.y_pred = np.round(self.y_scores)
+        self.report = classification_report(
+            self.y_test,
+            self.y_pred,
+            labels=list(range(len(self.classes))),
+            target_names=self.classes,
+            zero_division=0,
+        )
+        self.roc_auc = self.roc_auc_multi()
+        self.acc_loss = self.acc_loss_scores()
+        self.cmx = confusion_matrix(
+            np.argmax(self.y_test, axis=-1), np.argmax(self.y_pred, axis=-1)
+        )
+        self.cmx_norm = self.fusion_matrix(self.cmx, self.classes)[1]
+        self.fnfp = self.fnfp_multi()
+        if show_summary:
+            self.print_summary()
+        return self
+
+    def roc_auc_multi(self):
+        self.roc_auc = []
+        for i in range(self.y_scores.shape[1]):
+            y_true = self.y_onehot.iloc[:, i]
+            y_score = self.y_scores[:, i]
+            self.roc_auc.append(roc_auc_score(y_true, y_score))
+        return self.roc_auc
+
+    def onehot_multi(self, prefix="bin"):
+        self.y_onehot = pd.get_dummies(np.argmax(self.y_test, axis=-1), prefix=prefix)
+        self.y_onehot.set_index(self.test_idx.index)
+        return self.y_onehot
+
+    def fnfp_multi(self):
+        if self.test_idx is None:
+            print("Test index not found")
+            return
+        preds = np.argmax(self.y_pred, axis=-1)
+        actual = self.test_idx.values.ravel()
+        try:
+            conf_idx = np.where(preds != actual)[0]
+        except AttributeError as e:  # can probably remove this
+            print(
+                f"Test/Val Index should be a pandas series, not {type(self.test_idx)}"
+            )
+            print(e)
+            return
+        pred_proba = np.amax(self.y_scores, axis=-1)
+        conf_proba = pred_proba[conf_idx]
+
+        ipsts = pd.DataFrame(list(self.test_idx.index), columns=["ipsts"])
+        y_true = pd.DataFrame(actual, columns=["y_true"])
+        y_pred = pd.DataFrame(preds, columns=["y_pred"])
+        y_proba = pd.DataFrame(pred_proba, columns=["proba"])
+        df_proba = pd.concat([y_true, y_pred, y_proba, ipsts], axis=1)
+        df_proba = df_proba.iloc[conf_idx]
+        # conf_proba = df_proba.loc[conf_idx][['proba', 'ipsts']].to_dict('split')
+        fn, fp = {}, {}
+        for label in list(range(len(self.classes))):
+            idx = df_proba.loc[df_proba["y_true"] == label]
+            false_neg = idx.loc[df_proba["y_pred"] < label]["ipsts"]
+            if len(false_neg) > 0:
+                fn[str(label)] = false_neg
+            false_pos = idx.loc[df_proba["y_pred"] > label]["ipsts"]
+            if len(false_pos) > 0:
+                fp[str(label)] = false_pos
+        df_proba.set_index("ipsts", inplace=True, drop=True)
+        self.fnfp = {
+            "pred_proba": df_proba.to_dict("split"),
+            "conf_idx": conf_idx,
+            "conf_proba": conf_proba,
+            "fn_idx": fn,
+            "fp_idx": fp,
+        }
+        return self.fnfp
+
+
+class ComputeRegressor(Computer):
+    def __init__(
+        self,
+        builder=None,
+        algorithm="reg",
+        res_path="results/memory",
+        show=False,
+        validation=False,
+    ):
+        super().__init__(
+            algorithm=algorithm, res_path=res_path, show=show, validation=validation
+        )
+        if builder:
+            self.inputs(
+                builder.model,
+                builder.history,
+                builder.X_train,
+                builder.y_train,
+                builder.X_test,
+                builder.y_test,
+                builder.test_idx,
+            )
+        self.y_pred = None
+        self.predictions = None
+        self.residuals = None
+        self.loss = None
+
+    def calculate_results(self):
+        """Main calling function to compute regression model scores, including residuals, root mean squared error and L2 cost function. Uses parent class method to save and/or load results to/from disk. Once calculated or loaded, other parent class methods can be used to generate various plots.
 
         Returns:
-            roc -- roc_auc_score (via sklearn)
+            Compute object (self): ComputeRegressor object with calculated model evaluation metrics attributes.
         """
-        fpr, tpr, thresholds = roc_curve(self.y.flatten(), self.y_pred)
+        if self.X_test is None:
+            print("No training data - please instantiate the inputs.")
+            return
+        self.y_pred = self.compute_preds()
+        self.predictions = self.yhat_matrix()
+        self.residuals = self.get_resid()
+        self.loss = self.compute_scores()
+        return self
 
-        # Threshold Cutoff for predictions
-        crossover_index = np.min(np.where(1.0 - fpr <= tpr))
-        crossover_cutoff = thresholds[crossover_index]
-        crossover_specificity = 1.0 - fpr[crossover_index]
+    def compute_preds(self):
+        """Get predictions (`y_pred`) based on regression model test inputs (`X_test`).
 
-        fig, axes = plt.subplots(ncols=2, figsize=(15, 6))
-        axes = axes.flatten()
+        Returns:
+            numpy.ndarray: predicted values for y (target)
+        """
+        if self.X_test is not None:
+            self.y_pred = self.model.predict(self.X_test)
+            return self.y_pred
 
-        ax = axes[0]
-        ax.plot(thresholds, 1.0 - fpr)
-        ax.plot(thresholds, tpr)
-        ax.set_title(
-            "Crossover at {0:.2f}, Specificity {1:.2f}".format(
-                crossover_cutoff, crossover_specificity
+    def yhat_matrix(self):
+        """Compare ground-truth and prediction values of a regression model side-by-side. Used for calculating residuals (see `get_resid` method below).
+
+        Returns:
+            2d-array: Concatenation of ground truth (`y_test`) and prediction (`y_pred`) arrays.
+        """
+        if self.y_pred is not None:
+            np_config.enable_numpy_behavior()
+            np.set_printoptions(precision=2)
+            self.predictions = np.concatenate(
+                (
+                    self.y_pred.reshape(len(self.y_pred), 1),
+                    self.y_test.reshape(len(self.y_test), 1),
+                ),
+                1,
             )
-        )
+            return self.predictions
 
-        ax = axes[1]
-        ax.plot(fpr, tpr)
-        ax.set_title(
-            "ROC area under curve: {0:.2f}".format(
-                roc_auc_score(self.y.flatten(), self.y_pred)
-            )
-        )
-        fig.show()
+    def get_resid(self):
+        """Calculate residual error between ground truth (`y_test`) and prediction values of a regression model.
+        Residuals are a measure of how far from the regression line the data points are.
 
-        roc = roc_auc_score(self.y.flatten(), self.y_pred)
+        Returns:
+            List: residual error values for a given test set
+        """
+        if self.predictions is not None:
+            self.residuals = []
+            for p, a in self.predictions:
+                # predicted - actual
+                r = p - a
+                self.residuals.append(r)
+            return self.residuals
 
-        return roc
+    def calculate_L2(self, subset=None):
+        """Calculate the L2 Normalization score of a regression model.
+        L2 norm is the square root of the sum of the squared vector values (also known as the Euclidean norm or Euclidean distance from the origin).
+        This metric is often used when fitting ML algorithms as a regularization method to keep the coefficients of the model small, i.e. to make the model less complex.
+
+        Returns:
+            Int: L2 norm
+        """
+        if subset is not None:
+            return np.linalg.norm(np.asarray(subset))
+        else:
+            return np.linalg.norm(self.residuals)
+
+    def compute_scores(self, error_stats=True):
+        """Calculate overall loss metrics of training and test sets. Default for regression is MSE (mean squared error) and RMSE (root MSE).
+        RMSE is a measure of how spread out the residuals are (i.e. how concentrated the data is around the line of best fit). Note: RMSE is better in terms of reflecting performance when dealing with large error values (penalizes large errors) while MSE tends to be biased for high values.
+
+        Args:
+            error_stats (bool, optional): include RMSE and L2 norm for positive and negative groups of residuals in the test set (here "positive" means above the regression line (>0), "negative" means below (<0)). This can be useful when consequences might be more severe for underestimating vs. overestimating.
+
+        Returns:
+            Dictionary: model training loss scores (MSE and RMSE)
+        """
+        if self.X_test is None:
+            return None
+        train_scores = self.model.evaluate(self.X_train, self.y_train, verbose=2)
+        test_scores = self.model.evaluate(self.X_test, self.y_test, verbose=2)
+        self.loss = {
+            "train_loss": np.round(train_scores[0], 2),
+            "train_rmse": np.round(train_scores[1], 2),
+            "test_loss": np.round(test_scores[0], 2),
+            "test_rmse": np.round(test_scores[1], 2),
+        }
+        if error_stats is True and self.residuals is not None:
+            pos, neg = [], []
+            for r in self.residuals:
+                if r > 0:
+                    pos.append(r)
+                else:
+                    neg.append(r)
+            self.loss["rmse_pos"] = np.sqrt(np.mean(np.asarray(pos) ** 2))
+            self.loss["rmse_neg"] = np.sqrt(np.mean(np.asarray(neg) ** 2))
+            self.loss["l2_norm"] = self.calculate_L2()
+            self.loss["l2_pos"] = self.calculate_L2(subset=pos)
+            self.loss["l2_neg"] = self.calculate_L2(subset=neg)
+        return self.loss
+
+    # def resid_plot(self):
+    #     """Plot the residual error for a regression model.
+
+    #     Returns:
+    #         Plotly figure object: interactive plotly scatter fig
+    #     """
+    #     if self.predictions is not None:
+    #         y = self.predictions[:,1]
+    #         p = self.predictions[:,0]
+    #     else:
+    #         np_config.enable_numpy_behavior()
+    #         y = self.y_test.reshape(1,-1)
+    #         p = self.y_pred
+    #     fig = px.scatter(x=y, y=p, labels={'x': 'ground truth', 'y': 'prediction'})
+    #     fig.add_shape(
+    #         type="line", line=dict(dash='dash'),
+    #         x0=self.y_test.min(), y0=self.y_test.min(),
+    #         x1=self.y_test.max(), y1=self.y_test.max()
+    #     )
+    #     if self.show is True:
+    #         fig.show()
+    #     return fig
+
+    def make_outputs(self, dl=True):
+        """Create a dictionary of results calculated for a regression model. Used for saving results to disk.
+
+        Args:
+            dl (bool, optional): download (save) to disk. Defaults to True.
+
+        Returns:
+            Dictionary: outputs stored in a single dictionary for convenience.
+        """
+        outputs = {
+            "predictions": self.predictions,
+            "test_idx": self.test_idx,
+            "residuals": self.residuals,
+            "loss": self.loss,
+        }
+        if self.validation is False:
+            outputs["history"] = self.history
+        if dl:
+            super().download(outputs)
+        return outputs
+
+    def load_results(self, outputs):
+        """Load previously calculated results/scores into Compute object (for comparing to other models and/or drawing plots).
+
+        Args:
+            outputs (dict): dictionary of results (generated via `make_outputs` method above)
+
+        Returns:
+            ComputeRegressor object with results attributes
+        """
+        self.predictions = outputs["predictions"]
+        self.loss = outputs["loss"]
+        self.residuals = outputs["residuals"]
+        self.res_fig = self.resid_plot()
+        if "test_idx" in outputs:
+            self.test_idx = outputs["test_idx"]
+        if self.validation is False:
+            self.history = outputs["history"]
+            self.acc_fig = self.keras_acc_plot()
+            self.loss_fig = self.keras_loss_plot()
+            if "kfold" in outputs:
+                self.kfold = outputs["kfold"]
+        return self

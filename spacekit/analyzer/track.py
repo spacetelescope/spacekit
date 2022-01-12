@@ -36,5 +36,5 @@ def stopwatch(prcname, t0=None, t1=None, out=".", log=True):
             sys.stdout = timelog
             print(message)
             if lap:
-                proc_time(t0, t1)
+                proc_time(t0, t1, prcname=prcname)
             sys.stdout = sysout

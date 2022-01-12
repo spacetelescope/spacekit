@@ -3,11 +3,12 @@
 version: 2
 
 sphinx:
-  builder: html
-  configuration: docs/conf.py
-  fail_on_warning: true
+    builder: html
+    configuration: docs/source/conf.py
+    fail_on_warning: true
 
 # Set the version of Python and requirements required to build your docs
+
 python:
   version: "3.7"
   system_packages: true
@@ -16,6 +17,3 @@ python:
       path: .
       extra_requirements:
         - docs
-
-# Don't build any extra formats
-formats: []

@@ -17,10 +17,7 @@ import time
 from tqdm import tqdm
 from progressbar import ProgressBar
 from drizzlepac import runsinglehap
-from spacekit.extractor.draw_mosaics import (
-    generate_total_images,
-    generate_filter_images,
-)
+from spacekit.generator.draw import DrawMosaics
 from spacekit.analyzer.track import stopwatch
 
 SVM_QUALITY_TESTING = "on"
@@ -242,11 +239,10 @@ def multiple_permutations(dataset, outputs, expos, mode, thresh="any"):
     bar.finish()
 
 
-def run_svm(dataset, outputs):
+def run_svm(visit, outputs, pattern):
     os.environ.get("SVM_QUALITY_TESTING", "on")
     home = os.getcwd()
-    visit = dataset.split("/")[-1][:6]
-    mutations = glob.glob(f"{outputs}/{visit}_*")
+    mutations = glob.glob(f"{outputs}/{pattern}/{visit}_*")
     for m in mutations:
         warning = f"{m}/warning.txt"
         if os.path.exists(warning):
@@ -263,18 +259,31 @@ def run_svm(dataset, outputs):
             #     print(f"SVM failed to run for {m}")
 
 
-def generate_images(dataset, outputs, filters=False):
+def generate_images(outputs, filters=False, pattern="*", visit=None):
     input_path = outputs
-    output_path = os.path.join(os.path.dirname(outputs), "img/1")
-    generate_total_images(input_path, output_path, dataset=dataset, crpt=1)
-    if filters is True:
-        generate_filter_images(
+    img_out = os.path.join(os.path.dirname(outputs), "img/1")
+    if visit is None:
+        draw = DrawMosaics(
             input_path,
-            dataset=dataset,
-            outpath="./img/filter",
-            figsize=(24, 24),
-            crpt=0,
+            output_path=img_out,
+            pattern=pattern,
+            gen=3,
+            size=(24, 24),
+            crpt=1,
         )
+    else:
+        draw = DrawMosaics(
+            input_path,
+            output_path=img_out,
+            pattern=pattern,
+            visit=visit,
+            gen=3,
+            size=(24, 24),
+            crpt=1,
+        )
+    draw.generate_total_images()
+    if filters is True:
+        draw.generate_filter_images()
 
 
 def all_permutations(dataset, outputs):
@@ -284,7 +293,42 @@ def all_permutations(dataset, outputs):
     multiple_permutations(dataset, outputs, "sub", "stoc")
 
 
-def run_blocks(datasets, outputs, prc, cfg):
+def get_datasets(search_pattern="*", srcpath=None, outputs="synthetic"):
+    pattern = search_pattern.lstrip("/")
+    # if nothing is found in srcpath, only CRPT cannot run
+    if srcpath:
+        datasets = glob.glob(f"{srcpath.rstrip('/')}/{pattern}")
+    # all other processes can run if matching datasets are found in outputs path
+    elif os.path.exists(outputs):
+        datasets = glob.glob(f"{outputs.rstrip('/')}/{pattern}")
+    if len(datasets) < 1:
+        print("No datasets found matching the search pattern.")
+        sys.exit(1)
+    else:
+        return datasets
+
+
+def make_process_config(
+    crpt=1,
+    runsvm=0,
+    imagegen=0,
+    palette="multi",
+    expos="all",
+    mode="stoc",
+    threshold="any",
+):
+    """Generates process and configuration dictionaries for running workflows.
+    Returns
+        prc (dict)
+        cfg (dict)
+    """
+    prc = dict(crpt=crpt, runsvm=runsvm, imagegen=imagegen)
+    cfg = dict(palette=palette, expos=expos, mode=mode, thresh=threshold)
+    return prc, cfg
+
+
+def run_blocks(prc, cfg, pattern, srcpath=None, outputs="synthetic"):
+    datasets = get_datasets(search_pattern=pattern, srcpath=srcpath, outputs=outputs)
     start_block = time.time()
     stopwatch("Block Workflow", t0=start_block)
     if prc["crpt"]:
@@ -307,25 +351,26 @@ def run_blocks(datasets, outputs, prc, cfg):
         prcname = "ALIGNMENT"
         start = time.time()
         stopwatch(prcname, t0=start)
-        for dataset in tqdm(datasets):
-            run_svm(dataset, outputs)
+        # prevent repetitions on single dataset if pattern="*"
+        visits = list(set([d.split("/")[-1][:6] for d in datasets]))
+        for visit in tqdm(visits):
+            run_svm(visit, outputs, pattern)
         end = time.time()
         stopwatch(prcname, t0=start, t1=end)
 
     if prc["imagegen"]:
-        img_out = os.path.join(os.path.dirname(outputs), "img/1")
         prcname = "IMAGE GENERATION"
         start = time.time()
         stopwatch(prcname, t0=start)
-        generate_total_images(outputs, img_out, dataset=None, crpt=1)
+        generate_images(outputs, pattern=pattern)
         end = time.time()
         stopwatch(prcname, t0=start, t1=end)
     end_block = time.time()
     stopwatch("Block Workflow", t0=start_block, t1=end_block)
 
 
-def run_pipes(datasets, outputs, prc, cfg):
-    img_out = os.path.join(os.path.dirname(outputs), "img/1")
+def run_pipes(prc, cfg, pattern, srcpath=None, outputs="synthetic"):
+    datasets = get_datasets(search_pattern=pattern, srcpath=srcpath, outputs=outputs)
     start = time.time()
     stopwatch("Pipe Workflow", t0=start)
     for dataset in tqdm(datasets):
@@ -341,13 +386,13 @@ def run_pipes(datasets, outputs, prc, cfg):
             elif cfg["palette"] in ["rex", "rfi"]:
                 artificial_misalignment(dataset, outputs, cfg["palette"])
         if prc["runsvm"]:
-            run_svm(dataset, outputs)
+            visits = list(set([d.split("/")[-1][:6] for d in datasets]))
+            for visit in tqdm(visits):
+                run_svm(visit, outputs, pattern)
         if prc["imagegen"]:
-            generate_total_images(outputs, img_out, dataset=dataset, crpt=1)
-            # generate_images(dataset, outputs)
+            generate_images(outputs, visit=dataset, pattern=pattern)
         t1 = time.time()
         stopwatch(dataset, t0=t0, t1=t1)
-
     end = time.time()
     stopwatch("Pipe Workflow", t0=start, t1=end)
 
@@ -355,24 +400,26 @@ def run_pipes(datasets, outputs, prc, cfg):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         prog="spacekit",
-        usage="python -m spacekit.skopes.hst.svm.corrupt ./singlevisits ./synthetic -e=sub -m=stat",
+        usage="python -m spacekit.skopes.hst.svm.corrupt singlevisits synthetic",
     )
     parser.add_argument("srcpath", type=str, help="single visit dataset(s) directory")
     parser.add_argument(
         "outputs", type=str, help="path for saving corrupt versions of HAP files"
     )
     parser.add_argument(
-        "palette",
+        "-p",
+        "--palette",
         type=str,
         choices=["rex", "rfi", "mfi", "multi"],
-        help="`rex`: randomly select subset of exposures from any filter; `rfi`: select all exposures from randomly selected filter; `mfi`: exposures of one filter, repeated for every filter in dataset. 'multi' creates sub- and all- MFI permutations",
+        default="multi",
+        help="`rex`: randomly select subset of exposures from any filter; `rfi`: select all exposures from randomly selected filter; `mfi`: exposures of one filter, repeated for every filter in dataset. 'multi' (default) creates sub- and all- MFI permutations",
     )
     parser.add_argument(
-        "-p",
-        "--pattern",
+        "-s",
+        "--search_pattern",
         type=str,
         default="*",
-        help="glob search pattern - default is wildcard *",
+        help="glob search pattern for restricting which visits to process - default is wildcard *",
     )
     parser.add_argument(
         "-e",
@@ -432,17 +479,20 @@ if __name__ == "__main__":
     )
     # get user-defined args and/or set defaults
     args = parser.parse_args()
-    outputs = args.outputs
-    workflow = args.workflow
-    datasets = glob.glob(f"{args.srcpath}/{args.pattern}")
-    if len(datasets) < 1:
-        print("No datasets found matching the search pattern.")
-        sys.exit(1)
-    procs = dict(crpt=args.crpt, runsvm=args.runsvm, imagegen=args.imagegen)
-    cfg = dict(
-        palette=args.palette, expos=args.expos, mode=args.mode, thresh=args.threshold
+    prc, cfg = make_process_config(
+        crpt=args.crpt,
+        runsvm=args.runsvm,
+        imagegen=args.imagegen,
+        palette=args.palette,
+        expos=args.expos,
+        mode=args.mode,
+        threshold=args.threshold,
     )
-    if workflow == "block":
-        run_blocks(datasets, outputs, procs, cfg)
+    if args.workflow == "block":
+        run_blocks(
+            prc, cfg, args.search_pattern, srcpath=args.srcpath, outputs=args.outputs
+        )
     else:
-        run_pipes(datasets, outputs, procs, cfg)
+        run_pipes(
+            prc, cfg, args.search_pattern, srcpath=args.srcpath, outputs=args.outputs
+        )

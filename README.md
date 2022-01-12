@@ -12,25 +12,42 @@ spacekit
     └── analyzer
         └── compute.py
         └── explore.py
+        └── scan.py
         └── track.py
     └── builder
-        └── cnn.py
+        └── networks.py
+    └── dashboard
+        └── cal
+            └── app.py
+        └── svm
+            └── app.py
+    └── datasets
+        └── hst_cal.py
+        └── hst_svm.py
+        └── k2_exo.py
     └── extractor
-        └── draw_mosaics.py
-        └── frame_data.py
-        └── load_images.py
-        └── scrape_json.py
-    └── preprocessor
-        └── augment.py
+        └── load.py
         └── radio.py
+        └── scrape.py
+    └── generator
+        └── augment.py
+        └── draw.py
+    └── preprocessor
+        └── encode.py
+        └── scrub.py
         └── transform.py
     └── skopes
         └── hst
-            └── mosaic
-                    └── svm_corrupt.py
-                    └── svm_predict.py
-                    └── svm_train.py
-                    └── models
+            └── cal
+                └── train.py
+            └── svm
+                    └── corrupt.py
+                    └── predict.py
+                    └── prep.py
+                    └── train.py
+        └── kepler
+            └── light_curves.py
+        └── trained_networks
 └── setup.py
 └── tests
 └── LICENSE
@@ -59,64 +76,93 @@ $ pip install -e .
 
 ### Classify new data using pre-trained model:
 
-1. Preprocess data (scrape from regression test json and fits files)
+1. Preprocess data (scrape from regression test json and fits files, scrub/preprocess dataframe, generate png images for ML)
 
 ***from the command line***
 
 ```bash
-$ python -m spacekit.extractor.frame_data path/to/svmdata -o=./newdata.csv
+$ python -m spacekit.skopes.hst.svm.prep path/to/svmdata -f=svm_data.csv
 ```
 
+***from python***
 
-2. Preprocess images (generate png preview files)
+```python
+from spacekit.skopes.hst.svm.prep import run_preprocessing
+input_path = "/path/to/svm/datasets"
+fname = run_preprocessing(input_path)
+print(fname)
+# svm_data.csv
+
+# This is equivalent to using the default kwargs:
+fname = run_preprocessing(input_path, h5=None, fname="svm_data", output_path=None, json_pattern="*_total*_svm_*.json", crpt=0, draw_images=1)
+print(fname)
+# default is "svm_data.csv"; customize filename and location using kwargs `fname` and `output_path`
+```
+
+Outputs:
+* svm_data.csv
+* raw_svm_data.csv
+* svm_data.h5
+* img/
+
+2. Generate predictions
+
+***from the command line***
 
 ```bash
-python -m spacekit.extractor.draw_mosaics path/to/svmdata -o=./img
+$ python -m spacekit.skopes.hst.svm.predict svm_data.csv img
 ```
 
-3. Generate predictions
+***from python***
 
-```bash
-$ python -m spacekit.skopes.hst.mosaic.svm_predict ./mydata.csv ./img -m=./models/ensembleSVM -o=./results
+```python
+from spacekit.skopes.hst.svm.predict import predict_alignment
+data_file = "svm_data.csv" # same as `fname` returned in `prep.py` above
+img_path = "img" # default image foldername created above
+predict_alignment(data_file, img_path)
+
+# This is equivalent to using the default kwargs:
+predict_alignment(data_file, img_path, model_path=None, output_path=None, size=None)
 ```
+
+Outputs:
+* predictions/
+    * clf_report.txt
+    * compromised.txt
+    * predictions.csv
 
 ----
 
 ### Build, train, evaluate new classifier from labeled data
 
-Run steps 1 and 2 above, then:
+Run step 1 (prep) above, then:
+
+***from the command line***
 
 ```bash
 # Note: there are several option flags you can also include in this command
-$ python -m spacekit.skopes.hst.mosaic.svm_train ./mydata.csv ./img
+$ python -m spacekit.skopes.hst.svm.train svm_data.csv img
 ```
 
-***Python***
+***from Python***
 
 ```python
 # import spacekit training submodule
-from spacekit.skopes.hst.mosaic.svm_train import prep_ensemble_data, train_model, compute_results
-# initialize some vars
-training_data = "labeled_data.csv" # preprocessed dataframe (see step 1 above)
-img_path = "./img" # preprocessed PNG image files (see step 2 above)
-model_name = "my_new_model_name" # give the model a custom name (optional)
-res_path = "./results" # where to save the model training results (optional)
-# training parameters (optional - uses these defaults if none are explicitly set)
-params=dict(
-    batch_size=32,
-    epochs=60, # set to 1 or 5 if just testing functionality...or 1000 if you have all day
-    lr=1e-4,
-    decay=[100000, 0.96],
-    early_stopping=None,
-    verbose=2,
-    ensemble=True
-    )
-# create train test val splits, test-val index (for reviewing names of images model gets wrong)
-tv_idx, XTR, YTR, XTS, YTS, XVL, YVL = prep_ensemble_data(training_data, img_path)
-# train the model
-ens_model, ens_history = train_model(XTR, YTR, XTS, YTS, model_name)
-# evaluate results (saved to local pickle files for later analysis)
-compute_results(ens_model, ens_history, model_name, tv_idx, XTR, YTR, XTS, YTS, XVL, YVL)
+from spacekit.skopes.hst.svm.train import run_training
+
+training_data = "svm_data.csv" # preprocessed dataframe (see step 1 above)
+img_path = "img" # preprocessed PNG image files (see step 1 above)
+
+run_training(training_data, img_path)
+
+# This is the same as using the default kwargs
+com, val = run_training(
+    training_data, img_path, synth_data=None, norm=0, model_name=None, params=None, output_path=None
+)
+
+# Optional: view plots
+com.draw_plots()
+val.draw_plots()
 ```
 
 
