@@ -1,3 +1,4 @@
+from math import e
 import os
 import glob
 import pickle
@@ -53,8 +54,7 @@ class Computer(object):
         self.pr_fig = None
 
     def inputs(self, model, history, X_train, y_train, X_test, y_test, test_idx):
-        """Instantiates training vars as attributes (typically carried over from a Builder object post-training).
-        By default, a Computer object is instantiated without these - they are only needed for calculating and storing
+        """Instantiates training vars as attributes. By default, a Computer object is instantiated without these - they are only needed for calculating and storing
         results which can then be retrieved by Computer separately (without training vars) from pickle objects using
         the `upload()` method.
 
@@ -82,20 +82,37 @@ class Computer(object):
         """
         self.model = model
         self.history = history.history
+        self.test_idx = test_idx
         self.X_train = X_train
         self.y_train = y_train
         self.X_test = X_test
         self.y_test = y_test
-        self.test_idx = test_idx
         if self.model_name is None:
             self.model_name = self.model.name
         return self
 
-    def val_inputs(self, X_val, y_val):
-        self.X_train = self.X_test
-        self.y_train = self.y_test
-        self.X_test = X_val
-        self.y_test = y_val
+    def builder_inputs(self, builder=None):
+        """produces same result as `inputs` method, using a builder object's attributes instead. Allows for automatic switch to validation set."""
+        if builder:
+            if self.validation is True:
+                try:
+                    self.X_test = builder.X_val
+                    self.y_test = builder.y_val
+                    self.X_train = builder.X_test
+                    self.y_train = builder.y_test
+                except Exception as e:
+                    print(e)
+                    print("Validation attributes not set.")
+            else:
+                self.X_train = builder.X_train
+                self.y_train = builder.y_train
+                self.X_test = builder.X_test
+                self.y_test = builder.y_test
+            self.model = builder.model
+            self.history = builder.history.history
+            self.test_idx = builder.test_idx
+            if self.model_name is None:
+                self.model_name = builder.model.name
         return self
 
     def download(self, outputs):
@@ -583,18 +600,7 @@ class ComputeBinary(ComputeClassifier):
             show=show,
             validation=validation,
         )
-        if builder:
-            self.inputs(
-                builder.model,
-                builder.history,
-                builder.X_train,
-                builder.y_train,
-                builder.X_test,
-                builder.y_test,
-                builder.test_idx,
-            )
-        if validation is True:
-            self.val_inputs(self, builder=builder)
+        self.builder_inputs(builder=builder)
 
     def calculate_results(self, show_summary=True):
         self.y_onehot = self.onehot_y()

@@ -115,35 +115,31 @@ class Builder:
         return self
 
     def design(self):
-        return {
-            "mlp": dict(
-                batches=self.batch_mlp(), steps=self.X_train.shape[0] // self.batch_size
-            ),
-            "cnn3d": dict(
-                batches=self.batch_cnn(), steps=self.X_train.shape[0] // self.batch_size
-            ),
-            "ensemble": dict(
+        if self.blueprint == "mlp":
+            return dict(
+                batches=self.batch_mlp(), 
+                steps=self.X_train.shape[0] // self.batch_size
+            )
+        elif self.blueprint == "image3d":
+            return dict(
+                batches=self.batch_cnn(), 
+                steps=self.X_train.shape[0] // self.batch_size
+            )
+        elif self.blueprint == "ensemble":
+            return dict(
                 batches=self.batch_ensemble(),
                 steps=self.X_train[0].shape[0] // self.batch_size,
-            ),
-            "cnn2d": dict(
+            )
+        elif self.blueprint == "cnn2d":
+            return dict(
                 batches=self.batch_maker(),
                 steps=self.X_train.shape[1] // self.batch_size,
-            ),
-        }
+            )
 
     def batch_steps(self):
-        make_batches = self.design()[self.blueprint]["batches"]
-        steps_per_epoch = self.design()[self.blueprint]["steps"]
-        # if self.blueprint == "mlp":
-        #     make_batches = self.batch_mlp()
-        #     steps_per_epoch = self.X_train.shape[0] // self.batch_size
-        # elif self.blueprint == "image3d":
-        #     make_batches = self.batch_cnn()
-        #     steps_per_epoch = self.X_train.shape[0] // self.batch_size
-        # elif self.blueprint == "ensemble":
-        #     make_batches = self.batch_ensemble()
-        #     steps_per_epoch = self.X_train[0].shape[0] // self.batch_size
+        design = self.design()
+        make_batches = design["batches"]
+        steps_per_epoch = design["steps"]
         return make_batches, steps_per_epoch
 
     def fit_params(

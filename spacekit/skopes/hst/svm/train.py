@@ -23,6 +23,19 @@ SHAPE = (DIM, WIDTH, HEIGHT, CH)
 TF_CPP_MIN_LOG_LEVEL = 2
 
 
+def import_dataset(filename, synth=None):
+    print("[i] Importing Regression Test Data")
+    df = pd.read_csv(filename, index_col="index")
+    print("\tREG DATA: ", df.shape)
+    if synth:
+        print("\nAdding artificial corruption dataset")
+        syn = pd.read_csv(synth, index_col="index")
+        print(f"\tSYNTH DATA: {syn.shape}")
+        df = pd.concat([df, syn], axis=0)
+        print(f"\tTOTAL: {df.shape}")
+    print(f"\nClass Labels (0=Aligned, 1=Misaligned)\n{df['label'].value_counts()}")
+    return df
+
 def split_datasets(df):
     print("Splitting Data ---> X-y ---> Train-Test-Val")
     y = df["label"]
@@ -94,16 +107,7 @@ def make_ensembles(
 
 
 def load_ensemble_data(filename, img_path, synth=None, norm=False):
-    print("[i] Importing Regression Test Data")
-    df = pd.read_csv(filename, index_col="index")
-    print("\tREG DATA: ", df.shape)
-    if synth:
-        print("\nAdding artificial corruption dataset")
-        syn = pd.read_csv(synth, index_col="index")
-        print(f"\tSYNTH DATA: {syn.shape}")
-        df = pd.concat([df, syn], axis=0)
-        print(f"\tTOTAL: {df.shape}")
-    print(f"\nClass Labels (0=Aligned, 1=Misaligned)\n{df['label'].value_counts()}")
+    df = import_dataset(filename, synth=synth)
 
     X_train, X_test, X_val, y_train, y_test, y_val = split_datasets(df)
 
@@ -117,6 +121,7 @@ def load_ensemble_data(filename, img_path, synth=None, norm=False):
     X_train, _ = training_data_aug(X_train, X_test, X_val, y_train, y_test, y_val)
     if norm:
         X_train, X_test, X_val = normalize_data(df, X_train, X_test, X_val)
+        # TODO: normalize images: img / 255.
     print("\nPerforming Image Data Augmentation")
     img_idx, X_tr, y_tr, X_ts, y_ts, X_vl, y_vl = training_img_aug(train, test, val)
     XTR, YTR, XTS, YTS, XVL, YVL = make_ensembles(
@@ -158,24 +163,19 @@ def train_ensemble(
     return ens
 
 
-def compute_results(ens, tv_idx, output_path=None, xval=None, yval=None):
+def compute_results(ens, tv_idx, output_path=None):
     if output_path is None:
         output_path = os.getcwd()
     res_path = os.path.join(output_path, "results")
     # test set
     ens.test_idx = tv_idx[0]
-    # com = ComputeBinary()
-    # com.inputs(ens.model, ens.history, ens.X_train, ens.y_train, ens.X_test, ens.y_test, ens.test_idx)
     com = ComputeBinary(builder=ens, res_path=f"{res_path}/test")
     com.calculate_results()
     _ = com.make_outputs()
-    if xval is not None:
+    if ens.X_val is not None:
         # validation set
         ens.test_idx = tv_idx[1]
-        # val = ComputeBinary()
-        # val.inputs(ens.model, ens.history, ens.X_test, ens.y_test, ens.X_val, ens.y_val, ens.test_idx)
         val = ComputeBinary(builder=ens, res_path=f"{res_path}/val", validation=True)
-        val.val_inputs(xval, yval)
     val.calculate_results()
     _ = val.make_outputs()
     return com, val
@@ -202,7 +202,8 @@ def run_training(
         params=params,
         output_path=output_path,
     )
-    com, val = compute_results(ens, tv_idx, output_path=output_path, xval=XVL, yval=YVL)
+    ens.X_val, ens.y_val = XVL, YVL
+    com, val = compute_results(ens, tv_idx, output_path=output_path)
     return ens, com, val
 
 
