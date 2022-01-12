@@ -309,6 +309,7 @@ class ImageScraper(Scraper):
 
 class JsonScraper:
     """Searches local files using glob pattern(s) to scrape JSON file data. Optionally can store data in h5 file (default) and/or CSV file; The JSON harvester method returns a Pandas dataframe. This class can also be used to load an h5 file.
+
     Parameters
     ----------
     search_path : str, optional
@@ -379,6 +380,7 @@ class JsonScraper:
     def flatten_dict(self, dd, separator=".", prefix=""):
         """Recursive subroutine to flatten nested dictionaries down into a single-layer dictionary.
         Borrowed from https://www.geeksforgeeks.org/python-convert-nested-dictionary-into-flattened-dictionary/
+
         Parameters
         ----------
         dd : dict
@@ -525,7 +527,7 @@ class JsonScraper:
 
     def h5store(self, **kwargs):
         """Write a pandas Dataframe and metadata to a HDF5 file.
-        ----------
+
         Returns
         -------
         h5 filepath

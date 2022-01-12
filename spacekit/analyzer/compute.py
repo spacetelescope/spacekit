@@ -431,10 +431,7 @@ class Computer(object):
     # Matplotlib "static" alternative to interactive plotly version
     def fusion_matrix(self, cm, classes, normalize=True, cmap="Blues"):
         """
-        FUSION MATRIX!
-        -------------
-
-        matrix: can pass in matrix or a tuple (ytrue,ypred) to create on the fly
+        Confusion Matrix. Can pass in matrix or a tuple (ytrue,ypred) to create on the fly
         classes: class names for target variables
         """
         # make matrix if tuple passed to matrix:
