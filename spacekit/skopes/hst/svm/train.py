@@ -1,7 +1,7 @@
 """
 This module builds, trains, and evaluates an ensemble model for labeled and preprocessed SVM regression test data and alignment images. The ensemble model is a combination of two neural networks: a MultiLayerPerceptron (for regression test data) and a 3D Image Convolutional Neural Network (CNN). The script includes functions for the following steps:
 
-1. load and prep the data for ML
+1. load and prep the data and images for ML
 2. build and train the model
 3. compute results and save to disk
 

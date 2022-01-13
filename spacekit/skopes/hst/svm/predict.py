@@ -1,3 +1,13 @@
+"""
+This module generates predictions using a pre-trained ensemble neural network for unlabeled SVM regression test data and alignment images. The ensemble model is a combination of two neural networks: a MultiLayerPerceptron (for regression test data) and a 3D Image Convolutional Neural Network (CNN). The script includes functions for the following steps:
+
+1. load and prep the data and images for ML
+2. load the saved model and generate predictions
+3. save predictions and summary statistics to disk
+
+This script (and/or its functions) should be used in conjunction with spacekit.skopes.hst.svm.prep if using raw data (since both the regression test dataframe for MLP and the png images for the CNN need to be created first). Once a model has been trained using the spacekit.skopes.hst.svm.train script, it is saved to disk and can be loaded for use here to generate predictions on unlabeled data.
+"""
+
 import tensorflow as tf
 import numpy as np
 import pandas as pd
