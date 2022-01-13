@@ -1,3 +1,13 @@
+"""
+This module builds, trains, and evaluates an ensemble model for labeled and preprocessed SVM regression test data and alignment images. The ensemble model is a combination of two neural networks: a MultiLayerPerceptron (for regression test data) and a 3D Image Convolutional Neural Network (CNN). The script includes functions for the following steps:
+
+1. load and prep the data for ML
+2. build and train the model
+3. compute results and save to disk
+
+This script (and/or its functions) should be used in conjunction with spacekit.skopes.hst.svm.prep if using raw data (since both the regression test dataframe for MLP and the png images for the CNN need to be created first). Once a model has been trained using this script, it is saved to disk and can be loaded again later for use with the predict script (spacekit.skopes.hst.svm.predict).
+"""
+
 import os
 import argparse
 import pandas as pd
@@ -112,18 +122,17 @@ def normalize_data(df, X_train, X_test, X_val):
 
 def make_image_sets(X_train, X_test, X_val, img_path="img", w=128, h=128, d=9, exp=None):
     """
-    Read in train/test files and produce X-y data splits. y labels are encoded as 0=valid, 1=compromised
-    returns 
-    d=9: 3x3 rgb images (9 channels total)
+    Read in train/test files and produce X-y data splits. y labels are encoded as 0=valid, 1=compromised.
+    By default, the ImageCNN3D model expects RGB image inputs as 3x3 arrays, for a total of 9 channels. This can of course be customized for other image arrangements using other classes in the spacekit.builder.networks module.
 
     Parameters
     ----------
     X_train : numpy array
-        training feature values
+        training image inputs
     X_test : [type]
-        test feature values
+        test image inputs
     X_val : [type]
-        validation feature values
+        validation image inputs
     img_path : str, optional
         path to png images parent directory, by default "img"
     w : int, optional
@@ -171,33 +180,34 @@ def make_ensembles(
     y_test,
     y_val,
 ):
-    """[summary]
+    """Creates tupled pairs of regression test (MLP) data and image (CNN) array inputs for an ensemble model.
 
     Parameters
     ----------
-    train_img : [type]
-        [description]
-    test_img : [type]
-        [description]
-    val_img : [type]
-        [description]
-    train_data : [type]
-        [description]
-    test_data : [type]
-        [description]
-    val_data : [type]
-        [description]
-    y_train : [type]
-        [description]
-    y_test : [type]
-        [description]
-    y_val : [type]
-        [description]
+    train_img : numpy array
+        training set image inputs
+    test_img : numpy array
+        test set image inputs
+    val_img : numpy array
+        validation set image inputs
+    train_data : numpy array
+        training set feature data inputs
+    test_data : numpy array
+        test set feature data inputs
+    val_data : numpy array
+        validation set feature data inputs
+    y_train : numpy array
+        training set target values
+    y_test : numpy array
+        test set target values
+    y_val : numpy array
+        validation set target values
 
     Returns
     -------
-    [type]
-        [description]
+    numpy arrays
+        XTR, YTR, XTS, YTS, XVL, YVL
+        List/tuple of feature input arrays (data, img) and target values for train-test-val sets
     """
     print("Stacking mixed inputs (DATA + IMG)")
     XTR = [train_data, train_img]
@@ -210,23 +220,24 @@ def make_ensembles(
 
 
 def load_ensemble_data(filename, img_path, synth=None, norm=False):
-    """[summary]
+    """Loads regression test data from a csv file and image data from png files. Splits the data into train, test and validation sets, applies normalization (if norm=1), creates a maste index of the original dataset input names, and stacks the features and class targets for both data types into lists which can be used as inputs for an ensemble model.
 
     Parameters
     ----------
-    filename : [type]
-        [description]
+    filename : str
+        path to preprocessed dataframe csv file
     img_path : str
         path to png images parent directory
-    synth : [type], optional
-        [description], by default None
+    synth : str, optional
+        path to additional (synthetic/corrupted) dataframe csv file, by default None
     norm : bool, optional
-        [description], by default False
+        apply normalization step, by default False
 
     Returns
     -------
-    [type]
-        [description]
+    list, numpy arrays
+        tv_idx, XTR, YTR, XTS, YTS, XVL, YVL
+        list of test-validation indices, train-test feature (X) and target (y) numpy arrays.
     """
     df = import_dataset(filename, synth=synth)
 
@@ -255,29 +266,29 @@ def load_ensemble_data(filename, img_path, synth=None, norm=False):
 def train_ensemble(
     XTR, YTR, XTS, YTS, model_name="ensembleSVM", params=None, output_path=None
 ):
-    """[summary]
+    """Build, compile and fit an ensemble model with regression test data and image input arrays.
 
     Parameters
     ----------
-    XTR : [type]
-        [description]
-    YTR : [type]
-        [description]
-    XTS : [type]
-        [description]
-    YTS : [type]
-        [description]
+    XTR : tuple/list
+        training set feature (X) tuple of regression data and image data numpy arrays.
+    YTR : numpy array
+        training set target values
+    XTS : tuple/list
+        test set feature (X) tuple of regression data and image data numpy arrays.
+    YTS : numpy array
+        test set target values
     model_name : str, optional
-        [description], by default "ensembleSVM"
-    params : [type], optional
-        [description], by default None
+        name of model, by default "ensembleSVM"
+    params : dict, optional
+        custom parameters for model fitting, by default None
     output_path : str, optional
         custom path for saving model, results, by default None (current working directory)
 
     Returns
     -------
-    [type]
-        [description]
+    spacekit.builder.networks.Ensemble model object
+        Builder ensemble subclass model object trained on the inputs
     """
     if params is None:
         params = dict(
