@@ -2,10 +2,29 @@
 spacekit.analyzer.scan
 **********************
 
-.. autofunction:: spacekit.analyzer.scan.decode_categorical
+.. currentmodule:: spacekit.analyzer.scan
 
-.. autofunction:: spacekit.analyzer.scan.import_dataset
+.. automodule:: spacekit.analyzer.scan
+   :members:
 
-.. autofunction:: spacekit.analyzer.scan.MegaScanner
+.. inheritance-diagram:: spacekit.analyzer.scan
+   :parts: 2
 
-.. autofunction:: spacekit.analyzer.scan.CalScanner
+.. autofunction:: decode_categorical
+
+.. autofunction:: import_dataset
+
+.. autoclass:: MegaScanner
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+.. autoclass:: CalScanner
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+.. autoclass:: SvmScanner
+    :members:
+    :undoc-members:
+    :show-inheritance:
