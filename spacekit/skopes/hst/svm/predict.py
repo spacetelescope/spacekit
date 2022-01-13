@@ -7,7 +7,7 @@ This module generates predictions using a pre-trained ensemble neural network fo
 
 This script (and/or its functions) should be used in conjunction with spacekit.skopes.hst.svm.prep if using raw data (since both the regression test dataframe for MLP and the png images for the CNN need to be created first). Once a model has been trained using the spacekit.skopes.hst.svm.train script, it is saved to disk and can be loaded for use here to generate predictions on unlabeled data.
 """
-
+from zipfile import ZipFile
 import tensorflow as tf
 import numpy as np
 import pandas as pd
@@ -42,9 +42,14 @@ def get_model(model_path=None):
     """
     if model_path is None:
         with importlib.resources.path(
-            "spacekit.skopes.trained_networks", "ensembleSVM"
+            "spacekit.skopes.trained_networks", "ensembleSVM.zip"
         ) as M:
             model_path = M
+        os.makedirs("models", exist_ok=True)
+        model_base = os.path.basename(model_path).split(".")[0]
+        with ZipFile(model_path, "r") as zip_ref:
+            zip_ref.extractall("models")
+        model_path = os.path.join("models", model_base)
     print("Loading saved model: ", model_path)
     model = tf.keras.models.load_model(model_path)
     return model
