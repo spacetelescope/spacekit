@@ -1,9 +1,22 @@
+"""This module tracks the start, end clocktime intervals for a running process and record the total duration. Optionally the timestamps and durations for multiple processes can be logged in a single text file on disk (or separate files if desired).
+"""
 import sys
 import numpy as np
 import datetime as dt
 
 
 def proc_time(start, end, prcname=""):
+    """calculates total duration from start to end of a process that finished running.
+
+    Parameters
+    ----------
+    start : int
+        starting interval clocktime
+    end : int
+        end interval clocktime
+    prcname : str, optional
+        name of running process, by default ""
+    """
     duration = np.round((end - start), 2)
     proc_time = np.round((duration / 60), 2)
     if duration > 3600:
@@ -17,6 +30,21 @@ def proc_time(start, end, prcname=""):
 
 # TODO: record laps (eg. for loading train test val image sets)
 def stopwatch(prcname, t0=None, t1=None, out=".", log=True):
+    """Times a process from start to finish and (optionally) records the intervals and total duration in a text file on disk.
+
+    Parameters
+    ----------
+    prcname : str
+        name of running process
+    t0 : int, optional
+        time.time timestamp start interval, by default None
+    t1 : int, optional
+        time.time timestamp end interval], by default None
+    out : str, optional
+        location to save recorded clocktimes, by default "."
+    log : bool, optional
+        record process clocktimes in a text file on disk, by default True
+    """
     lap = 0
     if t1 is not None:
         info = "COMPLETED"

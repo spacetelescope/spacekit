@@ -12,10 +12,11 @@
 #
 import os
 import sys
+#import sphinx
 import datetime
 import os
 from configparser import ConfigParser
-import stsci_rtd_theme
+#import stsci_rtd_theme
 
 # -- Project information -----------------------------------------------------
 # General information about the project
@@ -50,7 +51,7 @@ conf.read([os.path.join(os.path.dirname(__file__), '..', 'setup.cfg')])
 sys.path.insert(0, os.path.abspath('../'))
 sys.path.insert(0, os.path.abspath('../../'))
 
-# on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
+#on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 
 # Configuration for intersphinx: refer to the Python standard library.
 # Uncomment if you cross-ref to API doc from other packages.
@@ -64,20 +65,35 @@ sys.path.insert(0, os.path.abspath('../../'))
 #     'matplotlib': ('https://matplotlib.org/',
 #                    (None, 'http://data.astropy.org/intersphinx/matplotlib.inv')),  # noqa
 #     'astropy': ('https://docs.astropy.org/en/stable/', None)}
-
+intersphinx_mapping = {
+    'python': ('http://docs.python.org/3/', None),
+    'numpy': ('http://docs.scipy.org/doc/numpy/', None),
+    'scipy': ('http://docs.scipy.org/doc/scipy/reference/', None),
+    'matplotlib': ('http://matplotlib.org/', None),
+    'astropy': ('http://docs.astropy.org/en/stable/', None),
+}
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
+
 extensions = [
-    'myst_parser',
     'sphinx.ext.autodoc',
     'sphinx.ext.intersphinx',
     'sphinx.ext.todo',
     'sphinx.ext.inheritance_diagram',
     'sphinx.ext.viewcode',
     'sphinx.ext.napoleon',
+    'sphinx.ext.autosummary',
+    'sphinx.ext.doctest',
+    'sphinx.ext.coverage',
+    'sphinx.ext.mathjax',
+    'numpydoc',
     'sphinx_automodapi.automodapi',
-    'sphinx.ext.mathjax']
+    'sphinx_automodapi.automodsumm',
+    'sphinx_automodapi.autodoc_enhancements',
+    'sphinx_automodapi.smart_resolver',
+]
+
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -158,8 +174,9 @@ pygments_style = 'sphinx'
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'stsci_rtd_theme'
-html_theme_path = [stsci_rtd_theme.get_html_theme_path()]
+# html_theme = 'stsci_rtd_theme'
+# html_theme_path = [stsci_rtd_theme.get_html_theme_path()]
+html_theme = 'sphinx_rtd_theme'
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
@@ -177,6 +194,7 @@ html_theme_path = [stsci_rtd_theme.get_html_theme_path()]
 # .htaccess) here, relative to this directory. These files are copied
 # directly to the root of the documentation.
 # html_extra_path = []
+html_static_path = ['_static']
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.

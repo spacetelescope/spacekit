@@ -2,10 +2,30 @@
 spacekit.analyzer.scan
 **********************
 
-.. autofunction:: spacekit.analyzer.scan.decode_categorical
+.. currentmodule:: spacekit.analyzer.scan
 
-.. autofunction:: spacekit.analyzer.scan.import_dataset
+.. autofunction:: decode_categorical
 
-.. autofunction:: spacekit.analyzer.scan.MegaScanner
+decoder_key examples:
 
-.. autofunction:: spacekit.analyzer.scan.CalScanner
+.. code-block:: python
+    
+    instrument_key = {"instr": {0: "acs", 1: "cos", 2: "stis", 3: "wfc3"}}
+    detector_key = {"det": {0: "hrc", 1: "ir", 2: "sbc", 3: "uvis", 4: "wfc"}}
+
+.. autofunction:: import_dataset
+
+.. autoclass:: MegaScanner
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+.. autoclass:: CalScanner
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+.. autoclass:: SvmScanner
+    :members:
+    :undoc-members:
+    :show-inheritance:
