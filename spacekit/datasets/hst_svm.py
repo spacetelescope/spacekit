@@ -14,6 +14,6 @@ svm_data = {
 }
 
 svm_model_archive = {
-    "model_path": "ensembleSVM.zip", 
-    "hash": "602b9d9129940820e57ed3db87cb70eb15aec503"
+    "model_path": "ensembleSVM.zip",
+    "hash": "602b9d9129940820e57ed3db87cb70eb15aec503",
 }
