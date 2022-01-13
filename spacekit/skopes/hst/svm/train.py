@@ -24,6 +24,20 @@ TF_CPP_MIN_LOG_LEVEL = 2
 
 
 def import_dataset(filename, synth=None):
+    """Import prerocessed regression test dataset from csv file. Optionally combine with synthetic data (if saved in a separate file). 
+
+    Parameters
+    ----------
+    filename : str (path)
+        path to csv file containing preprocessed regression test data.
+    synth : str (path), optional
+        path to csv file containing synthetic regression test data, by default None
+
+    Returns
+    -------
+    DataFrame
+        Labeled dataframe loaded from csv file.
+    """
     print("[i] Importing Regression Test Data")
     df = pd.read_csv(filename, index_col="index")
     print("\tREG DATA: ", df.shape)
@@ -37,20 +51,57 @@ def import_dataset(filename, synth=None):
     return df
 
 
-def split_datasets(df):
+def split_datasets(df, target="label", val=True):
+    """Splits Pandas dataframe into feature (X) and target (y) train, test and validation sets.
+
+    Parameters
+    ----------
+    df : Pandas dataframe
+        preprocessed SVM regression test dataset 
+    target : str, optional
+        target class label for alignment model predictions, by default "label"
+    val : bool, optional
+        create a validation set separate from train/test, by default True
+
+    Returns
+    -------
+    Pandas dataframes
+        features (X) and targets (y) split into train, test, and validation sets
+    """
     print("Splitting Data ---> X-y ---> Train-Test-Val")
-    y = df["label"]
-    X = df.drop("label", axis=1, inplace=False)
+    y = df[target]
+    X = df.drop(target, axis=1, inplace=False)
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, shuffle=True, stratify=y
     )
-    X_train, X_val, y_train, y_val = train_test_split(
-        X_train, y_train, test_size=0.1, shuffle=True, stratify=y_train
-    )
-    return X_train, X_test, X_val, y_train, y_test, y_val
+    if val is True:
+        X_train, X_val, y_train, y_val = train_test_split(
+            X_train, y_train, test_size=0.1, shuffle=True, stratify=y_train
+        )
+        return X_train, X_test, X_val, y_train, y_test, y_val
+    else:
+        return X_train, X_test, y_train, y_test
 
 
 def normalize_data(df, X_train, X_test, X_val):
+    """Apply Leo-Johnson PowerTransform (via scikit learn) normalization and scaling to the input features.
+
+    Parameters
+    ----------
+    df : pandas dataframe
+        SVM regression test dataset
+    X_train : numpy array
+        training set feature inputs array
+    X_test : numpy array
+        test set feature inputs array
+    X_val : numpy array
+        validation set inputs array
+
+    Returns
+    -------
+    numpy arrays
+        normalized and scaled training, test, and validation sets 
+    """
     print("Applying Normalization (Leo-Johnson PowerTransform)")
     _, px = apply_power_transform(df)
     X_train = power_transform_matrix(X_train, px)
@@ -59,12 +110,35 @@ def normalize_data(df, X_train, X_test, X_val):
     return X_train, X_test, X_val
 
 
-def make_image_sets(X_train, X_test, X_val, img_path=".", w=128, h=128, d=9, exp=None):
+def make_image_sets(X_train, X_test, X_val, img_path="img", w=128, h=128, d=9, exp=None):
     """
-    Read in train/test files and produce X-y data splits.
-    y labels are encoded as 0=valid, 1=compromised
-    returns X_train, X_test, y_train, y_test, y_val
+    Read in train/test files and produce X-y data splits. y labels are encoded as 0=valid, 1=compromised
+    returns 
     d=9: 3x3 rgb images (9 channels total)
+
+    Parameters
+    ----------
+    X_train : numpy array
+        training feature values
+    X_test : [type]
+        test feature values
+    X_val : [type]
+        validation feature values
+    img_path : str, optional
+        path to png images parent directory, by default "img"
+    w : int, optional
+        width of image, by default 128
+    h : int, optional
+        height of image, by default 128
+    d : int, optional
+        dimensions of image (determined by channels (rgb=3) multipled by depth (num image frames), by default 9
+    exp : int, optional
+        "expand" dimensions: (exp, w, h, 3). Set to 3 for predictions, None for training, by default None
+
+    Returns
+    -------
+    nested lists
+        train, test, val nested lists each containing an index of the visit names and png image data as numpy arrays.
     """
     start = time.time()
     stopwatch("LOADING IMAGES", t0=start)
@@ -97,6 +171,34 @@ def make_ensembles(
     y_test,
     y_val,
 ):
+    """[summary]
+
+    Parameters
+    ----------
+    train_img : [type]
+        [description]
+    test_img : [type]
+        [description]
+    val_img : [type]
+        [description]
+    train_data : [type]
+        [description]
+    test_data : [type]
+        [description]
+    val_data : [type]
+        [description]
+    y_train : [type]
+        [description]
+    y_test : [type]
+        [description]
+    y_val : [type]
+        [description]
+
+    Returns
+    -------
+    [type]
+        [description]
+    """
     print("Stacking mixed inputs (DATA + IMG)")
     XTR = [train_data, train_img]
     XTS = [test_data, test_img]
@@ -108,6 +210,24 @@ def make_ensembles(
 
 
 def load_ensemble_data(filename, img_path, synth=None, norm=False):
+    """[summary]
+
+    Parameters
+    ----------
+    filename : [type]
+        [description]
+    img_path : str
+        path to png images parent directory
+    synth : [type], optional
+        [description], by default None
+    norm : bool, optional
+        [description], by default False
+
+    Returns
+    -------
+    [type]
+        [description]
+    """
     df = import_dataset(filename, synth=synth)
 
     X_train, X_test, X_val, y_train, y_test, y_val = split_datasets(df)
@@ -135,6 +255,30 @@ def load_ensemble_data(filename, img_path, synth=None, norm=False):
 def train_ensemble(
     XTR, YTR, XTS, YTS, model_name="ensembleSVM", params=None, output_path=None
 ):
+    """[summary]
+
+    Parameters
+    ----------
+    XTR : [type]
+        [description]
+    YTR : [type]
+        [description]
+    XTS : [type]
+        [description]
+    YTS : [type]
+        [description]
+    model_name : str, optional
+        [description], by default "ensembleSVM"
+    params : [type], optional
+        [description], by default None
+    output_path : str, optional
+        custom path for saving model, results, by default None (current working directory)
+
+    Returns
+    -------
+    [type]
+        [description]
+    """
     if params is None:
         params = dict(
             batch_size=32,
@@ -165,6 +309,22 @@ def train_ensemble(
 
 
 def compute_results(ens, tv_idx, output_path=None):
+    """Creates Compute objects of test and validation sets for model evaluation and saves calculated results to disk for later analysis.
+
+    Parameters
+    ----------
+    ens : builder.networks.Ensemble
+        ensemble model builder object
+    tv_idx : list of Pandas Series
+        test-validation indices (used for FNFP analysis)
+    output_path : str, optional
+        custom path for saving model, results, by default None (current working directory)
+
+    Returns
+    -------
+    spacekit.analyzer.compute.Computer objects
+        Test and Validation computer objects
+    """
     if output_path is None:
         output_path = os.getcwd()
     res_path = os.path.join(output_path, "results")
@@ -238,13 +398,13 @@ if __name__ == "__main__":
         usage="python -m spacekit.skopes.hst.svm.train svm_train.csv path/to/img",
     )
     parser.add_argument("data_file", type=str, help="path to training data csv file(s)")
-    parser.add_argument("img_path", type=str, help="path to training image directory")
+    parser.add_argument("img_path", type=str, help="path to png images parent directory")
     parser.add_argument(
         "-m", "--model_name", type=str, default="ensembleSVM", help="name to give model"
     )
     parser.add_argument(
         "-s",
-        "--synthetic_data",
+        "--synth_data",
         type=str,
         default=None,
         help="path to synthetic/corruption csv file (if saved separately)",
@@ -254,7 +414,7 @@ if __name__ == "__main__":
         "--output_path",
         type=str,
         default=None,
-        help="filepath location to save outputs",
+        help="custom path for saving model, results, by default None (current working directory)",
     )
     parser.add_argument(
         "-n",
@@ -292,7 +452,7 @@ if __name__ == "__main__":
     ens, com, val = run_training(
         args.data_file,
         args.img_path,
-        synth_data=args.synthetic_data,
+        synth_data=args.synth_data,
         norm=args.normalize,
         model_name=args.model_name,
         params=params,
