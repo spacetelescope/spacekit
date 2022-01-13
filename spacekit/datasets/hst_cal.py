@@ -18,6 +18,11 @@ calcloud_data = {
     },
 }
 
+cal_model_archive = {
+    "model_path": "calmodels.zip", 
+    "hash": "b36e310874f7cd2c50d4e5c04438118af7751c69"
+}
+
 
 def download_single_archive(date_key=None):
     if date_key is None:
