@@ -1,13 +1,14 @@
 setuptools
 Sphinx
-stsci-rtd-theme
 sphinx_automodapi
 matplotlib<4
-myst-parser==0.16.1
+#myst-parser==0.16.1
 tensorflow>=2.6.2
 numpy>=1.19
 numpydoc
 astropy
+pydot
+graphviz
 -e ..
 astroquery
 boto3
@@ -17,5 +18,3 @@ stsci.tools
 sklearn
 tables
 tqdm
-pydot
-graphviz

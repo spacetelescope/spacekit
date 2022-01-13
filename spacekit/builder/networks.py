@@ -1,6 +1,7 @@
 # STANDARD libraries
 import os
 import importlib.resources
+from zipfile import ZipFile
 import numpy as np
 import time
 import datetime as dt
@@ -68,26 +69,31 @@ class Builder:
         self.model_path = None
 
     # TODO: add params for loading other default pkg models (hstcal)
-    def load_saved_model(self):
+    def load_saved_model(self, compile=True):
         if self.model_path is None:
             model_src = "spacekit.skopes.trained_networks"
-            with importlib.resources.path(model_src, "ensembleSVM") as mod:
+            archive_file = "ensembleSVM.zip"
+            with importlib.resources.path(model_src, archive_file) as mod:
                 self.model_path = mod
-        model = load_model(self.model_path)
-        self.model = Model(inputs=model.inputs, outputs=model.outputs)
-        self.model.compile(
-            loss="binary_crossentropy",
-            optimizer=Adam(learning_rate=self.decay_learning_rate()),
-            metrics=["accuracy"],
-        )
-        return self
+        if self.model_path.split(".")[-1] == "zip":
+            self.model_path = self.unzip_model_files()
+        self.model = load_model(self.model_path)
+        if compile is True:
+            self.model = Model(inputs=self.model.inputs, outputs=self.model.outputs)
+            self.model.compile(
+                loss="binary_crossentropy",
+                optimizer=Adam(learning_rate=self.decay_learning_rate()),
+                metrics=["accuracy"],
+            )
+        return self.model
 
-    # def unzip_model_files(path_to_zip, extract_to="."):
-    #     model_base = os.path.basename(path_to_zip).split(".")[0]
-    #     with ZipFile(path_to_zip, "r") as zip_ref:
-    #         zip_ref.extractall(extract_to)
-    #     model_path = os.path.join(extract_to, model_base)
-    #     return model_path
+    def unzip_model_files(self, extract_to="models"):
+        os.makedirs(extract_to, exist_ok=True)
+        model_base = os.path.basename(self.model_path).split(".")[0]
+        with ZipFile(self.model_path, "r") as zip_ref:
+            zip_ref.extractall(extract_to)
+        self.model_path = os.path.join(extract_to, model_base)
+        return self.model_path
 
     def build_params(
         self,

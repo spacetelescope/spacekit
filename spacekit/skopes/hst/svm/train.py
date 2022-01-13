@@ -1,3 +1,13 @@
+"""
+This module builds, trains, and evaluates an ensemble model for labeled and preprocessed SVM regression test data and alignment images. The ensemble model is a combination of two neural networks: a MultiLayerPerceptron (for regression test data) and a 3D Image Convolutional Neural Network (CNN). The script includes functions for the following steps:
+
+1. load and prep the data and images for ML
+2. build and train the model
+3. compute results and save to disk
+
+This script (and/or its functions) should be used in conjunction with spacekit.skopes.hst.svm.prep if using raw data (since both the regression test dataframe for MLP and the png images for the CNN need to be created first). Once a model has been trained using this script, it is saved to disk and can be loaded again later for use with the predict script (spacekit.skopes.hst.svm.predict).
+"""
+
 import os
 import argparse
 import pandas as pd
@@ -24,6 +34,20 @@ TF_CPP_MIN_LOG_LEVEL = 2
 
 
 def import_dataset(filename, synth=None):
+    """Import prerocessed regression test dataset from csv file. Optionally combine with synthetic data (if saved in a separate file).
+
+    Parameters
+    ----------
+    filename : str (path)
+        path to csv file containing preprocessed regression test data.
+    synth : str (path), optional
+        path to csv file containing synthetic regression test data, by default None
+
+    Returns
+    -------
+    DataFrame
+        Labeled dataframe loaded from csv file.
+    """
     print("[i] Importing Regression Test Data")
     df = pd.read_csv(filename, index_col="index")
     print("\tREG DATA: ", df.shape)
@@ -37,20 +61,57 @@ def import_dataset(filename, synth=None):
     return df
 
 
-def split_datasets(df):
+def split_datasets(df, target="label", val=True):
+    """Splits Pandas dataframe into feature (X) and target (y) train, test and validation sets.
+
+    Parameters
+    ----------
+    df : Pandas dataframe
+        preprocessed SVM regression test dataset
+    target : str, optional
+        target class label for alignment model predictions, by default "label"
+    val : bool, optional
+        create a validation set separate from train/test, by default True
+
+    Returns
+    -------
+    Pandas dataframes
+        features (X) and targets (y) split into train, test, and validation sets
+    """
     print("Splitting Data ---> X-y ---> Train-Test-Val")
-    y = df["label"]
-    X = df.drop("label", axis=1, inplace=False)
+    y = df[target]
+    X = df.drop(target, axis=1, inplace=False)
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, shuffle=True, stratify=y
     )
-    X_train, X_val, y_train, y_val = train_test_split(
-        X_train, y_train, test_size=0.1, shuffle=True, stratify=y_train
-    )
-    return X_train, X_test, X_val, y_train, y_test, y_val
+    if val is True:
+        X_train, X_val, y_train, y_val = train_test_split(
+            X_train, y_train, test_size=0.1, shuffle=True, stratify=y_train
+        )
+        return X_train, X_test, X_val, y_train, y_test, y_val
+    else:
+        return X_train, X_test, y_train, y_test
 
 
 def normalize_data(df, X_train, X_test, X_val):
+    """Apply Leo-Johnson PowerTransform (via scikit learn) normalization and scaling to the input features.
+
+    Parameters
+    ----------
+    df : pandas dataframe
+        SVM regression test dataset
+    X_train : numpy array
+        training set feature inputs array
+    X_test : numpy array
+        test set feature inputs array
+    X_val : numpy array
+        validation set inputs array
+
+    Returns
+    -------
+    numpy arrays
+        normalized and scaled training, test, and validation sets
+    """
     print("Applying Normalization (Leo-Johnson PowerTransform)")
     _, px = apply_power_transform(df)
     X_train = power_transform_matrix(X_train, px)
@@ -59,12 +120,36 @@ def normalize_data(df, X_train, X_test, X_val):
     return X_train, X_test, X_val
 
 
-def make_image_sets(X_train, X_test, X_val, img_path=".", w=128, h=128, d=9, exp=None):
+def make_image_sets(
+    X_train, X_test, X_val, img_path="img", w=128, h=128, d=9, exp=None
+):
     """
-    Read in train/test files and produce X-y data splits.
-    y labels are encoded as 0=valid, 1=compromised
-    returns X_train, X_test, y_train, y_test, y_val
-    d=9: 3x3 rgb images (9 channels total)
+    Read in train/test files and produce X-y data splits. y labels are encoded as 0=valid, 1=compromised.
+    By default, the ImageCNN3D model expects RGB image inputs as 3x3 arrays, for a total of 9 channels. This can of course be customized for other image arrangements using other classes in the spacekit.builder.networks module.
+
+    Parameters
+    ----------
+    X_train : numpy array
+        training image inputs
+    X_test : [type]
+        test image inputs
+    X_val : [type]
+        validation image inputs
+    img_path : str, optional
+        path to png images parent directory, by default "img"
+    w : int, optional
+        width of image, by default 128
+    h : int, optional
+        height of image, by default 128
+    d : int, optional
+        dimensions of image (determined by channels (rgb=3) multipled by depth (num image frames), by default 9
+    exp : int, optional
+        "expand" dimensions: (exp, w, h, 3). Set to 3 for predictions, None for training, by default None
+
+    Returns
+    -------
+    nested lists
+        train, test, val nested lists each containing an index of the visit names and png image data as numpy arrays.
     """
     start = time.time()
     stopwatch("LOADING IMAGES", t0=start)
@@ -97,6 +182,35 @@ def make_ensembles(
     y_test,
     y_val,
 ):
+    """Creates tupled pairs of regression test (MLP) data and image (CNN) array inputs for an ensemble model.
+
+    Parameters
+    ----------
+    train_img : numpy array
+        training set image inputs
+    test_img : numpy array
+        test set image inputs
+    val_img : numpy array
+        validation set image inputs
+    train_data : numpy array
+        training set feature data inputs
+    test_data : numpy array
+        test set feature data inputs
+    val_data : numpy array
+        validation set feature data inputs
+    y_train : numpy array
+        training set target values
+    y_test : numpy array
+        test set target values
+    y_val : numpy array
+        validation set target values
+
+    Returns
+    -------
+    numpy arrays
+        XTR, YTR, XTS, YTS, XVL, YVL
+        List/tuple of feature input arrays (data, img) and target values for train-test-val sets
+    """
     print("Stacking mixed inputs (DATA + IMG)")
     XTR = [train_data, train_img]
     XTS = [test_data, test_img]
@@ -108,6 +222,25 @@ def make_ensembles(
 
 
 def load_ensemble_data(filename, img_path, synth=None, norm=False):
+    """Loads regression test data from a csv file and image data from png files. Splits the data into train, test and validation sets, applies normalization (if norm=1), creates a maste index of the original dataset input names, and stacks the features and class targets for both data types into lists which can be used as inputs for an ensemble model.
+
+    Parameters
+    ----------
+    filename : str
+        path to preprocessed dataframe csv file
+    img_path : str
+        path to png images parent directory
+    synth : str, optional
+        path to additional (synthetic/corrupted) dataframe csv file, by default None
+    norm : bool, optional
+        apply normalization step, by default False
+
+    Returns
+    -------
+    list, numpy arrays
+        tv_idx, XTR, YTR, XTS, YTS, XVL, YVL
+        list of test-validation indices, train-test feature (X) and target (y) numpy arrays.
+    """
     df = import_dataset(filename, synth=synth)
 
     X_train, X_test, X_val, y_train, y_test, y_val = split_datasets(df)
@@ -135,6 +268,30 @@ def load_ensemble_data(filename, img_path, synth=None, norm=False):
 def train_ensemble(
     XTR, YTR, XTS, YTS, model_name="ensembleSVM", params=None, output_path=None
 ):
+    """Build, compile and fit an ensemble model with regression test data and image input arrays.
+
+    Parameters
+    ----------
+    XTR : tuple/list
+        training set feature (X) tuple of regression data and image data numpy arrays.
+    YTR : numpy array
+        training set target values
+    XTS : tuple/list
+        test set feature (X) tuple of regression data and image data numpy arrays.
+    YTS : numpy array
+        test set target values
+    model_name : str, optional
+        name of model, by default "ensembleSVM"
+    params : dict, optional
+        custom parameters for model fitting, by default None
+    output_path : str, optional
+        custom path for saving model, results, by default None (current working directory)
+
+    Returns
+    -------
+    spacekit.builder.networks.Ensemble model object
+        Builder ensemble subclass model object trained on the inputs
+    """
     if params is None:
         params = dict(
             batch_size=32,
@@ -165,6 +322,22 @@ def train_ensemble(
 
 
 def compute_results(ens, tv_idx, output_path=None):
+    """Creates Compute objects of test and validation sets for model evaluation and saves calculated results to disk for later analysis.
+
+    Parameters
+    ----------
+    ens : builder.networks.Ensemble
+        ensemble model builder object
+    tv_idx : list of Pandas Series
+        test-validation indices (used for FNFP analysis)
+    output_path : str, optional
+        custom path for saving model, results, by default None (current working directory)
+
+    Returns
+    -------
+    spacekit.analyzer.compute.Computer objects
+        Test and Validation computer objects
+    """
     if output_path is None:
         output_path = os.getcwd()
     res_path = os.path.join(output_path, "results")
@@ -238,13 +411,15 @@ if __name__ == "__main__":
         usage="python -m spacekit.skopes.hst.svm.train svm_train.csv path/to/img",
     )
     parser.add_argument("data_file", type=str, help="path to training data csv file(s)")
-    parser.add_argument("img_path", type=str, help="path to training image directory")
+    parser.add_argument(
+        "img_path", type=str, help="path to png images parent directory"
+    )
     parser.add_argument(
         "-m", "--model_name", type=str, default="ensembleSVM", help="name to give model"
     )
     parser.add_argument(
         "-s",
-        "--synthetic_data",
+        "--synth_data",
         type=str,
         default=None,
         help="path to synthetic/corruption csv file (if saved separately)",
@@ -254,7 +429,7 @@ if __name__ == "__main__":
         "--output_path",
         type=str,
         default=None,
-        help="filepath location to save outputs",
+        help="custom path for saving model, results, by default None (current working directory)",
     )
     parser.add_argument(
         "-n",
@@ -292,7 +467,7 @@ if __name__ == "__main__":
     ens, com, val = run_training(
         args.data_file,
         args.img_path,
-        synth_data=args.synthetic_data,
+        synth_data=args.synth_data,
         norm=args.normalize,
         model_name=args.model_name,
         params=params,

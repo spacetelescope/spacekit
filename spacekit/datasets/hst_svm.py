@@ -12,3 +12,8 @@ svm_data = {
         "hash": "cca34022ca896d35b9ebbbd502b1dc22d0df34a1",
     },
 }
+
+svm_model_archive = {
+    "model_path": "ensembleSVM.zip",
+    "hash": "602b9d9129940820e57ed3db87cb70eb15aec503",
+}
