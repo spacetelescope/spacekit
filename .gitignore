@@ -68,3 +68,4 @@ __pycache__
 .teal
 .config
 clocktime.txt
+.pytest_cache
