@@ -3,7 +3,7 @@ import pytest
 from pytest import mark
 
 # from spacekit.skopes.hst.svm.predict import get_model
-import importlib
+import importlib.resources
 from zipfile import ZipFile
 
 @mark.svm
