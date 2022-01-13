@@ -34,7 +34,7 @@ TF_CPP_MIN_LOG_LEVEL = 2
 
 
 def import_dataset(filename, synth=None):
-    """Import prerocessed regression test dataset from csv file. Optionally combine with synthetic data (if saved in a separate file). 
+    """Import prerocessed regression test dataset from csv file. Optionally combine with synthetic data (if saved in a separate file).
 
     Parameters
     ----------
@@ -67,7 +67,7 @@ def split_datasets(df, target="label", val=True):
     Parameters
     ----------
     df : Pandas dataframe
-        preprocessed SVM regression test dataset 
+        preprocessed SVM regression test dataset
     target : str, optional
         target class label for alignment model predictions, by default "label"
     val : bool, optional
@@ -110,7 +110,7 @@ def normalize_data(df, X_train, X_test, X_val):
     Returns
     -------
     numpy arrays
-        normalized and scaled training, test, and validation sets 
+        normalized and scaled training, test, and validation sets
     """
     print("Applying Normalization (Leo-Johnson PowerTransform)")
     _, px = apply_power_transform(df)
@@ -120,7 +120,9 @@ def normalize_data(df, X_train, X_test, X_val):
     return X_train, X_test, X_val
 
 
-def make_image_sets(X_train, X_test, X_val, img_path="img", w=128, h=128, d=9, exp=None):
+def make_image_sets(
+    X_train, X_test, X_val, img_path="img", w=128, h=128, d=9, exp=None
+):
     """
     Read in train/test files and produce X-y data splits. y labels are encoded as 0=valid, 1=compromised.
     By default, the ImageCNN3D model expects RGB image inputs as 3x3 arrays, for a total of 9 channels. This can of course be customized for other image arrangements using other classes in the spacekit.builder.networks module.
@@ -409,7 +411,9 @@ if __name__ == "__main__":
         usage="python -m spacekit.skopes.hst.svm.train svm_train.csv path/to/img",
     )
     parser.add_argument("data_file", type=str, help="path to training data csv file(s)")
-    parser.add_argument("img_path", type=str, help="path to png images parent directory")
+    parser.add_argument(
+        "img_path", type=str, help="path to png images parent directory"
+    )
     parser.add_argument(
         "-m", "--model_name", type=str, default="ensembleSVM", help="name to give model"
     )

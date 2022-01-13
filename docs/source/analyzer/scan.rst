@@ -4,13 +4,14 @@ spacekit.analyzer.scan
 
 .. currentmodule:: spacekit.analyzer.scan
 
-.. automodule:: spacekit.analyzer.scan
-   :members:
-
-.. inheritance-diagram:: spacekit.analyzer.scan
-   :parts: 2
-
 .. autofunction:: decode_categorical
+
+decoder_key examples:
+
+.. code-block:: python
+    
+    instrument_key = {"instr": {0: "acs", 1: "cos", 2: "stis", 3: "wfc3"}}
+    detector_key = {"det": {0: "hrc", 1: "ir", 2: "sbc", 3: "uvis", 4: "wfc"}}
 
 .. autofunction:: import_dataset
 

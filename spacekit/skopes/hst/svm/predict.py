@@ -148,7 +148,7 @@ def load_mixed_inputs(data_file, img_path, size=None):
 
 
 def make_ensemble_data(X_data, X_img):
-    """Stacks regression test data and image arrays into a single combined input array for the ensemble model. 
+    """Stacks regression test data and image arrays into a single combined input array for the ensemble model.
 
     Parameters
     ----------
@@ -205,7 +205,7 @@ def save_preds(X_data, y_pred, y_proba, output_path):
     Returns
     -------
     Pandas dataframe
-        prediction values, probability scores for target, merged with original input features 
+        prediction values, probability scores for target, merged with original input features
     """
     preds = np.concatenate([y_pred, y_proba], axis=1)
     pred_proba = pd.DataFrame(preds, index=X_data.index, columns=["y_pred", "y_proba"])
@@ -305,7 +305,9 @@ if __name__ == "__main__":
         default="svm_data.csv",
         help="path to preprocessed mosaic data csv file",
     )
-    parser.add_argument("img_path", type=str, help="path to png images parent directory")
+    parser.add_argument(
+        "img_path", type=str, help="path to png images parent directory"
+    )
     parser.add_argument(
         "-m",
         "--model_path",

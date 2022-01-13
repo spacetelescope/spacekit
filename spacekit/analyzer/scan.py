@@ -13,15 +13,17 @@ from spacekit.analyzer.compute import ComputeBinary, ComputeMulti, ComputeRegres
 def decode_categorical(df, decoder_key):
     """Add decoded column (using "{column}_key" suffix) to dataframe.
 
-    Parameters:
-        df (Dataframe) :
-        decoder_key (Dictionary): key-value pairs of encoding integers and strings
-            Ex. (decoder_key)
-            instrument_key = {"instr": {0: "acs", 1: "cos", 2: "stis", 3: "wfc3"}}
-            detector_key = {"det": {0: "hrc", 1: "ir", 2: "sbc", 3: "uvis", 4: "wfc"}}
+    Parameters
+    ----------
+    df : pandas DataFrame
+        dataframe with encoded categorical column
+    decoder_key : dict
+        key-value pairs of encoding integers and strings
 
-    Returns:
-        df (Pandas Dataframe): dataframe with additional categorical column (object dtype) based on encoding pairs.
+    Returns
+    -------
+    pandas DataFrane
+        dataframe with additional categorical column (object dtype) decoded back to strings based on encoding pairs passed in decoder_key.
     """
     for key, pairs in decoder_key.items():
         for i, name in pairs.items():
@@ -32,15 +34,19 @@ def decode_categorical(df, decoder_key):
 def import_dataset(filename=None, kwargs=dict(index_col="ipst"), decoder_key=None):
     """Imports and loads dataset from csv file. Optionally decodes an encoded feature back into strings.
 
-    Parameters:
-        filename (path, optional) path to csv file. Defaults to None.
-        kwargs (dictionary, optional): dict of keyword args to pass into pandas read_csv method.
-            Ex: to set the index_col attribute: kwargs=dict(index_col="ipst")
-        decoder_key (dict, optional): nested dict of column and key value pairs for decoding a categorical feature into strings.
-            Ex: {"instr": {{0: "acs", 1: "cos", 2: "stis", 3: "wfc3"}}}
+    Parameters
+    ----------
+    filename : str, optional
+        path to dataframe csv file, by default None
+    kwargs : dict, optional
+        keyword args to pass into pandas read_csv method, by default dict(index_col="ipst")
+    decoder_key : dict, optional
+        nested dict of column and key value pairs for decoding a categorical feature into strings., by default None
 
-    Returns:
-        df (Pandas dataframe): dataframe of imported csv file
+    Returns
+    -------
+    Pandas DataFrame
+        dataframe loaded from csv file
     """
     if not os.path.exists(filename):
         print("File could not be found")
@@ -52,18 +58,19 @@ def import_dataset(filename=None, kwargs=dict(index_col="ipst"), decoder_key=Non
 
 
 class MegaScanner:
-    """Scans local disk for Compute object datasets and results files then loads them as attributes for use in plotting, EDA, and model evaluation.
     """
-    def __init__(self, perimeter="data/20??-*-*-*", primary=-1):
-        """Initializes a MegaScanner object
+    Scans local disk for Compute object datasets and results files then loads them as attributes for use in plotting, EDA, and model evaluation.
 
-        Parameters
-        ----------
-        perimeter : str, optional
-            glob search pattern, by default "data/20??-*-*-*"
-        primary : int, optional
-            index of primary dataset to use for EDA in sorted list of those found, by default -1
-        """
+    Parameters
+    ----------
+    perimeter : str, optional
+        glob search pattern
+    primary : int, optional
+        index of primary dataset to use for EDA in sorted list of those found, by default -1
+
+    """
+
+    def __init__(self, perimeter="data/20??-*-*-*", primary=-1):
         self.perimeter = perimeter
         self.datapaths = sorted(list(glob.glob(perimeter)))
         self.datasets = [d.split("/")[-1] for d in self.datapaths]
@@ -414,16 +421,8 @@ class CalScanner(MegaScanner):
     MegaScanner : object
         Parent class object
     """
-    def __init__(self, perimeter="data/20??-*-*-*", primary=-1):
-        """Initializes a CalScanner subclass object
 
-        Parameters
-        ----------
-        perimeter : str, optional
-            glob search pattern, by default "data/20??-*-*-*"
-        primary : int, optional
-            index of primary dataset to use for EDA in sorted list of those found, by default -1
-        """
+    def __init__(self, perimeter="data/20??-*-*-*", primary=-1):
         super().__init__(perimeter=perimeter, primary=primary)
         self.classes = ["2g", "8g", "16g", "64g"]
         self.res_keys = {"mem_bin": {}, "memory": {}, "wallclock": {}}
@@ -440,7 +439,7 @@ class CalScanner(MegaScanner):
         Returns
         -------
         CalScanner.mega dictionary attribute
-            dictionary of model training results for each iteration found. 
+            dictionary of model training results for each iteration found.
         """
         self.mega = self.make_mega()
         for i, d in enumerate(self.datapaths):
@@ -472,16 +471,8 @@ class SvmScanner(MegaScanner):
     MegaScanner : parent class object
         MegaScanner object
     """
-    def __init__(self, perimeter="data/20??-*-*-*", primary=-1):
-        """Initializes an SvmScanner subclass object
 
-        Parameters
-        ----------
-        perimeter : str, optional
-            glob search pattern, by default "data/20??-*-*-*"
-        primary : int, optional
-            index of primary dataset to use for EDA in sorted list of those found, by default -1
-        """
+    def __init__(self, perimeter="data/20??-*-*-*", primary=-1):
         super().__init__(perimeter=perimeter, primary=primary)
         self.classes = ["aligned", "misaligned"]
         self.res_keys = {"test": {}, "val": {}}
@@ -498,7 +489,7 @@ class SvmScanner(MegaScanner):
         Returns
         -------
         SvmScanner.mega dictionary attribute
-            dictionary of model training results for each iteration found. 
+            dictionary of model training results for each iteration found.
         """
         self.mega = self.make_mega()
         for i, d in enumerate(self.datasets):

@@ -12,7 +12,7 @@ This script can also be used to generate relative filter images for use in the i
 model by passing img_type='filter' (default is "total" for total detection images).
 
 Synthetic (artifically corrupted) datasets
-This script also has the capability of drawing images using "corrupt" datasets (see `spacekit.skopes.hst.svm.corrupt`). Setting "corruptions=1" or "c=1" tells the script how to name the image subfolder for that dataset (so that it doesn't overwrite a regular/non-corrupt dataset with the same name. 
+This script also has the capability of drawing images using "corrupt" datasets (see `spacekit.skopes.hst.svm.corrupt`). Setting "corruptions=1" or "c=1" tells the script how to name the image subfolder for that dataset (so that it doesn't overwrite a regular/non-corrupt dataset with the same name.
 
 P: draw point catalog references (0=off, 1=on) default is 0
 S: draw segment catalog references (0=off, 1=on) default is 0
@@ -56,8 +56,8 @@ from spacekit.analyzer.track import stopwatch
 
 
 class DrawMosaics:
-    """Class for generating machine-learning image inputs from drizzled total detection fits files and their associated catalog files. Primarily used for creating multiple images at once (batch) with capability for single images/single dataset also available.
-    """
+    """Class for generating machine-learning image inputs from drizzled total detection fits files and their associated catalog files. Primarily used for creating multiple images at once (batch) with capability for single images/single dataset also available."""
+
     def __init__(
         self,
         input_path,
@@ -69,7 +69,7 @@ class DrawMosaics:
         size=(24, 24),
         crpt=0,
     ):
-        """Initializes a DrawMosaics class object. 
+        """Initializes a DrawMosaics class object.
 
         Parameters
         ----------
@@ -116,7 +116,7 @@ class DrawMosaics:
         return self.output_path
 
     def get_datasets(self):
-        """Locate inputs (fits file directories) to use for drawing the images. Search method used is based on parameters set when the DrawMosaics class object is instantiated. If multiple parameters are passed in, the order of search priority is 1) `fname`: only look for visits found in the csv file/dataframe (uses `load_from_file` method); 2) `visit` only look for subdirectories matching this specific visit name; 3) `local_search`: glob-based search for any visit subdirectories matching the pattern set in `pattern` attribute. (if crpt) 
+        """Locate inputs (fits file directories) to use for drawing the images. Search method used is based on parameters set when the DrawMosaics class object is instantiated. If multiple parameters are passed in, the order of search priority is 1) `fname`: only look for visits found in the csv file/dataframe (uses `load_from_file` method); 2) `visit` only look for subdirectories matching this specific visit name; 3) `local_search`: glob-based search for any visit subdirectories matching the pattern set in `pattern` attribute. (if crpt)
 
         Returns
         -------
@@ -185,7 +185,7 @@ class DrawMosaics:
             sys.exit(1)
 
     def point_flag_color(self, x):
-        """determines whether or not to draw a small red (or green) circle on top of the original image data depending on the value found in point source catalog. More info on the values associated with the "flag" color can be found in the HST instrument handbook.
+        """determines whether or not to draw a small red (or green) circle on top of the original image data depending on the value found in point source catalog. More info on the values associated with the "flag" color can be found in the Drizzlepac handbook at drizzlepac.readthedocs.io (Drizzlepac.catalog_generation api)
 
         Parameters
         ----------
@@ -215,7 +215,7 @@ class DrawMosaics:
         Returns
         -------
         str
-            "blue", "green" or None depending on input value 
+            "blue", "green" or None depending on input value
         """
         if x <= 1:
             return "blue", "Flag <= 1"
@@ -225,7 +225,7 @@ class DrawMosaics:
             return None, None  # 'yellow', 'Flag > 5'
 
     def draw_catalogs(self, cfile, catalog):
-        """Open and read .escv catalog file associated with the visit (if available) and map the appropriate values and coordinates to draw as an overlay on the original image.  
+        """Open and read .escv catalog file associated with the visit (if available) and map the appropriate values and coordinates to draw as an overlay on the original image.
 
         Parameters
         ----------
@@ -303,8 +303,7 @@ class DrawMosaics:
         return imgpath
 
     def generate_total_images(self):
-        """Batch image generation method for multiple datasets (and multiple catalog types)
-        """
+        """Batch image generation method for multiple datasets (and multiple catalog types)"""
         start = time.time()
         stopwatch("DRAWING IMAGES", t0=start)
         if self.datasets is None:
@@ -431,8 +430,7 @@ class DrawMosaics:
             return
 
     def generate_filter_images(self):
-        """Generate batch of relative filter drizzle file images.
-        """
+        """Generate batch of relative filter drizzle file images."""
         start = time.time()
         stopwatch("DRAWING IMAGES", t0=start)
         if self.datasets is None:
