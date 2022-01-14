@@ -237,14 +237,26 @@ class HstSvmData(ArrayOps):
 
 def read_channels(channels, w, h, d, exp=None, color_mode="rgb"):
     """Loads PNG image data and converts to 3D arrays.
-    **args
-    channels: tuple of image frames (original, source, gaia)
-    w: width
-    h: height
-    d: depth
-    **kwargs
-    exp: "expand" dimensions: (exp, w, h, 3). Set to 3 for predictions, None for training (default)
 
+    Parameters
+    ----------
+    channels : tuple
+        image frames (original, source, gaia)
+    w : int
+        image width
+    h : int
+        image height
+    d : int
+        depth (number of image frames)
+    exp : int, optional
+        expand array dimensions ie reshape to (exp, w, h, 3), by default None
+    color_mode : str, optional
+        RGB (3 channel images) or grayscale (1 channel), by default "rgb". SVM predictions requires exp=3; set to None for training.
+
+    Returns
+    -------
+    numpy array
+        image pixel values as array
     """
     t = (w, h)
     image_frames = [

@@ -352,17 +352,23 @@ def thermo_fusion_chisel(matrix1, matrix2=None):
 
 
 def babel_fish_dispenser(matrix1, matrix2=None, step_size=None, axis=2):
-    """
-    Adds an input corresponding to the running average over a set number
-    of time steps. This helps the neural network to ignore high frequency
-    noise by passing in a uniform 1-D filter and stacking the arrays.
+    """Adds an input corresponding to the running average over a set number of time steps. This helps the neural network to ignore high frequency noise by passing in a uniform 1-D filter and stacking the arrays.
 
-    **ARGS
-    step_size: integer, # timesteps for 1D filter. defaults to 200
-    axis: which axis to stack the arrays
+    Parameters
+    ----------
+    matrix1 : numpy array
+        e.g. X_train
+    matrix2 : numpy array, optional
+        e.g. X_test, by default None
+    step_size : int, optional
+        timesteps for 1D filter (e.g. 200), by default None
+    axis : int, optional
+        which axis to stack the arrays, by default 2
 
-    ex:
-    babel_fish_dispenser(matrix1=X_train, matrix2=X_test, step_size=200)
+    Returns
+    -------
+    numpy array(s)
+        2D array (original input array with a uniform 1d-filter as noise)
     """
     if step_size is None:
         step_size = 200
@@ -370,11 +376,11 @@ def babel_fish_dispenser(matrix1, matrix2=None, step_size=None, axis=2):
     # calc input for flux signal rolling avgs
     filter1 = uniform_filter1d(matrix1, axis=1, size=step_size)
     # store in array and stack on 2nd axis for each obs of X data
-    matrix1 = np.stack([matrix1, filter1], axis=2)
+    matrix1 = np.stack([matrix1, filter1], axis=axis)
 
     if matrix2 is not None:
         filter2 = uniform_filter1d(matrix2, axis=1, size=step_size)
-        matrix2 = np.stack([matrix2, filter2], axis=2)
+        matrix2 = np.stack([matrix2, filter2], axis=axis)
         print(matrix1.shape, matrix2.shape)
         return matrix1, matrix2
     else:
