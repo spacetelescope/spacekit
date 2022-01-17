@@ -1,12 +1,35 @@
 import os
 import pandas as pd
 import numpy as np
-
-# from zipfile import ZipFile
 from keras.preprocessing import image
 from tqdm import tqdm
 import time
 from spacekit.analyzer.track import stopwatch
+
+
+def load_datasets(filenames, index_col="index"):
+    """Import one or more dataframes from csv files and merge along the 0 axis (rows / horizontal). Assumes the datasets use the same index_col name and identical column names (although this is not strictly required) since this function does not handle missing data or NaNs.
+
+    Parameters
+    ----------
+    filenames : list
+        path(s) to csv files of saved dataframes.
+    index_col : str, optional
+        name of the index column to set
+
+    Returns
+    -------
+    DataFrame
+        Labeled dataframe loaded from csv file(s).
+    """
+    if len(filenames) == 1:
+        df = pd.read_csv(filenames[0], index_col=index_col)
+    else:
+        dfs = []
+        for filename in filenames:
+            dfs.append(pd.read_csv(filename, index_col=index_col))
+        df = pd.concat([d for d in dfs], axis=0)
+    return df
 
 
 class ArrayOps:
@@ -278,6 +301,18 @@ class SVMImages:
         self.d = d
 
     def get_labeled_image_paths(self, i):
+        """Creates lists of negative and positive image filepaths, assuming the image files are in subdirectories named according to the class labels (e.g. "0" and "1").
+
+        Parameters
+        ----------
+        i : str
+            image filename
+
+        Returns
+        -------
+        tuples
+            image filenames for each image type (original, source, gaia)
+        """
         neg = (
             f"{self.img_path}/0/{i}/{i}.png",
             f"{self.img_path}/0/{i}/{i}_source.png",
@@ -291,6 +326,20 @@ class SVMImages:
         return neg, pos
 
     def detector_training_images(self, X_data, exp=None):
+        """Load image files from class-labeled folders containing pngs into numpy arrays. Image arrays are **not** reshaped since this assumes data augmentation will be performed at training time.
+
+        Parameters
+        ----------
+        X_data : Pandas dataframe
+            input data (assumes index values are the image filenames)
+        exp : int, optional
+            expand image array shape into its constituent frame dimensions, by default None
+
+        Returns
+        -------
+        tuple
+            index, image input array, image class labels: (idx, X, y)
+        """
         idx = list(X_data.index)
         files, labels = [], []
         for i in idx:
@@ -311,6 +360,20 @@ class SVMImages:
         return (idx, X, y)
 
     def detector_prediction_images(self, X_data, exp=3):
+        """Load image files from pngs into numpy arrays. Image arrays are reshaped into the appropriate dimensions for generating predictions in a pre-trained image CNN (no data augmentation is performed).
+
+        Parameters
+        ----------
+        X_data : Pandas dataframe
+            input data (assumes index values are the image filenames)
+        exp : int, optional
+            expand image array shape into its constituent frame dimensions, by default 3
+
+        Returns
+        -------
+        Pandas Index, numpy array
+            image name index, arrays of image pixel values
+        """
         image_files = []
         idx = list(X_data.index)
         for i in idx:

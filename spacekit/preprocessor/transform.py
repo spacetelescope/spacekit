@@ -1,6 +1,7 @@
 import json
 import pandas as pd
 import numpy as np
+from sklearn.model_selection import train_test_split
 from scipy.ndimage.filters import uniform_filter1d
 from sklearn.preprocessing import PowerTransformer
 import tensorflow as tf
@@ -29,14 +30,47 @@ class Transformer:
         if self.tx_file is not None:
             with open(self.tx_file, "r") as j:
                 self.tx_data = json.load(j)
-            return self.tx_data
         else:
+            self.tx_data = self.get_tx_data()
+        return self.tx_data
+
+    def get_tx_data(self):
+        if self.data_cont is None:
+            print("Continuous data (`data_cont`) not set.")
             return None
+        self.transformer.fit(self.data_cont)
+        input_matrix = self.transformer.transform(self.data_cont)
+        self.lambdas = self.transformer.lambdas_
+        normalized = np.empty((len(self.data), len(self.cols)))
+        mu, sig = [], []
+        for i in range(len(self.cols)):
+            v = input_matrix[:, i]
+            m, s = np.mean(v), np.std(v)
+            x = (v - m) / s
+            normalized[:, i] = x
+            mu.append(m)
+            sig.append(s)
+        self.tx_data = {
+            "lambdas": self.lambdas,
+            "mu": np.array(mu),
+            "sigma": np.array(sig),
+        }
+        return self.tx_data
 
     def frame_to_matrix(self):
         if type(self.data) == pd.DataFrame:
             self.matrix = self.data.values
         return self.matrix
+
+    def continuous_matrix(self):
+        if type(self.data) == pd.DataFrame:
+            if self.cols is not None:
+                return self.data[self.cols]
+
+    def categorical_matrix(self):
+        if self.data_cat is None:
+            if type(self.data) == pd.DataFrame:
+                return self.data.drop(self.cols, axis=1, inplace=False)
 
     def power_matrix(self):
         try:
@@ -85,12 +119,22 @@ class Transformer:
         self.data_norm = df_norm.join(self.data_cat, how="left")
         return self
 
+    def normalize_dataframe(self):
+        normalized = np.empty((len(self.data), len(self.cols)))
+        newcols = [c + "_scl" for c in self.cols]
+        df_norm = pd.DataFrame(normalized, index=self.idx, columns=newcols)
+        self.data_norm = df_norm.join(self.data_cat, how="left")
+        return self.data_norm
 
+
+# TODO: update parent class and test using below attrs (then delete this subclass)
 class SvmX(Transformer):
-    def __init__(self, data, tx_file=None):
-        super.__init__(data)
-        self.tx_file = tx_file
-        self.cols = [
+    def __init__(
+        self,
+        data,
+        tx_file=None,
+        transformer=PowerTransformer(standardize=False),
+        cols=[
             "numexp",
             "rms_ra",
             "rms_dec",
@@ -98,11 +142,17 @@ class SvmX(Transformer):
             "point",
             "segment",
             "gaia",
-        ]
-        self.matrix_cont = self.data[:, :7]  # continuous
-        self.matrix_cat = self.data[:, -3:]  # categorical
+        ],
+    ):
+        super.__init__(data, transformer=transformer, cols=cols)
+        self.tx_file = tx_file
         self.data_cont = self.data[self.cols]
         self.data_cat = self.data.drop(self.cols, axis=1, inplace=False)
+        self.matrix_cont = self.data_cont.values  # [:, :7] continuous
+        self.matrix_cat = self.data_cat.values  # [:, -3:]  categorical
+        self.tx_data = self.load_transformer_data()
+        self.data_norm = self.normalize_dataframe()
+        self.matrix_norm = self.power_matrix()
 
 
 class CalX(Transformer):
@@ -168,6 +218,36 @@ class CalX(Transformer):
 
 
 # TODO: update code elsewhere to use class method versions instead of static functions
+def split_sets(df, target="label", val=True):
+    """Splits Pandas dataframe into feature (X) and target (y) train, test and validation sets.
+
+    Parameters
+    ----------
+    df : Pandas dataframe
+        preprocessed SVM regression test dataset
+    target : str, optional
+        target class label for alignment model predictions, by default "label"
+    val : bool, optional
+        create a validation set separate from train/test, by default True
+
+    Returns
+    -------
+    Pandas dataframes
+        features (X) and targets (y) split into train, test, and validation sets
+    """
+    print("Splitting Data ---> X-y ---> Train-Test-Val")
+    y = df[target]
+    X = df.drop(target, axis=1, inplace=False)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, shuffle=True, stratify=y
+    )
+    if val is True:
+        X_train, X_val, y_train, y_val = train_test_split(
+            X_train, y_train, test_size=0.1, shuffle=True, stratify=y_train
+        )
+        return X_train, X_test, X_val, y_train, y_test, y_val
+    else:
+        return X_train, X_test, y_train, y_test
 
 
 def apply_power_transform(

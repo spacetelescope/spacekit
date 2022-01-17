@@ -1,4 +1,3 @@
-# STANDARD libraries
 import os
 import importlib.resources
 from zipfile import ZipFile
@@ -26,18 +25,20 @@ from tensorflow.keras.metrics import RootMeanSquaredError as RMSE
 from spacekit.generator.augment import augment_data, augment_image
 from spacekit.analyzer.track import stopwatch
 
-DIM = 3
-CH = 3
-WIDTH = 128
-HEIGHT = 128
-DEPTH = DIM * CH
-SHAPE = (DIM, WIDTH, HEIGHT, CH)
+# DIM = 3
+# CH = 3
+# WIDTH = 128
+# HEIGHT = 128
+# DEPTH = DIM * CH
+# SHAPE = (DIM, WIDTH, HEIGHT, CH)
 TF_CPP_MIN_LOG_LEVEL = 2
 
 # TODO: K-fold cross-val class
 
 
 class Builder:
+    """Class for building and training a neural network."""
+
     def __init__(
         self,
         X_train,
@@ -49,7 +50,6 @@ class Builder:
         self.X_test = X_test
         self.y_train = y_train
         self.y_test = y_test
-        # self.blueprint = "ensemble"  # "ensemble", "cnn3d", "mlp" "cnn2d"
         self.batch_size = 32
         self.epochs = 60
         self.lr = 1e-4
@@ -68,8 +68,31 @@ class Builder:
         self.name = None
         self.model_path = None
 
-    # TODO: add params for loading other default pkg models (hstcal)
-    def load_saved_model(self, compile=True):
+    def load_saved_model(
+        self,
+        compile=True,
+        loss="binary_crossentropy",
+        metrics=["accuracy"],
+        lr_sched=True,
+    ):
+        """Load saved keras model from local disk (uses spacekit trained model if self.model_path is None).
+
+        Parameters
+        ----------
+        compile : bool, optional
+            Compile the model using kwarg parameters, by default True
+        loss : str, optional
+            loss metric parameter, by default "binary_crossentropy"
+        metrics : list, optional
+            model compile metrics type, by default ["accuracy"]
+        lr_sched : bool, optional, by default True
+            Use exponential learning decay schedule (if False, uses the learning rate instead)
+
+        Returns
+        -------
+        Keras Model object
+            pre-trained (or at least pre-compiled) Keras model loaded from disk.
+        """
         if self.model_path is None:
             model_src = "spacekit.skopes.trained_networks"
             archive_file = "ensembleSVM.zip"
@@ -80,14 +103,30 @@ class Builder:
         self.model = load_model(self.model_path)
         if compile is True:
             self.model = Model(inputs=self.model.inputs, outputs=self.model.outputs)
+            if lr_sched is False:
+                learning_rate = self.lr
+            else:
+                learning_rate = self.decay_learning_rate()
             self.model.compile(
-                loss="binary_crossentropy",
-                optimizer=Adam(learning_rate=self.decay_learning_rate()),
-                metrics=["accuracy"],
+                loss=loss,
+                optimizer=Adam(learning_rate=learning_rate),
+                metrics=metrics,
             )
         return self.model
 
     def unzip_model_files(self, extract_to="models"):
+        """Extracts a keras model object from a zip archive
+
+        Parameters
+        ----------
+        extract_to : str, optional
+            directory location to extract into, by default "models"
+
+        Returns
+        -------
+        string
+            path to where the model archive has been extracted
+        """
         os.makedirs(extract_to, exist_ok=True)
         model_base = os.path.basename(self.model_path).split(".")[0]
         with ZipFile(self.model_path, "r") as zip_ref:
@@ -108,6 +147,36 @@ class Builder:
         loss,
         metrics,
     ):
+        """Set custom build parameters for a Builder object.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            shape of the inputs
+        kernel_size : int
+            size of the kernel
+        activation : string
+            dense layer activation
+        strides : int
+            number of strides
+        optimizer : object
+            type of optimizer to use
+        lr : float
+            learning rate
+        decay : list
+            decay_steps, decay_rate, e.g. [100000, 0.96]
+        early_stopping : bool
+            use an early stopping callback
+        loss : string
+            loss for model to train on
+        metrics : list
+            metrics for model to train on
+
+        Returns
+        -------
+        self
+            spacekit.builder.networks.Builder class object with updated attributes
+        """
         self.input_shape = input_shape
         self.kernel_size = kernel_size
         self.activation = activation
@@ -121,6 +190,13 @@ class Builder:
         return self
 
     def design(self):
+        """Creates a dictionary containing the appropriate batch generator and steps per epoch for the type of model Builder blueprint.
+
+        Returns
+        -------
+        dictionary
+            batch generator and steps per epoch for the assigned Builder blueprint
+        """
         if self.blueprint == "mlp":
             return dict(
                 batches=self.batch_mlp(), steps=self.X_train.shape[0] // self.batch_size
@@ -141,6 +217,13 @@ class Builder:
             )
 
     def batch_steps(self):
+        """Gets the relevant design dictionary blueprint and stores the batch generator and steps_per_epoch as variables at time of model fitting.
+
+        Returns
+        -------
+        generator, int
+            batch generator and calculated steps_per_epoch for model fitting
+        """
         design = self.design()
         make_batches = design["batches"]
         steps_per_epoch = design["steps"]
@@ -156,6 +239,30 @@ class Builder:
         verbose=2,
         ensemble=False,
     ):
+        """Set custom model fitting parameters as Builder object attributes.
+
+        Parameters
+        ----------
+        batch_size : int, optional
+            size of each training batch, by default 32
+        epochs : int, optional
+            number of epochs, by default 60
+        lr : float, optional
+            initial learning rate, by default 1e-4
+        decay : list, optional
+            decay_steps, decay_rate, by default [100000, 0.96]
+        early_stopping : str, optional
+            use an early stopping callback, by default None
+        verbose : int, optional
+            set the verbosity level, by default 2
+        ensemble : bool, optional
+            ensemble type network, by default False
+
+        Returns
+        -------
+        self
+            spacekit.builder.networks.Builder class object with updated fitting parameters.
+        """
         self.batch_size = batch_size
         self.epochs = epochs
         self.lr = lr
@@ -166,9 +273,12 @@ class Builder:
         return self
 
     def decay_learning_rate(self):
-        """set learning schedule with exponential decay
-        lr (initial learning rate: 1e-4
-        decay: [decay_steps, decay_rate]
+        """Set learning schedule with exponential decay
+
+        Returns
+        -------
+        keras.optimizers.schedules.ExponentialDecay
+            exponential decay learning rate schedule
         """
         lr_schedule = optimizers.schedules.ExponentialDecay(
             self.lr, decay_steps=self.decay[0], decay_rate=self.decay[1], staircase=True
@@ -176,10 +286,12 @@ class Builder:
         return lr_schedule
 
     def set_callbacks(self):
-        """
-        early_stopping:
-            clf: 'val_accuracy' or 'val_loss'
-            reg: 'val_loss' or 'val_rmse'
+        """Set an early stopping callback by monitoring the model training for either accuracy or loss.  For classifiers, use 'val_accuracy' or 'val_loss'. For regression use 'val_loss' or 'val_rmse'.
+
+        Returns
+        -------
+        list
+            [callbacks.ModelCheckpoint, callbacks.EarlyStopping]
         """
         model_name = str(self.model.name_scope().rstrip("/").upper())
         checkpoint_cb = callbacks.ModelCheckpoint(
@@ -193,7 +305,15 @@ class Builder:
 
     def save_model(self, weights=True, output_path="."):
         """The model architecture, and training configuration (including the optimizer, losses, and metrics)
-        are stored in saved_model.pb. The weights are saved in the variables/ directory."""
+        are stored in saved_model.pb. The weights are saved in the variables/ directory.
+
+        Parameters
+        ----------
+        weights : bool, optional
+            save weights learned by the model separately also, by default True
+        output_path : str, optional
+            where to save the model files, by default "."
+        """
         if self.name is None:
             self.name = str(self.model.name_scope().rstrip("/"))
             datestamp = dt.datetime.now().isoformat().split("T")[0]
@@ -248,8 +368,12 @@ class Builder:
     # @timer
     def batch_fit(self):
         """
-        Fits cnn and returns keras history
-        Gives equal number of positive and negative samples rotating randomly
+        Fits cnn using a batch generator of equal positive and negative number of samples, rotating randomly.
+
+        Returns
+        -------
+        tf.keras.model.history
+            Keras training history
         """
         model_name = str(self.model.name_scope().rstrip("/").upper())
         print("FITTING MODEL...")
@@ -279,11 +403,15 @@ class Builder:
     def fit(self, params=None):
         """Fit a model to the training data.
 
-        Args:
-            params (Dict, optional): [description]. Defaults to None.
+        Parameters
+        ----------
+        params : dictionary, optional
+            set custom fit params, by default None
 
-        Returns:
-            object: keras history (training and validation metrics for each epoch)
+        Returns
+        -------
+        tf.keras.model.history
+            Keras training history object
         """
         if params is not None:
             self.fit_params(**params)
@@ -313,6 +441,14 @@ class Builder:
 
 
 class MultiLayerPerceptron(Builder):
+    """Subclass for building and training MLP neural networks
+
+    Parameters
+    ----------
+    Builder : class
+        spacekit.builder.networks.Builder class object
+    """
+
     def __init__(self, X_train, y_train, X_test, y_test, blueprint="mlp"):
         super().__init__(X_train, y_train, X_test, y_test)
         self.blueprint = blueprint
@@ -330,6 +466,13 @@ class MultiLayerPerceptron(Builder):
         self.metrics = ["accuracy"]
 
     def build_mlp(self):
+        """Build and compile an MLP network
+
+        Returns
+        -------
+        tf.keras.model
+            compiled model object
+        """
         # visible layer
         inputs = Input(shape=(self.input_shape,), name=self.input_name)
         # hidden layers
@@ -361,18 +504,12 @@ class MultiLayerPerceptron(Builder):
             return self.model
 
     def batch_mlp(self):
-        """
-        Gives equal number of positive and negative samples rotating randomly
-        The output of the generator must be either
-        - a tuple `(inputs, targets)`
-        - a tuple `(inputs, targets, sample_weights)`.
+        """Randomly rotates through positive and negative samples indefinitely, generating a single batch tuple of (inputs, targets) or (inputs, targets, sample_weights). If the size of the dataset is not divisible by the batch size, the last batch will be smaller than the others. An epoch finishes once `steps_per_epoch` have been seen by the model.
 
-        This tuple (a single output of the generator) makes a single
-        batch. The last batch of the epoch is commonly smaller than the others,
-        if the size of the dataset is not divisible by the batch size.
-        The generator loops over its data indefinitely.
-        An epoch finishes when `steps_per_epoch` batches have been seen by the model.
-
+        Yields
+        -------
+        tuple
+            a single batch tuple of (inputs, targets) or (inputs, targets, sample_weights).
         """
         # hb: half-batch
         hb = self.batch_size // 2
@@ -401,6 +538,14 @@ class MultiLayerPerceptron(Builder):
 
 
 class ImageCNN3D(Builder):
+    """Subclass for building and training 3D convolutional neural networks
+
+    Parameters
+    ----------
+    Builder : class
+        spacekit.builder.networks.Builder class object
+    """
+
     def __init__(self, X_train, y_train, X_test, y_test, blueprint="cnn3d"):
         super().__init__(
             X_train,
@@ -429,7 +574,7 @@ class ImageCNN3D(Builder):
         self.dropout = 0.3
 
     def build_3D(self):
-        """Build a 3D convolutional neural network for RGB image triplets"""
+        """Builds a 3D convolutional neural network for RGB image triplets"""
 
         inputs = Input(self.input_shape, name=self.input_name)
 
@@ -780,9 +925,7 @@ class Cnn2dBuilder(Builder):
         if the size of the dataset is not divisible by the batch size.
         The generator is expected to loop over its data indefinitely.
         An epoch finishes when `steps_per_epoch` batches have been seen by the model.
-
         """
-
         # hb: half-batch
         hb = self.batch_size // 2
 
