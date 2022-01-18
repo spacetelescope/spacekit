@@ -1,3 +1,4 @@
+import os
 import json
 import pandas as pd
 import numpy as np
@@ -33,7 +34,14 @@ class Transformer:
         else:
             self.tx_data = self.get_tx_data()
         return self.tx_data
-
+    
+    def save_transformer_data(self):
+        if self.tx_file is None:
+            self.tx_file = "tx_data"
+        with open(self.tx_file, "w") as j:
+            json.dump(self.tx_data, j)
+        return self.tx_file
+    
     def get_tx_data(self):
         if self.data_cont is None:
             print("Continuous data (`data_cont`) not set.")
@@ -216,6 +224,17 @@ class CalX(Transformer):
             print(self.X)
             return self.X
 
+def save_transformer_data(tx_data, output_path=None):
+    if output_path is None:
+        output_path = os.getcwd()
+    else:
+        os.makedirs(output_path, exist_ok=True)
+    tx_file = f"{output_path}/tx_data"
+    with open(tx_file, "w") as j:
+        json.dump(tx_data, j)
+    print("TX data saved as json file: ", tx_file)
+    return tx_file
+
 
 def split_sets(df, target="label", val=True):
     """Splits Pandas dataframe into feature (X) and target (y) train, test and validation sets.
@@ -250,14 +269,14 @@ def split_sets(df, target="label", val=True):
 
 
 def apply_power_transform(
-    data, cols=["numexp", "rms_ra", "rms_dec", "nmatches", "point", "segment", "gaia"]
+    data, cols=["numexp", "rms_ra", "rms_dec", "nmatches", "point", "segment", "gaia"], output_path=None, save_tx=True
 ):
     data_cont = data[cols]
     idx = data_cont.index
-    pt = PowerTransformer(standardize=False)
-    pt.fit(data_cont)
-    input_matrix = pt.transform(data_cont)
-    lambdas = pt.lambdas_
+    tx = PowerTransformer(standardize=False)
+    tx.fit(data_cont)
+    input_matrix = tx.transform(data_cont)
+    lambdas = tx.lambdas_
     normalized = np.empty((len(data), len(cols)))
     mu, sig = [], []
     for i in range(len(cols)):
@@ -267,12 +286,18 @@ def apply_power_transform(
         normalized[:, i] = x
         mu.append(m)
         sig.append(s)
-    pt_dict = {"lambdas": lambdas, "mu": np.array(mu), "sigma": np.array(sig)}
+    tx_data = {"lambdas": lambdas, "mu": np.asarray(mu), "sigma": np.asarray(sig)}
+    if save_tx is True:
+        tx2 = {}
+        for k, v in tx_data.items():
+            tx2[k] = list(v)
+        _ = save_transformer_data(tx2, output_path=output_path)
+        del tx2
     newcols = [c + "_scl" for c in cols]
     df_norm = pd.DataFrame(normalized, index=idx, columns=newcols)
     df = data.drop(cols, axis=1, inplace=False)
     df = df_norm.join(df, how="left")
-    return df, pt_dict
+    return df, tx_data
 
 
 def power_transform_matrix(data, pt_data):
@@ -328,6 +353,62 @@ def update_power_transform(df):
     }
     print(pt_transform)
     return df, pt_transform
+
+
+def normalize_training_data(df, X_train, X_test, X_val=None, output_path=None, save_tx=True):
+    """Apply Leo-Johnson PowerTransform (via scikit learn) normalization and scaling to the input features.
+
+    Parameters
+    ----------
+    df : pandas dataframe
+        training dataset
+    X_train : numpy array
+        training set feature inputs array
+    X_test : numpy array
+        test set feature inputs array
+    X_val : numpy array
+        validation set inputs array
+
+    Returns
+    -------
+    numpy arrays
+        normalized and scaled training, test, and validation sets
+    """
+    print("Applying Normalization (Leo-Johnson PowerTransform)")
+    _, px = apply_power_transform(df, output_path=output_path, save_tx=save_tx)
+    X_train = power_transform_matrix(X_train, px)
+    X_test = power_transform_matrix(X_test, px)
+    if X_val is not None:
+        X_val = power_transform_matrix(X_val, px)
+        return X_train, X_test, X_val
+    else:
+        return X_train, X_test
+
+
+def normalize_training_images(X_tr, X_ts, X_vl=None):
+    """Scale image inputs so that all pixel values are converted to a decimal between 0 and 1 (divide by 255).
+
+    Parameters
+    ----------
+    X_tr : ndarray
+        training set images
+    test : ndarray
+        test set images
+    val : ndarray, optional
+        validation set images, by default None
+
+    Returns
+    -------
+    ndarrays
+        image set arrays
+    """
+    X_tr /= 255.0
+    X_ts /= 255.0
+    if X_vl is not None:
+        X_vl /= 255.0
+        return X_tr, X_ts, X_vl
+    else:
+        return X_tr, X_ts
 
 
 def make_tensors(X_train, y_train, X_test, y_test):

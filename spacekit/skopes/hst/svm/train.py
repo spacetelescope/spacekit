@@ -15,8 +15,8 @@ import datetime as dt
 from spacekit.extractor.load import load_datasets
 from spacekit.generator.augment import training_data_aug, training_img_aug
 from spacekit.preprocessor.transform import (
-    apply_power_transform,
-    power_transform_matrix,
+    normalize_training_data,
+    normalize_training_images,
     split_sets,
 )
 from spacekit.builder.networks import Ensemble
@@ -31,36 +31,6 @@ HEIGHT = 128
 DEPTH = DIM * CH
 SHAPE = (DIM, WIDTH, HEIGHT, CH)
 TF_CPP_MIN_LOG_LEVEL = 2
-
-
-def normalize_data(df, X_train, X_test, X_val=None):
-    """Apply Leo-Johnson PowerTransform (via scikit learn) normalization and scaling to the input features.
-
-    Parameters
-    ----------
-    df : pandas dataframe
-        SVM regression test dataset
-    X_train : numpy array
-        training set feature inputs array
-    X_test : numpy array
-        test set feature inputs array
-    X_val : numpy array
-        validation set inputs array
-
-    Returns
-    -------
-    numpy arrays
-        normalized and scaled training, test, and validation sets
-    """
-    print("Applying Normalization (Leo-Johnson PowerTransform)")
-    _, px = apply_power_transform(df)
-    X_train = power_transform_matrix(X_train, px)
-    X_test = power_transform_matrix(X_test, px)
-    if X_val is not None:
-        X_val = power_transform_matrix(X_val, px)
-        return X_train, X_test, X_val
-    else:
-        return X_train, X_test
 
 
 def make_image_sets(
@@ -166,7 +136,7 @@ def make_ensembles(
         return XTR, YTR, XTS, YTS
 
 
-def load_ensemble_data(filename, img_path, img_size=128, dim=3, ch=3, norm=False):
+def load_ensemble_data(filename, img_path, img_size=128, dim=3, ch=3, norm=False, output_path=None):
     """Loads regression test data from a csv file and image data from png files. Splits the data into train, test and validation sets, applies normalization (if norm=1), creates a maste index of the original dataset input names, and stacks the features and class targets for both data types into lists which can be used as inputs for an ensemble model.
 
     Parameters
@@ -210,7 +180,8 @@ def load_ensemble_data(filename, img_path, img_size=128, dim=3, ch=3, norm=False
 
     # NORMALIZATION and SCALING
     if norm:
-        X_train, X_test, X_val = normalize_data(df, X_train, X_test, X_val)
+        X_train, X_test, X_val = normalize_training_data(df, X_train, X_test, X_val=X_val, output_path=output_path)
+        X_tr, X_ts, X_vl = normalize_training_images(X_tr, X_ts, X_vl=X_vl)
 
     # JOIN INPUTS: MLP + CNN
     XTR, YTR, XTS, YTS, XVL, YVL = make_ensembles(
@@ -355,7 +326,7 @@ def run_training(
         ensemble builder object, binary compute object, validation compute object
     """
     tv_idx, XTR, YTR, XTS, YTS, XVL, YVL = load_ensemble_data(
-        data_file, img_path, img_size=img_size, norm=norm
+        data_file, img_path, img_size=img_size, norm=norm, output_path=output_path
     )
     ens = train_ensemble(
         XTR,

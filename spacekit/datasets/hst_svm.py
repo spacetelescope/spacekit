@@ -3,6 +3,11 @@ svm_uri = (
 )
 
 svm_data = {
+    "2022-01-16": "2022-01-16-1642337739.zip",
+    "hash": "2c9d2a2ae9375c53641ff03050a86d1ba7fd5ecc"
+}
+
+svm_datasets = {
     "2021-07-28": {
         "fname": "svm_2021-07-28.csv",
         "hash": "575e5d9c928279917e225f66adbc44f7e31824bb",

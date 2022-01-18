@@ -240,7 +240,7 @@ class DataPlots:
         save_html=".",
     ):
         if norm is True:
-            df, _ = apply_power_transform(self.df)
+            df, _ = apply_power_transform(self.df, save_tx=False)
             cols = [c + "_scl" for c in cols]
         else:
             df = self.df
