@@ -1,8 +1,11 @@
 import os
 import pytest
 from pytest import mark
-
+import numpy as np
 from spacekit.skopes.hst.svm.predict import get_model
+
+test_img = np.array([])
+test_label = []
 
 @mark.svm
 @mark.predict

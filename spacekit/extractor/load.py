@@ -255,6 +255,41 @@ class HstSvmData(ArrayOps):
         self.test_idx = np.load(f"{self.data_path}/test_idx.npz")["arr_0"]
 
 
+def load_compressed(data_path="data"):
+    """Load compressed data from disk"""
+    X_data = np.load(f"{data_path}/img_data.npz")
+
+    X_train = X_data["X_train"]
+    X_test = X_data["X_test"]
+    if "X_val" in X_data:
+        X_val = X_data["X_val"]
+    X_data.close()
+
+    y_data = np.load(f"{data_path}/img_labels.npz")
+    y_train = y_data["y_train"]
+    y_test = y_data["y_test"]
+    if "y_val" in y_data:
+        y_val = y_data["y_val"]
+    y_data.close()
+
+    idx = np.load(f"{data_path}/img_index.npz")
+    train_idx = idx["train_idx"]
+    test_idx = idx["test_idx"]
+    if "val_idx" in idx:
+        val_idx = idx["val_idx"]
+    idx.close()
+
+    train = [train_idx, X_train, y_train]
+    test = [test_idx, X_test, y_test]
+    if val_idx is not None:
+        val = [val_idx, X_val, y_val]
+
+    if val is not None:
+        return train, test, val
+    else:
+        return train, test
+
+
 """Image Ops"""
 
 

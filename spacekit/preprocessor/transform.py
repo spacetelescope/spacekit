@@ -144,7 +144,7 @@ class SvmX(Transformer):
             "gaia",
         ],
     ):
-        super.__init__(data, transformer=transformer, cols=cols)
+        super().__init__(data, transformer=transformer, cols=cols)
         self.tx_file = tx_file
         self.data_cont = self.data[self.cols]
         self.data_cat = self.data.drop(self.cols, axis=1, inplace=False)
@@ -217,7 +217,6 @@ class CalX(Transformer):
             return self.X
 
 
-# TODO: update code elsewhere to use class method versions instead of static functions
 def split_sets(df, target="label", val=True):
     """Splits Pandas dataframe into feature (X) and target (y) train, test and validation sets.
 

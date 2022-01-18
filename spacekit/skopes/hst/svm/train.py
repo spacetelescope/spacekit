@@ -63,32 +63,6 @@ def normalize_data(df, X_train, X_test, X_val=None):
         return X_train, X_test
 
 
-def normalize_images(train, test, val=None):
-    """Scale image inputs so that all pixel values are converted to a decimal between 0 and 1 (divide by 255).
-
-    Parameters
-    ----------
-    train : tuple
-        training set (train_index, X_train, y_train)
-    test : tuple
-        test set (test_index, X_test, y_test)
-    val : tuple, optional
-        validation set (val_index, X_val, y_val), by default None
-
-    Returns
-    -------
-    tuples
-        train, test, val tuples (or train and test only if val is None)
-    """
-    train[1] /= 255.0
-    test[1] /= 255.0
-    if val is not None:
-        val[1] /= 255.0
-        return train, test, val
-    else:
-        return train, test
-
-
 def make_image_sets(
     X_train, X_test, X_val, img_path="img", w=128, h=128, d=9, exp=None
 ):
@@ -230,14 +204,13 @@ def load_ensemble_data(filename, img_path, img_size=128, dim=3, ch=3, norm=False
     print("\nPerforming Regression Data Augmentation")
     X_train, _ = training_data_aug(X_train, y_train)
 
-    # NORMALIZATION and SCALING
-    if norm:
-        X_train, X_test, X_val = normalize_data(df, X_train, X_test, X_val)
-        train, test, val = normalize_images(train, test, val=val)
-
     # IMAGE AUGMENTATION
     print("\nPerforming Image Data Augmentation")
     img_idx, X_tr, y_tr, X_ts, y_ts, X_vl, y_vl = training_img_aug(train, test, val=val)
+
+    # NORMALIZATION and SCALING
+    if norm:
+        X_train, X_test, X_val = normalize_data(df, X_train, X_test, X_val)
 
     # JOIN INPUTS: MLP + CNN
     XTR, YTR, XTS, YTS, XVL, YVL = make_ensembles(
