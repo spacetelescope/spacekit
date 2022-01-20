@@ -161,7 +161,7 @@ class Transformer:
         else:
             cat = self.categorical
         return np.concatenate((normalized, cat), axis=1)
-    
+
     def normalizeX(self, normalized, join_data=True, rename=True):
         """Combines original non-continuous features/vectors with the transformed/normalized data. Determines datatype (array or dataframe) and calls the appropriate method.
 
@@ -177,10 +177,12 @@ class Transformer:
         Returns
         -------
         ndarray or dataframe
-            array or dataframe of same shape and datatype as inputs, with continuous vectors/features normalized 
+            array or dataframe of same shape and datatype as inputs, with continuous vectors/features normalized
         """
         if type(self.data) == pd.DataFrame:
-            return self.normalized_dataframe(normalized, join_data=join_data, rename=rename)
+            return self.normalized_dataframe(
+                normalized, join_data=join_data, rename=rename
+            )
         elif type(self.data) == np.ndarray:
             return self.normalized_matrix(normalized)
         else:
@@ -188,7 +190,7 @@ class Transformer:
 
 
 class PowerX(Transformer):
-    """Applies Leo-Johnson PowerTransform (via scikit learn) normalization and scaling to continuous feature vectors of a dataframe or numpy array. The `tx_data` attribute can be instantiated from a json file, dictionary or the input data itself. The training and test sets should be normalized separately (i.e. distinct class objects) to prevent data leakage when training a machine learning model. Loading the transform metadata from a json file allows you to transform a new input array (e.g. for predictions) without needing to access the original dataframe. 
+    """Applies Leo-Johnson PowerTransform (via scikit learn) normalization and scaling to continuous feature vectors of a dataframe or numpy array. The `tx_data` attribute can be instantiated from a json file, dictionary or the input data itself. The training and test sets should be normalized separately (i.e. distinct class objects) to prevent data leakage when training a machine learning model. Loading the transform metadata from a json file allows you to transform a new input array (e.g. for predictions) without needing to access the original dataframe.
 
     Parameters
     ----------
@@ -200,14 +202,34 @@ class PowerX(Transformer):
     PowerX class object
         spacekit.preprocessor.transform.PowerX power transform subclass
     """
-    def __init__(self, data, cols=[], tx_data=None, tx_file=None, save_tx=False, output_path=None, join_data=True, rename=True):
-        super().__init__(data, cols=cols, tx_data=tx_data, tx_file=tx_file, save_tx=save_tx, output_path=output_path)
+
+    def __init__(
+        self,
+        data,
+        cols=[],
+        tx_data=None,
+        tx_file=None,
+        save_tx=False,
+        output_path=None,
+        join_data=True,
+        rename=True,
+    ):
+        super().__init__(
+            data,
+            cols=cols,
+            tx_data=tx_data,
+            tx_file=tx_file,
+            save_tx=save_tx,
+            output_path=output_path,
+        )
         self.calculate_power()
         self.normalized = self.apply_power_matrix()
-        self.Xt = super().normalizeX(self.normalized, join_data=join_data, rename=rename)
+        self.Xt = super().normalizeX(
+            self.normalized, join_data=join_data, rename=rename
+        )
 
     def fitX(self):
-        """Instantiates a scikit-learn PowerTransformer object and fits to the input data. If `tx_data` was passed as a kwarg or loaded from `tx_file`, the lambdas attribute for the transformer object will be updated to use these instead of calculated at the transform step. 
+        """Instantiates a scikit-learn PowerTransformer object and fits to the input data. If `tx_data` was passed as a kwarg or loaded from `tx_file`, the lambdas attribute for the transformer object will be updated to use these instead of calculated at the transform step.
 
         Returns
         -------
@@ -229,7 +251,7 @@ class PowerX(Transformer):
         if self.tx_data is not None:
             return self.tx_data["lambdas"]
         return self.transformer.lambdas_
-    
+
     def transformX(self):
         """Applies a scikit-learn PowerTransform on the input data.
 
@@ -253,7 +275,7 @@ class PowerX(Transformer):
         if self.tx_data is None:
             mu, sig = [], []
             for i in range(len(self.cols)):
-                #normalized[:, i] = (v - m) / s
+                # normalized[:, i] = (v - m) / s
                 mu.append(np.mean(self.input_matrix[:, i]))
                 sig.append(np.std(self.input_matrix[:, i]))
             self.tx_data = {
@@ -319,7 +341,8 @@ def normalize_training_data(df, cols, X_train, X_test, X_val=None, output_path=N
     else:
         return X_train, X_test
 
-# TODO: add/test single input array transformation (and reshape) to PowerX subclass, delete this one 
+
+# TODO: add/test single input array transformation (and reshape) to PowerX subclass, delete this one
 class CalX(Transformer):
     def __init__(self, data, tx_file=None):
         super().__init__(data, cols=["n_files", "total_mb"], tx_file=tx_file)
@@ -379,6 +402,7 @@ class CalX(Transformer):
             print(self.X)
             return self.X
 
+
 # planned deprecation
 def save_transformer_data(tx_data, output_path=None):
     """Save the transform metadata to a json file on local disk. Typical use-case is when you need to transform new inputs prior to generating a prediction but don't have access to the original dataset used to train the model.
@@ -437,9 +461,13 @@ def split_sets(df, target="label", val=True):
     else:
         return X_train, X_test, y_train, y_test
 
+
 # planned deprecation
 def apply_power_transform(
-    data, cols=["numexp", "rms_ra", "rms_dec", "nmatches", "point", "segment", "gaia"], output_path=None, save_tx=True
+    data,
+    cols=["numexp", "rms_ra", "rms_dec", "nmatches", "point", "segment", "gaia"],
+    output_path=None,
+    save_tx=True,
 ):
     data_cont = data[cols]
     idx = data_cont.index
@@ -469,6 +497,7 @@ def apply_power_transform(
     df = df_norm.join(df, how="left")
     return df, tx_data
 
+
 # planned deprecation
 def power_transform_matrix(data, pt_data):
     if type(data) == pd.DataFrame:
@@ -490,6 +519,7 @@ def power_transform_matrix(data, pt_data):
         normalized[:, i] = x
     data_norm = np.concatenate((normalized, data_cat), axis=1)
     return data_norm
+
 
 # for backward compatability with HSTCAL (planned deprecation)
 def update_power_transform(df):

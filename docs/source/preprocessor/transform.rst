@@ -6,9 +6,6 @@ spacekit.preprocessor.transform
 
 .. currentmodule:: spacekit.preprocessor.transform
 
-.. automodule:: spacekit.preprocessor.transform
-   :members:
-
 .. inheritance-diagram:: spacekit.preprocessor.transform
    :parts: 2
 

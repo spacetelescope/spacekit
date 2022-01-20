@@ -4,7 +4,7 @@ svm_uri = (
 
 svm_data = {
     "2022-01-16": "2022-01-16-1642337739.zip",
-    "hash": "2c9d2a2ae9375c53641ff03050a86d1ba7fd5ecc"
+    "hash": "2c9d2a2ae9375c53641ff03050a86d1ba7fd5ecc",
 }
 
 svm_datasets = {

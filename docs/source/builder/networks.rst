@@ -6,9 +6,6 @@ spacekit.builder.networks
 
 .. currentmodule:: spacekit.builder.networks
 
-.. automodule:: spacekit.builder.networks
-   :members:
-
 .. inheritance-diagram:: spacekit.builder.networks
    :parts: 3
 
@@ -47,7 +44,7 @@ spacekit.builder.networks
    :undoc-members:
    :show-inheritance:
 
-.. autoclass:: CNN2dBuilder
+.. autoclass:: Cnn2dBuilder
    :members:
    :undoc-members:
    :show-inheritance:

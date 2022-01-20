@@ -903,6 +903,14 @@ class ComputeMulti(ComputeClassifier):
 
 
 class ComputeRegressor(Computer):
+    """Computer subclass with additional methods specific to regression models.
+
+    Parameters
+    ----------
+    Computer : parent class
+        spacekit.analyzer.compute.Computer object
+    """
+
     def __init__(
         self,
         builder=None,
@@ -930,7 +938,7 @@ class ComputeRegressor(Computer):
         self.loss = None
 
     def calculate_results(self):
-        """Main calling function to compute regression model scores, including residuals, root mean squared error and L2 cost function. Uses parent class method to save and/or load results to/from disk. Once calculated or loaded, other parent class methods can be used to generate various plots (e.g. ``resid_plot``).
+        """Main calling function to compute regression model scores, including residuals, root mean squared error and L2 cost function. Uses parent class method to save and/or load results to/from disk. Once calculated or loaded, other parent class methods can be used to generate various plots (e.g. `resid_plot`).
 
         Returns
         -------
