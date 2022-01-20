@@ -611,6 +611,7 @@ def normalize_training_images(X_tr, X_ts, X_vl=None):
         return X_tr, X_ts
 
 
+# planned deprecation
 def make_tensors(X_train, y_train, X_test, y_test):
     """Convert Arrays to Tensors"""
     X_train = tf.convert_to_tensor(X_train, dtype=tf.float32)
@@ -620,24 +621,76 @@ def make_tensors(X_train, y_train, X_test, y_test):
     return X_train, y_train, X_test, y_test
 
 
+# planned deprecation
 def array_to_tensor(arr):
-    """Convert Arrays to Tensors"""
-    tensor = tf.convert_to_tensor(arr, dtype=tf.float32)
-    return tensor
+    return tf.convert_to_tensor(arr, dtype=tf.float32)
+
+
+def arrays_to_tensors(X_train, y_train, X_test, y_test):
+    """Converts multiple numpy arrays into tensorflow tensor datatypes at once (for convenience).
+
+    Parameters
+    ----------
+    X_train : ndarray
+        input training features
+    y_train : ndarray
+        training target values
+    X_test : ndarray
+        input test features
+    y_test : ndarray
+        test target values
+
+    Returns
+    -------
+    tensorflow.tensors
+        X_train, y_train, X_test, y_test
+    """
+    X_train = tf.convert_to_tensor(X_train, dtype=tf.float32)
+    y_train = tf.convert_to_tensor(y_train, dtype=tf.float32)
+    X_test = tf.convert_to_tensor(X_test, dtype=tf.float32)
+    y_test = tf.convert_to_tensor(y_test, dtype=tf.float32)
+    return X_train, y_train, X_test, y_test
 
 
 def tensor_to_array(tensor, reshape=False):
+    """Convert a tensor back into a numpy array. Optionally reshape the array (e.g. for target class data).
+
+    Parameters
+    ----------
+    tensor : tensor
+        tensorflow tensor object
+    reshape : bool, optional
+        reshapes the array (-1, 1) using numpy, by default False
+
+    Returns
+    -------
+    ndarray
+        array of same shape as input tensor, unless reshape=True
+    """
     if reshape:
-        arr = np.asarray(tensor).reshape(-1, 1)
+        return np.asarray(tensor).reshape(-1, 1)
     else:
-        arr = np.asarray(tensor)
-    return arr
+        return np.asarray(tensor)
 
 
 def tensors_to_arrays(X_train, y_train, X_test, y_test):
-    """Converts tensors into arrays, which is necessary for certain computations.
-    Returns:
-        Arrays (4): X_train, y_train, X_test, y_test (arrays)
+    """Converts tensors into arrays, which is necessary for certain regression analysis computations. The y_train and y_test args are reshaped using numpy.reshape(-1, 1).
+
+    Parameters
+    ----------
+    X_train : tensor
+        training feature inputs
+    y_train : tensor
+        training target outputs
+    X_test : tensor
+        test feature inputs
+    y_test : tensor
+        test target outputs
+
+    Returns
+    -------
+    numpy.ndarrays
+        X_train, y_train, X_test, y_test
     """
     X_train = tensor_to_array(X_train)
     y_train = tensor_to_array(y_train, reshape=True)
@@ -646,6 +699,7 @@ def tensors_to_arrays(X_train, y_train, X_test, y_test):
     return X_train, y_train, X_test, y_test
 
 
+# planned deprecation
 def make_arrays(X_train, y_train, X_test, y_test):
     X_train = X_train.values
     y_train = y_train.values.reshape(-1, 1)
@@ -654,25 +708,44 @@ def make_arrays(X_train, y_train, X_test, y_test):
     return X_train, y_train, X_test, y_test
 
 
-def hypersonic_pliers(path_to_train, path_to_test):
+def hypersonic_pliers(
+    path_to_train, path_to_test, y_col=[0], skip=1, dlm=",", subtract_y=0.0
+):
+    """Extracts data into 1-dimensional arrays, using separate target classes (y) for training and test data. Assumes y (target) is first column in dataframe. If the target (y) classes in the raw data are 0 and 2, but you'd like them to be binaries (0 and 1), set subtract_y=1.0
 
+    Parameters
+    ----------
+    path_to_train : [type]
+        path to training data file (csv)
+    path_to_test : [type]
+        path to test data file (csv)
+    y_col : list, optional
+        axis index of target class, by default [0]
+    skip : int, optional
+        skiprows parameter for np.loadtxt, by default 1
+    dlm : str, optional
+        delimiter, by default ","
+    subtract_y : float, optional
+        subtract this value from all y-values, by default 1.0
+
+    Returns
+    -------
+    np.ndarrays
+        X_train, X_test, y_train, y_test
     """
-    Using Numpy to extract data into 1-dimensional arrays
-    separate target classes (y) for training and test data
-    assumes y (target) is first column in dataframe
+    Train = np.loadtxt(path_to_train, skiprows=skip, delimiter=dlm)
+    cols = list(range(Train.shape[1]))
+    xcols = [c for c in cols if c not in y_col]
+    # X_train = Train[:, 1:]
+    X_train = Train[:, xcols]
+    # y_train = Train[:, 0, np.newaxis] - subtract_y
+    y_train = Train[:, y_col, np.newaxis] - subtract_y
 
-    #TODO: option to pass in column index loc for `y` if not default (0)
-    #TODO: option for `y` to already be 0 or 1 (don't subtract 1)
-    #TODO: allow option for `y` to be categorical (convert via binarizer)
-    """
-
-    Train = np.loadtxt(path_to_train, skiprows=1, delimiter=",")
-    X_train = Train[:, 1:]
-    y_train = Train[:, 0, np.newaxis] - 1.0
-
-    Test = np.loadtxt(path_to_test, skiprows=1, delimiter=",")
-    X_test = Test[:, 1:]
-    y_test = Test[:, 0, np.newaxis] - 1.0
+    Test = np.loadtxt(path_to_test, skiprows=skip, delimiter=dlm)
+    X_test = Test[:, xcols]
+    y_test = Test[:, y_col, np.newaxis] - subtract_y
+    # X_test = Test[:, 1:]
+    # y_test = Test[:, 0, np.newaxis] - subtract_y
 
     del Train, Test
     print("X_train: ", X_train.shape)
@@ -684,14 +757,20 @@ def hypersonic_pliers(path_to_train, path_to_test):
 
 
 def thermo_fusion_chisel(matrix1, matrix2=None):
-    """
-    Scales each array of a matrix to zero mean and unit variance.
-    returns matrix/matrices of same shape as input but scaled
-    matrix2 is optional - useful if data was already train-test split
-    example: matrix1=X_train, matrix2=X_test
+    """Scales each vector of a 2d array (``matrix``) to zero mean and unit variance. The second (optional) matrix is to perform the same scaling on a separate set of inputs, e.g. train and test data. Note - normalization should be done separately to prevent data leakage in model training, hence the matrix2 kwarg.
 
-    """
+    Parameters
+    ----------
+    matrix1 : ndarray
+        input feature vectors to be scaled
+    matrix2 : ndarray, optional
+        second input feature vectors to be scaled, by default None
 
+    Returns
+    -------
+    ndarray(s)
+        scaled array(s) of same shape as input
+    """
     matrix1 = (matrix1 - np.mean(matrix1, axis=1).reshape(-1, 1)) / np.std(
         matrix1, axis=1
     ).reshape(-1, 1)
@@ -749,11 +828,20 @@ def babel_fish_dispenser(matrix1, matrix2=None, step_size=None, axis=2):
 
 
 def fast_fourier(matrix, bins):
-    """
-    takes in array and rotates #bins to the left as a fourier transform
-    returns vector of length equal to input array
-    """
+    """Takes an array (e.g. signal input values) and rotates number of ``bins`` to the left as a fast Fourier transform. Returns vector of length equal to ``matrix`` input array.
 
+    Parameters
+    ----------
+    matrix : ndarray
+        input values to transform
+    bins : int
+        number of rotations
+
+    Returns
+    -------
+    ndarray
+        vector of length equal to ``matrix`` input array
+    """
     shape = matrix.shape
     fourier_matrix = np.zeros(shape, dtype=float)
 
@@ -765,5 +853,4 @@ def fast_fourier(matrix, bins):
         )
         ft = np.fft.irfft(phase * np.fft.rfft(signal))
         fourier_matrix += ft
-
     return fourier_matrix

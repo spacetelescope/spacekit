@@ -32,6 +32,199 @@ def load_datasets(filenames, index_col="index"):
     return df
 
 
+def load_compressed(data_path="data"):
+    """Load compressed data from disk"""
+    X_data = np.load(f"{data_path}/img_data.npz")
+
+    X_train = X_data["X_train"]
+    X_test = X_data["X_test"]
+    if "X_val" in X_data:
+        X_val = X_data["X_val"]
+    X_data.close()
+
+    y_data = np.load(f"{data_path}/img_labels.npz")
+    y_train = y_data["y_train"]
+    y_test = y_data["y_test"]
+    if "y_val" in y_data:
+        y_val = y_data["y_val"]
+    y_data.close()
+
+    idx = np.load(f"{data_path}/img_index.npz")
+    train_idx = idx["train_idx"]
+    test_idx = idx["test_idx"]
+    if "val_idx" in idx:
+        val_idx = idx["val_idx"]
+    idx.close()
+
+    train = [train_idx, X_train, y_train]
+    test = [test_idx, X_test, y_test]
+    if val_idx is not None:
+        val = [val_idx, X_val, y_val]
+
+    if val is not None:
+        return train, test, val
+    else:
+        return train, test
+
+
+"""Image Ops"""
+
+
+def read_channels(channels, w, h, d, exp=None, color_mode="rgb"):
+    """Loads PNG image data and converts to 3D arrays.
+
+    Parameters
+    ----------
+    channels : tuple
+        image frames (original, source, gaia)
+    w : int
+        image width
+    h : int
+        image height
+    d : int
+        depth (number of image frames)
+    exp : int, optional
+        expand array dimensions ie reshape to (exp, w, h, 3), by default None
+    color_mode : str, optional
+        RGB (3 channel images) or grayscale (1 channel), by default "rgb". SVM predictions requires exp=3; set to None for training.
+
+    Returns
+    -------
+    numpy array
+        image pixel values as array
+    """
+    t = (w, h)
+    image_frames = [
+        image.load_img(c, color_mode=color_mode, target_size=t) for c in channels
+    ]
+    img = np.array([image.img_to_array(i) for i in image_frames])
+    if exp is None:
+        img = img.reshape(w, h, d)
+    else:
+        img = img.reshape(exp, w, h, 3)
+    return img
+
+
+class SVMImages:
+    """Class for loading Single Visit Mosaic total detection .png images from local disk into numpy arrays and performing initial preprocessing and labeling for training a CNN or generating predictions on unlabeled data."""
+
+    def __init__(self, img_path, w=128, h=128, d=9):
+        """Instantiates an SVMImages class object.
+
+        Parameters
+        ----------
+        img_path : string
+            path to local directory containing png files
+        w : int, optional
+            image pixel width, by default 128
+        h : int, optional
+            image pixel height, by default 128
+        d : int, optional
+            channel depth, by default 9
+        """
+        self.img_path = img_path
+        self.w = w
+        self.h = h
+        self.d = d
+
+    def get_labeled_image_paths(self, i):
+        """Creates lists of negative and positive image filepaths, assuming the image files are in subdirectories named according to the class labels (e.g. "0" and "1").
+
+        Parameters
+        ----------
+        i : str
+            image filename
+
+        Returns
+        -------
+        tuples
+            image filenames for each image type (original, source, gaia)
+        """
+        neg = (
+            f"{self.img_path}/0/{i}/{i}.png",
+            f"{self.img_path}/0/{i}/{i}_source.png",
+            f"{self.img_path}/0/{i}/{i}_gaia.png",
+        )
+        pos = (
+            f"{self.img_path}/1/{i}/{i}.png",
+            f"{self.img_path}/1/{i}/{i}_source.png",
+            f"{self.img_path}/1/{i}/{i}_gaia.png",
+        )
+        return neg, pos
+
+    def detector_training_images(self, X_data, exp=None):
+        """Load image files from class-labeled folders containing pngs into numpy arrays. Image arrays are **not** reshaped since this assumes data augmentation will be performed at training time.
+
+        Parameters
+        ----------
+        X_data : Pandas dataframe
+            input data (assumes index values are the image filenames)
+        exp : int, optional
+            expand image array shape into its constituent frame dimensions, by default None
+
+        Returns
+        -------
+        tuple
+            index, image input array, image class labels: (idx, X, y)
+        """
+        idx = list(X_data.index)
+        files, labels = [], []
+        for i in idx:
+            neg, pos = self.get_labeled_image_paths(i)
+            if os.path.exists(neg[0]):
+                files.append(neg)
+                labels.append(0)
+            elif os.path.exists(pos[0]):
+                files.append(pos)
+                labels.append(1)
+            else:
+                # print(f"missing: {i}")
+                idx.remove(i)
+        img = []
+        for ch1, ch2, ch3 in tqdm(files):
+            img.append(read_channels([ch1, ch2, ch3], self.w, self.h, self.d, exp=exp))
+        X, y = np.array(img, np.float32), np.array(labels)
+        return (idx, X, y)
+
+    def detector_prediction_images(self, X_data, exp=3):
+        """Load image files from pngs into numpy arrays. Image arrays are reshaped into the appropriate dimensions for generating predictions in a pre-trained image CNN (no data augmentation is performed).
+
+        Parameters
+        ----------
+        X_data : Pandas dataframe
+            input data (assumes index values are the image filenames)
+        exp : int, optional
+            expand image array shape into its constituent frame dimensions, by default 3
+
+        Returns
+        -------
+        Pandas Index, numpy array
+            image name index, arrays of image pixel values
+        """
+        image_files = []
+        idx = list(X_data.index)
+        for i in idx:
+            img_frames = (
+                f"{self.img_path}/{i}/{i}.png",
+                f"{self.img_path}/{i}/{i}_source.png",
+                f"{self.img_path}/{i}/{i}_gaia.png",
+            )
+            if os.path.exists(img_frames[0]):
+                image_files.append(img_frames)
+            else:
+                idx.remove(i)
+        start = time.time()
+        stopwatch("LOADING IMAGES", t0=start)
+        img = []
+        for ch1, ch2, ch3 in tqdm(image_files):
+            img.append(read_channels([ch1, ch2, ch3], self.w, self.h, self.d, exp=exp))
+        images = np.array(img, np.float32)
+        end = time.time()
+        stopwatch("LOADING IMAGES", t0=start, t1=end)
+        return idx, images
+
+
+# TODO
 class ArrayOps:
     def __init__(self, data_path=".", idx=None, targets=None):
         self.data_path = data_path
@@ -253,180 +446,3 @@ class HstSvmData(ArrayOps):
         self.y_train = np.load(f"{self.data_path}/y_train.npz")["arr_0"]
         self.y_test = np.load(f"{self.data_path}/y_test.npz")["arr_0"]
         self.test_idx = np.load(f"{self.data_path}/test_idx.npz")["arr_0"]
-
-
-def load_compressed(data_path="data"):
-    """Load compressed data from disk"""
-    X_data = np.load(f"{data_path}/img_data.npz")
-
-    X_train = X_data["X_train"]
-    X_test = X_data["X_test"]
-    if "X_val" in X_data:
-        X_val = X_data["X_val"]
-    X_data.close()
-
-    y_data = np.load(f"{data_path}/img_labels.npz")
-    y_train = y_data["y_train"]
-    y_test = y_data["y_test"]
-    if "y_val" in y_data:
-        y_val = y_data["y_val"]
-    y_data.close()
-
-    idx = np.load(f"{data_path}/img_index.npz")
-    train_idx = idx["train_idx"]
-    test_idx = idx["test_idx"]
-    if "val_idx" in idx:
-        val_idx = idx["val_idx"]
-    idx.close()
-
-    train = [train_idx, X_train, y_train]
-    test = [test_idx, X_test, y_test]
-    if val_idx is not None:
-        val = [val_idx, X_val, y_val]
-
-    if val is not None:
-        return train, test, val
-    else:
-        return train, test
-
-
-"""Image Ops"""
-
-
-def read_channels(channels, w, h, d, exp=None, color_mode="rgb"):
-    """Loads PNG image data and converts to 3D arrays.
-
-    Parameters
-    ----------
-    channels : tuple
-        image frames (original, source, gaia)
-    w : int
-        image width
-    h : int
-        image height
-    d : int
-        depth (number of image frames)
-    exp : int, optional
-        expand array dimensions ie reshape to (exp, w, h, 3), by default None
-    color_mode : str, optional
-        RGB (3 channel images) or grayscale (1 channel), by default "rgb". SVM predictions requires exp=3; set to None for training.
-
-    Returns
-    -------
-    numpy array
-        image pixel values as array
-    """
-    t = (w, h)
-    image_frames = [
-        image.load_img(c, color_mode=color_mode, target_size=t) for c in channels
-    ]
-    img = np.array([image.img_to_array(i) for i in image_frames])
-    if exp is None:
-        img = img.reshape(w, h, d)
-    else:
-        img = img.reshape(exp, w, h, 3)
-    return img
-
-
-class SVMImages:
-    def __init__(self, img_path, w=128, h=128, d=9):
-        self.img_path = img_path
-        self.w = w
-        self.h = h
-        self.d = d
-
-    def get_labeled_image_paths(self, i):
-        """Creates lists of negative and positive image filepaths, assuming the image files are in subdirectories named according to the class labels (e.g. "0" and "1").
-
-        Parameters
-        ----------
-        i : str
-            image filename
-
-        Returns
-        -------
-        tuples
-            image filenames for each image type (original, source, gaia)
-        """
-        neg = (
-            f"{self.img_path}/0/{i}/{i}.png",
-            f"{self.img_path}/0/{i}/{i}_source.png",
-            f"{self.img_path}/0/{i}/{i}_gaia.png",
-        )
-        pos = (
-            f"{self.img_path}/1/{i}/{i}.png",
-            f"{self.img_path}/1/{i}/{i}_source.png",
-            f"{self.img_path}/1/{i}/{i}_gaia.png",
-        )
-        return neg, pos
-
-    def detector_training_images(self, X_data, exp=None):
-        """Load image files from class-labeled folders containing pngs into numpy arrays. Image arrays are **not** reshaped since this assumes data augmentation will be performed at training time.
-
-        Parameters
-        ----------
-        X_data : Pandas dataframe
-            input data (assumes index values are the image filenames)
-        exp : int, optional
-            expand image array shape into its constituent frame dimensions, by default None
-
-        Returns
-        -------
-        tuple
-            index, image input array, image class labels: (idx, X, y)
-        """
-        idx = list(X_data.index)
-        files, labels = [], []
-        for i in idx:
-            neg, pos = self.get_labeled_image_paths(i)
-            if os.path.exists(neg[0]):
-                files.append(neg)
-                labels.append(0)
-            elif os.path.exists(pos[0]):
-                files.append(pos)
-                labels.append(1)
-            else:
-                # print(f"missing: {i}")
-                idx.remove(i)
-        img = []
-        for ch1, ch2, ch3 in tqdm(files):
-            img.append(read_channels([ch1, ch2, ch3], self.w, self.h, self.d, exp=exp))
-        X, y = np.array(img, np.float32), np.array(labels)
-        return (idx, X, y)
-
-    def detector_prediction_images(self, X_data, exp=3):
-        """Load image files from pngs into numpy arrays. Image arrays are reshaped into the appropriate dimensions for generating predictions in a pre-trained image CNN (no data augmentation is performed).
-
-        Parameters
-        ----------
-        X_data : Pandas dataframe
-            input data (assumes index values are the image filenames)
-        exp : int, optional
-            expand image array shape into its constituent frame dimensions, by default 3
-
-        Returns
-        -------
-        Pandas Index, numpy array
-            image name index, arrays of image pixel values
-        """
-        image_files = []
-        idx = list(X_data.index)
-        for i in idx:
-            img_frames = (
-                f"{self.img_path}/{i}/{i}.png",
-                f"{self.img_path}/{i}/{i}_source.png",
-                f"{self.img_path}/{i}/{i}_gaia.png",
-            )
-            if os.path.exists(img_frames[0]):
-                image_files.append(img_frames)
-            else:
-                idx.remove(i)
-        start = time.time()
-        stopwatch("LOADING IMAGES", t0=start)
-        img = []
-        for ch1, ch2, ch3 in tqdm(image_files):
-            img.append(read_channels([ch1, ch2, ch3], self.w, self.h, self.d, exp=exp))
-        images = np.array(img, np.float32)
-        end = time.time()
-        stopwatch("LOADING IMAGES", t0=start, t1=end)
-        return idx, images

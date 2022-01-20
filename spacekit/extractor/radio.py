@@ -1,7 +1,3 @@
-"""
-# class for querying and downloading .fits files from MAST s3 bucket on AWS
-Unlike scrape.py, which is for private s3 buckets, this module is specifically for collecting data from the publicly available MAST website and/or MAST data hosted on s3. Instead of scraping a closed collection, you're receiving data from an open channel - like a radio.
-"""
 import os
 import shutil
 import glob
@@ -12,7 +8,16 @@ from astroquery.mast import Observations
 
 
 class Radio:
+    """Class for querying and downloading .fits files from a MAST s3 bucket on AWS."""
+
     def __init__(self, config="disable"):
+        """Instantiates a spacekit.extractor.Radio object.
+
+        Parameters
+        ----------
+        config : str, optional
+            enable or disable aws cloud access (disable uses MAST only), by default "disable"
+        """
         self.config = config
         self.region = "us-east-1"
         self.s3 = boto3.resource("s3", region_name=self.region)
@@ -31,6 +36,7 @@ class Radio:
         self.science_files = []
 
     def configure_aws(self):
+        """Sets cloud (AWS) configuration On or Off."""
         # configure aws settings
         if self.config == "enable":
             Observations.enable_cloud_dataset(provider="AWS", profile="default")
@@ -38,17 +44,53 @@ class Radio:
             Observations.disable_cloud_dataset()
 
     def prop_search(self, proposal_id, filters, obsid, subgroup):
-        self.proposal_id = proposal_id  # '13926'
-        self.filters = filters  # 'F657N'
-        self.obsid = obsid  # 'ICK90[5678]*'
-        self.subgroup = subgroup  # ['FLC', 'SPT']
+        """Sets parameters for prop search as object attributes: proposal ID, filters, obsid and subgroup.
+
+        Parameters
+        ----------
+        proposal_id : string
+            match proposal id, e.g. '13926'
+        filters : string
+            match filters 'F657N'
+        obsid : string
+            match obsid or regex pattern 'ICK90[5678]*'
+        subgroup : list
+            data file types ['FLC', 'SPT']
+
+        Returns
+        -------
+        self
+            class object with attributes updated
+        """
+        self.proposal_id = proposal_id
+        self.filters = filters
+        self.obsid = obsid
+        self.subgroup = subgroup
         return self
 
     def cone_search(self, radius, collection, exptime, subgroup):
-        self.radius = radius  # 0s
-        self.collection = collection  # "K2"
-        self.exptime = exptime  # 1800.0
-        self.subgroup = subgroup["LLC"]
+        """Sets parameters for a cone search as object attributes: radius, collection, exptime, subgroup.
+
+        Parameters
+        ----------
+        radius : string
+            radius for the cone search e.g. 0s
+        collection : string
+            observatory collection name e.g. "K2"
+        exptime : float
+            exposure time e.g. 1800.0
+        subgroup : list
+            # data file type e.g. ["LLC"]
+
+        Returns
+        -------
+        self
+            class object with attributes updated
+        """
+        self.radius = radius
+        self.collection = collection
+        self.exptime = exptime
+        self.subgroup = subgroup
         return self
 
     def get_object_uris(self):

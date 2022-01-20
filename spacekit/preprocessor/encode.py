@@ -4,6 +4,20 @@ from tensorflow.keras.utils import to_categorical
 
 
 def encode_target_data(y_train, y_test):
+    """Label encodes target class training and test data for multi-classification models.
+
+    Parameters
+    ----------
+    y_train : dataframe or ndarray
+        training target data
+    y_test : dataframe or ndarray
+        test target data
+
+    Returns
+    -------
+    ndarrays
+        y_train, y_test
+    """
     # label encode class values as integers
     encoder = LabelEncoder()
     encoder.fit(y_train)
@@ -18,13 +32,22 @@ def encode_target_data(y_train, y_test):
     return y_train, y_test
 
 
-class Encoder:
-    def __init__(self, df):
-        self.df = df
+# class Encoder:
+#     def __init__(self, df):
+#         self.df = df
 
 
-class SvmEncoder(Encoder):
+class SvmEncoder:
+    """Categorical encoding class for HST Single Visit Mosiac regression test data inputs."""
+
     def __init__(self, data):
+        """Instantiates an SvmEncoder class object.
+
+        Parameters
+        ----------
+        data : dataframe
+            input data containing features (columns) to be encoded
+        """
         self.data = data
         self.df = data.copy()
         self.sep = ";"
@@ -33,6 +56,13 @@ class SvmEncoder(Encoder):
         self.df_cat = self.encode_categories()
 
     def set_category_keys(self):
+        """Assigns abbreviated character code as key-pair value for each type of target category classification (as determined by data on MAST archive).
+
+        Returns
+        -------
+        dict
+            key-pair values for image target category classification.
+        """
         self.category_keys = {
             "CALIBRATION": "C",
             "SOLAR SYSTEM": "SS",
@@ -49,6 +79,13 @@ class SvmEncoder(Encoder):
         return self.category_keys
 
     def encode_categories(self):
+        """Encodes the target categories of a dataframe as integer (numeric) datatype, which is required for machine learning inputs.
+
+        Returns
+        -------
+        dataframe
+            original dataframe with category input feature values encoded.
+        """
         print("\n*** Encoding Category Names ***")
         CAT = {}
         for idx, cat in self.df.category.items():
@@ -62,6 +99,13 @@ class SvmEncoder(Encoder):
         return self.df
 
     def encode_features(self):
+        """Encodes input features matching column names assigned to the object's ``encodings`` attribute.
+
+        Returns
+        -------
+        dataframe
+            original dataframe with all categorical type features label-encoded.
+        """
         for col, name in self.encodings.items():
             encoder = LabelEncoder().fit(self.df[col])
             self.df[name] = encoder.transform(self.df[col])
