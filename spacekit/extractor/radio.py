@@ -8,7 +8,7 @@ from astroquery.mast import Observations
 
 
 class Radio:
-    """Class for querying and downloading .fits files from a MAST s3 bucket on AWS."""
+    """Class for querying and downloading .fits files from a MAST s3 bucket on AWS. Note this was originally created for K2 LLC data and is in the process of being revised for other data types/telescopes..."""
 
     def __init__(self, config="disable"):
         """Instantiates a spacekit.extractor.Radio object.
@@ -94,6 +94,13 @@ class Radio:
         return self
 
     def get_object_uris(self):
+        """Run observation query via cone search and return list of product uris.
+
+        Returns
+        -------
+        self
+            class object with attributes updated
+        """
         if self.target_list is None:
             print("Error: target_list (IDs) must be set first.")
             return
@@ -119,6 +126,13 @@ class Radio:
         return self
 
     def s3_download(self):
+        """Download datasets in list of uris from AWS s3 bucket (public access via STScI)
+
+        Returns
+        -------
+        self
+            class object with attributes updated
+        """
         print(f"Downloading {len(self.s3_uris)} from AWS")
         count = 0
         for uri in self.s3_uris:
@@ -137,6 +151,8 @@ class Radio:
         return self
 
     def mast_download(self):
+        """Download datasets from MAST
+        """
         if self.obsid is None:
             search_params = dict(proposal_id=self.proposal_id, filters=self.filters)
         else:
