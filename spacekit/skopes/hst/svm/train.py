@@ -164,6 +164,7 @@ def load_ensemble_data(filename, img_path, img_size=128, dim=3, ch=3, norm=False
     X_train, X_test, X_val, y_train, y_test, y_val = split_sets(df)
 
     # LOAD IMG DATA
+    # TODO: load from npz instead
     depth = dim * ch
     image_sets = [X_train, X_test, X_val]
     train, test, val = make_image_sets(
@@ -180,7 +181,8 @@ def load_ensemble_data(filename, img_path, img_size=128, dim=3, ch=3, norm=False
 
     # NORMALIZATION and SCALING
     if norm:
-        X_train, X_test, X_val = normalize_training_data(df, X_train, X_test, X_val=X_val, output_path=output_path)
+        cols = ["numexp", "rms_ra", "rms_dec", "nmatches", "point", "segment", "gaia"]
+        X_train, X_test, X_val = normalize_training_data(df, cols, X_train, X_test, X_val=X_val, output_path=output_path)
         X_tr, X_ts, X_vl = normalize_training_images(X_tr, X_ts, X_vl=X_vl)
 
     # JOIN INPUTS: MLP + CNN

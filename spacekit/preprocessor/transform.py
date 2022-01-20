@@ -10,164 +10,319 @@ import tensorflow as tf
 
 class Transformer:
     def __init__(
-        self, data, transformer=PowerTransformer(standardize=False), cols=None
+        self, data, cols=[], tx_data=None, tx_file=None, save_tx=True, output_path=None
     ):
-        self.data = data  # cal: data = x_features
-        self.transformer = transformer
-        self.cols = cols
-        self.matrix = self.frame_to_matrix()
-        self.matrix_cont = None
-        self.matrix_cat = None
-        self.matrix_norm = None
-        self.idx = self.data.index
-        self.data_cont = None
-        self.data_cat = None
-        self.data_norm = None
-        self.tx_file = None
-        self.tx_data = None
-        self.lambdas = None
+        """Instantiates a Transformer class object. Unless the `cols` attribute is empty, it will automatically instantiate some of the other attributes needed to transform the data. Using the Transformer subclasses instead is recommended (this class is mainly used as an object with general methods to load or save the transform data as well as instantiate some of the initial attributes).
 
-    def load_transformer_data(self):
-        if self.tx_file is not None:
+        Parameters
+        ----------
+        data : dataframe or numpy.ndarray
+            input data containing continuous feature vectors to be transformed (may also contain vectors or columns of categorical and other datatypes as well).
+        transformer : class, optional
+            transform class to use (e.g. from scikit-learn), by default PowerTransformer(standardize=False)
+        cols : list, optional
+            column names or array index values of feature vectors to be transformed (i.e. continuous datatype features), by default []
+        tx_file : string, optional
+            path to saved transformer metadata, by default None
+        save_tx : bool, optional
+            save the transformer metadata as json file on local disk, by default True
+        output_path : string, optional
+            where to save the transformer metadata, by default None (current working directory)
+        """
+        self.data = data
+        self.cols = cols
+        self.tx_file = tx_file
+        self.save_tx = save_tx
+        self.output_path = output_path
+        self.tx_data = self.load_transformer_data(tx=tx_data)
+        self.continuous = self.continuous_data()
+        self.categorical = self.categorical_data()
+
+    def load_transformer_data(self, tx=None):
+        """Loads saved transformer metadata from a dictionary or a json file on local disk.
+
+        Returns
+        -------
+        dictionary
+            transform metadata used for applying transformations on new data inputs
+        """
+        if tx:
+            self.tx_data = tx
+        elif self.tx_file is not None:
             with open(self.tx_file, "r") as j:
                 self.tx_data = json.load(j)
+            return self.tx_data
         else:
-            self.tx_data = self.get_tx_data()
-        return self.tx_data
-    
-    def save_transformer_data(self):
-        if self.tx_file is None:
-            self.tx_file = "tx_data"
+            return None
+
+    def save_transformer_data(self, tx=None):
+        """Save the transform metadata to a json file on local disk. Typical use-case is when you need to transform new inputs prior to generating a prediction but don't have access to the original dataset used to train the model.
+
+        Parameters
+        ----------
+        tx : dictionary
+            statistical metadata calculated when applying a transform to the training dataset; for PowerTransform this consists of lambdas, means and standard deviations for each continuous feature vector of the dataset.
+
+        Returns
+        -------
+        string
+            path where json file is saved on disk
+        """
+        if self.output_path is None:
+            self.output_path = os.getcwd()
+        else:
+            os.makedirs(self.output_path, exist_ok=True)
+        self.tx_file = f"{self.output_path}/tx_data"
         with open(self.tx_file, "w") as j:
-            json.dump(self.tx_data, j)
+            if tx is None:
+                json.dump(self.tx_data, j)
+            else:
+                json.dump(tx, j)
+        print("TX data saved as json file: ", self.tx_file)
         return self.tx_file
-    
-    def get_tx_data(self):
-        if self.data_cont is None:
-            print("Continuous data (`data_cont`) not set.")
+
+    def continuous_data(self):
+        """Store continuous feature vectors in a variable using the column names (or axis index if using numpy arrays) from `cols` attribute.
+
+        Returns
+        -------
+        dataframe or ndarray
+            continuous feature vectors (as determined by `cols` attribute)
+        """
+        if self.cols is None:
+            print("`cols` attribute not instantiated.")
             return None
-        self.transformer.fit(self.data_cont)
-        input_matrix = self.transformer.transform(self.data_cont)
-        self.lambdas = self.transformer.lambdas_
-        normalized = np.empty((len(self.data), len(self.cols)))
-        mu, sig = [], []
-        for i in range(len(self.cols)):
-            v = input_matrix[:, i]
-            m, s = np.mean(v), np.std(v)
-            x = (v - m) / s
-            normalized[:, i] = x
-            mu.append(m)
-            sig.append(s)
-        self.tx_data = {
-            "lambdas": self.lambdas,
-            "mu": np.array(mu),
-            "sigma": np.array(sig),
-        }
-        return self.tx_data
-
-    def frame_to_matrix(self):
         if type(self.data) == pd.DataFrame:
-            self.matrix = self.data.values
-        return self.matrix
+            return self.data[self.cols]
+        elif type(self.data) == np.ndarray:
+            return self.data[:, self.cols]
 
-    def continuous_matrix(self):
+    def categorical_data(self):
+        """Stores the other feature vectors in a separate variable (any leftover from `data` that are not in `cols`).
+
+        Returns
+        -------
+        dataframe or ndarray
+            "categorical" i.e. non-continuous feature vectors (as determined by `cols` attribute)
+        """
         if type(self.data) == pd.DataFrame:
-            if self.cols is not None:
-                return self.data[self.cols]
+            return self.data.drop(self.cols, axis=1, inplace=False)
+        elif type(self.data) == np.ndarray:
+            ncols = list(range(self.data.shape[1]))
+            cat_cols = [c for c in ncols if c not in self.cols]
+            return self.data[:, cat_cols]
 
-    def categorical_matrix(self):
-        if self.data_cat is None:
-            if type(self.data) == pd.DataFrame:
-                return self.data.drop(self.cols, axis=1, inplace=False)
+    def normalized_dataframe(self, normalized, join_data=True, rename=True):
+        """Creates a new dataframe with the normalized data. Optionally combines with non-continuous vectors (original data) and appends `_scl` to the original column names for the ones that have been transformed.
 
-    def power_matrix(self):
+        Parameters
+        ----------
+        normalized : dataframe
+            normalized feature vectors
+        join_data : bool, optional
+            merge back with the original non-continuous data, by default True
+        rename : bool, optional
+            append '_scl' to normalized column names, by default True
+
+        Returns
+        -------
+        dataframe
+            dataframe of same shape as input data with continuous features normalized
+        """
         try:
-            nrows = self.matrix_cont.shape[0]
-            ncols = self.matrix_cont.shape[1]
-            self.transformer.fit(self.matrix_cont)
-            self.transformer.lambdas_ = self.tx_data["lambdas"]
-            input_matrix = self.transformer.transform(self.matrix_cont)
-            normalized = np.empty((nrows, ncols))
-            for i in range(ncols):
-                v = input_matrix[:, i]
-                m = self.tx_data["mu"][i]
-                s = self.tx_data["sigma"][i]
-                x = (v - m) / s
-                normalized[:, i] = x
-            self.matrix_norm = np.concatenate((normalized, self.matrix_cat), axis=1)
-            return self.matrix_norm
-        except Exception as e:
-            print(
-                "Err: Continuous/Categorical matrices (`matrix_cont`, `matrix_cat`) need to be instantiated."
-            )
-            print(e)
+            idx = self.data.index
+        except AttributeError:
+            print("Cannot index a numpy array; use `normalized_matrix` instead.")
+            return None
+        if rename is True:
+            newcols = [c + "_scl" for c in self.cols]
+        else:
+            newcols = self.cols
+        data_norm = pd.DataFrame(normalized, index=idx, columns=newcols)
+        if join_data is True:
+            data_norm = data_norm.join(self.categorical, how="left")
+        return data_norm
+
+    def normalized_matrix(self, normalized):
+        """Concatenates arrays of normalized data with original non-continuous data along the y-axis (axis=1).
+
+        Parameters
+        ----------
+        normalized : numpy.ndarray
+            normalized data
+
+        Returns
+        -------
+        numpy.ndarray
+            array of same shape as input data, with continuous vectors normalized
+        """
+        if type(self.categorical) == pd.DataFrame:
+            cat = self.categorical.values
+        else:
+            cat = self.categorical
+        return np.concatenate((normalized, cat), axis=1)
+    
+    def normalizeX(self, normalized, join_data=True, rename=True):
+        """Combines original non-continuous features/vectors with the transformed/normalized data. Determines datatype (array or dataframe) and calls the appropriate method.
+
+        Parameters
+        ----------
+        normalized : dataframe or ndarray
+            normalized data
+        join_data : bool, optional
+            merge back with non-continuous data, by default True
+        rename : bool, optional
+            append '_scl' to normalized column names, by default True
+
+        Returns
+        -------
+        ndarray or dataframe
+            array or dataframe of same shape and datatype as inputs, with continuous vectors/features normalized 
+        """
+        if type(self.data) == pd.DataFrame:
+            return self.normalized_dataframe(normalized, join_data=join_data, rename=rename)
+        elif type(self.data) == np.ndarray:
+            return self.normalized_matrix(normalized)
+        else:
             return None
 
-    def power_frame(self):
-        # data_cont = data[cols]
-        self.transformer.fit(self.data_cont)
-        input_matrix = self.transformer.transform(self.data_cont)
-        self.lambdas = self.transformer.lambdas_
-        normalized = np.empty((len(self.data), len(self.cols)))
-        mu, sig = [], []
-        for i in range(len(self.cols)):
-            v = input_matrix[:, i]
-            m, s = np.mean(v), np.std(v)
-            x = (v - m) / s
-            normalized[:, i] = x
-            mu.append(m)
-            sig.append(s)
-        self.tx_data = {
-            "lambdas": self.lambdas,
-            "mu": np.array(mu),
-            "sigma": np.array(sig),
-        }
-        newcols = [c + "_scl" for c in self.cols]
-        df_norm = pd.DataFrame(normalized, index=self.idx, columns=newcols)
-        self.data_norm = df_norm.join(self.data_cat, how="left")
+
+class PowerX(Transformer):
+    """Applies Leo-Johnson PowerTransform (via scikit learn) normalization and scaling to continuous feature vectors of a dataframe or numpy array. The `tx_data` attribute can be instantiated from a json file, dictionary or the input data itself. The training and test sets should be normalized separately (i.e. distinct class objects) to prevent data leakage when training a machine learning model. Loading the transform metadata from a json file allows you to transform a new input array (e.g. for predictions) without needing to access the original dataframe. 
+
+    Parameters
+    ----------
+    Transformer : class
+        spacekit.preprocessor.transform.Transformer parent class
+
+    Returns
+    -------
+    PowerX class object
+        spacekit.preprocessor.transform.PowerX power transform subclass
+    """
+    def __init__(self, data, cols=[], tx_data=None, tx_file=None, save_tx=False, output_path=None, join_data=True, rename=True):
+        super().__init__(data, cols=cols, tx_data=tx_data, tx_file=tx_file, save_tx=save_tx, output_path=output_path)
+        self.calculate_power()
+        self.normalized = self.apply_power_matrix()
+        self.Xt = super().normalizeX(self.normalized, join_data=join_data, rename=rename)
+
+    def fitX(self):
+        """Instantiates a scikit-learn PowerTransformer object and fits to the input data. If `tx_data` was passed as a kwarg or loaded from `tx_file`, the lambdas attribute for the transformer object will be updated to use these instead of calculated at the transform step. 
+
+        Returns
+        -------
+        PowerTransformer object
+            transformer fit to the data
+        """
+        self.transformer = PowerTransformer(standardize=False).fit(self.continuous)
+        self.transformer.lambdas_ = self.get_lambdas()
+        return self.transformer
+
+    def get_lambdas(self):
+        """Instantiates the lambdas from file or dictionary if passed as kwargs; otherwise it uses the lambdas calculated in the transformX method. If transformX has not been called yet, returns None.
+
+        Returns
+        -------
+        ndarray or float
+            transform of multiple feature vectors returns an array of lambda values; otherwise a single vector returns a single (float) value.
+        """
+        if self.tx_data is not None:
+            return self.tx_data["lambdas"]
+        return self.transformer.lambdas_
+    
+    def transformX(self):
+        """Applies a scikit-learn PowerTransform on the input data.
+
+        Returns
+        -------
+        ndarray
+            continuous feature vectors transformed via scikit-learn PowerTransform
+        """
+        return self.transformer.transform(self.continuous)
+
+    def calculate_power(self):
+        """Fits and transforms the continuous feature vectors using scikit learn PowerTransform. Calculates zero mean and unit variance for each vector as a separate step and stores these along with the lambdas in a dictionary `tx_data` attribute. This is so that the same normalization can be applied later for prediction inputs without requiring the original training data - otherwise it would be the same as using PowerTransform(standardize=True). Optionally, the calculated transform data can be stored in a json file on local disk.
+
+        Returns
+        -------
+        self
+            spacekit.preprocessor.transform.PowerX object with transformation metadata calculated for the input data and stored as attributes.
+        """
+        self.transformer = self.fitX()
+        self.input_matrix = self.transformX()
+        if self.tx_data is None:
+            mu, sig = [], []
+            for i in range(len(self.cols)):
+                #normalized[:, i] = (v - m) / s
+                mu.append(np.mean(self.input_matrix[:, i]))
+                sig.append(np.std(self.input_matrix[:, i]))
+            self.tx_data = {
+                "lambdas": self.get_lambdas(),
+                "mu": np.asarray(mu),
+                "sigma": np.asarray(sig),
+            }
+            if self.save_tx is True:
+                tx2 = {}
+                for k, v in self.tx_data.items():
+                    tx2[k] = list(v)
+                _ = super().save_transformer_data(tx=tx2)
+                del tx2
         return self
 
-    def normalize_dataframe(self):
-        normalized = np.empty((len(self.data), len(self.cols)))
-        newcols = [c + "_scl" for c in self.cols]
-        df_norm = pd.DataFrame(normalized, index=self.idx, columns=newcols)
-        self.data_norm = df_norm.join(self.data_cat, how="left")
-        return self.data_norm
+    def apply_power_matrix(self):
+        """Transforms the input data. This method assumes we already have `tx_data` and a fit-transformed input_matrix (array of continuous feature vectors), which normally is done automatically when the class object is instantiated and `calculate_power` is called.
+
+        Returns
+        -------
+        ndarray
+            power transformed continuous feature vectors
+        """
+        nrows = self.continuous.shape[0]
+        ncols = self.continuous.shape[1]
+        self.normalized = np.empty((nrows, ncols))
+        for i in range(ncols):
+            v = self.input_matrix[:, i]
+            m = self.tx_data["mu"][i]
+            s = self.tx_data["sigma"][i]
+            self.normalized[:, i] = (v - m) / s
+        return self.normalized
 
 
-# TODO: update parent class and test using below attrs (then delete this subclass)
-class SvmX(Transformer):
-    def __init__(
-        self,
-        data,
-        tx_file=None,
-        transformer=PowerTransformer(standardize=False),
-        cols=[
-            "numexp",
-            "rms_ra",
-            "rms_dec",
-            "nmatches",
-            "point",
-            "segment",
-            "gaia",
-        ],
-    ):
-        super().__init__(data, transformer=transformer, cols=cols)
-        self.tx_file = tx_file
-        self.data_cont = self.data[self.cols]
-        self.data_cat = self.data.drop(self.cols, axis=1, inplace=False)
-        self.matrix_cont = self.data_cont.values  # [:, :7] continuous
-        self.matrix_cat = self.data_cat.values  # [:, -3:]  categorical
-        self.tx_data = self.load_transformer_data()
-        self.data_norm = self.normalize_dataframe()
-        self.matrix_norm = self.power_matrix()
+def normalize_training_data(df, cols, X_train, X_test, X_val=None, output_path=None):
+    """Apply Leo-Johnson PowerTransform (via scikit learn) normalization and scaling to the training data, saving the transform metadata to json file on local disk and transforming the train, test and val sets separately (to prevent data leakage).
 
+    Parameters
+    ----------
+    df : pandas dataframe
+        training dataset
+    cols: list
+        column names or array index values of feature vectors to be transformed (i.e. continuous datatype features)
+    X_train : ndarray
+        training set feature inputs array
+    X_test : ndarray
+        test set feature inputs array
+    X_val : ndarray, optional
+        validation set inputs array, by default None
 
+    Returns
+    -------
+    ndarrays
+        normalized and scaled training, test, and validation sets
+    """
+    print("Applying Normalization (Leo-Johnson PowerTransform)")
+    Px = PowerX(df, cols=cols, save_tx=True, output_path=output_path)
+    X_train = PowerX(X_train, cols=cols, tx_data=Px.tx_data).Xt
+    X_test = PowerX(X_test, cols=cols, tx_data=Px.tx_data).Xt
+    if X_val is not None:
+        X_val = PowerX(X_test, cols=cols, tx_data=Px.tx_data).Xt
+        return X_train, X_test, X_val
+    else:
+        return X_train, X_test
+
+# TODO: add/test single input array transformation (and reshape) to PowerX subclass, delete this one 
 class CalX(Transformer):
     def __init__(self, data, tx_file=None):
-        super().__init__(data)
-        self.tx_file = tx_file
-        self.cols = ["n_files", "total_mb"]
+        super().__init__(data, cols=["n_files", "total_mb"], tx_file=tx_file)
         self.tx_data = self.load_transformer_data()
         self.X = self.powerX()
 
@@ -224,7 +379,22 @@ class CalX(Transformer):
             print(self.X)
             return self.X
 
+# planned deprecation
 def save_transformer_data(tx_data, output_path=None):
+    """Save the transform metadata to a json file on local disk. Typical use-case is when you need to transform new inputs prior to generating a prediction but don't have access to the original dataset used to train the model.
+
+    Parameters
+    ----------
+    tx_data : dictionary
+        statistical metadata calculated when applying a transform to the training dataset; for PowerTransform this consists of lambdas, means and standard deviations for each continuous feature vector of the dataset.
+    output_path : string, optional
+        where to save the data as a json file on disk, by default None (defaults to current working directory)
+
+    Returns
+    -------
+    string
+        path where json file is saved on disk
+    """
     if output_path is None:
         output_path = os.getcwd()
     else:
@@ -267,7 +437,7 @@ def split_sets(df, target="label", val=True):
     else:
         return X_train, X_test, y_train, y_test
 
-
+# planned deprecation
 def apply_power_transform(
     data, cols=["numexp", "rms_ra", "rms_dec", "nmatches", "point", "segment", "gaia"], output_path=None, save_tx=True
 ):
@@ -299,7 +469,7 @@ def apply_power_transform(
     df = df_norm.join(df, how="left")
     return df, tx_data
 
-
+# planned deprecation
 def power_transform_matrix(data, pt_data):
     if type(data) == pd.DataFrame:
         data = data.values
@@ -321,7 +491,7 @@ def power_transform_matrix(data, pt_data):
     data_norm = np.concatenate((normalized, data_cat), axis=1)
     return data_norm
 
-
+# for backward compatability with HSTCAL (planned deprecation)
 def update_power_transform(df):
     pt = PowerTransformer(standardize=False)
     df_cont = df[["n_files", "total_mb"]]
@@ -355,34 +525,34 @@ def update_power_transform(df):
     return df, pt_transform
 
 
-def normalize_training_data(df, X_train, X_test, X_val=None, output_path=None, save_tx=True):
-    """Apply Leo-Johnson PowerTransform (via scikit learn) normalization and scaling to the input features.
+# def normalize_training_data(df, X_train, X_test, X_val=None, output_path=None, save_tx=True):
+#     """Apply Leo-Johnson PowerTransform (via scikit learn) normalization and scaling to the input features.
 
-    Parameters
-    ----------
-    df : pandas dataframe
-        training dataset
-    X_train : numpy array
-        training set feature inputs array
-    X_test : numpy array
-        test set feature inputs array
-    X_val : numpy array
-        validation set inputs array
+#     Parameters
+#     ----------
+#     df : pandas dataframe
+#         training dataset
+#     X_train : numpy array
+#         training set feature inputs array
+#     X_test : numpy array
+#         test set feature inputs array
+#     X_val : numpy array
+#         validation set inputs array
 
-    Returns
-    -------
-    numpy arrays
-        normalized and scaled training, test, and validation sets
-    """
-    print("Applying Normalization (Leo-Johnson PowerTransform)")
-    _, px = apply_power_transform(df, output_path=output_path, save_tx=save_tx)
-    X_train = power_transform_matrix(X_train, px)
-    X_test = power_transform_matrix(X_test, px)
-    if X_val is not None:
-        X_val = power_transform_matrix(X_val, px)
-        return X_train, X_test, X_val
-    else:
-        return X_train, X_test
+#     Returns
+#     -------
+#     numpy arrays
+#         normalized and scaled training, test, and validation sets
+#     """
+#     print("Applying Normalization (Leo-Johnson PowerTransform)")
+#     _, px = apply_power_transform(df, output_path=output_path, save_tx=save_tx)
+#     X_train = power_transform_matrix(X_train, px)
+#     X_test = power_transform_matrix(X_test, px)
+#     if X_val is not None:
+#         X_val = power_transform_matrix(X_val, px)
+#         return X_train, X_test, X_val
+#     else:
+#         return X_train, X_test
 
 
 def normalize_training_images(X_tr, X_ts, X_vl=None):

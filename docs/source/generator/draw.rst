@@ -1,3 +1,5 @@
+.. _draw:
+
 ***********************
 spacekit.generator.draw
 ***********************
@@ -53,16 +55,21 @@ saves as:
 
 ``./img_path/dataset/fname.png``
 
-Normal SVM data (``dataset=ib1f0a``)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Normal SVM data
+^^^^^^^^^^^^^^^
+
+``dataset=ib1f0a``
+
 ``./{input_path}/ib1f0a/hst_11570_0a_wfc3_uvis_total_ib1f0a_drc.fits``
 
 saves as:
 
 ``./{imgdir}/hst_11570_0a_wfc3_uvis_total_ib1f0a/hst_11570_0a_wfc3_uvis_total_ib1f0a.png``
 
-Corruption SVM data (``dataset=ia0m04_f110w_all_stat``)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Corruption SVM data 
+^^^^^^^^^^^^^^^^^^^
+``dataset=ia0m04_f110w_all_stat``
+
 ``./{input_path}/ia0m04_f110w_all_stoc/hst_11099_04_wfc3_ir_total_ia0m04_drz.fits``
 
 saves as:

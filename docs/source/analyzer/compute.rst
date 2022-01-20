@@ -3,7 +3,7 @@
 *************************
 spacekit.analyzer.compute
 *************************
-
+ 
 .. currentmodule:: spacekit.analyzer.compute
 
 .. automodule:: spacekit.analyzer.compute
