@@ -41,10 +41,10 @@ spacekit
             └── cal
                 └── train.py
             └── svm
-                    └── corrupt.py
-                    └── predict.py
-                    └── prep.py
-                    └── train.py
+                └── corrupt.py
+                └── predict.py
+                └── prep.py
+                └── train.py
         └── kepler
             └── light_curves.py
         └── trained_networks

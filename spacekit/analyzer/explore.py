@@ -9,7 +9,7 @@ from plotly import subplots
 import plotly.offline as pyo
 import plotly.figure_factory as ff
 from keras.preprocessing import image
-from spacekit.preprocessor.transform import apply_power_transform
+from spacekit.preprocessor.transform import PowerX
 
 plt.style.use("seaborn-bright")
 font_dict = {"family": '"Titillium Web", monospace', "size": 16}
@@ -240,7 +240,7 @@ class DataPlots:
         save_html=".",
     ):
         if norm is True:
-            df, _ = apply_power_transform(self.df)
+            df = PowerX(self.df, cols=cols, join_data=False)
             cols = [c + "_scl" for c in cols]
         else:
             df = self.df
