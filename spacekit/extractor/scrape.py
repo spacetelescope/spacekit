@@ -99,7 +99,7 @@ class FileScraper(Scraper):
         Parameters
         ----------
         patterns : list, optional
-            glob pattern strings, by default ["*.zip"]
+            glob pattern strings, by default ``["*.zip"]``
         """
         super().__init__(
             cache_dir=cache_dir,
@@ -244,6 +244,7 @@ class S3Scraper(Scraper):
         self.bucket = bucket
         self.pfx = pfx
         self.dataset = dataset
+        self.fpaths = []
         self.source = "s3"
 
     def make_s3_keys(

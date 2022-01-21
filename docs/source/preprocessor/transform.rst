@@ -51,17 +51,15 @@ PowerX Examples
 
 .. autofunction:: normalize_training_data
 
-.. autofunction:: split_sets
-
 .. autofunction:: normalize_training_images
+
+.. autofunction:: split_sets
 
 .. autofunction:: arrays_to_tensors
 
 .. autofunction:: tensor_to_array
 
 .. autofunction:: tensors_to_arrays
-
-.. autofunction:: hypersonic_pliers
 
 .. autofunction:: hypersonic_pliers
 

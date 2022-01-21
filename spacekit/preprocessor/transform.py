@@ -462,129 +462,6 @@ def split_sets(df, target="label", val=True):
         return X_train, X_test, y_train, y_test
 
 
-# planned deprecation
-def apply_power_transform(
-    data,
-    cols=["numexp", "rms_ra", "rms_dec", "nmatches", "point", "segment", "gaia"],
-    output_path=None,
-    save_tx=True,
-):
-    data_cont = data[cols]
-    idx = data_cont.index
-    tx = PowerTransformer(standardize=False)
-    tx.fit(data_cont)
-    input_matrix = tx.transform(data_cont)
-    lambdas = tx.lambdas_
-    normalized = np.empty((len(data), len(cols)))
-    mu, sig = [], []
-    for i in range(len(cols)):
-        v = input_matrix[:, i]
-        m, s = np.mean(v), np.std(v)
-        x = (v - m) / s
-        normalized[:, i] = x
-        mu.append(m)
-        sig.append(s)
-    tx_data = {"lambdas": lambdas, "mu": np.asarray(mu), "sigma": np.asarray(sig)}
-    if save_tx is True:
-        tx2 = {}
-        for k, v in tx_data.items():
-            tx2[k] = list(v)
-        _ = save_transformer_data(tx2, output_path=output_path)
-        del tx2
-    newcols = [c + "_scl" for c in cols]
-    df_norm = pd.DataFrame(normalized, index=idx, columns=newcols)
-    df = data.drop(cols, axis=1, inplace=False)
-    df = df_norm.join(df, how="left")
-    return df, tx_data
-
-
-# planned deprecation
-def power_transform_matrix(data, pt_data):
-    if type(data) == pd.DataFrame:
-        data = data.values
-    data_cont = data[:, :7]
-    data_cat = data[:, -3:]
-    nrows = data_cont.shape[0]
-    ncols = data_cont.shape[1]
-    pt = PowerTransformer(standardize=False)
-    pt.fit(data_cont)
-    pt.lambdas_ = pt_data["lambdas"]
-    input_matrix = pt.transform(data_cont)
-    normalized = np.empty((nrows, ncols))
-    for i in range(data_cont.shape[1]):
-        v = input_matrix[:, i]
-        m = pt_data["mu"][i]
-        s = pt_data["sigma"][i]
-        x = (v - m) / s
-        normalized[:, i] = x
-    data_norm = np.concatenate((normalized, data_cat), axis=1)
-    return data_norm
-
-
-# for backward compatability with HSTCAL (planned deprecation)
-def update_power_transform(df):
-    pt = PowerTransformer(standardize=False)
-    df_cont = df[["n_files", "total_mb"]]
-    pt.fit(df_cont)
-    input_matrix = pt.transform(df_cont)
-    # FILES (n_files)
-    f_mean = np.mean(input_matrix[:, 0])
-    f_sigma = np.std(input_matrix[:, 0])
-    # SIZE (total_mb)
-    s_mean = np.mean(input_matrix[:, 1])
-    s_sigma = np.std(input_matrix[:, 1])
-    files = input_matrix[:, 0]
-    size = input_matrix[:, 1]
-    x_files = (files - f_mean) / f_sigma
-    x_size = (size - s_mean) / s_sigma
-    normalized = np.stack([x_files, x_size], axis=1)
-    idx = df_cont.index
-    df_norm = pd.DataFrame(normalized, index=idx, columns=["x_files", "x_size"])
-    df["x_files"] = df_norm["x_files"]
-    df["x_size"] = df_norm["x_size"]
-    lambdas = pt.lambdas_
-    pt_transform = {
-        "f_lambda": lambdas[0],
-        "s_lambda": lambdas[1],
-        "f_mean": f_mean,
-        "f_sigma": f_sigma,
-        "s_mean": s_mean,
-        "s_sigma": s_sigma,
-    }
-    print(pt_transform)
-    return df, pt_transform
-
-
-# def normalize_training_data(df, X_train, X_test, X_val=None, output_path=None, save_tx=True):
-#     """Apply Leo-Johnson PowerTransform (via scikit learn) normalization and scaling to the input features.
-
-#     Parameters
-#     ----------
-#     df : pandas dataframe
-#         training dataset
-#     X_train : numpy array
-#         training set feature inputs array
-#     X_test : numpy array
-#         test set feature inputs array
-#     X_val : numpy array
-#         validation set inputs array
-
-#     Returns
-#     -------
-#     numpy arrays
-#         normalized and scaled training, test, and validation sets
-#     """
-#     print("Applying Normalization (Leo-Johnson PowerTransform)")
-#     _, px = apply_power_transform(df, output_path=output_path, save_tx=save_tx)
-#     X_train = power_transform_matrix(X_train, px)
-#     X_test = power_transform_matrix(X_test, px)
-#     if X_val is not None:
-#         X_val = power_transform_matrix(X_val, px)
-#         return X_train, X_test, X_val
-#     else:
-#         return X_train, X_test
-
-
 def normalize_training_images(X_tr, X_ts, X_vl=None):
     """Scale image inputs so that all pixel values are converted to a decimal between 0 and 1 (divide by 255).
 
@@ -699,13 +576,13 @@ def tensors_to_arrays(X_train, y_train, X_test, y_test):
     return X_train, y_train, X_test, y_test
 
 
-# planned deprecation
-def make_arrays(X_train, y_train, X_test, y_test):
-    X_train = X_train.values
-    y_train = y_train.values.reshape(-1, 1)
-    X_test = X_test.values
-    y_test = y_test.values.reshape(-1, 1)
-    return X_train, y_train, X_test, y_test
+# deprecated
+# def make_arrays(X_train, y_train, X_test, y_test):
+#     X_train = X_train.values
+#     y_train = y_train.values.reshape(-1, 1)
+#     X_test = X_test.values
+#     y_test = y_test.values.reshape(-1, 1)
+#     return X_train, y_train, X_test, y_test
 
 
 def hypersonic_pliers(
@@ -715,9 +592,9 @@ def hypersonic_pliers(
 
     Parameters
     ----------
-    path_to_train : [type]
+    path_to_train : string
         path to training data file (csv)
-    path_to_test : [type]
+    path_to_test : string
         path to test data file (csv)
     y_col : list, optional
         axis index of target class, by default [0]
@@ -854,3 +731,37 @@ def fast_fourier(matrix, bins):
         ft = np.fft.irfft(phase * np.fft.rfft(signal))
         fourier_matrix += ft
     return fourier_matrix
+
+
+# for backward compatability with HSTCAL (planned deprecation)
+# def update_power_transform(df):
+#     pt = PowerTransformer(standardize=False)
+#     df_cont = df[["n_files", "total_mb"]]
+#     pt.fit(df_cont)
+#     input_matrix = pt.transform(df_cont)
+#     # FILES (n_files)
+#     f_mean = np.mean(input_matrix[:, 0])
+#     f_sigma = np.std(input_matrix[:, 0])
+#     # SIZE (total_mb)
+#     s_mean = np.mean(input_matrix[:, 1])
+#     s_sigma = np.std(input_matrix[:, 1])
+#     files = input_matrix[:, 0]
+#     size = input_matrix[:, 1]
+#     x_files = (files - f_mean) / f_sigma
+#     x_size = (size - s_mean) / s_sigma
+#     normalized = np.stack([x_files, x_size], axis=1)
+#     idx = df_cont.index
+#     df_norm = pd.DataFrame(normalized, index=idx, columns=["x_files", "x_size"])
+#     df["x_files"] = df_norm["x_files"]
+#     df["x_size"] = df_norm["x_size"]
+#     lambdas = pt.lambdas_
+#     pt_transform = {
+#         "f_lambda": lambdas[0],
+#         "s_lambda": lambdas[1],
+#         "f_mean": f_mean,
+#         "f_sigma": f_sigma,
+#         "s_mean": s_mean,
+#         "s_sigma": s_sigma,
+#     }
+#     print(pt_transform)
+#     return df, pt_transform

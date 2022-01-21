@@ -241,7 +241,6 @@ class DataPlots:
     ):
         if norm is True:
             df = PowerX(self.df, cols=cols, join_data=False)
-            # df, _ = apply_power_transform(self.df, save_tx=False)
             cols = [c + "_scl" for c in cols]
         else:
             df = self.df
