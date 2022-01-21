@@ -1,6 +1,5 @@
 import argparse
 import sys
-import glob
 from dash import dcc
 from dash import html
 from dash.dependencies import Input, Output
@@ -55,6 +54,7 @@ def main(args):
     else:
         print("Could not locate datasets.")
         sys.exit(1)
+
 
 # if __name__ == '__main__':
 #     app.run_server(debug=True)

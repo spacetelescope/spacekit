@@ -151,8 +151,7 @@ class Radio:
         return self
 
     def mast_download(self):
-        """Download datasets from MAST
-        """
+        """Download datasets from MAST"""
         if self.obsid is None:
             search_params = dict(proposal_id=self.proposal_id, filters=self.filters)
         else:

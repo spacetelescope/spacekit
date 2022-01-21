@@ -9,6 +9,7 @@ import sys
 import json
 from stsci.tools import logutil
 from zipfile import ZipFile
+
 # from astropy.io import fits
 from astroquery.mast import Observations
 from progressbar import ProgressBar
@@ -19,9 +20,11 @@ client = boto3.client("s3")  # , config=retry_config)
 
 
 class Scraper:
-    """Parent Class for various data scraping subclasses. Instantiating the appropriate subclass is preferred.
-    """
-    def __init__(self, cache_dir="~", cache_subdir="data", format="zip", extract=True, clean=True):
+    """Parent Class for various data scraping subclasses. Instantiating the appropriate subclass is preferred."""
+
+    def __init__(
+        self, cache_dir="~", cache_subdir="data", format="zip", extract=True, clean=True
+    ):
         """Instantiates a spacekit.extractor.scrape.Scraper object.
 
         Parameters
@@ -39,7 +42,7 @@ class Scraper:
         self.cache_subdir = cache_subdir  # subfolder
         self.format = format
         self.extract = extract  # extract if zip/tar archive
-        self.clean = clean # delete archive if extract successful
+        self.clean = clean  # delete archive if extract successful
         self.source = None
 
     def extract_archives(self):
@@ -72,6 +75,7 @@ class Scraper:
         self.fpaths = extracted_fpaths
         return self.fpaths
 
+
 class FileScraper(Scraper):
     """Scraper subclass used to search and extract files on local disk that match regex/glob pattern(s).
 
@@ -81,7 +85,15 @@ class FileScraper(Scraper):
         parent Scraper class
     """
 
-    def __init__(self, patterns=["*.zip"], cache_dir="~", cache_subdir="data", format="zip", extract=True, clean=True):
+    def __init__(
+        self,
+        patterns=["*.zip"],
+        cache_dir="~",
+        cache_subdir="data",
+        format="zip",
+        extract=True,
+        clean=True,
+    ):
         """Instantiates a spacekit.extractor.scrape.FileScraper object.
 
         Parameters
@@ -89,13 +101,19 @@ class FileScraper(Scraper):
         patterns : list, optional
             glob pattern strings, by default ["*.zip"]
         """
-        super().__init__(cache_dir=cache_dir, cache_subdir=cache_subdir, format=format, extract=extract, clean=clean)
+        super().__init__(
+            cache_dir=cache_dir,
+            cache_subdir=cache_subdir,
+            format=format,
+            extract=extract,
+            clean=clean,
+        )
         self.patterns = patterns
         self.fpaths = []
         self.source = "file"
 
     def scrape(self):
-        """Search local disk for files matching glob regex pattern(s) 
+        """Search local disk for files matching glob regex pattern(s)
 
         Parameters
         ----------
@@ -124,6 +142,7 @@ class WebScraper(Scraper):
     Scraper : class
         spacekit.extractor.scrape.Scraper object
     """
+
     def __init__(
         self,
         uri,
@@ -139,7 +158,7 @@ class WebScraper(Scraper):
         Parameters
         ----------
         uri : string
-            root uri (web address) 
+            root uri (web address)
         dataset : dictionary
             key-pair values of each dataset's filenames and hash keys
         hash_algorithm : str, optional
@@ -179,7 +198,9 @@ class WebScraper(Scraper):
                 archive_format=self.format,
             )
             self.fpaths.append(fpath)
-            if os.path.exists(fpath) and self.clean is True:  # deletes archive if extraction was successful
+            if (
+                os.path.exists(fpath) and self.clean is True
+            ):  # deletes archive if extraction was successful
                 os.remove(f"{self.cache_subdir}/{fname}")
         return self.fpaths
 
@@ -192,6 +213,7 @@ class S3Scraper(Scraper):
     Scraper : class
         spacekit.extractor.scrape.Scraper object
     """
+
     def __init__(
         self,
         bucket,
@@ -301,8 +323,8 @@ class S3Scraper(Scraper):
 
 
 class MastScraper:
-    """Class for scraping metadata from MAST (Mikulsky Archive for Space Telescopes) via ``astroquery``. Current functionality for this class is limited to extracting the `target_classification` values of HAP targets from the archive. An example of a target classification is "GALAXY" - an alphanumeric categorization of an image product/.fits file. Note - the files themselves are not downloaded, just this specific metadata listed in the online archive database. For downloading MAST science files, use the ``spacekit.extractor.radio`` module. The search parameter values needed for locating a HAP product on MAST can be extracted from the fits science extension headers using the ``astropy`` library. See the ``spacekit.preprocessor.scrub`` api for an example (or the astropy documentation).
-    """
+    """Class for scraping metadata from MAST (Mikulsky Archive for Space Telescopes) via ``astroquery``. Current functionality for this class is limited to extracting the `target_classification` values of HAP targets from the archive. An example of a target classification is "GALAXY" - an alphanumeric categorization of an image product/.fits file. Note - the files themselves are not downloaded, just this specific metadata listed in the online archive database. For downloading MAST science files, use the ``spacekit.extractor.radio`` module. The search parameter values needed for locating a HAP product on MAST can be extracted from the fits science extension headers using the ``astropy`` library. See the ``spacekit.preprocessor.scrub`` api for an example (or the astropy documentation)."""
+
     def __init__(self, df, trg_col="targname", ra_col="ra_targ", dec_col="dec_targ"):
         """Instantiates a spacekit.extractor.scrape.MastScraper object.
 
@@ -732,8 +754,7 @@ class JsonScraper:
         return self.data
 
     def write_to_csv(self):
-        """optionally write dataframe out to .csv file.
-        """
+        """optionally write dataframe out to .csv file."""
         output_csv_filename = self.h5_filename.replace(".h5", ".csv")
         if os.path.exists(output_csv_filename):
             os.remove(output_csv_filename)
@@ -816,6 +837,7 @@ class JsonScraper:
 class ImageScraper(Scraper):
     def __init__(self):
         super().__init__(self)
+
 
 # def extract_archives(zipfiles, extract_to="data", delete_archive=False):
 #     fpaths = []

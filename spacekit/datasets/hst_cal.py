@@ -45,7 +45,6 @@ def download_archives():
         list of paths to extracted dataset archives
     """
     return WebScraper(calcloud_uri, calcloud_data).scrape()
-    
 
 
 def load_data(fpath=None, date_key=None):
