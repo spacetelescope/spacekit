@@ -383,7 +383,7 @@ if __name__ == "__main__":
     parser.add_argument("-b", "--batchsize", type=int, default=32, help="batch_size")
     parser.add_argument("-e", "--epochs", type=int, default=60, help="number of epochs")
     parser.add_argument(
-        "-y", "--early_stopping", type=str, default=None, help="early stopping"
+        "-y", "--early_stopping", type=str, default=None, choices=['val_accuracy','val_loss'], help="early stopping"
     )
     parser.add_argument("-v", "--verbose", type=int, default=2, help="verbosity level")
     parser.add_argument(

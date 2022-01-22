@@ -1,3 +1,5 @@
+import os
+from pytest import fixture
 # try:
 #     from pytest_astropy_header.display import (PYTEST_HEADER_MODULES,
 #                                                TESTED_VERSIONS)
@@ -25,3 +27,30 @@ enable_deprecations_as_exceptions()
 # PYTEST_HEADER_MODULES.pop('h5py')
 
 TESTED_VERSIONS['spacekit'] = version
+
+# scope='function' each test function gets its own object
+# @fixture(scope='function') # function, session, module (class?)
+# def chrome_browser():
+#     browser = webdriver.Chrome()
+#     return browser
+
+@fixture(scope='function') # session
+def svm_dataset():
+    data = os.path.join(
+    os.path.dirname(os.path.realpath(__file__)),
+    'tests/test_files/svm/test_img_data.csv',
+    )
+    yield data
+
+@fixture(scope='function')
+def svm_images():
+    img_file = os.path.join(
+    os.path.dirname(os.path.realpath(__file__)),
+    'tests/test_files/svm/test_images.npz',
+    )
+    yield img_file
+
+# FIXTURE_DIR_SVM = os.path.join(
+#     os.path.dirname(os.path.realpath(__file__)),
+#     'tests/test_files/svm',
+#     )

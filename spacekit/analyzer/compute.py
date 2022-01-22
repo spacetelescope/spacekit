@@ -25,7 +25,7 @@ mpl.rc("font", **font_dict)
 
 class Computer(object):
     def __init__(self, algorithm, res_path=None, show=False, validation=False):
-        self.algorithm = algorithm  # test/val; clf/reg
+        self.algorithm = algorithm
         self.res_path = res_path
         self.show = show
         self.validation = validation
@@ -702,7 +702,7 @@ class ComputeBinary(ComputeClassifier):
     def __init__(
         self,
         builder=None,
-        algorithm="clf",
+        algorithm="binary",
         classes=["aligned", "misaligned"],
         res_path="results/svm",
         show=False,
@@ -761,7 +761,7 @@ class ComputeMulti(ComputeClassifier):
     def __init__(
         self,
         builder=None,
-        algorithm="clf",
+        algorithm="multiclass",
         classes=["2g", "8g", "16g", "64g"],
         res_path="results/mem_bin",
         show=False,
@@ -914,7 +914,7 @@ class ComputeRegressor(Computer):
     def __init__(
         self,
         builder=None,
-        algorithm="reg",
+        algorithm="linreg",
         res_path="results/memory",
         show=False,
         validation=False,
