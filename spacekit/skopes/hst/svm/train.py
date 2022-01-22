@@ -12,17 +12,17 @@ import os
 import argparse
 import time
 import datetime as dt
-from spacekit.extractor.load import load_datasets
+from spacekit.extractor.load import load_datasets, SVMImages
 from spacekit.generator.augment import training_data_aug, training_img_aug
 from spacekit.preprocessor.transform import (
     normalize_training_data,
     normalize_training_images,
     split_sets,
+    split_from_arrays
 )
-from spacekit.builder.networks import Ensemble
+from spacekit.builder.architect import BuilderEnsemble
 from spacekit.analyzer.compute import ComputeBinary
-from spacekit.extractor.load import SVMImages
-from spacekit.analyzer.track import stopwatch
+# from spacekit.analyzer.track import stopwatch
 
 DIM = 3
 CH = 3
@@ -31,56 +31,6 @@ HEIGHT = 128
 DEPTH = DIM * CH
 SHAPE = (DIM, WIDTH, HEIGHT, CH)
 TF_CPP_MIN_LOG_LEVEL = 2
-
-
-def make_image_sets(
-    X_train, X_test, X_val, img_path="img", w=128, h=128, d=9, exp=None
-):
-    """
-    Read in train/test files and produce X-y data splits. y labels are encoded as 0=valid, 1=compromised.
-    By default, the ImageCNN3D model expects RGB image inputs as 3x3 arrays, for a total of 9 channels. This can of course be customized for other image arrangements using other classes in the spacekit.builder.networks module.
-
-    Parameters
-    ----------
-    X_train : numpy array
-        training image inputs
-    X_test : [type]
-        test image inputs
-    X_val : [type]
-        validation image inputs
-    img_path : str, optional
-        path to png images parent directory, by default "img"
-    w : int, optional
-        width of image, by default 128
-    h : int, optional
-        height of image, by default 128
-    d : int, optional
-        dimensions of image (determined by channels (rgb=3) multipled by depth (num image frames), by default 9
-    exp : int, optional
-        "expand" dimensions: (exp, w, h, 3). Set to 3 for predictions, None for training, by default None
-
-    Returns
-    -------
-    nested lists
-        train, test, val nested lists each containing an index of the visit names and png image data as numpy arrays.
-    """
-    start = time.time()
-    stopwatch("LOADING IMAGES", t0=start)
-
-    print("\n*** Training Set ***")
-    svm_img = SVMImages(img_path, w=w, h=h, d=d)
-    train = svm_img.detector_training_images(X_train, exp=exp)  # (idx, X, y)
-    print("\n*** Test Set ***")
-    test = svm_img.detector_training_images(X_test, exp=exp)
-    print("\n*** Validation Set ***")
-    val = svm_img.detector_training_images(X_val, exp=exp)
-
-    end = time.time()
-    print("\n")
-    stopwatch("LOADING IMAGES", t0=start, t1=end)
-    print("\n[i] Length of Splits:")
-    print(f"X_train={len(train[1])}, X_test={len(test[1])}, X_val={len(val[1])}")
-    return train, test, val
 
 
 def make_ensembles(
@@ -163,19 +113,21 @@ def load_ensemble_data(
     df = load_datasets([filename])
     print("\tREG DATA: ", df.shape)
     print(f"\nClass Labels (0=Aligned, 1=Misaligned)\n{df['label'].value_counts()}")
-    X_train, X_test, X_val, y_train, y_test, y_val = split_sets(df)
 
-    # LOAD IMG DATA
-    # TODO: load from npz instead
-    depth = dim * ch
-    image_sets = [X_train, X_test, X_val]
-    train, test, val = make_image_sets(
-        *image_sets, img_path=img_path, w=img_size, h=img_size, d=depth
-    )
+    # FROM NPZ:
+    if img_path.split(".")[-1] == "npz":
+        train, test, val = SVMImages(img_path).split_from_npz()
+        data, (y_train, y_test, y_val) = split_from_arrays(df, train, test, val)
+    else:
+        # FROM PNG:
+        data, (y_train, y_test, y_val) = split_sets(df)
+        # LOAD IMG DATA
+        svm = SVMImages(img_path, w=img_size, h=img_size, d=dim*ch)
+        train, test, val = svm.load_split_training(*data)
 
     # DATA AUGMENTATION
     print("\nPerforming Regression Data Augmentation")
-    X_train, _ = training_data_aug(X_train, y_train)
+    X_train, _ = training_data_aug(data[0], y_train)
 
     # IMAGE AUGMENTATION
     print("\nPerforming Image Data Augmentation")
@@ -185,7 +137,7 @@ def load_ensemble_data(
     if norm:
         cols = ["numexp", "rms_ra", "rms_dec", "nmatches", "point", "segment", "gaia"]
         X_train, X_test, X_val = normalize_training_data(
-            df, cols, X_train, X_test, X_val=X_val, output_path=output_path
+            df, cols, X_train, data[1], X_val=data[2], output_path=output_path
         )
         X_tr, X_ts, X_vl = normalize_training_images(X_tr, X_ts, X_vl=X_vl)
 
@@ -242,7 +194,7 @@ def train_ensemble(
             verbose=1,
             ensemble=True,
         )
-    ens = Ensemble(
+    ens = BuilderEnsemble(
         XTR,
         YTR,
         XTS,
@@ -252,7 +204,7 @@ def train_ensemble(
         output_name="svm_output",
         name=model_name,
     )
-    ens.build_ensemble()
+    ens.build()
     ens.batch_fit()
     if output_path is None:
         output_path = os.getcwd()

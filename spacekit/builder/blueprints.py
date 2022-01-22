@@ -92,7 +92,7 @@ class Blueprints:
             "memory_classifier": "memory_classifier",
             "memory_regressor": "memory_regressor",
             "wallclock_regressor": "wallclock_regressor",
-            "ensemble_svm": "ensemble_output"
+            "ensemble_svm": "svm_output"
         }[architecture]
 
         self.name = {

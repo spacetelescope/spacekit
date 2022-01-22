@@ -457,9 +457,24 @@ def split_sets(df, target="label", val=True):
         X_train, X_val, y_train, y_val = train_test_split(
             X_train, y_train, test_size=0.1, shuffle=True, stratify=y_train
         )
-        return X_train, X_test, X_val, y_train, y_test, y_val
+        data = (X_train, X_test, X_val)
+        labels = (y_train, y_test, y_val)
     else:
-        return X_train, X_test, y_train, y_test
+        data = (X_train, X_test)
+        labels = (y_train, y_test)
+    return data, labels
+
+
+def split_from_arrays(df, train, test, val, target="label"):
+    X_train = df.loc[train[0]].drop(target, axis=1, inplace=False)
+    X_test = df.loc[test[0]].drop(target, axis=1, inplace=False)
+    X_val = df.loc[val[0]].drop(target, axis=1, inplace=False)
+    y_train = df.loc[train[0]][target]
+    y_test = df.loc[test[0]][target]
+    y_val = df.loc[val[0]][target]
+    data = (X_train, X_test, X_val)
+    labels = (y_train, y_test, y_val)
+    return data, labels
 
 
 def normalize_training_images(X_tr, X_ts, X_vl=None):

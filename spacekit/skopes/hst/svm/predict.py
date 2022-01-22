@@ -126,7 +126,7 @@ def load_image_data(X_data, img_path, size=None):
 
 
 def load_mixed_inputs(data_file, img_path, size=None):
-    """Load the regression test data and image input data.
+    """Load the regression test data and image input data, then stacks the arrays into a single combined input (list) for the ensemble model.
 
     Parameters
     ----------
@@ -139,8 +139,8 @@ def load_mixed_inputs(data_file, img_path, size=None):
 
     Returns
     -------
-    numpy arrays
-        MLP inputs, ImageCNN3D inputs
+    list
+        regression test data (MLP inputs) and image data (CNN inputs) joined as a list
     """
     X_data = load_regression_data(data_file)
     idx, X_img = load_image_data(X_data, img_path, size=size)
@@ -149,27 +149,8 @@ def load_mixed_inputs(data_file, img_path, size=None):
         X_data = X_data.loc[X_data.index.isin(idx)]
         print(f"{diff} missing images removed from index")
         print(f"X_data: {X_data.shape}\nX_img:  {X_img.shape}")
-    return X_data, X_img
-
-
-def make_ensemble_data(X_data, X_img):
-    """Stacks regression test data and image arrays into a single combined input array for the ensemble model.
-
-    Parameters
-    ----------
-    X_data : numpy array
-        Regression test data feature inputs for which the model will generate predictions.
-    X_img : numpy array
-        Stacked image array inputs for which the model will generate predictions.
-
-    Returns
-    -------
-    list
-        regression test data and image data inputs joined as a list
-    """
     print("Joining regression data and image arrays")
-    X = [X_data, X_img]
-    return X
+    return [X_data, X_img]
 
 
 def classify_alignments(model, X):
@@ -288,14 +269,13 @@ def predict_alignment(
         image size (width and height), by default None (128)
     """
     ens_clf = get_model(model_path=model_path)
-    X_data, X_img = load_mixed_inputs(data_file, img_path, size=size)
-    X = make_ensemble_data(X_data, X_img)
+    X = load_mixed_inputs(data_file, img_path, size=size)
     y_pred, y_proba = classify_alignments(ens_clf, X)
     if output_path is None:
         output_path = os.getcwd()
     output_path = os.path.join(output_path, "predictions")
     os.makedirs(output_path, exist_ok=True)
-    preds = save_preds(X_data, y_pred, y_proba, output_path)
+    preds = save_preds(X[0], y_pred, y_proba, output_path)
     classification_report(preds, output_path)
 
 

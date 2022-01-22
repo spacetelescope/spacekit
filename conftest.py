@@ -34,23 +34,28 @@ TESTED_VERSIONS['spacekit'] = version
 #     browser = webdriver.Chrome()
 #     return browser
 
-@fixture(scope='function') # session
-def svm_dataset():
-    data = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)),
-    'tests/test_files/svm/test_img_data.csv',
-    )
-    yield data
+# @fixture(scope='function') # session
+# def svm_dataset():
+#     svm_data = 'test_files/svm/test_img_data.csv'
+#     # data = os.path.join(
+#     # os.path.dirname(os.path.realpath(__file__)),
+#     # 'test_files/svm/test_img_data.csv',
+#     # )
+#     yield svm_data
 
-@fixture(scope='function')
-def svm_images():
-    img_file = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)),
-    'tests/test_files/svm/test_images.npz',
-    )
-    yield img_file
-
-# FIXTURE_DIR_SVM = os.path.join(
+# @fixture(scope='function')
+# def svm_images():
+#     img_file = os.path.join(
 #     os.path.dirname(os.path.realpath(__file__)),
-#     'tests/test_files/svm',
+#     'test_files/svm/test_images.npz',
 #     )
+#     yield img_file
+
+# @fixture(scope='function')
+# def svm_png_images():
+#     img_path = os.path.join(
+#     os.path.dirname(os.path.realpath(__file__)),
+#     'test_files/svm/img',
+#     )
+#     yield img_path
+
