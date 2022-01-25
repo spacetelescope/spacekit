@@ -409,7 +409,7 @@ class MastScraper:
                 propid = str(idx).split("_")[1]
                 ra, dec = row[self.ra_col], row[self.dec_col]
                 obs = Observations.query_criteria(
-                    proposal_id=propid, s_ra=ra, s_dec=dec
+                    proposal_id=propid, s_ra=[ra, ra+0.1], s_dec=[dec, dec+0.1]
                 )
                 cat = obs[np.where(obs["target_classification"])][
                     "target_classification"

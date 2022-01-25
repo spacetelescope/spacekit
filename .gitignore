@@ -20,7 +20,8 @@ MANIFEST
 # Sphinx
 docs/api
 docs/_build
-
+# Pytest (local)
+tmp/
 # Packages/installer info
 *.egg
 *.egg-info/

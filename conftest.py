@@ -57,3 +57,7 @@ def svm_png():
     # )
     # yield img_path
 
+@fixture(scope='function')
+def svm_visit_data():
+    visit_data = "tests/data/svm/raw_data/singlevisits"
+    return visit_data
