@@ -22,6 +22,7 @@ docs/api
 docs/_build
 # Pytest (local)
 tmp/
+tests/data/svm/raw_data/singlevisits/ibl738
 # Packages/installer info
 *.egg
 *.egg-info/
@@ -58,7 +59,7 @@ cal-data/
 */dashboard/svm/data/*
 2022-01-16-1642337739.zip
 2022-01-17-1642450556
-tests/data/svm/raw_data/singlevisits
+
 # Mac OSX
 .DS_Store
 *.pyc
