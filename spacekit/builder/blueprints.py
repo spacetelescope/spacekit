@@ -1,7 +1,7 @@
-from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.optimizers import Adam, schedules
 from tensorflow.keras.metrics import RootMeanSquaredError as RMSE
 
-class Blueprints:
+class Blueprint:
     def __init__(self, architecture):
 
         self.input_shape = {
@@ -107,4 +107,8 @@ class Blueprints:
             "memory_regressor": "linreg",
             "wallclock_regressor": "linreg",
             "ensemble_svm": "binary"
+        }[architecture]
+
+        self.compile_params = {
+            "ensemble_svm": dict(loss="binary_crossentropy", metrics=["accuracy"], optimizer=Adam(learning_rate=schedules.ExponentialDecay(lr=1e-4, decay_steps=100000, decay_rate=0.96, staircase=True)))
         }[architecture]

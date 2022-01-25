@@ -15,8 +15,9 @@ import argparse
 import os
 import sys
 import datetime as dt
-import importlib.resources
-from spacekit.extractor.load import SVMImages
+from spacekit.extractor.load import load_datasets, SVMFileIO
+from spacekit.builder.architect import Builder
+from spacekit.builder.blueprints import Blueprint
 
 DIM = 3
 CH = 3
@@ -27,72 +28,63 @@ SHAPE = (DIM, SIZE, SIZE, CH)
 TF_CPP_MIN_LOG_LEVEL = 2
 
 
-def get_model(model_path=None):
-    """Loads pretrained Keras functional model from disk. By default, this will load the pre-trained EnsembleSVM classifier included from the spacekit library of trained networks.
+Blueprint("ensemble_svm").compile_params
 
-    Parameters
-    ----------
-    model_path : str, optional
-        path to pretrained model folder, by default None
+# def get_model(model_path=None):
+#     """Loads pretrained Keras functional model from disk. By default, this will load the pre-trained EnsembleSVM classifier included from the spacekit library of trained networks.
 
-    Returns
-    -------
-    Keras functional model object
-        pre-trained neural network
-    """
-    if model_path is None:
-        with importlib.resources.path(
-            "spacekit.skopes.trained_networks", "ensembleSVM.zip"
-        ) as M:
-            model_path = M
-        os.makedirs("models", exist_ok=True)
-        model_base = os.path.basename(model_path).split(".")[0]
-        with ZipFile(model_path, "r") as zip_ref:
-            zip_ref.extractall("models")
-        model_path = os.path.join("models", model_base)
-    print("Loading saved model: ", model_path)
-    model = tf.keras.models.load_model(model_path)
-    return model
+#     Parameters
+#     ----------
+#     model_path : str, optional
+#         path to pretrained model folder, by default None
 
-
-def load_regression_data(data_file):
-    """Loads preprocessed regression test data from csv
-
-    Parameters
-    ----------
-    data_file : str
-        path to preprocessed mosaic data csv file
-
-    Returns
-    -------
-    Pandas dataframe
-        Feature inputs for which the model will generate predictions.
-    """
-    print("Loading regression test data for MLP")
-    data = pd.read_csv(data_file, index_col="index")
-    column_order = [
-        "numexp",
-        "rms_ra",
-        "rms_dec",
-        "nmatches",
-        "point",
-        "segment",
-        "gaia",
-        "det",
-        "wcs",
-        "cat",
-    ]
-    try:
-        X_data = data[column_order]
-        print("Input Shape: ", X_data.shape)
-        return X_data
-    except Exception as e:
-        print(e)
-        print("Dataframe must contain these columns: ", column_order)
-        sys.exit(1)
+#     Returns
+#     -------
+#     Keras functional model object
+#         pre-trained neural network
+#     """
+#     if model_path is None:
+#         with importlib.resources.path(
+#             "spacekit.skopes.trained_networks", "ensembleSVM.zip"
+#         ) as M:
+#             model_path = M
+#         os.makedirs("models", exist_ok=True)
+#         model_base = os.path.basename(model_path).split(".")[0]
+#         with ZipFile(model_path, "r") as zip_ref:
+#             zip_ref.extractall("models")
+#         model_path = os.path.join("models", model_base)
+#     print("Loading saved model: ", model_path)
+#     model = tf.keras.models.load_model(model_path)
+#     return model
 
 
-def load_image_data(X_data, img_path, size=None):
+# def load_regression_data(data_file):
+#     """Loads preprocessed regression test data from csv
+
+#     Parameters
+#     ----------
+#     data_file : str
+#         path to preprocessed mosaic data csv file
+
+#     Returns
+#     -------
+#     Pandas dataframe
+#         Feature inputs for which the model will generate predictions.
+#     """
+#     print("Loading regression test data for MLP")
+#     data = pd.read_csv(data_file, index_col="index")
+
+#     try:
+#         X_data = data[column_order]
+#         print("Input Shape: ", X_data.shape)
+#         return X_data
+#     except Exception as e:
+#         print(e)
+#         print("Dataframe must contain these columns: ", column_order)
+#         sys.exit(1)
+
+
+def load_image_data(X_data, img_path, size=128):
     """Loads total detection png images and converts to arrays
 
     Parameters
@@ -102,7 +94,7 @@ def load_image_data(X_data, img_path, size=None):
     img_path : str
         path to png images parent directory
     size : int, optional
-        image size (width and height), by default None (128)
+        image size (width and height), by default 128
 
     Returns
     -------
@@ -110,12 +102,8 @@ def load_image_data(X_data, img_path, size=None):
         index of input dataset names, array of image data inputs
     """
     print("Loading images into arrays")
-    if size is not None:
-        SIZE = size
-    else:
-        SIZE = 128
-    svm_img = SVMImages(img_path, SIZE, SIZE, DEPTH)
-    idx, X_img = svm_img.detector_prediction_images(X_data, DIM)
+    svm_img = SVMFileIO(img_path, w=size, w=size, d=9)
+    idx, X_img = svm_img.detector_prediction_images(X_data, exp=3)
     print("Inputs: ", X_img.shape[0])
     print("Dimensions: ", X_img.shape[1])
     print("Width: ", X_img.shape[2])
@@ -142,7 +130,19 @@ def load_mixed_inputs(data_file, img_path, size=None):
     list
         regression test data (MLP inputs) and image data (CNN inputs) joined as a list
     """
-    X_data = load_regression_data(data_file)
+    cols = [
+        "numexp",
+        "rms_ra",
+        "rms_dec",
+        "nmatches",
+        "point",
+        "segment",
+        "gaia",
+        "det",
+        "wcs",
+        "cat",
+    ]
+    X_data = load_datasets([data_file], column_order=cols)
     idx, X_img = load_image_data(X_data, img_path, size=size)
     diff = X_data.shape[0] - X_img.shape[0]
     if diff > 0:
@@ -268,15 +268,16 @@ def predict_alignment(
     size : int, optional
         image size (width and height), by default None (128)
     """
-    ens_clf = get_model(model_path=model_path)
     X = load_mixed_inputs(data_file, img_path, size=size)
-    y_pred, y_proba = classify_alignments(ens_clf, X)
+    ens = Builder().load_saved_model(model_path=model_path)
+    y_pred, y_proba = classify_alignments(ens, X)
     if output_path is None:
         output_path = os.getcwd()
     output_path = os.path.join(output_path, "predictions")
     os.makedirs(output_path, exist_ok=True)
     preds = save_preds(X[0], y_pred, y_proba, output_path)
     classification_report(preds, output_path)
+    return preds
 
 
 if __name__ == "__main__":

@@ -25,12 +25,7 @@ from tensorflow.keras.metrics import RootMeanSquaredError as RMSE
 from spacekit.generator.augment import augment_data, augment_image
 from spacekit.analyzer.track import stopwatch
 
-# DIM = 3
-# CH = 3
-# WIDTH = 128
-# HEIGHT = 128
-# DEPTH = DIM * CH
-# SHAPE = (DIM, WIDTH, HEIGHT, CH)
+
 TF_CPP_MIN_LOG_LEVEL = 2
 
 # TODO: K-fold cross-val class
@@ -41,15 +36,17 @@ class Builder:
 
     def __init__(
         self,
-        X_train,
-        y_train,
-        X_test,
-        y_test,
+        train_data=None,
+        test_data=None,
+        blueprint=None
     ):
-        self.X_train = X_train
-        self.X_test = X_test
-        self.y_train = y_train
-        self.y_test = y_test
+        if train_data is not None:
+            self.X_train = train_data[0]
+            self.X_test = train_data[1]
+        if test_data is not None:
+            self.y_train = test_data[0]
+            self.y_test = test_data[1]
+        self.blueprint = None
         self.batch_size = 32
         self.epochs = 60
         self.lr = 1e-4
@@ -70,57 +67,42 @@ class Builder:
 
     def load_saved_model(
         self,
-        compile=True,
-        loss="binary_crossentropy",
-        metrics=["accuracy"],
-        lr_sched=True,
-    ):
-        """Load saved keras model from local disk (uses spacekit trained model if self.model_path is None).
+        arch="ensembleSVM",
+        compile_params=None):
+        """Load saved keras model from local disk (located at the ``model_path`` attribute) or a pre-trained model from spacekit.skopes.trained_networks (if ``model_path`` attribute is None). Example for ``compile_params``: ``dict(loss="binary_crossentropy", metrics=["accuracy"], optimizer=Adam(learning_rate=optimizers.schedules.ExponentialDecay(lr=1e-4, decay_steps=100000, decay_rate=0.96, staircase=True)))``
 
         Parameters
         ----------
-        compile : bool, optional
-            Compile the model using kwarg parameters, by default True
-        loss : str, optional
-            loss metric parameter, by default "binary_crossentropy"
-        metrics : list, optional
-            model compile metrics type, by default ["accuracy"]
-        lr_sched : bool, optional, by default True
-            Use exponential learning decay schedule (if False, uses the learning rate instead)
+        arch : str, optional
+            select a pre-trained model included from the spacekit library of trained networks ("ensembleSVM" or "calmodels"), by default "ensembleSVM"
+        compile_params : dict, optional
+            Compile the model using kwarg parameters, by default None
 
         Returns
         -------
-        Keras Model object
-            pre-trained (or at least pre-compiled) Keras model loaded from disk.
+        Keras functional Model object
+            pre-trained (and/or compiled) functional Keras model.
         """
         if self.model_path is None:
             model_src = "spacekit.skopes.trained_networks"
-            archive_file = "ensembleSVM.zip"
+            archive_file = f"{arch}.zip"
             with importlib.resources.path(model_src, archive_file) as mod:
                 self.model_path = mod
         if self.model_path.split(".")[-1] == "zip":
             self.model_path = self.unzip_model_files()
         self.model = load_model(self.model_path)
-        if compile is True:
+        if compile_params:
             self.model = Model(inputs=self.model.inputs, outputs=self.model.outputs)
-            if lr_sched is False:
-                learning_rate = self.lr
-            else:
-                learning_rate = self.decay_learning_rate()
-            self.model.compile(
-                loss=loss,
-                optimizer=Adam(learning_rate=learning_rate),
-                metrics=metrics,
-            )
+            self.model.compile(**compile_params)
         return self.model
 
-    def unzip_model_files(self, extract_to="models"):
+    def unzip_model_files(self, extract_to="~/models"):
         """Extracts a keras model object from a zip archive
 
         Parameters
         ----------
         extract_to : str, optional
-            directory location to extract into, by default "models"
+            directory location to extract into, by default "~/models"
 
         Returns
         -------
@@ -407,7 +389,6 @@ class Builder:
         start = time.time()
         stopwatch(f"TRAINING ***{model_name}***", t0=start)
 
-        
         # make_batches, steps_per_epoch = self.batch_steps()
 
         self.history = self.model.fit(
@@ -473,9 +454,8 @@ class BuilderMLP(Builder):
     Builder : class
         spacekit.builder.architect.Builder class object
     """
-
     def __init__(self, X_train, y_train, X_test, y_test, blueprint="mlp"):
-        super().__init__(X_train, y_train, X_test, y_test)
+        super().__init__(train_data=(X_train, y_train), test_data=(X_test, y_test))
         self.blueprint = blueprint
         self.input_shape = X_train.shape[1]
         self.output_shape = 1
@@ -572,12 +552,7 @@ class BuilderCNN3D(Builder):
     """
 
     def __init__(self, X_train, y_train, X_test, y_test, blueprint="cnn3d"):
-        super().__init__(
-            X_train,
-            y_train,
-            X_test,
-            y_test,
-        )
+        super().__init__(train_data=(X_train, y_train), test_data=(X_test, y_test))
         self.blueprint = blueprint
         self.input_shape = self.X_train.shape[1:]
         self.output_shape = 1
@@ -710,7 +685,7 @@ class BuilderEnsemble(Builder):
         output_name="ensemble_output",
         name="ensembl4D",
     ):
-        super().__init__(X_train, y_train, X_test, y_test)
+        super().__init__(train_data=(X_train, y_train), test_data=(X_test, y_test))
         self.input_name = input_name
         self.output_name = output_name
         self.name = name
@@ -857,7 +832,7 @@ class BuilderEnsemble(Builder):
 
 class BuilderCNN2D(Builder):
     def __init__(self, X_train, y_train, X_test, y_test, blueprint="cnn2d"):
-        super().__init__(self, X_train, y_train, X_test, y_test)
+        super().__init__(train_data=(X_train, y_train), test_data=(X_test, y_test))
         self.blueprint = blueprint
         self.input_shape = self.X_train.shape[1:]
         self.output_shape = 1

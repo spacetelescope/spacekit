@@ -10,15 +10,12 @@ This script (and/or its functions) should be used in conjunction with spacekit.s
 
 import os
 import argparse
-import time
 import datetime as dt
-from spacekit.extractor.load import load_datasets, SVMImages
+from spacekit.extractor.load import load_datasets, SVMFileIO
 from spacekit.generator.augment import training_data_aug, training_img_aug
 from spacekit.preprocessor.transform import (
     normalize_training_data,
-    normalize_training_images,
-    split_sets,
-    split_from_arrays
+    normalize_training_images
 )
 from spacekit.builder.architect import BuilderEnsemble
 from spacekit.analyzer.compute import ComputeBinary
@@ -114,20 +111,11 @@ def load_ensemble_data(
     print("\tREG DATA: ", df.shape)
     print(f"\nClass Labels (0=Aligned, 1=Misaligned)\n{df['label'].value_counts()}")
 
-    # FROM NPZ:
-    if img_path.split(".")[-1] == "npz":
-        train, test, val = SVMImages(img_path).split_from_npz()
-        data, (y_train, y_test, y_val) = split_from_arrays(df, train, test, val)
-    else:
-        # FROM PNG:
-        data, (y_train, y_test, y_val) = split_sets(df)
-        # LOAD IMG DATA
-        svm = SVMImages(img_path, w=img_size, h=img_size, d=dim*ch)
-        train, test, val = svm.load_split_training(*data)
+    (data, labels), (train, test, val) = SVMFileIO(img_path, w=img_size, h=img_size, d=dim*ch, inference=False, data=df).load()
 
     # DATA AUGMENTATION
     print("\nPerforming Regression Data Augmentation")
-    X_train, _ = training_data_aug(data[0], y_train)
+    X_train, _ = training_data_aug(data[0], labels[0])
 
     # IMAGE AUGMENTATION
     print("\nPerforming Image Data Augmentation")
@@ -140,7 +128,8 @@ def load_ensemble_data(
             df, cols, X_train, data[1], X_val=data[2], output_path=output_path
         )
         X_tr, X_ts, X_vl = normalize_training_images(X_tr, X_ts, X_vl=X_vl)
-
+    else:
+        X_test, X_val = data[1], data[2]
     # JOIN INPUTS: MLP + CNN
     XTR, YTR, XTS, YTS, XVL, YVL = make_ensembles(
         X_tr,
@@ -153,7 +142,7 @@ def load_ensemble_data(
         val_data=X_val,
         y_val=y_vl,
     )
-    tv_idx = [y_test, y_val, img_idx]
+    tv_idx = [labels[1], labels[2], img_idx]
     return tv_idx, XTR, YTR, XTS, YTS, XVL, YVL
 
 
@@ -242,8 +231,7 @@ def compute_results(ens, tv_idx, val_set=(), output_path=None):
     _ = com.make_outputs()
     # validation set
     if len(val_set) == 2:
-        ens.X_val, ens.y_val = val_set[0], val_set[1]
-        ens.test_idx = tv_idx[1]
+        (ens.X_val, ens.y_val), ens.test_idx = val_set, tv_idx[1]
         val = ComputeBinary(builder=ens, res_path=f"{res_path}/val", validation=True)
         val.calculate_results()
         _ = val.make_outputs()

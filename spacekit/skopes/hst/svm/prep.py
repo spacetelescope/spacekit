@@ -23,7 +23,7 @@ def run_preprocessing(
     output_path=None,
     json_pattern="*_total*_svm_*.json",
     crpt=0,
-    draw_images=True,
+    draw_images=1,
 ):
     """
     Scrapes SVM data from raw files, preprocesses dataframe for MLP classifier and generates png images for image classifier.
@@ -56,13 +56,12 @@ def run_preprocessing(
         jsc.h5store()
     else:
         jsc = JsonScraper(h5_file=h5).load_h5_file()
-    # TODO: append label=1 if crpt=1
     if crpt == 1:
         jsc.data["label"] = 1
     scrub = ScrubSvm(jsc.data, input_path, output_path, fname)
     scrub.preprocess_data()
     fname = scrub.data_path
-    if draw_images is True:
+    if draw_images:
         img_outputs = os.path.join(output_path, "img")
         draw = DrawMosaics(
             input_path,
@@ -90,7 +89,7 @@ if __name__ == "__main__":
         help="where to save output files. Defaults to current working directory.",
     )
     parser.add_argument(
-        "--hdf5",
+        "--h5",
         type=str,
         default=None,
         help="hdf5 file to load if already exists",
@@ -100,7 +99,7 @@ if __name__ == "__main__":
         "--fname",
         type=str,
         default="svm_data",
-        help="csv output filename to create",
+        help="output filename to create",
     )
     parser.add_argument("-j", "--json_pattern", type=str, default="*_total*_svm_*.json")
     parser.add_argument(

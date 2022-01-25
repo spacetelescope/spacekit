@@ -239,10 +239,12 @@ def multiple_permutations(dataset, outputs, expos, mode, thresh="any"):
     bar.finish()
 
 
-def run_svm(visit, outputs, pattern):
+def run_svm(visit, outputs):
     os.environ.get("SVM_QUALITY_TESTING", "on")
     home = os.getcwd()
-    mutations = glob.glob(f"{outputs}/{pattern}/{visit}_*")
+    mutations = glob.glob(f"{outputs}/{visit}_*")
+    if len(mutations) == 0:
+        mutations = glob.glob(f"{outputs}/*/{visit}_*")
     for m in mutations:
         warning = f"{m}/warning.txt"
         if os.path.exists(warning):
@@ -327,7 +329,7 @@ def make_process_config(
     return prc, cfg
 
 
-def run_blocks(prc, cfg, pattern, srcpath=None, outputs="synthetic"):
+def run_blocks(prc, cfg, pattern="*", srcpath=None, outputs="synthetic"):
     datasets = get_datasets(search_pattern=pattern, srcpath=srcpath, outputs=outputs)
     start_block = time.time()
     stopwatch("Block Workflow", t0=start_block)
@@ -354,7 +356,7 @@ def run_blocks(prc, cfg, pattern, srcpath=None, outputs="synthetic"):
         # prevent repetitions on single dataset if pattern="*"
         visits = list(set([d.split("/")[-1][:6] for d in datasets]))
         for visit in tqdm(visits):
-            run_svm(visit, outputs, pattern)
+            run_svm(visit, outputs)
         end = time.time()
         stopwatch(prcname, t0=start, t1=end)
 
@@ -369,7 +371,7 @@ def run_blocks(prc, cfg, pattern, srcpath=None, outputs="synthetic"):
     stopwatch("Block Workflow", t0=start_block, t1=end_block)
 
 
-def run_pipes(prc, cfg, pattern, srcpath=None, outputs="synthetic"):
+def run_pipes(prc, cfg, pattern="*", srcpath=None, outputs="synthetic"):
     datasets = get_datasets(search_pattern=pattern, srcpath=srcpath, outputs=outputs)
     start = time.time()
     stopwatch("Pipe Workflow", t0=start)
@@ -388,7 +390,7 @@ def run_pipes(prc, cfg, pattern, srcpath=None, outputs="synthetic"):
         if prc["runsvm"]:
             visits = list(set([d.split("/")[-1][:6] for d in datasets]))
             for visit in tqdm(visits):
-                run_svm(visit, outputs, pattern)
+                run_svm(visit, outputs)
         if prc["imagegen"]:
             generate_images(outputs, visit=dataset, pattern=pattern)
         t1 = time.time()
@@ -412,14 +414,14 @@ if __name__ == "__main__":
         type=str,
         choices=["rex", "rfi", "mfi", "multi"],
         default="multi",
-        help="`rex`: randomly select subset of exposures from any filter; `rfi`: select all exposures from randomly selected filter; `mfi`: exposures of one filter, repeated for every filter in dataset. 'multi' (default) creates sub- and all- MFI permutations",
+        help="`multi` (default) creates sub- and all- MFI permutations; `rex`: randomly select subset of exposures from any filter; `rfi`: select all exposures from randomly selected filter; `mfi`: exposures of one filter repeated for every filter in dataset; by default, `multi`",
     )
     parser.add_argument(
         "-s",
         "--search_pattern",
         type=str,
         default="*",
-        help="glob search pattern for restricting which visits to process - default is wildcard *",
+        help="glob search pattern for restricting which visits to process, by default ``*``",
     )
     parser.add_argument(
         "-e",
@@ -427,7 +429,7 @@ if __name__ == "__main__":
         type=str,
         choices=["all", "sub"],
         default="all",
-        help="all or subset of exposures",
+        help="all or subset of exposures, by default ``all``",
     )
     parser.add_argument(
         "-m",
@@ -435,7 +437,7 @@ if __name__ == "__main__":
         type=str,
         choices=["stat", "stoc"],
         default="stoc",
-        help="apply consistent (static) or randomly varying (stochastic) corruptions to each exposure",
+        help="apply static (``stat``) or stochastic (``stoc``) corruptions to each exposure, by default ``stoc``",
     )
     parser.add_argument(
         "-t",
@@ -443,7 +445,7 @@ if __name__ == "__main__":
         type=str,
         choices=["major", "standard", "minor", "any"],
         default="any",
-        help="lambda relative error threshold",
+        help="lambda relative error threshold, by default ``any``",
     )
     parser.add_argument(
         "-w",
@@ -451,7 +453,7 @@ if __name__ == "__main__":
         type=str,
         choices=["block", "pipe"],
         default="block",
-        help="block (default): run all datasets through one process before starting next (if using more than one); pipe: run the entire workflow one dataset at a time.",
+        help="block (default): run all datasets through one process before starting next (if using more than one); pipe: run the entire workflow one dataset at a time",
     )
     parser.add_argument(
         "-c",
@@ -459,7 +461,7 @@ if __name__ == "__main__":
         type=int,
         choices=[0, 1],
         default=1,
-        help="1 (default) run corruption workflow",
+        help="1 (default) run corruption workflow; 0: don't run corruption",
     )
     parser.add_argument(
         "-r",
@@ -490,9 +492,9 @@ if __name__ == "__main__":
     )
     if args.workflow == "block":
         run_blocks(
-            prc, cfg, args.search_pattern, srcpath=args.srcpath, outputs=args.outputs
+            prc, cfg, pattern=args.search_pattern, srcpath=args.srcpath, outputs=args.outputs
         )
     else:
         run_pipes(
-            prc, cfg, args.search_pattern, srcpath=args.srcpath, outputs=args.outputs
+            prc, cfg, pattern=args.search_pattern, srcpath=args.srcpath, outputs=args.outputs
         )

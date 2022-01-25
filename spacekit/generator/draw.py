@@ -448,7 +448,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("input_path", type=str, help="path to datasets directory")
     parser.add_argument(
-        "-o", "--output_path", type=str, help="directory path to save png images"
+        "-o", "--output_path", type=str, default=None, help="directory path to save png images"
     )
     parser.add_argument(
         "-f",
@@ -496,23 +496,15 @@ if __name__ == "__main__":
         help="draw total detection (default) or filter level images",
     )
     args = parser.parse_args()
-    input_path = args.input_path
-    output_path = args.output_path
-    fname = args.fname
-    visit = args.visit
-    pattern = args.pattern
-    gen = args.generator
-    size = (args.size, args.size)
-    crpt = args.crpt
     draw = DrawMosaics(
-        input_path,
-        output_path=output_path,
-        fname=fname,
-        visit=visit,
-        pattern=pattern,
-        gen=gen,
-        size=size,
-        crpt=crpt,
+        args.input_path,
+        output_path=args.output_path,
+        fname=args.fname,
+        visit=args.visit,
+        pattern=args.pattern,
+        gen=args.generator,
+        size=(args.size, args.size),
+        crpt=args.crpt,
     )
     if args.img_type == "total":
         draw.generate_total_images()

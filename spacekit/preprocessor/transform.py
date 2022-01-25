@@ -2,7 +2,6 @@ import os
 import json
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
 from scipy.ndimage.filters import uniform_filter1d
 from sklearn.preprocessing import PowerTransformer
 import tensorflow as tf
@@ -428,53 +427,6 @@ def save_transformer_data(tx_data, output_path=None):
         json.dump(tx_data, j)
     print("TX data saved as json file: ", tx_file)
     return tx_file
-
-
-def split_sets(df, target="label", val=True):
-    """Splits Pandas dataframe into feature (X) and target (y) train, test and validation sets.
-
-    Parameters
-    ----------
-    df : Pandas dataframe
-        preprocessed SVM regression test dataset
-    target : str, optional
-        target class label for alignment model predictions, by default "label"
-    val : bool, optional
-        create a validation set separate from train/test, by default True
-
-    Returns
-    -------
-    Pandas dataframes
-        features (X) and targets (y) split into train, test, and validation sets
-    """
-    print("Splitting Data ---> X-y ---> Train-Test-Val")
-    y = df[target]
-    X = df.drop(target, axis=1, inplace=False)
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, shuffle=True, stratify=y
-    )
-    if val is True:
-        X_train, X_val, y_train, y_val = train_test_split(
-            X_train, y_train, test_size=0.1, shuffle=True, stratify=y_train
-        )
-        data = (X_train, X_test, X_val)
-        labels = (y_train, y_test, y_val)
-    else:
-        data = (X_train, X_test)
-        labels = (y_train, y_test)
-    return data, labels
-
-
-def split_from_arrays(df, train, test, val, target="label"):
-    X_train = df.loc[train[0]].drop(target, axis=1, inplace=False)
-    X_test = df.loc[test[0]].drop(target, axis=1, inplace=False)
-    X_val = df.loc[val[0]].drop(target, axis=1, inplace=False)
-    y_train = df.loc[train[0]][target]
-    y_test = df.loc[test[0]][target]
-    y_val = df.loc[val[0]][target]
-    data = (X_train, X_test, X_val)
-    labels = (y_train, y_test, y_val)
-    return data, labels
 
 
 def normalize_training_images(X_tr, X_ts, X_vl=None):
