@@ -82,8 +82,8 @@ def split_data(df, target="label", val=True, test_size=0.2, val_size=0.1):
 def load_npz(npz_file="data/img_data.npz"):
     try:
         img_data = np.load(npz_file)
-        X = img_data['images']
-        y = img_data['labels']
+        X = img_data["images"]
+        y = img_data["labels"]
         index = img_data["index"]
         img_data.close()
         return (index, X, y)
@@ -139,7 +139,7 @@ class FileIO:
         self.data = data
 
     def check_format(self, format):
-        sfx = self.img_path.split(".")[-1] 
+        sfx = self.img_path.split(".")[-1]
         if sfx == "npz":
             return "npz"
         else:
@@ -165,9 +165,15 @@ class FileIO:
 
     def load_multi_npz(self, X, y, i):
         """Load numpy arrays from individual feature/image data, label and index compressed files on disk"""
-        (X_train, X_test, X_val) = self.load_npz(npz_file=X, keys=["X_train", "X_test", "X_val"])
-        (y_train, y_test, y_val) = self.load_npz(npz_file=y, keys=["y_train", "y_test", "y_val"])
-        (train_idx, test_idx, val_idx) = self.load_npz(npz_file=i, keys=["train_idx", "test_idx", "val_idx"])
+        (X_train, X_test, X_val) = self.load_npz(
+            npz_file=X, keys=["X_train", "X_test", "X_val"]
+        )
+        (y_train, y_test, y_val) = self.load_npz(
+            npz_file=y, keys=["y_train", "y_test", "y_val"]
+        )
+        (train_idx, test_idx, val_idx) = self.load_npz(
+            npz_file=i, keys=["train_idx", "test_idx", "val_idx"]
+        )
         train = (train_idx, X_train, y_train)
         test = (test_idx, X_test, y_test)
         val = (val_idx, X_val, y_val)
@@ -178,9 +184,18 @@ class FileIO:
         np.savez(npz_file, images=X, labels=y, index=i)
 
     def save_multi_npz(self, train, test, val, data_path="data"):
-        np.savez(f"{data_path}/index.npz", train_idx=train[0], test_idx=test[0], val_idx=val[0])
-        np.savez(f"{data_path}/images.npz", X_train=train[1], X_test=test[1], X_val=val[1])
-        np.savez(f"{data_path}/labels.npz", y_train=train[2], y_test=test[2], y_val=val[2])
+        np.savez(
+            f"{data_path}/index.npz",
+            train_idx=train[0],
+            test_idx=test[0],
+            val_idx=val[0],
+        )
+        np.savez(
+            f"{data_path}/images.npz", X_train=train[1], X_test=test[1], X_val=val[1]
+        )
+        np.savez(
+            f"{data_path}/labels.npz", y_train=train[2], y_test=test[2], y_val=val[2]
+        )
 
     def split_arrays_from_npz(self):
         """Loads images (X), labels (y) and index (i) from a single .npz compressed numpy file. Splits into train, test, val sets using 70-20-10 ratios.
@@ -216,7 +231,17 @@ class FileIO:
 class SVMFileIO(FileIO):
     """Subclass for loading Single Visit Mosaic total detection .png images from local disk into numpy arrays and performing initial preprocessing and labeling for training a CNN or generating predictions on unlabeled data."""
 
-    def __init__(self, img_path, w=128, h=128, d=9, inference=True, format="png", data=None, target="label"):
+    def __init__(
+        self,
+        img_path,
+        w=128,
+        h=128,
+        d=9,
+        inference=True,
+        format="png",
+        data=None,
+        target="label",
+    ):
         """Instantiates an SVMFileIO object.
 
         Parameters
@@ -240,9 +265,9 @@ class SVMFileIO(FileIO):
     def load(self):
         if self.inference is True:
             if self.format in ["png", "jpg"]:
-                return self.detector_prediction_images(self.data, exp=3) # idx, images
+                return self.detector_prediction_images(self.data, exp=3)  # idx, images
             elif self.format == "npz":
-                return super().load_npz(keys=["index", "images"]) # index, X
+                return super().load_npz(keys=["index", "images"])  # index, X
         else:
             if self.format in ["png", "jpg"]:
                 X, y = split_data(self.data, target=self.target, val=True)
@@ -251,7 +276,7 @@ class SVMFileIO(FileIO):
                 train, test, val = super().split_arrays_from_npz()
                 X, y = super().split_df_from_arrays(train, test, val)
             return (X, y), (train, test, val)
-    
+
     def load_from_data_splits(self, X_train, X_test, X_val):
         """Read in train/test files and produce X-y data splits.
 

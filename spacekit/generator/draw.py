@@ -448,7 +448,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("input_path", type=str, help="path to datasets directory")
     parser.add_argument(
-        "-o", "--output_path", type=str, default=None, help="directory path to save png images"
+        "-o",
+        "--output_path",
+        type=str,
+        default=None,
+        help="directory path to save png images",
     )
     parser.add_argument(
         "-f",

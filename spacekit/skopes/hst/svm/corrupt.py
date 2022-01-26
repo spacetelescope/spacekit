@@ -492,9 +492,17 @@ if __name__ == "__main__":
     )
     if args.workflow == "block":
         run_blocks(
-            prc, cfg, pattern=args.search_pattern, srcpath=args.srcpath, outputs=args.outputs
+            prc,
+            cfg,
+            pattern=args.search_pattern,
+            srcpath=args.srcpath,
+            outputs=args.outputs,
         )
     else:
         run_pipes(
-            prc, cfg, pattern=args.search_pattern, srcpath=args.srcpath, outputs=args.outputs
+            prc,
+            cfg,
+            pattern=args.search_pattern,
+            srcpath=args.srcpath,
+            outputs=args.outputs,
         )

@@ -17,6 +17,7 @@ import sys
 import datetime as dt
 from spacekit.extractor.load import load_datasets, SVMFileIO
 from spacekit.builder.architect import Builder
+
 # from spacekit.builder.blueprints import Blueprint
 
 DIM = 3
@@ -141,7 +142,7 @@ def classify_alignments(X, model_path=None, output_path=None):
     model = Builder(model_path=model_path).load_saved_model()
     y_proba = model.predict(X)
     y_pred = np.round(y_proba[:, 0]).reshape(-1, 1)
-    #y_proba = proba[:, 0].reshape(-1, 1)
+    # y_proba = proba[:, 0].reshape(-1, 1)
     preds = np.concatenate([y_pred, y_proba], axis=1)
     pred_proba = pd.DataFrame(preds, index=X[0].index, columns=["y_pred", "y_proba"])
     preds = X[0].join(pred_proba)
@@ -153,9 +154,7 @@ def classify_alignments(X, model_path=None, output_path=None):
     return preds
 
 
-def predict_alignment(
-    data_file, img_path, model_path=None, output_path=None, size=128
-):
+def predict_alignment(data_file, img_path, model_path=None, output_path=None, size=128):
     """Main calling function to load the data and model, generate predictions, and save results to disk.
 
     Parameters

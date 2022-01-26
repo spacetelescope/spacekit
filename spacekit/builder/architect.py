@@ -35,11 +35,7 @@ class Builder:
     """Class for building and training a neural network."""
 
     def __init__(
-        self,
-        train_data=None,
-        test_data=None,
-        blueprint=None,
-        model_path=None
+        self, train_data=None, test_data=None, blueprint=None, model_path=None
     ):
         if train_data is not None:
             self.X_train = train_data[0]
@@ -66,10 +62,7 @@ class Builder:
         self.history = None
         self.name = None
 
-    def load_saved_model(
-        self,
-        arch="ensembleSVM",
-        compile_params=None):
+    def load_saved_model(self, arch="ensembleSVM", compile_params=None):
         """Load saved keras model from local disk (located at the ``model_path`` attribute) or a pre-trained model from spacekit.skopes.trained_networks (if ``model_path`` attribute is None). Example for ``compile_params``: ``dict(loss="binary_crossentropy", metrics=["accuracy"], optimizer=Adam(learning_rate=optimizers.schedules.ExponentialDecay(lr=1e-4, decay_steps=100000, decay_rate=0.96, staircase=True)))``
 
         Parameters
@@ -171,13 +164,13 @@ class Builder:
         self.decay = decay
         self.early_stopping = early_stopping
         return self
-    
+
     def tape_measure(self, blueprint):
         self.steps_per_epoch = {
             "mlp": self.X_train.shape[0] // self.batch_size,
             "cnn3d": self.X_train.shape[0] // self.batch_size,
             "cnn2d": self.X_train.shape[1] // self.batch_size,
-            "ensemble": self.X_train[0].shape[0] // self.batch_size
+            "ensemble": self.X_train[0].shape[0] // self.batch_size,
         }[blueprint]
 
     def design(self):
@@ -190,12 +183,14 @@ class Builder:
         """
         if self.blueprint == "mlp":
             return dict(
-                batches=self.batch(), steps=self.X_train.shape[0] // self.batch_size
-                #batches=self.batch_mlp(), steps=self.X_train.shape[0] // self.batch_size
+                batches=self.batch(),
+                steps=self.X_train.shape[0] // self.batch_size
+                # batches=self.batch_mlp(), steps=self.X_train.shape[0] // self.batch_size
             )
         elif self.blueprint == "image3d":
             return dict(
-                batches=self.batch(), steps=self.X_train.shape[0] // self.batch_size
+                batches=self.batch(),
+                steps=self.X_train.shape[0] // self.batch_size
                 # batches=self.batch_cnn(), steps=self.X_train.shape[0] // self.batch_size
             )
         elif self.blueprint == "ensemble":
@@ -455,6 +450,7 @@ class BuilderMLP(Builder):
     Builder : class
         spacekit.builder.architect.Builder class object
     """
+
     def __init__(self, X_train, y_train, X_test, y_test, blueprint="mlp"):
         super().__init__(train_data=(X_train, y_train), test_data=(X_test, y_test))
         self.blueprint = blueprint

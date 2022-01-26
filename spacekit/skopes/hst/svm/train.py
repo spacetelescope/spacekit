@@ -14,10 +14,11 @@ from spacekit.extractor.load import load_datasets, SVMFileIO
 from spacekit.generator.augment import training_data_aug, training_img_aug
 from spacekit.preprocessor.transform import (
     normalize_training_data,
-    normalize_training_images
+    normalize_training_images,
 )
 from spacekit.builder.architect import BuilderEnsemble
 from spacekit.analyzer.compute import ComputeBinary
+
 # from spacekit.analyzer.track import stopwatch
 
 DIM = 3
@@ -110,7 +111,9 @@ def load_ensemble_data(
     print("\tREG DATA: ", df.shape)
     print(f"\nClass Labels (0=Aligned, 1=Misaligned)\n{df['label'].value_counts()}")
 
-    (data, labels), (train, test, val) = SVMFileIO(img_path, w=img_size, h=img_size, d=dim*ch, inference=False, data=df).load()
+    (data, labels), (train, test, val) = SVMFileIO(
+        img_path, w=img_size, h=img_size, d=dim * ch, inference=False, data=df
+    ).load()
 
     # DATA AUGMENTATION
     print("\nPerforming Regression Data Augmentation")
@@ -322,7 +325,12 @@ if __name__ == "__main__":
     parser.add_argument("-b", "--batchsize", type=int, default=32, help="batch_size")
     parser.add_argument("-e", "--epochs", type=int, default=60, help="number of epochs")
     parser.add_argument(
-        "-y", "--early_stopping", type=str, default=None, choices=['val_accuracy','val_loss'], help="early stopping"
+        "-y",
+        "--early_stopping",
+        type=str,
+        default=None,
+        choices=["val_accuracy", "val_loss"],
+        help="early stopping",
     )
     parser.add_argument("-v", "--verbose", type=int, default=2, help="verbosity level")
     parser.add_argument(
