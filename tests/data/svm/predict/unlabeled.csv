@@ -1,0 +1,3 @@
+numexp,rms_ra,rms_dec,nmatches,point,segment,gaia,det,wcs,cat,index
+7,9.126496172300612,14.767202388527,7,2185,1818,10.0,4,0,1,hst_8992_03_acs_wfc_total_j8cw03
+4,13.8704220799427,12.1561334355269,64,1332,1493,129.0,3,0,1,hst_12109_01_wfc3_uvis_total_ibfn01

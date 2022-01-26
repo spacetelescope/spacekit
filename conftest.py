@@ -30,34 +30,36 @@ TESTED_VERSIONS['spacekit'] = version
 
 
 @fixture(scope='function') # session
-def svm_dataset():
-    svm_data = "tests/data/svm/dataset.csv"
-    # data = os.path.join(
-    # os.path.dirname(os.path.realpath(__file__)),
-    # 'test_files/svm/test_img_data.csv',
-    # )
-    return svm_data
+def svm_labeled_dataset():
+    svm_labeled_data = "tests/data/svm/train/dataset.csv"
+    return svm_labeled_data
+
 
 @fixture(scope='function')
-def svm_npz():
-    img_file = "tests/data/svm/images.npz"
-    # img_file = os.path.join(
-    # os.path.dirname(os.path.realpath(__file__)),
-    # 'test_files/svm/test_images.npz',
-    # )
-    return img_file
+def svm_unlabeled_dataset():
+    svm_unlabeled_data = "tests/data/svm/predict/unlabeled.csv"
+    return svm_unlabeled_data
 
-@fixture(scope='function')
-def svm_png():
-    img_path = "tests/data/svm/img"
+
+@fixture(params=["img", "images.npz"])
+def svm_train_img(request):
+    img_path = os.path.join("tests/data/svm/train", request.param)
     return img_path
-    # img_path = os.path.join(
-    # os.path.dirname(os.path.realpath(__file__)),
-    # 'test_files/svm/img',
-    # )
-    # yield img_path
+
+
+@fixture(params=["img", "images.npz"])
+def svm_train_npz(request):
+    img_path = os.path.join("tests/data/svm/train", request.param)
+    return img_path
+
+
+@fixture(params=["img"])
+def svm_pred_img(request):
+    img_path = os.path.join("tests/data/svm/predict", request.param)
+    return img_path
+
 
 @fixture(scope='function')
 def svm_visit_data():
-    visit_data = "tests/data/svm/raw_data/singlevisits"
+    visit_data = "tests/data/svm/prep/singlevisits"
     return visit_data

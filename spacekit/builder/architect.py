@@ -38,7 +38,8 @@ class Builder:
         self,
         train_data=None,
         test_data=None,
-        blueprint=None
+        blueprint=None,
+        model_path=None
     ):
         if train_data is not None:
             self.X_train = train_data[0]
@@ -46,7 +47,8 @@ class Builder:
         if test_data is not None:
             self.y_train = test_data[0]
             self.y_test = test_data[1]
-        self.blueprint = None
+        self.blueprint = blueprint
+        self.model_path = model_path
         self.batch_size = 32
         self.epochs = 60
         self.lr = 1e-4
@@ -63,7 +65,6 @@ class Builder:
         self.steps_per_epoch = None
         self.history = None
         self.name = None
-        self.model_path = None
 
     def load_saved_model(
         self,
@@ -88,7 +89,7 @@ class Builder:
             archive_file = f"{arch}.zip"
             with importlib.resources.path(model_src, archive_file) as mod:
                 self.model_path = mod
-        if self.model_path.split(".")[-1] == "zip":
+        if str(self.model_path).split(".")[-1] == "zip":
             self.model_path = self.unzip_model_files()
         self.model = load_model(self.model_path)
         if compile_params:
@@ -96,13 +97,13 @@ class Builder:
             self.model.compile(**compile_params)
         return self.model
 
-    def unzip_model_files(self, extract_to="~/models"):
+    def unzip_model_files(self, extract_to="models"):
         """Extracts a keras model object from a zip archive
 
         Parameters
         ----------
         extract_to : str, optional
-            directory location to extract into, by default "~/models"
+            directory location to extract into, by default "models"
 
         Returns
         -------

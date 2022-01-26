@@ -22,7 +22,7 @@ docs/api
 docs/_build
 # Pytest (local)
 tmp/
-tests/data/svm/raw_data/singlevisits/ibl738
+tests/data/svm/prep/singlevisits/ibl738
 # Packages/installer info
 *.egg
 *.egg-info/

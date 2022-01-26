@@ -7,7 +7,6 @@ This module builds, trains, and evaluates an ensemble model for labeled and prep
 
 This script (and/or its functions) should be used in conjunction with spacekit.skopes.hst.svm.prep if using raw data (since both the regression test dataframe for MLP and the png images for the CNN need to be created first). Once a model has been trained using this script, it is saved to disk and can be loaded again later for use with the predict script (spacekit.skopes.hst.svm.predict).
 """
-
 import os
 import argparse
 import datetime as dt
@@ -84,7 +83,7 @@ def make_ensembles(
 
 
 def load_ensemble_data(
-    filename, img_path, img_size=128, dim=3, ch=3, norm=False, output_path=None
+    filename, img_path, img_size=128, dim=3, ch=3, norm=0, output_path=None
 ):
     """Loads regression test data from a csv file and image data from png files. Splits the data into train, test and validation sets, applies normalization (if norm=1), creates a maste index of the original dataset input names, and stacks the features and class targets for both data types into lists which can be used as inputs for an ensemble model.
 
@@ -95,7 +94,7 @@ def load_ensemble_data(
     img_path : str
         path to png images parent directory
     norm : bool, optional
-        apply normalization step, by default False
+        apply normalization step, by default 0
     shape: tuple, optional
         image input shape (dimensions, width, height, channels), by default (3, 128, 128, 3)
 
@@ -244,7 +243,7 @@ def run_training(
     data_file,
     img_path,
     img_size=128,
-    norm=False,
+    norm=0,
     model_name="ensembleSVM",
     params=None,
     output_path=None,

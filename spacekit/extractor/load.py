@@ -39,7 +39,7 @@ def load_datasets(filenames, index_col="index", column_order=None, verbose=1):
     return df
 
 
-def split_data(df, target="label", val=True):
+def split_data(df, target="label", val=True, test_size=0.2, val_size=0.1):
     """Splits Pandas dataframe into feature (X) and target (y) train, test and validation sets.
 
     Parameters
@@ -60,12 +60,17 @@ def split_data(df, target="label", val=True):
     y = df[target]
     X = df.drop(target, axis=1, inplace=False)
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, shuffle=True, stratify=y
+        X, y, test_size=test_size, shuffle=True, stratify=y
     )
     if val is True:
-        X_train, X_val, y_train, y_val = train_test_split(
-            X_train, y_train, test_size=0.1, shuffle=True, stratify=y_train
-        )
+        try:
+            X_train, X_val, y_train, y_val = train_test_split(
+                X_train, y_train, test_size=val_size, shuffle=True, stratify=y_train
+            )
+        except ValueError:
+            X_train, X_val, y_train, y_val = train_test_split(
+                X_train, y_train, test_size=0.2, shuffle=True, stratify=y_train
+            )
         data = (X_train, X_test, X_val)
         labels = (y_train, y_test, y_val)
     else:
@@ -373,7 +378,13 @@ class SVMFileIO(FileIO):
         img = []
         for ch1, ch2, ch3 in tqdm(image_files):
             img.append(read_channels([ch1, ch2, ch3], self.w, self.h, self.d, exp=exp))
-        images = np.array(img, np.float32)
+        X_img = np.array(img, np.float32)
         end = time.time()
         stopwatch("LOADING IMAGES", t0=start, t1=end)
-        return idx, images
+        print("Inputs: ", X_img.shape[0])
+        print("Dimensions: ", X_img.shape[1])
+        print("Width: ", X_img.shape[2])
+        print("Height: ", X_img.shape[3])
+        print("Channels: ", X_img.shape[4])
+        print("Input Shape: ", X_img.shape)
+        return idx, X_img
