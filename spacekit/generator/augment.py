@@ -333,6 +333,28 @@ def aug_generator(X, c=9, combine=False):
     return Xa
 
 
+def image_index_labels(index, y, aug=False):
+    if aug is False:
+        idx = pd.Index(index)
+        y_series = pd.Series(y, index=idx)
+        return (idx, y_series)
+    else: # double y_train to match augmented X
+        idx = pd.Index(np.concatenate([index, index]))
+        y_aug = np.concatenate([y, y])
+        y_labels = pd.Series(y_aug, index=idx)
+        return (idx, y_labels), y_aug
+
+
+def nested_image_index(tr, ts, vl=()):
+    if len(vl) > 0:
+        indices = (tr[0], ts[0])
+        labels = (tr[1], ts[1])
+    else:
+        indices = (tr[0], ts[0], vl[0])
+        labels = (tr[1], ts[1], vl[1])
+    return [indices, labels]
+
+
 def training_img_aug(train, test, val=None, dim=3, w=128, h=128, ch=3):
     """Perform image data augmentation on the training set
 
@@ -359,23 +381,25 @@ def training_img_aug(train, test, val=None, dim=3, w=128, h=128, ch=3):
         combined image index of train, test, val; combined original and augmented training data, reshaped test and val data. If no validation data is passed in the ``val`` arg, then only train and test are returned.
     """
     depth = ch * dim
-    # augment training set and combine with original
     X_tr = aug_generator(train[1], c=depth, combine=True)
     X_tr = expand_dims(X_tr, dim=dim, w=w, h=h, ch=ch)
-    train_idx = pd.Index(np.concatenate([train[0], train[0]]))
-    # double y_train to match augmented X
-    y_tr = np.concatenate([train[2], train[2]])
-    train_Y = pd.Series(y_tr, index=train_idx)
-    # reshape / reformat test and val
+    y_train_idx, y_tr = image_index_labels(train[0], train[2], aug=True)
+    train = (X_tr, y_tr)
+
     X_ts = expand_dims(test[1], dim=dim, w=w, h=h, ch=ch)
-    test_idx = pd.Index(test[0])
-    test_Y = pd.Series(test[2], index=test_idx)
-    if val is not None:
+    y_test_idx = image_index_labels(test[0], test[2])
+    test = (X_ts, test[2])
+
+    if val is not None and len(val[0]) > 0:
         X_vl = expand_dims(val[1], dim=dim, w=w, h=h, ch=ch)
-        val_idx = pd.Index(val[0])
-        val_Y = pd.Series(val[2], index=val_idx)
-        img_idx = [(train_idx, test_idx, val_idx), (train_Y, test_Y, val_Y)]
-        return img_idx, X_tr, y_tr, X_ts, test[2], X_vl, val[2]
+        y_val_idx = image_index_labels(val[0], val[2])
+        val = (X_vl, val[2])
     else:
-        img_idx = [(train_idx, test_idx), (train_Y, test_Y)]
-        return img_idx, X_tr, y_tr, X_ts, test[2]
+        y_val_idx = ()
+
+    img_idx = nested_image_index(
+            y_train_idx, 
+            y_test_idx,
+            vl=y_val_idx
+            )
+    return img_idx, train, test, val

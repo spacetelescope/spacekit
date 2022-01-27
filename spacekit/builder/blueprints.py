@@ -61,7 +61,7 @@ class Blueprint:
             decay=[100000, 0.96],
             early_stopping=None,
             verbose=2,
-            ensemble=True
+            ensemble=True,
         )
 
 # class Blueprint:

@@ -39,9 +39,9 @@ class Builder:
     ):
         if train_data is not None:
             self.X_train = train_data[0]
-            self.X_test = train_data[1]
+            self.y_train = train_data[1]
         if test_data is not None:
-            self.y_train = test_data[0]
+            self.X_test = test_data[0]
             self.y_test = test_data[1]
         self.blueprint = blueprint
         self.model_path = model_path
@@ -343,6 +343,9 @@ class Builder:
 
         start = time.time()
         stopwatch(f"TRAINING ***{model_name}***", t0=start)
+
+        if self.steps_per_epoch is None or 0:
+            self.steps_per_epoch = 1
 
         self.history = self.model.fit(
             self.batch_maker(),
@@ -656,20 +659,20 @@ class BuilderEnsemble(Builder):
         self.metrics = ["accuracy"]
         self.activation = "leaky_relu"
         self.cost_function = "sigmoid"
-        # default params:
+        self.layers = [18, 32, 64, 32, 18]
+        self.output_shape = 1
+        # fit params:
         self.batch_size = 32
         self.epochs = 1000
         self.lr = 1e-4
         self.decay = [100000, 0.96]
         self.early_stopping = False
         self.verbose = 2
-        self.output_shape = 1
-        self.layers = [18, 32, 64, 32, 18]
+        if params is not None:
+            self.fit_params(**params)
         self.step_size = X_train[0].shape[0]
         self.steps_per_epoch = self.step_size // self.batch_size
         self.batch_maker = self.batch
-        if params is not None:
-            self.fit_params(**params)
 
     def ensemble_mlp(self):
         self.mlp = BuilderMLP(
@@ -694,7 +697,6 @@ class BuilderEnsemble(Builder):
         self.mlp.optimizer = Adam
         self.mlp.loss = "binary_crossentropy"
         self.mlp.metrics = ["accuracy"]
-
         self.mlp.model = self.mlp.build()
         return self.mlp
 
@@ -706,12 +708,12 @@ class BuilderEnsemble(Builder):
             self.y_test,
             blueprint="ensemble",
         )
+        #self.cnn.get_blueprint("svm_cnn")
         self.cnn.input_name = "svm_image_inputs"
         self.cnn.output_name = "svm_image_output"
         self.cnn.name = "svm_cnn"
         self.cnn.ensemble = True
         self.cnn.input_shape = self.X_train[1].shape[1:]
-        # default attributes for CNN:
         self.cnn.output_shape = 1
         self.cnn.layers = [18, 32, 64, 32, 18]
         self.cnn.activation = "leaky_relu"
@@ -720,7 +722,6 @@ class BuilderEnsemble(Builder):
         self.cnn.optimizer = Adam
         self.cnn.loss = "binary_crossentropy"
         self.cnn.metrics = ["accuracy"]
-        # compile the CNN branch
         self.cnn.model = self.cnn.build()
         return self.cnn
 

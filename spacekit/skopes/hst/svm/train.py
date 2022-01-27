@@ -19,8 +19,6 @@ from spacekit.preprocessor.transform import (
 from spacekit.builder.architect import BuilderEnsemble
 from spacekit.analyzer.compute import ComputeBinary
 
-# from spacekit.analyzer.track import stopwatch
-
 DIM = 3
 CH = 3
 WIDTH = 128
@@ -84,7 +82,7 @@ def make_ensembles(
 
 
 def load_ensemble_data(
-    filename, img_path, img_size=128, dim=3, ch=3, norm=0, val_size=0.1, output_path=None
+    filename, img_path, img_size=128, dim=3, ch=3, norm=0, v=0.85, output_path=None
 ):
     """Loads regression test data from a csv file and image data from png files. Splits the data into train, test and validation sets, applies normalization (if norm=1), creates a maste index of the original dataset input names, and stacks the features and class targets for both data types into lists which can be used as inputs for an ensemble model.
 
@@ -109,27 +107,27 @@ def load_ensemble_data(
     print("\tREG DATA: ", df.shape)
     print(f"\nClass Labels (0=Aligned, 1=Misaligned)\n{df['label'].value_counts()}")
 
-    (data, labels), (train, test, val) = SVMFileIO(
-        img_path, w=img_size, h=img_size, d=dim * ch, inference=False, data=df, val_size=val_size
+    (X, y), (train, test, val) = SVMFileIO(
+        img_path, w=img_size, h=img_size, d=dim * ch, inference=False, data=df, v=v
     ).load()
 
     # DATA AUGMENTATION
     print("\nPerforming Regression Data Augmentation")
-    X_train, _ = training_data_aug(data[0], labels[0])
+    X_train, _ = training_data_aug(X[0], y[0])
 
     # IMAGE AUGMENTATION
     print("\nPerforming Image Data Augmentation")
-    img_idx, X_tr, y_tr, X_ts, y_ts, X_vl, y_vl = training_img_aug(train, test, val=val)
+    img_idx, (X_tr, y_tr), (X_ts, y_ts), (X_vl, y_vl) = training_img_aug(train, test, val=val)
 
     # NORMALIZATION and SCALING
     if norm:
         cols = ["numexp", "rms_ra", "rms_dec", "nmatches", "point", "segment", "gaia"]
         X_train, X_test, X_val = normalize_training_data(
-            df, cols, X_train, data[1], X_val=data[2], output_path=output_path
+            df, cols, X_train, X[1], X_val=X[2], output_path=output_path
         )
         X_tr, X_ts, X_vl = normalize_training_images(X_tr, X_ts, X_vl=X_vl)
     else:
-        X_test, X_val = data[1], data[2]
+        X_test, X_val = X[1], X[2]
     # JOIN INPUTS: MLP + CNN
     XTR, YTR, XTS, YTS, XVL, YVL = make_ensembles(
         X_train,
@@ -142,7 +140,7 @@ def load_ensemble_data(
         val_img=X_vl,
         val_label=y_vl,
     )
-    tv_idx = [labels[1], labels[2], img_idx]
+    tv_idx = [y[1], y[2], img_idx]
     return tv_idx, XTR, YTR, XTS, YTS, XVL, YVL
 
 
@@ -230,11 +228,11 @@ def compute_results(ens, tv_idx, val_set=(), output_path=None):
     com.calculate_results()
     _ = com.make_outputs()
     # validation set
-    if len(val_set) == 2:
-        (ens.X_val, ens.y_val), ens.test_idx = val_set, tv_idx[1]
-        val = ComputeBinary(builder=ens, res_path=f"{res_path}/val", validation=True)
-        val.calculate_results()
-        _ = val.make_outputs()
+    if len(val_set) == 2 and val_set[0][0].shape[0] > 2: # temp (ignores test data)
+            (ens.X_val, ens.y_val), ens.test_idx = val_set, tv_idx[1]
+            val = ComputeBinary(builder=ens, res_path=f"{res_path}/val", validation=True)
+            val.calculate_results()
+            _ = val.make_outputs()
     else:
         val = None
     return com, val
@@ -245,7 +243,7 @@ def run_training(
     img_path,
     img_size=128,
     norm=0,
-    val_size=0.1,
+    v=0.85,
     model_name="ensembleSVM",
     params=None,
     output_path=None,
@@ -273,7 +271,7 @@ def run_training(
         ensemble builder object, binary compute object, validation compute object
     """
     tv_idx, XTR, YTR, XTS, YTS, XVL, YVL = load_ensemble_data(
-        data_file, img_path, img_size=img_size, norm=norm, val_size=val_size, output_path=output_path
+        data_file, img_path, img_size=img_size, norm=norm, v=v, output_path=output_path
     )
     ens = train_ensemble(
         XTR,
@@ -331,11 +329,15 @@ if __name__ == "__main__":
         choices=["val_accuracy", "val_loss"],
         help="early stopping",
     )
-    parser.add_argument("-v", "--verbose", type=int, default=2, help="verbosity level")
+    parser.add_argument("-v", "--validate", type=int, default=1, help="evaluate model with validation sample")
     parser.add_argument(
         "-p", "--plots", type=int, default=0, help="draw model performance plots"
     )
     args = parser.parse_args()
+    if args.validate == 1:
+        v = 0.85
+    else:
+        v = 0
     model_name = args.model_name
     timestamp = str(int(dt.datetime.now().timestamp()))
     if args.output_path is None:
@@ -357,6 +359,7 @@ if __name__ == "__main__":
         args.img_path,
         img_size=args.image_size,
         norm=args.normalize,
+        v=v,
         model_name=args.model_name,
         params=params,
         output_path=output_path,

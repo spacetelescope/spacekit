@@ -28,20 +28,30 @@ enable_deprecations_as_exceptions()
 
 TESTED_VERSIONS['spacekit'] = version
 
+# SVM PREP
+@fixture(scope='function')
+def svm_visit_data():
+    visit_data = "tests/data/svm/prep/singlevisits"
+    return visit_data
 
-@fixture(scope='function') # session
-def svm_labeled_dataset():
-    svm_labeled_data = "tests/data/svm/train/dataset.csv"
-    return svm_labeled_data
-
-
+# SVM PREDICT
 @fixture(scope='function')
 def svm_unlabeled_dataset():
     svm_unlabeled_data = "tests/data/svm/predict/unlabeled.csv"
     return svm_unlabeled_data
 
+@fixture(params=["img", "img_pred.npz"])
+def svm_pred_img(request):
+    img_path = os.path.join("tests/data/svm/predict", request.param)
+    return img_path
 
-@fixture(params=["img", "images.npz"])
+# SVM TRAIN
+@fixture(scope='function') # session
+def svm_labeled_dataset():
+    svm_labeled_data = "tests/data/svm/train/training.csv"
+    return svm_labeled_data
+
+@fixture(params=["img", "img_data.npz"])
 def svm_train_img(request):
     img_path = os.path.join("tests/data/svm/train", request.param)
     return img_path
@@ -53,17 +63,5 @@ def svm_train_png():
 
 @fixture(scope='function')
 def svm_train_npz():
-    img_path = "tests/data/svm/train/images.npz"
+    img_path = "tests/data/svm/train/img_data.npz"
     return img_path
-
-
-@fixture(params=["img"])
-def svm_pred_img(request):
-    img_path = os.path.join("tests/data/svm/predict", request.param)
-    return img_path
-
-
-@fixture(scope='function')
-def svm_visit_data():
-    visit_data = "tests/data/svm/prep/singlevisits"
-    return visit_data
