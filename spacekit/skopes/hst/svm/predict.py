@@ -208,7 +208,7 @@ if __name__ == "__main__":
         "--size",
         type=int,
         default=128,
-        help="image size (width and height). Default is None (128).",
+        help="image size (width and height). Default is 128.",
     )
     args = parser.parse_args()
     data_file = args.data_file

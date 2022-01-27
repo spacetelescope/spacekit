@@ -92,8 +92,18 @@ def load_ensemble_data(
         path to preprocessed dataframe csv file
     img_path : str
         path to png images parent directory
+    img_size: int, optional
+        image size (single value assigned to width and height), by default 128
+    dim: int, optional
+        dimensions (or volume) of image frames per image (for 3D CNN), by default 3
+    ch: int, optional
+        channels (rgb is 3, grayscale is 1), by default 3
     norm : bool, optional
         apply normalization step, by default 0
+    v: float, optional
+        validation set ratio for evaluating model, by default 0.85
+    output_path: str, optional
+        where to save the outputs (defaults to current working directory), by default None
 
     Returns
     -------
@@ -256,8 +266,12 @@ def run_training(
         path to preprocessed dataframe csv file
     img_path : str (path)
         path to png images parent directory
-    norm : bool, optional
-        apply normalization step, by default False
+    img_size: int, optional
+        image size (single value assigned to width and height)
+    norm : int, optional
+        apply normalization step (1=True, 0=False), by default 0
+    v: float, optional
+        validation set ratio for evaluating model, by default 0.85
     model_name : str, optional
         custom name to assign to model, by default "ensembleSVM"
     params : dict, optional
@@ -300,7 +314,7 @@ if __name__ == "__main__":
         "--image_size",
         type=int,
         default=128,
-        help="image pixel size (width and height)",
+        help="image pixel size (single value assigned to width and height)",
     )
     parser.add_argument(
         "-m", "--model_name", type=str, default="ensembleSVM", help="name to give model"
