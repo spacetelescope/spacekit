@@ -59,7 +59,7 @@ def stratified_splits(df, target="label", v=0.85):
         data, labels: features (X) and targets (y) split into train, test, validation sets
     """
     print("Splitting Data ---> X-y ---> Train-Test-Val")
-    seed = np.random.randint(1,42)
+    seed = np.random.randint(1, 42)
     y = df[target]
     X = df.drop(target, axis=1, inplace=False)
     X_train, X_test, y_train, y_test = train_test_split(
@@ -69,11 +69,21 @@ def stratified_splits(df, target="label", v=0.85):
     if v > 0:
         try:
             X_train, X_val, y_train, y_val = train_test_split(
-                X_train, y_train, test_size=1-v, shuffle=True, stratify=y_train, random_state=seed
+                X_train,
+                y_train,
+                test_size=1 - v,
+                shuffle=True,
+                stratify=y_train,
+                random_state=seed,
             )
         except ValueError:
             X_train, X_val, y_train, y_val = train_test_split(
-                X_train, y_train, test_size=0.2, shuffle=True, stratify=y_train, random_state=seed
+                X_train,
+                y_train,
+                test_size=0.2,
+                shuffle=True,
+                stratify=y_train,
+                random_state=seed,
             )
     data = (X_train, X_test, X_val)
     labels = (y_train, y_test, y_val)
@@ -134,8 +144,8 @@ def read_channels(channels, w, h, d, exp=None, color_mode="rgb"):
 
 
 class FileIO:
-    """Parent Class for file input/output operations
-    """
+    """Parent Class for file input/output operations"""
+
     def __init__(self, img_path, format="png", data=None):
         self.img_path = img_path
         self.format = self.check_format(format)
@@ -211,20 +221,20 @@ class FileIO:
         np.savez(
             f"{data_path}/labels.npz", y_train=train[2], y_test=test[2], y_val=val[2]
         )
-    
-    def split_arrays(self, data, t=.6, v=.85):
+
+    def split_arrays(self, data, t=0.6, v=0.85):
         if type(data) == pd.DataFrame:
             sample = data.sample(frac=1)
         else:
             sample = data
         if v > 0:
-            return np.split(sample, [int(t*len(data)), int(v*len(data))])
+            return np.split(sample, [int(t * len(data)), int(v * len(data))])
         else:
-            arrs = np.split(sample, [int(t*len(data))])
+            arrs = np.split(sample, [int(t * len(data))])
             arrs.append(np.asarray([]))
             return arrs
 
-    def split_arrays_from_npz(self, v=.85):
+    def split_arrays_from_npz(self, v=0.85):
         """Loads images (X), labels (y) and index (i) from a single .npz compressed numpy file. Splits into train, test, val sets using 70-20-10 ratios.
 
         Returns
@@ -276,7 +286,7 @@ class SVMFileIO(FileIO):
         format="png",
         data=None,
         target="label",
-        v=0.85
+        v=0.85,
     ):
         """Instantiates an SVMFileIO object.
 
@@ -310,7 +320,7 @@ class SVMFileIO(FileIO):
         self.v = v
 
     def load(self):
-        if self.inference is True: # idx, images
+        if self.inference is True:  # idx, images
             if self.format in ["png", "jpg"]:
                 return self.detector_prediction_images(self.data, exp=3)
             elif self.format == "npz":
@@ -321,7 +331,9 @@ class SVMFileIO(FileIO):
                 train, test, val = self.load_from_data_splits(*X)
             elif self.format == "npz":
                 train, test, val = super().split_arrays_from_npz(v=self.v)
-                X, y = super().split_df_from_arrays(train, test, val, target=self.target)
+                X, y = super().split_df_from_arrays(
+                    train, test, val, target=self.target
+                )
             return (X, y), (train, test, val)
 
     def load_from_data_splits(self, X_train, X_test, X_val):

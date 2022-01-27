@@ -127,7 +127,9 @@ def load_ensemble_data(
 
     # IMAGE AUGMENTATION
     print("\nPerforming Image Data Augmentation")
-    img_idx, (X_tr, y_tr), (X_ts, y_ts), (X_vl, y_vl) = training_img_aug(train, test, val=val)
+    img_idx, (X_tr, y_tr), (X_ts, y_ts), (X_vl, y_vl) = training_img_aug(
+        train, test, val=val
+    )
 
     # NORMALIZATION and SCALING
     if norm:
@@ -238,11 +240,11 @@ def compute_results(ens, tv_idx, val_set=(), output_path=None):
     com.calculate_results()
     _ = com.make_outputs()
     # validation set
-    if len(val_set) == 2 and val_set[0][0].shape[0] > 2: # temp (ignores test data)
-            (ens.X_val, ens.y_val), ens.test_idx = val_set, tv_idx[1]
-            val = ComputeBinary(builder=ens, res_path=f"{res_path}/val", validation=True)
-            val.calculate_results()
-            _ = val.make_outputs()
+    if len(val_set) == 2 and val_set[0][0].shape[0] > 2:  # temp (ignores test data)
+        (ens.X_val, ens.y_val), ens.test_idx = val_set, tv_idx[1]
+        val = ComputeBinary(builder=ens, res_path=f"{res_path}/val", validation=True)
+        val.calculate_results()
+        _ = val.make_outputs()
     else:
         val = None
     return com, val
@@ -343,7 +345,13 @@ if __name__ == "__main__":
         choices=["val_accuracy", "val_loss"],
         help="early stopping",
     )
-    parser.add_argument("-v", "--validate", type=int, default=1, help="evaluate model with validation sample")
+    parser.add_argument(
+        "-v",
+        "--validate",
+        type=int,
+        default=1,
+        help="evaluate model with validation sample",
+    )
     parser.add_argument(
         "-p", "--plots", type=int, default=0, help="draw model performance plots"
     )

@@ -1,5 +1,5 @@
-from tensorflow.keras.optimizers import Adam, schedules
-from tensorflow.keras.metrics import RootMeanSquaredError as RMSE
+from tensorflow.keras.optimizers import Adam
+
 
 class Blueprint:
     def __init__(self, architecture):
@@ -9,48 +9,48 @@ class Blueprint:
 
     def build_params(self):
         return {
-            "svm_mlp" : self.svm_mlp,
-            "svm_cnn" : self.svm_cnn,
+            "svm_mlp": self.svm_mlp,
+            "svm_cnn": self.svm_cnn,
         }[self.architecture]
-    
+
     def fit_params(self):
         return {
-            "svm_mlp" : self.draft_svm_fit,
-            "svm_cnn" : self.draft_svm_fit,
+            "svm_mlp": self.draft_svm_fit,
+            "svm_cnn": self.draft_svm_fit,
         }
-    
+
     def svm_mlp(self):
         return dict(
-            input_shape = 10,
-            output_shape = 1,
-            layers = [18, 32, 64, 32, 18],
-            activation = "leaky_relu",
-            cost_function = "sigmoid",
-            lr_sched = True,
-            optimizer = Adam,
-            loss = "binary_crossentropy",
-            metrics = ["accuracy"],
-            input_name = "svm_regression_inputs",
-            output_name = "svm_regression_output",
-            name = "svm_mlp",
-            ensemble = True
+            input_shape=10,
+            output_shape=1,
+            layers=[18, 32, 64, 32, 18],
+            activation="leaky_relu",
+            cost_function="sigmoid",
+            lr_sched=True,
+            optimizer=Adam,
+            loss="binary_crossentropy",
+            metrics=["accuracy"],
+            input_name="svm_regression_inputs",
+            output_name="svm_regression_output",
+            name="svm_mlp",
+            ensemble=True,
         )
 
     def svm_cnn(self):
         return dict(
-            input_shape = (3, 128, 128, 3),
-            output_shape = 1,
-            layers = [18, 32, 64, 32, 18],
-            activation = "leaky_relu",
-            cost_function = "sigmoid",
-            lr_sched = True,
-            optimizer = Adam,
-            loss = "binary_crossentropy",
-            metrics = ["accuracy"],
-            input_name = "svm_image_inputs",
-            output_name = "svm_image_output",
-            name = "svm_cnn",
-            ensemble = True
+            input_shape=(3, 128, 128, 3),
+            output_shape=1,
+            layers=[18, 32, 64, 32, 18],
+            activation="leaky_relu",
+            cost_function="sigmoid",
+            lr_sched=True,
+            optimizer=Adam,
+            loss="binary_crossentropy",
+            metrics=["accuracy"],
+            input_name="svm_image_inputs",
+            output_name="svm_image_output",
+            name="svm_cnn",
+            ensemble=True,
         )
 
     def draft_svm_fit(self):
@@ -64,6 +64,8 @@ class Blueprint:
             ensemble=True,
         )
 
+# from tensorflow.keras.optimizers import Adam, schedules
+# from tensorflow.keras.metrics import RootMeanSquaredError as RMSE
 # class Blueprint:
 #     def __init__(self, architecture):
 

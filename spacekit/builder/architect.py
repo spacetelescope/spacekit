@@ -642,6 +642,7 @@ class BuilderEnsemble(Builder):
     Builder : class
         spacekit.builder.architect.Builder class object
     """
+
     def __init__(
         self,
         X_train,
@@ -729,7 +730,7 @@ class BuilderEnsemble(Builder):
             self.y_test,
             blueprint="ensemble",
         )
-        #self.cnn.get_blueprint("svm_cnn")
+        # self.cnn.get_blueprint("svm_cnn")
         self.cnn.input_name = "svm_image_inputs"
         self.cnn.output_name = "svm_image_output"
         self.cnn.name = "svm_cnn"
@@ -829,6 +830,7 @@ class BuilderCNN2D(Builder):
     Builder : class
         spacekit.builder.architect.Builder.Builder object
     """
+
     def __init__(self, X_train, y_train, X_test, y_test, blueprint="cnn2d"):
         super().__init__(train_data=(X_train, y_train), test_data=(X_test, y_test))
         self.blueprint = blueprint

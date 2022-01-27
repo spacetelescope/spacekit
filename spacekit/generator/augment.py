@@ -348,7 +348,7 @@ def aug_generator(X, c=9, combine=False):
 
 
 def image_index_labels(index, y, aug=False):
-    """Creates Pandas Index and Series from numpy arrays (used for calculating FNFP data in ``spacekit.analyzer.compute``) 
+    """Creates Pandas Index and Series from numpy arrays (used for calculating FNFP data in ``spacekit.analyzer.compute``)
 
     Parameters
     ----------
@@ -362,13 +362,13 @@ def image_index_labels(index, y, aug=False):
     Returns
     -------
     tuple of pd.Index and pd.Series
-        inputs converted into index and series 
+        inputs converted into index and series
     """
     if aug is False:
         idx = pd.Index(index)
         y_series = pd.Series(y, index=idx)
         return (idx, y_series)
-    else: # double y_train to match augmented X
+    else:  # double y_train to match augmented X
         idx = pd.Index(np.concatenate([index, index]))
         y_aug = np.concatenate([y, y])
         y_labels = pd.Series(y_aug, index=idx)
@@ -443,9 +443,5 @@ def training_img_aug(train, test, val=None, dim=3, w=128, h=128, ch=3):
     else:
         y_val_idx = ()
 
-    img_idx = nested_image_index(
-            y_train_idx, 
-            y_test_idx,
-            vl=y_val_idx
-            )
+    img_idx = nested_image_index(y_train_idx, y_test_idx, vl=y_val_idx)
     return img_idx, train, test, val

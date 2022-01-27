@@ -111,7 +111,13 @@ if __name__ == "__main__":
         default="svm_data",
         help="output filename to create",
     )
-    parser.add_argument("-j", "--json_pattern", type=str, default="*_total*_svm_*.json", help="glob-based search pattern")
+    parser.add_argument(
+        "-j",
+        "--json_pattern",
+        type=str,
+        default="*_total*_svm_*.json",
+        help="glob-based search pattern",
+    )
     parser.add_argument(
         "-c",
         "--crpt",
