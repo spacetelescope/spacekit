@@ -7,22 +7,17 @@ This module builds, trains, and evaluates an ensemble model for labeled and prep
 
 This script (and/or its functions) should be used in conjunction with spacekit.skopes.hst.svm.prep if using raw data (since both the regression test dataframe for MLP and the png images for the CNN need to be created first). Once a model has been trained using this script, it is saved to disk and can be loaded again later for use with the predict script (spacekit.skopes.hst.svm.predict).
 """
-
 import os
 import argparse
-import time
 import datetime as dt
-from spacekit.extractor.load import load_datasets
+from spacekit.extractor.load import load_datasets, SVMFileIO
 from spacekit.generator.augment import training_data_aug, training_img_aug
 from spacekit.preprocessor.transform import (
     normalize_training_data,
     normalize_training_images,
-    split_sets,
 )
-from spacekit.builder.networks import Ensemble
+from spacekit.builder.architect import BuilderEnsemble
 from spacekit.analyzer.compute import ComputeBinary
-from spacekit.extractor.load import SVMImages
-from spacekit.analyzer.track import stopwatch
 
 DIM = 3
 CH = 3
@@ -33,66 +28,16 @@ SHAPE = (DIM, WIDTH, HEIGHT, CH)
 TF_CPP_MIN_LOG_LEVEL = 2
 
 
-def make_image_sets(
-    X_train, X_test, X_val, img_path="img", w=128, h=128, d=9, exp=None
-):
-    """
-    Read in train/test files and produce X-y data splits. y labels are encoded as 0=valid, 1=compromised.
-    By default, the ImageCNN3D model expects RGB image inputs as 3x3 arrays, for a total of 9 channels. This can of course be customized for other image arrangements using other classes in the spacekit.builder.networks module.
-
-    Parameters
-    ----------
-    X_train : numpy array
-        training image inputs
-    X_test : [type]
-        test image inputs
-    X_val : [type]
-        validation image inputs
-    img_path : str, optional
-        path to png images parent directory, by default "img"
-    w : int, optional
-        width of image, by default 128
-    h : int, optional
-        height of image, by default 128
-    d : int, optional
-        dimensions of image (determined by channels (rgb=3) multipled by depth (num image frames), by default 9
-    exp : int, optional
-        "expand" dimensions: (exp, w, h, 3). Set to 3 for predictions, None for training, by default None
-
-    Returns
-    -------
-    nested lists
-        train, test, val nested lists each containing an index of the visit names and png image data as numpy arrays.
-    """
-    start = time.time()
-    stopwatch("LOADING IMAGES", t0=start)
-
-    print("\n*** Training Set ***")
-    svm_img = SVMImages(img_path, w=w, h=h, d=d)
-    train = svm_img.detector_training_images(X_train, exp=exp)  # (idx, X, y)
-    print("\n*** Test Set ***")
-    test = svm_img.detector_training_images(X_test, exp=exp)
-    print("\n*** Validation Set ***")
-    val = svm_img.detector_training_images(X_val, exp=exp)
-
-    end = time.time()
-    print("\n")
-    stopwatch("LOADING IMAGES", t0=start, t1=end)
-    print("\n[i] Length of Splits:")
-    print(f"X_train={len(train[1])}, X_test={len(test[1])}, X_val={len(val[1])}")
-    return train, test, val
-
-
 def make_ensembles(
     train_data,
     train_img,
-    y_train,
+    train_label,
     test_data,
     test_img,
-    y_test,
+    test_label,
     val_data=None,
     val_img=None,
-    y_val=None,
+    val_label=None,
 ):
     """Creates tupled pairs of regression test (MLP) data and image (CNN) array inputs for an ensemble model.
 
@@ -102,19 +47,19 @@ def make_ensembles(
         training set feature data inputs
     train_img : numpy array
         training set image inputs
-    y_train : numpy array
+    train_label : numpy array
         training set target values
     test_data : numpy array
         test set feature data inputs
     test_img : numpy array
         test set image inputs
-    y_test : numpy array
+    test_label : numpy array
         test set target values
     val_data : numpy array, optional
         validation set feature data inputs
     val_img : numpy array, optional
         validation set image inputs
-    y_val : numpy array, optional
+    val_label : numpy array, optional
         validation set target values
 
     Returns
@@ -125,19 +70,19 @@ def make_ensembles(
     """
     print("Stacking mixed inputs (DATA + IMG)")
     XTR = [train_data, train_img]
-    YTR = y_train.reshape(-1, 1)
+    YTR = train_label.reshape(-1, 1)
     XTS = [test_data, test_img]
-    YTS = y_test.reshape(-1, 1)
+    YTS = test_label.reshape(-1, 1)
     if val_data is not None:
         XVL = [val_data, val_img]
-        YVL = y_val.reshape(-1, 1)
+        YVL = val_label.reshape(-1, 1)
         return XTR, YTR, XTS, YTS, XVL, YVL
     else:
         return XTR, YTR, XTS, YTS
 
 
 def load_ensemble_data(
-    filename, img_path, img_size=128, dim=3, ch=3, norm=False, output_path=None
+    filename, img_path, img_size=128, dim=3, ch=3, norm=0, v=0.85, output_path=None
 ):
     """Loads regression test data from a csv file and image data from png files. Splits the data into train, test and validation sets, applies normalization (if norm=1), creates a maste index of the original dataset input names, and stacks the features and class targets for both data types into lists which can be used as inputs for an ensemble model.
 
@@ -147,10 +92,18 @@ def load_ensemble_data(
         path to preprocessed dataframe csv file
     img_path : str
         path to png images parent directory
+    img_size: int, optional
+        image size (single value assigned to width and height), by default 128
+    dim: int, optional
+        dimensions (or volume) of image frames per image (for 3D CNN), by default 3
+    ch: int, optional
+        channels (rgb is 3, grayscale is 1), by default 3
     norm : bool, optional
-        apply normalization step, by default False
-    shape: tuple, optional
-        image input shape (dimensions, width, height, channels), by default (3, 128, 128, 3)
+        apply normalization step, by default 0
+    v: float, optional
+        validation set ratio for evaluating model, by default 0.85
+    output_path: str, optional
+        where to save the outputs (defaults to current working directory), by default None
 
     Returns
     -------
@@ -158,50 +111,48 @@ def load_ensemble_data(
         tv_idx, XTR, YTR, XTS, YTS, XVL, YVL
         list of test-validation indices, train-test feature (X) and target (y) numpy arrays.
     """
-    # LOAD MLP DATA
+    # LOAD MLP and CNN DATA
     print("[i] Importing Regression Test Data")
     df = load_datasets([filename])
     print("\tREG DATA: ", df.shape)
     print(f"\nClass Labels (0=Aligned, 1=Misaligned)\n{df['label'].value_counts()}")
-    X_train, X_test, X_val, y_train, y_test, y_val = split_sets(df)
 
-    # LOAD IMG DATA
-    # TODO: load from npz instead
-    depth = dim * ch
-    image_sets = [X_train, X_test, X_val]
-    train, test, val = make_image_sets(
-        *image_sets, img_path=img_path, w=img_size, h=img_size, d=depth
-    )
+    (X, y), (train, test, val) = SVMFileIO(
+        img_path, w=img_size, h=img_size, d=dim * ch, inference=False, data=df, v=v
+    ).load()
 
     # DATA AUGMENTATION
     print("\nPerforming Regression Data Augmentation")
-    X_train, _ = training_data_aug(X_train, y_train)
+    X_train, _ = training_data_aug(X[0], y[0])
 
     # IMAGE AUGMENTATION
     print("\nPerforming Image Data Augmentation")
-    img_idx, X_tr, y_tr, X_ts, y_ts, X_vl, y_vl = training_img_aug(train, test, val=val)
+    img_idx, (X_tr, y_tr), (X_ts, y_ts), (X_vl, y_vl) = training_img_aug(
+        train, test, val=val
+    )
 
     # NORMALIZATION and SCALING
     if norm:
         cols = ["numexp", "rms_ra", "rms_dec", "nmatches", "point", "segment", "gaia"]
         X_train, X_test, X_val = normalize_training_data(
-            df, cols, X_train, X_test, X_val=X_val, output_path=output_path
+            df, cols, X_train, X[1], X_val=X[2], output_path=output_path
         )
         X_tr, X_ts, X_vl = normalize_training_images(X_tr, X_ts, X_vl=X_vl)
-
+    else:
+        X_test, X_val = X[1], X[2]
     # JOIN INPUTS: MLP + CNN
     XTR, YTR, XTS, YTS, XVL, YVL = make_ensembles(
-        X_tr,
         X_train,
+        X_tr,
         y_tr,
-        X_ts,
         X_test,
+        X_ts,
         y_ts,
-        val_img=X_vl,
         val_data=X_val,
-        y_val=y_vl,
+        val_img=X_vl,
+        val_label=y_vl,
     )
-    tv_idx = [y_test, y_val, img_idx]
+    tv_idx = [y[1], y[2], img_idx]
     return tv_idx, XTR, YTR, XTS, YTS, XVL, YVL
 
 
@@ -242,7 +193,7 @@ def train_ensemble(
             verbose=1,
             ensemble=True,
         )
-    ens = Ensemble(
+    ens = BuilderEnsemble(
         XTR,
         YTR,
         XTS,
@@ -252,7 +203,7 @@ def train_ensemble(
         output_name="svm_output",
         name=model_name,
     )
-    ens.build_ensemble()
+    ens.build()
     ens.batch_fit()
     if output_path is None:
         output_path = os.getcwd()
@@ -289,22 +240,22 @@ def compute_results(ens, tv_idx, val_set=(), output_path=None):
     com.calculate_results()
     _ = com.make_outputs()
     # validation set
-    if len(val_set) == 2:
-        ens.X_val, ens.y_val = val_set[0], val_set[1]
-        ens.test_idx = tv_idx[1]
+    if len(val_set) == 2 and val_set[0][0].shape[0] > 2:  # temp (ignores test data)
+        (ens.X_val, ens.y_val), ens.test_idx = val_set, tv_idx[1]
         val = ComputeBinary(builder=ens, res_path=f"{res_path}/val", validation=True)
         val.calculate_results()
         _ = val.make_outputs()
-        return com, val
     else:
-        return com
+        val = None
+    return com, val
 
 
 def run_training(
     data_file,
     img_path,
     img_size=128,
-    norm=False,
+    norm=0,
+    v=0.85,
     model_name="ensembleSVM",
     params=None,
     output_path=None,
@@ -317,8 +268,12 @@ def run_training(
         path to preprocessed dataframe csv file
     img_path : str (path)
         path to png images parent directory
-    norm : bool, optional
-        apply normalization step, by default False
+    img_size: int, optional
+        image size (single value assigned to width and height)
+    norm : int, optional
+        apply normalization step (1=True, 0=False), by default 0
+    v: float, optional
+        validation set ratio for evaluating model, by default 0.85
     model_name : str, optional
         custom name to assign to model, by default "ensembleSVM"
     params : dict, optional
@@ -332,7 +287,7 @@ def run_training(
         ensemble builder object, binary compute object, validation compute object
     """
     tv_idx, XTR, YTR, XTS, YTS, XVL, YVL = load_ensemble_data(
-        data_file, img_path, img_size=img_size, norm=norm, output_path=output_path
+        data_file, img_path, img_size=img_size, norm=norm, v=v, output_path=output_path
     )
     ens = train_ensemble(
         XTR,
@@ -361,7 +316,7 @@ if __name__ == "__main__":
         "--image_size",
         type=int,
         default=128,
-        help="image pixel size (width and height)",
+        help="image pixel size (single value assigned to width and height)",
     )
     parser.add_argument(
         "-m", "--model_name", type=str, default="ensembleSVM", help="name to give model"
@@ -383,13 +338,28 @@ if __name__ == "__main__":
     parser.add_argument("-b", "--batchsize", type=int, default=32, help="batch_size")
     parser.add_argument("-e", "--epochs", type=int, default=60, help="number of epochs")
     parser.add_argument(
-        "-y", "--early_stopping", type=str, default=None, help="early stopping"
+        "-y",
+        "--early_stopping",
+        type=str,
+        default=None,
+        choices=["val_accuracy", "val_loss"],
+        help="early stopping",
     )
-    parser.add_argument("-v", "--verbose", type=int, default=2, help="verbosity level")
+    parser.add_argument(
+        "-v",
+        "--validate",
+        type=int,
+        default=1,
+        help="evaluate model with validation sample",
+    )
     parser.add_argument(
         "-p", "--plots", type=int, default=0, help="draw model performance plots"
     )
     args = parser.parse_args()
+    if args.validate == 1:
+        v = 0.85
+    else:
+        v = 0
     model_name = args.model_name
     timestamp = str(int(dt.datetime.now().timestamp()))
     if args.output_path is None:
@@ -411,6 +381,7 @@ if __name__ == "__main__":
         args.img_path,
         img_size=args.image_size,
         norm=args.normalize,
+        v=v,
         model_name=args.model_name,
         params=params,
         output_path=output_path,

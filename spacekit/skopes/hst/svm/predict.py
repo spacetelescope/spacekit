@@ -7,16 +7,18 @@ This module generates predictions using a pre-trained ensemble neural network fo
 
 This script (and/or its functions) should be used in conjunction with spacekit.skopes.hst.svm.prep if using raw data (since both the regression test dataframe for MLP and the png images for the CNN need to be created first). Once a model has been trained using the spacekit.skopes.hst.svm.train script, it is saved to disk and can be loaded for use here to generate predictions on unlabeled data.
 """
-from zipfile import ZipFile
-import tensorflow as tf
+# from zipfile import ZipFile
+# import tensorflow as tf
 import numpy as np
 import pandas as pd
 import argparse
 import os
 import sys
 import datetime as dt
-import importlib.resources
-from spacekit.extractor.load import SVMImages
+from spacekit.extractor.load import load_datasets, SVMFileIO
+from spacekit.builder.architect import Builder
+
+# from spacekit.builder.blueprints import Blueprint
 
 DIM = 3
 CH = 3
@@ -27,50 +29,24 @@ SHAPE = (DIM, SIZE, SIZE, CH)
 TF_CPP_MIN_LOG_LEVEL = 2
 
 
-def get_model(model_path=None):
-    """Loads pretrained Keras functional model from disk. By default, this will load the pre-trained EnsembleSVM classifier included from the spacekit library of trained networks.
-
-    Parameters
-    ----------
-    model_path : str, optional
-        path to pretrained model folder, by default None
-
-    Returns
-    -------
-    Keras functional model object
-        pre-trained neural network
-    """
-    if model_path is None:
-        with importlib.resources.path(
-            "spacekit.skopes.trained_networks", "ensembleSVM.zip"
-        ) as M:
-            model_path = M
-        os.makedirs("models", exist_ok=True)
-        model_base = os.path.basename(model_path).split(".")[0]
-        with ZipFile(model_path, "r") as zip_ref:
-            zip_ref.extractall("models")
-        model_path = os.path.join("models", model_base)
-    print("Loading saved model: ", model_path)
-    model = tf.keras.models.load_model(model_path)
-    return model
-
-
-def load_regression_data(data_file):
-    """Loads preprocessed regression test data from csv
+def load_mixed_inputs(data_file, img_path, size=128):
+    """Load the regression test data and image input data, then stacks the arrays into a single combined input (list) for the ensemble model.
 
     Parameters
     ----------
     data_file : str
         path to preprocessed mosaic data csv file
+    img_path : str
+        path to png images parent directory
+    size : int, optional
+        image size (width and height), by default 128
 
     Returns
     -------
-    Pandas dataframe
-        Feature inputs for which the model will generate predictions.
+    list
+        regression test data (MLP inputs) and image data (CNN inputs) joined as a list
     """
-    print("Loading regression test data for MLP")
-    data = pd.read_csv(data_file, index_col="index")
-    column_order = [
+    cols = [
         "numexp",
         "rms_ra",
         "rms_dec",
@@ -82,144 +58,17 @@ def load_regression_data(data_file):
         "wcs",
         "cat",
     ]
-    try:
-        X_data = data[column_order]
-        print("Input Shape: ", X_data.shape)
-        return X_data
-    except Exception as e:
-        print(e)
-        print("Dataframe must contain these columns: ", column_order)
-        sys.exit(1)
-
-
-def load_image_data(X_data, img_path, size=None):
-    """Loads total detection png images and converts to arrays
-
-    Parameters
-    ----------
-    X_data : numpy array
-        Feature inputs for which the model will generate predictions.
-    img_path : str
-        path to png images parent directory
-    size : int, optional
-        image size (width and height), by default None (128)
-
-    Returns
-    -------
-    Pandas Index, numpy array
-        index of input dataset names, array of image data inputs
-    """
-    print("Loading images into arrays")
-    if size is not None:
-        SIZE = size
-    else:
-        SIZE = 128
-    svm_img = SVMImages(img_path, SIZE, SIZE, DEPTH)
-    idx, X_img = svm_img.detector_prediction_images(X_data, DIM)
-    print("Inputs: ", X_img.shape[0])
-    print("Dimensions: ", X_img.shape[1])
-    print("Width: ", X_img.shape[2])
-    print("Height: ", X_img.shape[3])
-    print("Channels: ", X_img.shape[4])
-    print("Input Shape: ", X_img.shape)
-    return idx, X_img
-
-
-def load_mixed_inputs(data_file, img_path, size=None):
-    """Load the regression test data and image input data.
-
-    Parameters
-    ----------
-    data_file : str
-        path to preprocessed mosaic data csv file
-    img_path : str
-        path to png images parent directory
-    size : int, optional
-        image size (width and height), by default None (128)
-
-    Returns
-    -------
-    numpy arrays
-        MLP inputs, ImageCNN3D inputs
-    """
-    X_data = load_regression_data(data_file)
-    idx, X_img = load_image_data(X_data, img_path, size=size)
+    X_data = load_datasets([data_file], column_order=cols)
+    # idx, X_img = load_image_data(X_data, img_path, size=size)
+    print("Loading images into arrays...")
+    idx, X_img = SVMFileIO(img_path, w=size, h=size, d=9, data=X_data).load()
     diff = X_data.shape[0] - X_img.shape[0]
     if diff > 0:
         X_data = X_data.loc[X_data.index.isin(idx)]
         print(f"{diff} missing images removed from index")
         print(f"X_data: {X_data.shape}\nX_img:  {X_img.shape}")
-    return X_data, X_img
-
-
-def make_ensemble_data(X_data, X_img):
-    """Stacks regression test data and image arrays into a single combined input array for the ensemble model.
-
-    Parameters
-    ----------
-    X_data : numpy array
-        Regression test data feature inputs for which the model will generate predictions.
-    X_img : numpy array
-        Stacked image array inputs for which the model will generate predictions.
-
-    Returns
-    -------
-    list
-        regression test data and image data inputs joined as a list
-    """
     print("Joining regression data and image arrays")
-    X = [X_data, X_img]
-    return X
-
-
-def classify_alignments(model, X):
-    """Returns classifier predictions and probability scores
-
-    Parameters
-    ----------
-    model : keras functional model object
-        model used to generate predictions
-    X : numpy array
-        input features
-
-    Returns
-    -------
-    numpy arrays
-        y_pred (prediction outputs), y_proba (probability scores)
-    """
-    proba = model.predict(X)
-    y_pred = np.round(proba[:, 0]).reshape(-1, 1)
-    y_proba = proba[:, 0].reshape(-1, 1)
-    return y_pred, y_proba
-
-
-def save_preds(X_data, y_pred, y_proba, output_path):
-    """save prediction and probability scores to disk
-
-    Parameters
-    ----------
-    X_data : numpy array
-        Regression test data feature inputs for which the model will generate predictions.
-    y_pred : numpy array
-        prediction outputs of model
-    y_proba : numpy array
-        probability scores associated with each prediction generated by model
-    output_path : str
-        location to store prediction output files
-
-    Returns
-    -------
-    Pandas dataframe
-        prediction values, probability scores for target, merged with original input features
-    """
-    preds = np.concatenate([y_pred, y_proba], axis=1)
-    pred_proba = pd.DataFrame(preds, index=X_data.index, columns=["y_pred", "y_proba"])
-    preds = X_data.join(pred_proba)
-    preds["index"] = preds.index
-    output_file = f"{output_path}/predictions.csv"
-    preds.to_csv(output_file, index=False)
-    print("Y_PRED + Probabilities added. Dataframe saved to: ", output_file)
-    return preds
+    return [X_data, X_img]
 
 
 def classification_report(df, output_path):
@@ -269,9 +118,43 @@ def classification_report(df, output_path):
     print(f"\nSuspicious/Compromised List created: {output_path}/compromised.txt")
 
 
-def predict_alignment(
-    data_file, img_path, model_path=None, output_path=None, size=None
-):
+def classify_alignments(X, model_path=None, output_path=None):
+    """Returns classifier predictions and probability scores
+
+    Parameters
+    ----------
+    X : numpy array
+        input features
+    model_path : str, optional
+        saved model directory path, by default None
+    output_path : str
+        location to store prediction output files
+
+    Returns
+    -------
+    Pandas dataframe
+        prediction values, probability scores for target, merged with original input features
+    """
+    if output_path is None:
+        output_path = os.getcwd()
+    output_path = os.path.join(output_path, "predictions")
+    os.makedirs(output_path, exist_ok=True)
+    model = Builder(model_path=model_path).load_saved_model()
+    y_proba = model.predict(X)
+    y_pred = np.round(y_proba[:, 0]).reshape(-1, 1)
+    # y_proba = proba[:, 0].reshape(-1, 1)
+    preds = np.concatenate([y_pred, y_proba], axis=1)
+    pred_proba = pd.DataFrame(preds, index=X[0].index, columns=["y_pred", "y_proba"])
+    preds = X[0].join(pred_proba)
+    preds["index"] = preds.index
+    output_file = f"{output_path}/predictions.csv"
+    preds.to_csv(output_file, index=False)
+    print("Y_PRED + Probabilities added. Dataframe saved to: ", output_file)
+    classification_report(preds, output_path)
+    return preds
+
+
+def predict_alignment(data_file, img_path, model_path=None, output_path=None, size=128):
     """Main calling function to load the data and model, generate predictions, and save results to disk.
 
     Parameters
@@ -287,16 +170,9 @@ def predict_alignment(
     size : int, optional
         image size (width and height), by default None (128)
     """
-    ens_clf = get_model(model_path=model_path)
-    X_data, X_img = load_mixed_inputs(data_file, img_path, size=size)
-    X = make_ensemble_data(X_data, X_img)
-    y_pred, y_proba = classify_alignments(ens_clf, X)
-    if output_path is None:
-        output_path = os.getcwd()
-    output_path = os.path.join(output_path, "predictions")
-    os.makedirs(output_path, exist_ok=True)
-    preds = save_preds(X_data, y_pred, y_proba, output_path)
-    classification_report(preds, output_path)
+    X = load_mixed_inputs(data_file, img_path, size=size)
+    preds = classify_alignments(X, model_path=model_path, output_path=output_path)
+    return preds
 
 
 if __name__ == "__main__":
@@ -331,8 +207,8 @@ if __name__ == "__main__":
         "-s",
         "--size",
         type=int,
-        default=None,
-        help="image size (width and height). Default is None (128).",
+        default=128,
+        help="image size (width and height). Default is 128.",
     )
     args = parser.parse_args()
     data_file = args.data_file

@@ -4,7 +4,7 @@ from spacekit.preprocessor.transform import (
     thermo_fusion_chisel,
     babel_fish_dispenser,
 )
-from spacekit.builder.networks import Cnn2dBuilder
+from spacekit.builder.architect import BuilderCNN2D
 from spacekit.datasets.k2_exo import k2_uri, k2_data
 from spacekit.extractor.scrape import WebScraper
 
@@ -51,10 +51,10 @@ class LaunchK2:
         return self.X_train, self.X_test
 
     def deploy(self):
-        self.builder = Cnn2dBuilder(
+        self.builder = BuilderCNN2D(
             self.X_train, self.y_train, self.X_test, self.y_test
         )
-        self.builder.build_cnn()
+        self.builder.build()
         return self.builder
 
     def takeoff(self):

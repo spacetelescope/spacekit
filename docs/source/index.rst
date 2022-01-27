@@ -27,7 +27,7 @@ Builder
 .. toctree::
    :maxdepth: 1
 
-   networks <builder/networks.rst>
+   architect <builder/architect.rst>
 
 
 Dashboard
