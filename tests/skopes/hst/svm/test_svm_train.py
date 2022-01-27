@@ -1,8 +1,8 @@
 from pytest import mark
-from spacekit.skopes.hst.svm.train import run_training, load_ensemble_data, train_ensemble, compute_results
+from spacekit.skopes.hst.svm.train import load_ensemble_data, run_training
 
 params = dict(
-    batch_size=32,
+    batch_size=7,
     epochs=1,
     lr=1e-4,
     decay=[100000, 0.96],
@@ -15,34 +15,38 @@ params = dict(
 @mark.svm
 @mark.train
 @mark.parametrize("norm", [(0), (1)])
-def test_svm_training(svm_labeled_dataset, svm_train_img, norm):
+def test_svm_training(svm_labeled_dataset, svm_train_npz, norm):
     ens, com, val = run_training(
         svm_labeled_dataset, 
-        svm_train_img,
+        svm_train_npz,
         img_size=128,
         norm=norm,
+        val_size=0.2,
         model_name="ensembleSVM",
         params=params,
         output_path="tmp"
         )
-    assert True
+    # model arch
+    assert str(type(ens.mlp)) == "<class 'spacekit.builder.architect.BuilderMLP'>"
+    assert str(type(ens.cnn)) == "<class 'spacekit.builder.architect.BuilderCNN3D'>"
+    assert str(type(ens)) == "<class 'spacekit.builder.architect.BuilderEnsemble'>"
 
-# @mark.parametrize("norm", [(0, 1)])
-# def test_load_training_data():
-#     tv_idx, XTR, YTR, XTS, YTS, XVL, YVL = load_ensemble_data(
-#         data_file, svm_train_img, img_size=img_size, norm=norm, output_path=output_path
-#     )
-#     assert True
 
-# def test_train_svm_model():
-#     ens = train_ensemble(
-#         XTR,
-#         YTR,
-#         XTS,
-#         YTS,
-#         model_name=model_name,
-#         params=params,
-#         output_path=output_path,
-#     )
-#     com, val = compute_results(ens, tv_idx, val_set=(XVL, YVL), output_path=output_path)
-#     assert True
+@mark.svm
+@mark.train
+def test_load_training_data(svm_labeled_dataset, svm_train_img, norm):
+    tv_idx, XTR, YTR, XTS, YTS, XVL, YVL = load_ensemble_data(
+        svm_labeled_dataset, svm_train_img, img_size=128, norm=norm, val_size=0.2, output_path="tmp"
+    )
+    assert len(tv_idx) == 3
+    # check input features
+    assert XTR[0].shape == (14, 10)
+    assert XTR[1].shape == (12, 3, 128, 128, 3)
+    assert XTS[0].shape == (3, 10)
+    assert XTS[1].shape == (3, 3, 128, 128, 3)
+    assert XVL[0].shape == (2, 10)
+    assert XVL[1].shape == (2, 3, 128, 128, 3)
+    # check target labels
+    assert YTR.shape == (12, 1)
+    assert YTS.shape == (3, 1)
+    assert YVL.shape == (2, 1)

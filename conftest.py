@@ -46,10 +46,14 @@ def svm_train_img(request):
     img_path = os.path.join("tests/data/svm/train", request.param)
     return img_path
 
+@fixture(scope='function')
+def svm_train_png():
+    img_path = "tests/data/svm/train/img"
+    return img_path
 
-@fixture(params=["img", "images.npz"])
-def svm_train_npz(request):
-    img_path = os.path.join("tests/data/svm/train", request.param)
+@fixture(scope='function')
+def svm_train_npz():
+    img_path = "tests/data/svm/train/images.npz"
     return img_path
 
 

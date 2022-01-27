@@ -33,13 +33,13 @@ TF_CPP_MIN_LOG_LEVEL = 2
 def make_ensembles(
     train_data,
     train_img,
-    y_train,
+    train_label,
     test_data,
     test_img,
-    y_test,
+    test_label,
     val_data=None,
     val_img=None,
-    y_val=None,
+    val_label=None,
 ):
     """Creates tupled pairs of regression test (MLP) data and image (CNN) array inputs for an ensemble model.
 
@@ -49,19 +49,19 @@ def make_ensembles(
         training set feature data inputs
     train_img : numpy array
         training set image inputs
-    y_train : numpy array
+    train_label : numpy array
         training set target values
     test_data : numpy array
         test set feature data inputs
     test_img : numpy array
         test set image inputs
-    y_test : numpy array
+    test_label : numpy array
         test set target values
     val_data : numpy array, optional
         validation set feature data inputs
     val_img : numpy array, optional
         validation set image inputs
-    y_val : numpy array, optional
+    val_label : numpy array, optional
         validation set target values
 
     Returns
@@ -72,19 +72,19 @@ def make_ensembles(
     """
     print("Stacking mixed inputs (DATA + IMG)")
     XTR = [train_data, train_img]
-    YTR = y_train.reshape(-1, 1)
+    YTR = train_label.reshape(-1, 1)
     XTS = [test_data, test_img]
-    YTS = y_test.reshape(-1, 1)
+    YTS = test_label.reshape(-1, 1)
     if val_data is not None:
         XVL = [val_data, val_img]
-        YVL = y_val.reshape(-1, 1)
+        YVL = val_label.reshape(-1, 1)
         return XTR, YTR, XTS, YTS, XVL, YVL
     else:
         return XTR, YTR, XTS, YTS
 
 
 def load_ensemble_data(
-    filename, img_path, img_size=128, dim=3, ch=3, norm=0, output_path=None
+    filename, img_path, img_size=128, dim=3, ch=3, norm=0, val_size=0.1, output_path=None
 ):
     """Loads regression test data from a csv file and image data from png files. Splits the data into train, test and validation sets, applies normalization (if norm=1), creates a maste index of the original dataset input names, and stacks the features and class targets for both data types into lists which can be used as inputs for an ensemble model.
 
@@ -96,8 +96,6 @@ def load_ensemble_data(
         path to png images parent directory
     norm : bool, optional
         apply normalization step, by default 0
-    shape: tuple, optional
-        image input shape (dimensions, width, height, channels), by default (3, 128, 128, 3)
 
     Returns
     -------
@@ -105,14 +103,14 @@ def load_ensemble_data(
         tv_idx, XTR, YTR, XTS, YTS, XVL, YVL
         list of test-validation indices, train-test feature (X) and target (y) numpy arrays.
     """
-    # LOAD MLP DATA
+    # LOAD MLP and CNN DATA
     print("[i] Importing Regression Test Data")
     df = load_datasets([filename])
     print("\tREG DATA: ", df.shape)
     print(f"\nClass Labels (0=Aligned, 1=Misaligned)\n{df['label'].value_counts()}")
 
     (data, labels), (train, test, val) = SVMFileIO(
-        img_path, w=img_size, h=img_size, d=dim * ch, inference=False, data=df
+        img_path, w=img_size, h=img_size, d=dim * ch, inference=False, data=df, val_size=val_size
     ).load()
 
     # DATA AUGMENTATION
@@ -134,15 +132,15 @@ def load_ensemble_data(
         X_test, X_val = data[1], data[2]
     # JOIN INPUTS: MLP + CNN
     XTR, YTR, XTS, YTS, XVL, YVL = make_ensembles(
-        X_tr,
         X_train,
+        X_tr,
         y_tr,
-        X_ts,
         X_test,
+        X_ts,
         y_ts,
-        val_img=X_vl,
         val_data=X_val,
-        y_val=y_vl,
+        val_img=X_vl,
+        val_label=y_vl,
     )
     tv_idx = [labels[1], labels[2], img_idx]
     return tv_idx, XTR, YTR, XTS, YTS, XVL, YVL
@@ -237,9 +235,9 @@ def compute_results(ens, tv_idx, val_set=(), output_path=None):
         val = ComputeBinary(builder=ens, res_path=f"{res_path}/val", validation=True)
         val.calculate_results()
         _ = val.make_outputs()
-        return com, val
     else:
-        return com
+        val = None
+    return com, val
 
 
 def run_training(
@@ -247,6 +245,7 @@ def run_training(
     img_path,
     img_size=128,
     norm=0,
+    val_size=0.1,
     model_name="ensembleSVM",
     params=None,
     output_path=None,
@@ -274,7 +273,7 @@ def run_training(
         ensemble builder object, binary compute object, validation compute object
     """
     tv_idx, XTR, YTR, XTS, YTS, XVL, YVL = load_ensemble_data(
-        data_file, img_path, img_size=img_size, norm=norm, output_path=output_path
+        data_file, img_path, img_size=img_size, norm=norm, val_size=val_size, output_path=output_path
     )
     ens = train_ensemble(
         XTR,

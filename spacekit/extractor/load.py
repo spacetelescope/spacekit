@@ -39,7 +39,7 @@ def load_datasets(filenames, index_col="index", column_order=None, verbose=1):
     return df
 
 
-def split_data(df, target="label", val=True, test_size=0.2, val_size=0.1):
+def split_data(df, target="label", test_size=0.2, val_size=0.1):
     """Splits Pandas dataframe into feature (X) and target (y) train, test and validation sets.
 
     Parameters
@@ -48,13 +48,15 @@ def split_data(df, target="label", val=True, test_size=0.2, val_size=0.1):
         preprocessed SVM regression test dataset
     target : str, optional
         target class label for alignment model predictions, by default "label"
-    val : bool, optional
-        create a validation set separate from train/test, by default True
+    test_size : int, optional
+        size of the test set, by default 0.2
+    val_size : int, optional
+        create a validation set separate from train/test, by default 0.1
 
     Returns
     -------
-    Pandas dataframes
-        features (X) and targets (y) split into train, test, and validation sets
+    tuples of Pandas dataframes
+        data, labels: features (X) and targets (y) split into train, test, validation sets
     """
     print("Splitting Data ---> X-y ---> Train-Test-Val")
     y = df[target]
@@ -62,7 +64,7 @@ def split_data(df, target="label", val=True, test_size=0.2, val_size=0.1):
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=test_size, shuffle=True, stratify=y
     )
-    if val is True:
+    if val_size is not None:
         try:
             X_train, X_val, y_train, y_val = train_test_split(
                 X_train, y_train, test_size=val_size, shuffle=True, stratify=y_train
@@ -148,20 +150,20 @@ class FileIO:
     def load_npz(self, npz_file=None, keys=["index", "images", "labels"]):
         if npz_file is None:
             npz_file = self.img_path
-        try:
-            img_data = np.load(npz_file)
-            index = img_data[keys[0]]
-            X = img_data[keys[1]]
-            if len(keys) > 2:
-                y = img_data[keys[2]]
-                img_data.close()
-                return (index, X, y)
-            else:
-                img_data.close()
-                return index, X
-        except Exception as e:
-            print(e)
-            return None
+            try:
+                img_data = np.load(npz_file)
+                index = img_data[keys[0]]
+                X = img_data[keys[1]]
+                if len(keys) > 2:
+                    y = img_data[keys[2]]
+                    img_data.close()
+                    return (index, X, y)
+                else:
+                    img_data.close()
+                    return index, X
+            except Exception as e:
+                print(e)
+                return None
 
     def load_multi_npz(self, X, y, i):
         """Load numpy arrays from individual feature/image data, label and index compressed files on disk"""
@@ -197,34 +199,56 @@ class FileIO:
             f"{data_path}/labels.npz", y_train=train[2], y_test=test[2], y_val=val[2]
         )
 
-    def split_arrays_from_npz(self):
+    def split_arrays_from_npz(self, test_size=0.2, val_size=0.1, seed=42):
         """Loads images (X), labels (y) and index (i) from a single .npz compressed numpy file. Splits into train, test, val sets using 70-20-10 ratios.
 
         Returns
         -------
         tuples
-            train, test, val tuples of numpy arrays. Each tuple consisys of an index, feature data (X, for images these are the actual pixel values) and labels (y).
+            train, test, val tuples of numpy arrays. Each tuple consists of an index, feature data (X, for images these are the actual pixel values) and labels (y).
         """
         (index, X, y) = self.load_npz()
-        s_train = int(np.floor(X.shape[0] * 0.7))
-        s_test = int(np.floor(X.shape[0] * 0.2))
-        s_val = s_train + s_test
-        train = (index[:s_train], X[:s_train], y[:s_train])
-        test = (index[s_train:s_test], X[s_train:s_test], y[s_train:s_test])
-        val = (index[s_val:], X[s_val:], y[s_val:])
+        train_idx, test_idx, y_train, y_test = train_test_split(index, y, test_size=test_size, random_state=seed, shuffle=True, stratify=y)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=seed, shuffle=True, stratify=y) 
+        if val_size:
+            try:
+                train_idx, val_idx, y_train, y_val = train_test_split(index, y, test_size=val_size, random_state=seed, shuffle=True, stratify=y)
+            except ValueError:
+                val_size=0.2
+                train_idx, val_idx, y_train, y_val = train_test_split(index, y, test_size=val_size, random_state=seed, shuffle=True, stratify=y)
+            X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=val_size, random_state=seed, shuffle=True, stratify=y)
+            val = (val_idx, X_val, y_val)
+        else:
+            val = None
+        train = (train_idx, X_train, y_train)
+        test = (test_idx, X_test, y_test)
         return train, test, val
+        # s_train = int(np.floor(X.shape[0] * 1-test_size))
+        # train = (index[:s_train], X[:s_train], y[:s_train])
+        # test = (index[s_train:], X[s_train:], y[s_train:])
+        # if val_size:
+        #     s_val = int(np.floor(train[1].shape[0] * val_size)) * -1
+        #     val = (index[s_val:], X[s_val:], y[s_val:])
+        #     return train, test, val
+        # else:
+        #     return train, test
+
 
     def split_df_from_arrays(self, train, test, val, target="label"):
         if self.data is None:
             return
         X_train = self.data.loc[train[0]].drop(target, axis=1, inplace=False)
         X_test = self.data.loc[test[0]].drop(target, axis=1, inplace=False)
-        X_val = self.data.loc[val[0]].drop(target, axis=1, inplace=False)
         y_train = self.data.loc[train[0]][target]
         y_test = self.data.loc[test[0]][target]
-        y_val = self.data.loc[val[0]][target]
-        X = (X_train, X_test, X_val)
-        y = (y_train, y_test, y_val)
+        if val is not None:
+            X_val = self.data.loc[val[0]].drop(target, axis=1, inplace=False)
+            y_val = self.data.loc[val[0]][target]
+            X = (X_train, X_test, X_val)
+            y = (y_train, y_test, y_val)
+        else:
+            X = (X_train, X_test)
+            y = (y_train, y_test)
         return X, y
 
 
@@ -241,6 +265,7 @@ class SVMFileIO(FileIO):
         format="png",
         data=None,
         target="label",
+        val_size=0.1
     ):
         """Instantiates an SVMFileIO object.
 
@@ -261,6 +286,7 @@ class SVMFileIO(FileIO):
         self.d = d
         self.inference = inference
         self.target = target
+        self.val_size = val_size
 
     def load(self):
         if self.inference is True:
@@ -270,10 +296,10 @@ class SVMFileIO(FileIO):
                 return super().load_npz(keys=["index", "images"])  # index, X
         else:
             if self.format in ["png", "jpg"]:
-                X, y = split_data(self.data, target=self.target, val=True)
+                X, y = split_data(self.data, target=self.target, val_size=self.val_size)
                 train, test, val = self.load_from_data_splits(*X)
             elif self.format == "npz":
-                train, test, val = super().split_arrays_from_npz()
+                train, test, val = super().split_arrays_from_npz(val_size=self.val_size)
                 X, y = super().split_df_from_arrays(train, test, val)
             return (X, y), (train, test, val)
 

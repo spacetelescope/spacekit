@@ -24,7 +24,7 @@ from tensorflow.keras.layers import (
 from tensorflow.keras.metrics import RootMeanSquaredError as RMSE
 from spacekit.generator.augment import augment_data, augment_image
 from spacekit.analyzer.track import stopwatch
-
+from spacekit.builder.blueprints import Blueprint
 
 TF_CPP_MIN_LOG_LEVEL = 2
 
@@ -57,8 +57,9 @@ class Builder:
         self.mlp = None
         self.cnn = None
         self.ann = None
-        self.make_batches = None
+        self.step_size = None
         self.steps_per_epoch = None
+        self.batch_maker = None
         self.history = None
         self.name = None
 
@@ -110,18 +111,22 @@ class Builder:
         self.model_path = os.path.join(extract_to, model_base)
         return self.model_path
 
-    def build_params(
+    def set_build_params(
         self,
-        input_shape,
-        kernel_size,
-        activation,
-        strides,
-        optimizer,
-        lr,
-        decay,
-        early_stopping,
-        loss,
-        metrics,
+        input_shape=None,
+        output_shape=None,
+        layers=None,
+        kernel_size=None,
+        activation=None,
+        cost_function=None,
+        strides=None,
+        optimizer=None,
+        lr_sched=None,
+        loss=None,
+        metrics=None,
+        input_name=None,
+        output_name=None,
+        name=None,
     ):
         """Set custom build parameters for a Builder object.
 
@@ -129,22 +134,24 @@ class Builder:
         ----------
         input_shape : tuple
             shape of the inputs
+        output_shape : tuple
+            shape of the output
+        layers: list
+            sizes of hidden (dense) layers
         kernel_size : int
             size of the kernel
         activation : string
             dense layer activation
+        cost_function: str
+            function to update weights (calculate cost)
         strides : int
             number of strides
         optimizer : object
             type of optimizer to use
-        lr : float
-            learning rate
-        decay : list
-            decay_steps, decay_rate, e.g. [100000, 0.96]
-        early_stopping : bool
-            use an early stopping callback
+        lr_sched: bool
+            use a learning_rate schedule such as ExponentialDecay
         loss : string
-            loss for model to train on
+            loss metric to monitor
         metrics : list
             metrics for model to train on
 
@@ -154,74 +161,23 @@ class Builder:
             spacekit.builder.architect.Builder class object with updated attributes
         """
         self.input_shape = input_shape
+        self.output_shape = output_shape
+        self.layers = layers
         self.kernel_size = kernel_size
         self.activation = activation
+        self.cost_function = cost_function
         self.strides = strides
         self.optimizer = optimizer
-        self.lr = lr
+        self.lr_sched = lr_sched
         self.loss = loss
         self.metrics = metrics
-        self.decay = decay
-        self.early_stopping = early_stopping
+        self.input_name = input_name
+        self.output_name = output_name
+        self.name = name
         return self
-
-    def tape_measure(self, blueprint):
-        self.steps_per_epoch = {
-            "mlp": self.X_train.shape[0] // self.batch_size,
-            "cnn3d": self.X_train.shape[0] // self.batch_size,
-            "cnn2d": self.X_train.shape[1] // self.batch_size,
-            "ensemble": self.X_train[0].shape[0] // self.batch_size,
-        }[blueprint]
-
-    def design(self):
-        """PLANNED DEPRECATION: `batch` generator method determined automatically according to the subclass calling it; steps_per_epoch now uses ``tape_measure`` instead. Creates a dictionary containing the appropriate batch generator and steps per epoch for the type of model Builder blueprint.
-
-        Returns
-        -------
-        dictionary
-            batch generator and steps per epoch for the assigned Builder blueprint
-        """
-        if self.blueprint == "mlp":
-            return dict(
-                batches=self.batch(),
-                steps=self.X_train.shape[0] // self.batch_size
-                # batches=self.batch_mlp(), steps=self.X_train.shape[0] // self.batch_size
-            )
-        elif self.blueprint == "image3d":
-            return dict(
-                batches=self.batch(),
-                steps=self.X_train.shape[0] // self.batch_size
-                # batches=self.batch_cnn(), steps=self.X_train.shape[0] // self.batch_size
-            )
-        elif self.blueprint == "ensemble":
-            return dict(
-                # batches=self.batch_ensemble(),
-                batches=self.batch(),
-                steps=self.X_train[0].shape[0] // self.batch_size,
-            )
-        elif self.blueprint == "cnn2d":
-            return dict(
-                # batches=self.batch_maker(),
-                batches=self.batch(),
-                steps=self.X_train.shape[1] // self.batch_size,
-            )
-
-    def batch_steps(self):
-        """PLANNED DEPRECATION: `batch` generator method determined automatically according to the subclass calling it; steps_per_epoch now uses ``tape_measure`` instead Gets the relevant design dictionary blueprint and stores the batch generator and steps_per_epoch as variables at time of model fitting.
-
-        Returns
-        -------
-        generator, int
-            batch generator and calculated steps_per_epoch for model fitting
-        """
-        design = self.design()
-        make_batches = design["batches"]
-        steps_per_epoch = design["steps"]
-        return make_batches, steps_per_epoch
 
     def fit_params(
         self,
-        architecture=None,
         batch_size=32,
         epochs=60,
         lr=1e-4,
@@ -254,17 +210,20 @@ class Builder:
         self
             spacekit.builder.architect.Builder class object with updated fitting parameters.
         """
-        if architecture:
-            # TODO
-            pass
-        else:
-            self.batch_size = batch_size
-            self.epochs = epochs
-            self.lr = lr
-            self.decay = decay
-            self.early_stopping = early_stopping
-            self.verbose = verbose
-            self.ensemble = ensemble
+        self.batch_size = batch_size
+        self.epochs = epochs
+        self.lr = lr
+        self.decay = decay
+        self.early_stopping = early_stopping
+        self.verbose = verbose
+        self.ensemble = ensemble
+        return self
+
+    def get_blueprint(self, architecture, fitting=True):
+        draft = Blueprint(architecture=architecture)
+        self.set_build_params(**draft.building())
+        if fitting is True:
+            self.fit_params(**draft.fitting())
         return self
 
     def decay_learning_rate(self):
@@ -280,7 +239,7 @@ class Builder:
         )
         return lr_schedule
 
-    def set_callbacks(self):
+    def set_callbacks(self, patience=15):
         """Set an early stopping callback by monitoring the model training for either accuracy or loss.  For classifiers, use 'val_accuracy' or 'val_loss'. For regression use 'val_loss' or 'val_rmse'.
 
         Returns
@@ -293,7 +252,7 @@ class Builder:
             f"{model_name}_checkpoint.h5", save_best_only=True
         )
         early_stopping_cb = callbacks.EarlyStopping(
-            monitor=self.early_stopping, patience=15
+            monitor=self.early_stopping, patience=patience
         )
         self.callbacks = [checkpoint_cb, early_stopping_cb]
         return self.callbacks
@@ -385,16 +344,12 @@ class Builder:
         start = time.time()
         stopwatch(f"TRAINING ***{model_name}***", t0=start)
 
-        # make_batches, steps_per_epoch = self.batch_steps()
-
         self.history = self.model.fit(
-            # make_batches,
-            self.batch(),
+            self.batch_maker(),
             validation_data=validation_data,
             verbose=self.verbose,
             epochs=self.epochs,
-            # steps_per_epoch=steps_per_epoch,
-            steps_per_epoch=self.tape_measure(self.blueprint),
+            steps_per_epoch=self.steps_per_epoch,
             callbacks=self.callbacks,
         )
         end = time.time()
@@ -466,6 +421,9 @@ class BuilderMLP(Builder):
         self.optimizer = Adam
         self.loss = "binary_crossentropy"
         self.metrics = ["accuracy"]
+        self.step_size = X_train.shape[0]
+        self.steps_per_epoch = self.step_size // self.batch_size
+        self.batch_maker = self.batch
 
     def build(self):
         """Build and compile an MLP network
@@ -569,6 +527,9 @@ class BuilderCNN3D(Builder):
         self.pool = 1
         self.dense = 512
         self.dropout = 0.3
+        self.step_size = X_train.shape[0]
+        self.steps_per_epoch = self.step_size // self.batch_size
+        self.batch_maker = self.batch
 
     def build(self):
         """Builds a 3D convolutional neural network for RGB image triplets"""
@@ -680,7 +641,7 @@ class BuilderEnsemble(Builder):
         params=None,
         input_name="svm_mixed_inputs",
         output_name="ensemble_output",
-        name="ensembl4D",
+        name="ensembleSVM",
     ):
         super().__init__(train_data=(X_train, y_train), test_data=(X_test, y_test))
         self.input_name = input_name
@@ -704,6 +665,9 @@ class BuilderEnsemble(Builder):
         self.verbose = 2
         self.output_shape = 1
         self.layers = [18, 32, 64, 32, 18]
+        self.step_size = X_train[0].shape[0]
+        self.steps_per_epoch = self.step_size // self.batch_size
+        self.batch_maker = self.batch
         if params is not None:
             self.fit_params(**params)
 
@@ -715,12 +679,13 @@ class BuilderEnsemble(Builder):
             self.y_test,
             blueprint="ensemble",
         )
+        # experimental (sets all attrs below)
+        # self.mlp.get_blueprint("svm_mlp")
         self.mlp.input_name = "svm_regression_inputs"
         self.mlp.output_name = "svm_regression_output"
         self.mlp.name = "svm_mlp"
         self.mlp.ensemble = True
         self.mlp.input_shape = self.X_train[0].shape[1]
-        # default attributes for MLP:
         self.mlp.output_shape = 1
         self.mlp.layers = [18, 32, 64, 32, 18]
         self.mlp.activation = "leaky_relu"
@@ -729,7 +694,7 @@ class BuilderEnsemble(Builder):
         self.mlp.optimizer = Adam
         self.mlp.loss = "binary_crossentropy"
         self.mlp.metrics = ["accuracy"]
-        # compile the MLP branch
+
         self.mlp.model = self.mlp.build()
         return self.mlp
 
@@ -850,6 +815,9 @@ class BuilderCNN2D(Builder):
         self.early_stopping = None
         self.batch_size = 32
         self.cost_function = "sigmoid"
+        self.step_size = X_train.shape[1]
+        self.steps_per_epoch = self.step_size // self.batch_size
+        self.batch_maker = self.batch
 
     def build(self):
         """
