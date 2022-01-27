@@ -635,6 +635,13 @@ class BuilderCNN3D(Builder):
 
 
 class BuilderEnsemble(Builder):
+    """Subclass for building and training an ensemble model (stacked MLP and 3D CNN)
+
+    Parameters
+    ----------
+    Builder : class
+        spacekit.builder.architect.Builder class object
+    """
     def __init__(
         self,
         X_train,
@@ -675,6 +682,13 @@ class BuilderEnsemble(Builder):
         self.batch_maker = self.batch
 
     def ensemble_mlp(self):
+        """Compiles the MLP branch of the ensemble model
+
+        Returns
+        -------
+        self
+            spacekit.builder.architect.Builder.BuilderEnsemble object with ``mlp`` attribute initialized
+        """
         self.mlp = BuilderMLP(
             self.X_train[0],
             self.y_train,
@@ -701,6 +715,13 @@ class BuilderEnsemble(Builder):
         return self.mlp
 
     def ensemble_cnn(self):
+        """Compiles the CNN branch of the ensemble model
+
+        Returns
+        -------
+        self
+            spacekit.builder.architect.Builder.BuilderEnsemble object with ``cnn`` attribute initialized
+        """
         self.cnn = BuilderCNN3D(
             self.X_train[1],
             self.y_train,
@@ -726,6 +747,13 @@ class BuilderEnsemble(Builder):
         return self.cnn
 
     def build(self):
+        """Builds and compiles the ensemble model
+
+        Returns
+        -------
+        self
+            spacekit.builder.architect.Builder.BuilderEnsemble object with ``model`` attribute initialized
+        """
         self.mlp = self.ensemble_mlp()
         self.cnn = self.ensemble_cnn()
         combinedInput = concatenate([self.mlp.model.output, self.cnn.model.output])
@@ -794,6 +822,13 @@ class BuilderEnsemble(Builder):
 
 
 class BuilderCNN2D(Builder):
+    """Subclass Builder object for 2D Convolutional Neural Networks
+
+    Parameters
+    ----------
+    Builder : class
+        spacekit.builder.architect.Builder.Builder object
+    """
     def __init__(self, X_train, y_train, X_test, y_test, blueprint="cnn2d"):
         super().__init__(train_data=(X_train, y_train), test_data=(X_test, y_test))
         self.blueprint = blueprint

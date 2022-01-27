@@ -53,8 +53,6 @@ PowerX Examples
 
 .. autofunction:: normalize_training_images
 
-.. autofunction:: split_sets
-
 .. autofunction:: arrays_to_tensors
 
 .. autofunction:: tensor_to_array

@@ -144,6 +144,20 @@ def augment_data(xi):
 
 
 def training_data_aug(X_train, y_train):
+    """Perform data augmentation on the training set
+
+    Parameters
+    ----------
+    X_train : dataframe
+        training set features
+    y_train : dataframe
+        training set target labels
+
+    Returns
+    -------
+    dataframes
+        augmented training data and target labels combined with original set (2x observations)
+    """
     xtr = np.empty(X_train.shape, dtype="float32")
     X_train = X_train.values
     y_train = y_train.values
@@ -334,6 +348,22 @@ def aug_generator(X, c=9, combine=False):
 
 
 def image_index_labels(index, y, aug=False):
+    """Creates Pandas Index and Series from numpy arrays (used for calculating FNFP data in ``spacekit.analyzer.compute``) 
+
+    Parameters
+    ----------
+    index : ndarray
+        index of image names
+    y : ndarray
+        target class values
+    aug : bool, optional
+        concatenate (double) the index for training data, by default False
+
+    Returns
+    -------
+    tuple of pd.Index and pd.Series
+        inputs converted into index and series 
+    """
     if aug is False:
         idx = pd.Index(index)
         y_series = pd.Series(y, index=idx)
@@ -346,6 +376,22 @@ def image_index_labels(index, y, aug=False):
 
 
 def nested_image_index(tr, ts, vl=()):
+    """creates a list of nested tuples for training, test, and validation Indices and Index-label Series
+
+    Parameters
+    ----------
+    tr : tuple
+        (training index, training index-label series)
+    ts : tuple
+        (test index, test index-label series)
+    vl : tuple, optional
+        (val index, val index-label series), by default ()
+
+    Returns
+    -------
+    list
+        list of nested tuples [(indices), (tuples)]
+    """
     if len(vl) > 0:
         indices = (tr[0], ts[0])
         labels = (tr[1], ts[1])

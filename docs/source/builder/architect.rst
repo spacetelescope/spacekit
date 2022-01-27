@@ -1,12 +1,12 @@
-.. _networks:
+.. _architect:
 
-*************************
-spacekit.builder.networks
-*************************
+**************************
+spacekit.builder.architect
+**************************
 
-.. currentmodule:: spacekit.builder.networks
+.. currentmodule:: spacekit.builder.architect
 
-.. inheritance-diagram:: spacekit.builder.networks
+.. inheritance-diagram:: spacekit.builder.architect
    :parts: 3
 
 .. autoclass:: Builder
@@ -14,7 +14,22 @@ spacekit.builder.networks
    :undoc-members:
    :show-inheritance:
 
-.. autoclass:: MultiLayerPerceptron
+.. autoclass:: BuilderEnsemble
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: BuilderMLP
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: BuilderCNN3D
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: BuilderCNN2D
    :members:
    :undoc-members:
    :show-inheritance:
@@ -33,20 +48,4 @@ spacekit.builder.networks
    :members:
    :undoc-members:
    :show-inheritance:
-
-.. autoclass:: ImageCNN3D
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. autoclass:: Ensemble
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. autoclass:: Cnn2dBuilder
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 

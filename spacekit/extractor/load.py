@@ -134,12 +134,26 @@ def read_channels(channels, w, h, d, exp=None, color_mode="rgb"):
 
 
 class FileIO:
+    """Parent Class for file input/output operations
+    """
     def __init__(self, img_path, format="png", data=None):
         self.img_path = img_path
         self.format = self.check_format(format)
         self.data = data
 
     def check_format(self, format):
+        """Checks the format type of ``img_path`` (``png``, ``jpg`` or ``npz``) and initializes the ``format`` attribute accordingly.
+
+        Parameters
+        ----------
+        format : str
+            (``png``, ``jpg`` or ``npz``)
+
+        Returns
+        -------
+        str
+            (``png``, ``jpg`` or ``npz``)
+        """
         sfx = self.img_path.split(".")[-1]
         if sfx == "npz":
             return "npz"
@@ -244,7 +258,13 @@ class FileIO:
 
 
 class SVMFileIO(FileIO):
-    """Subclass for loading Single Visit Mosaic total detection .png images from local disk into numpy arrays and performing initial preprocessing and labeling for training a CNN or generating predictions on unlabeled data."""
+    """Subclass for loading Single Visit Mosaic total detection .png images from local disk into numpy arrays and performing initial preprocessing and labeling for training a CNN or generating predictions on unlabeled data.
+
+    Parameters
+    ----------
+    FileIO: class
+        FileIO parent class
+    """
 
     def __init__(
         self,
@@ -270,6 +290,16 @@ class SVMFileIO(FileIO):
             image pixel height, by default 128
         d : int, optional
             channel depth, by default 9
+        inference: bool, optional
+            determines how to load images (set to False for training), by default True
+        format: str, optional
+            format type of image file(s), ``png``, ``jpg`` or ``npz``, by default "png"
+        data: dataframe, optional
+            used to load mlp data inputs and split into train/test/validation sets, by default None
+        target: str, optional
+            name of the target column in dataframe, by default "label"
+        v: float, optional
+            size ratio for validation set, by default 0.85
         """
         super().__init__(img_path, format=format, data=data)
         self.w = w
