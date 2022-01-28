@@ -16,21 +16,43 @@ font_dict = {"family": '"Titillium Web", monospace', "size": 16}
 mpl.rc("font", **font_dict)
 
 
-class ImagePlots:
+class ImagePreviews:
+    """Base parent class for rendering and displaying images as plots
+    """
     def __init__(self, X, y):
         self.X = X
         self.y = y
-        self.X_prime = None
-        self.y_prime = None
 
 
-class Preview(ImagePlots):
+class SVMPreviews(ImagePreviews):
+    """ImagePreviews subclass for previewing SVM images. Primarily can be used to compare original with augmented versions.
+
+    Parameters
+    ----------
+    ImagePlots : class
+        spacekit.analyzer.explore.ImagePreviews parent class
+    """
     def __init__(self, X, y, X_prime, y_prime):
-        super().init(self, X, y)
+        """Instantiates an SVMPreviews class object.
+
+        Parameters
+        ----------
+        X : ndarray
+            ndimensional array of image pixel values
+        y : ndarray
+            target class labels
+        X_prime : ndarray
+            ndimensional array of augmented image pixel values
+        y_prime : ndarray
+            target class labels for the augmented images
+        """
+        super().__init__(X, y)
         self.X_prime = X_prime
         self.y_prime = y_prime
 
     def preview_augmented(self):
+        """Finds the matching positive class images from both image sets and displays them in a grid.
+        """
         posA = self.X[-self.X_prime.shape[0] :][self.y[-self.X_prime.shape[0] :] == 1]
         posB = self.X_prime[self.y_prime == 1]
 
@@ -52,6 +74,8 @@ class Preview(ImagePlots):
 
 
 class DataPlots:
+    """Parent class for drawing exploratory data analysis plots from a dataframe. 
+    """
     def __init__(self, df, width=1300, height=700, show=True, save_html="."):
         self.df = df
         self.width = width
@@ -72,6 +96,13 @@ class DataPlots:
         self.kde = None
 
     def feature_subset(self):
+        """Create a set of groups from a categorical feature (dataframe column). Used for plotting multiple traces on a figure
+
+        Returns
+        -------
+        dictionary
+            self.categories attribute containing key-value pairs: groups of observations (values) for each category (keys)
+        """
         self.categories = {}
         feature_groups = self.df.groupby(self.group)
         for i in list(range(len(feature_groups))):
@@ -81,6 +112,18 @@ class DataPlots:
         return self.categories
 
     def feature_stats_by_target(self, feature):
+        """Calculates statistical info (mean and standard deviation) for a feature within each target class.
+
+        Parameters
+        ----------
+        feature : str
+            dataframe column to get statistical calculations on
+
+        Returns
+        -------
+        nested lists
+            list of means and list of standard deviations for a feature, subdivided for each target class.
+        """
         means, errs = [], []
         for c in self.classes:
             mu, ste = [], []
@@ -281,7 +324,14 @@ class DataPlots:
         return fig
 
 
-class SingleVisitMosaic(DataPlots):
+class HstSvmPlots(DataPlots):
+    """Instantiates an HstSvmPlots class
+
+    Parameters
+    ----------
+    DataPlots : class
+        spacekit.analyzer.explore.DataPlots parent class
+    """
     def __init__(
         self, df, group="det", width=1300, height=700, show=True, save_html=None
     ):
