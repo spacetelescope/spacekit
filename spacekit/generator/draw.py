@@ -58,6 +58,8 @@ class DrawMosaics:
         self.gen = gen
         self.size = size
         self.crpt = crpt
+        self.rgx = self.check_format()
+        self.status = {"new": [], "skip": [], "err": []}
         self.datasets = self.get_datasets()
 
     def check_output(self):
@@ -73,6 +75,23 @@ class DrawMosaics:
             # TODO if permission error, write to /tmp
         os.makedirs(self.output_path, exist_ok=True)
         return self.output_path
+
+    def check_format(self, dname=None):
+        if dname is None:
+            dname = "??????"
+        if self.crpt == 1:
+            return f"{dname}_*_???_st??"
+        else:
+            return dname
+
+    def get_hapfiles(self, dataset):
+        if self.pattern:
+            subdir = f"{self.input_path}/{self.pattern}/{dataset}"
+        else:
+            subdir = f"{self.input_path}/{dataset}"
+        dname = dataset.split("_")[0]
+        hfiles = glob.glob(f"{subdir}/*total_{dname}_dr?.fits")
+        return subdir, hfiles
 
     def get_datasets(self):
         """Locate inputs (fits file directories) to use for drawing the images. Search method used is based on parameters set when the DrawMosaics class object is instantiated. If multiple parameters are passed in, the order of search priority is 1) `fname`: only look for visits found in the csv file/dataframe (uses `load_from_file` method); 2) `visit` only look for subdirectories matching this specific visit name; 3) `local_search`: glob-based search for any visit subdirectories matching the pattern set in `pattern` attribute. (if crpt)
@@ -90,7 +109,7 @@ class DrawMosaics:
             return self.local_search()
 
     def load_from_file(self):
-        """only look for visits found in the csv file/dataframe
+        """only look for visits found in the csv file/dataframe.
 
         Returns
         -------
@@ -101,39 +120,43 @@ class DrawMosaics:
             self.fname += ".csv"
         df = pd.read_csv(self.fname, index_col="index")
         idx = list(df.index)
+
         self.datasets = []
-        skip = 0
+        skip = []
         for i in idx:
             impath = os.path.join(self.output_path, i)
-            visit = i.split("_")[6]
+            visit = i.split("_")[6] if not self.crpt else "_".join(i.split("_")[6:])
+
             if os.path.exists(impath):
                 num = len(glob.glob(f"{impath}/*"))
                 if num < 3:
                     self.datasets.append(visit)
                 else:
-                    skip += 1
+                    skip.append(visit)
             else:
                 self.datasets.append(visit)
-        if skip > 0:
-            print("Skipping pre-existing images: ", skip)
+        if len(skip) > 0:
+            self.status["skip"] = list(set(skip))
+            print("Skipping found images: ", len(self.status["skip"]))
+        print(f"\nFound {len(self.datasets)} new datasets.")
         return list(set(self.datasets))
 
     def local_search(self):
-        """only look for subdirectories matching the glob-based search pattern.
+        """only look for visit names matching a glob-based search pattern.
 
         Returns
         -------
         list
             list of inputs (visits) for which images will be drawn
         """
-        if self.crpt == 0:
-            search_sfx = "/??????"
-        else:
-            search_sfx = "/??????_*_???_st??"
-        search_pattern = self.pattern + search_sfx
-        inputs = glob.glob(f"{self.input_path}/{search_pattern}")
-        if len(inputs) == 0:
-            inputs = glob.glob(f"{self.input_path}{search_sfx}")
+        search = self.pattern if self.pattern else self.rgx
+        inputs = glob.glob(f"{self.input_path}/{search}")
+        if len(inputs) == 0:  # try one more directory down
+            print("None found - Checking subdirectories")
+            inputs = glob.glob(f"{self.input_path}/*/{search}")
+        if len(inputs) == 0:  # fall back to wildcard
+            print("None found - using fallback (wildcard)")
+            inputs = glob.glob(f"{self.input_path}/*{self.rgx}")
         try:
             self.datasets = [i.split("/")[-1] for i in inputs]
             print(f"\nFound {len(self.datasets)} datasets.")
@@ -299,13 +322,7 @@ class DrawMosaics:
         G : int, optional
             draw Gaia catalog overlay (eDR3 or GSC242 if available), by default 0
         """
-        # allow for corruption subdir names e.g. ia0m04_f110w_all_stat and ia0m04
-        if self.pattern:
-            subdir = f"{self.input_path}/{self.pattern}/{dataset}"
-        else:
-            subdir = f"{self.input_path}/{dataset}"
-        dname = dataset.split("_")[0]
-        hfiles = glob.glob(f"{subdir}/*total_{dname}_dr?.fits")
+        subdir, hfiles = self.get_hapfiles(dataset)
         if len(hfiles) > 0:
             for hfile in hfiles:
                 name = os.path.basename(hfile).split(".")[0][:-4]
@@ -326,6 +343,8 @@ class DrawMosaics:
                     interval = ZScaleInterval()
                     # TODO: alt settings (a few images come out and require manual param adjustments)
                     _, vmax = interval.get_limits(hdu.data)
+                    # if vmax == 0:
+                    #     norm = ImageNormalize(hdu.data, clip=True)
                     norm = ImageNormalize(hdu.data, vmin=0, vmax=vmax * 2, clip=True)
                     ax.imshow(hdu.data, origin="lower", norm=norm, cmap="gray")
 
@@ -385,8 +404,9 @@ class DrawMosaics:
                 imgpath = self.create_image_name(name, dataset, P=P, S=S, G=G)
                 plt.savefig(imgpath, bbox_inches="tight")
                 plt.close(fig)
+                self.status["new"].append(dataset)
         else:
-            return
+            self.status["err"].append(dataset)
 
     def generate_filter_images(self):
         """Generate batch of relative filter drizzle file images."""
@@ -473,7 +493,7 @@ if __name__ == "__main__":
         "--pattern",
         type=str,
         default="",
-        help="glob search pattern (to restrict image generator to look for only certain visit names, e.g. 'ia*'",
+        help="restrict to directory paths matching a glob-based pattern, e.g. 'ia*' or 'ia*/*' for subdirectories",
     )
     parser.add_argument(
         "-g",

@@ -7,7 +7,8 @@ import pandas as pd
 @mark.svm
 @mark.prep
 def test_run_prep(svm_visit_data):
-    fname = run_preprocessing(svm_visit_data, fname="test_prep", output_path="tmp")
+    df, fname = run_preprocessing(svm_visit_data, fname="test_prep", output_path="tmp")
+    assert len(df) > 0
     assert os.path.exists(fname)
     img_dir = os.path.join(os.path.dirname(fname), "img")
     visit = os.listdir(img_dir)
@@ -16,3 +17,5 @@ def test_run_prep(svm_visit_data):
     assert len(images) == 3
     df = pd.read_csv(fname, index_col="index")
     assert len(df) > 0
+
+#TODO: test_load_h5

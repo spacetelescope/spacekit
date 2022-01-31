@@ -1,18 +1,21 @@
 """
 Spacekit HST Single Visit Mosaic Data/Image Preprocessing
 
-Ex 1:
-input_path = "path/to/datasets"
-data_file = run_preprocessing(input_path, fname="svm_data")
+Step 1: SCRAPE JSON FILES and make dataframe
+Step 2: Scrape Fits Headers and SCRUB DATAFRAME
+Step 3: DRAW Mosaic images
 
-Ex 2: synthetic (artificially corrupted) data:
-data_file = run_preprocessing(input_path, fname=fname, json_pattern="*_total*_svm_*.json", crpt=1, draw_images=0)
+Examples:
+df = run_preprocessing("home/singlevisits")
+
+df = run_preprocessing("home/syntheticdata", fname="synth2", crpt=1, draw=0)
+
 """
 
 import argparse
 import os
 from spacekit.extractor.scrape import JsonScraper
-from spacekit.preprocessor.scrub import ScrubSvm
+from spacekit.preprocessor.scrub import SvmScrubber
 from spacekit.generator.draw import DrawMosaics
 
 
@@ -23,9 +26,9 @@ def run_preprocessing(
     output_path=None,
     json_pattern="*_total*_svm_*.json",
     crpt=0,
-    draw_images=1,
+    draw=1,
 ):
-    """Scrapes SVM data from raw files, preprocesses dataframe for MLP classifier and generates png images for image classifier.
+    """Scrapes SVM data from raw files, preprocesses dataframe for MLP classifier and generates png images for image CNN.
 
     Parameters
     ----------
@@ -41,18 +44,19 @@ def run_preprocessing(
         glob-based search pattern, by default "*_total*_svm_*.json"
     crpt : int, optional
         set to 1 if using synthetic corruption data, by default 0
-    draw_images : int, optional
+    draw : int, optional
         generate png images from dataset, by default 1
 
     Returns
     -------
-    str
-        path to csv file of preprocessed Pandas dataframe
+    dataframe
+        preprocessed Pandas dataframe
     """
     if output_path is None:
         output_path = os.getcwd()
     os.makedirs(output_path, exist_ok=True)
     fname = os.path.basename(fname).split(".")[0]
+    # 1: SCRAPE JSON FILES and make dataframe
     if h5 is None:
         patterns = json_pattern.split(",")
         jsc = JsonScraper(
@@ -66,23 +70,25 @@ def run_preprocessing(
         jsc.h5store()
     else:
         jsc = JsonScraper(h5_file=h5).load_h5_file()
-    if crpt == 1:
-        jsc.data["label"] = 1
-    scrub = ScrubSvm(jsc.data, input_path, output_path, fname)
+    # 2: Scrape Fits Files and SCRUB DATAFRAME
+    scrub = SvmScrubber(
+        jsc.data, input_path, output_path=output_path, output_file=fname, crpt=crpt
+    )
     scrub.preprocess_data()
-    fname = scrub.data_path
-    if draw_images:
+    # 3:  DRAW IMAGES
+    if draw:
         img_outputs = os.path.join(output_path, "img")
-        draw = DrawMosaics(
+        mos = DrawMosaics(
             input_path,
             output_path=img_outputs,
-            fname=fname,
+            fname=scrub.data_path,
+            pattern="",
             gen=3,
             size=(24, 24),
             crpt=crpt,
         )
-        draw.generate_total_images()
-    return fname
+        mos.generate_total_images()
+    return scrub.df, scrub.data_path
 
 
 if __name__ == "__main__":
@@ -127,14 +133,20 @@ if __name__ == "__main__":
         help="set to 1 if using synthetic corruption data",
     )
     parser.add_argument(
-        "-d", "--draw", type=int, default=1, help="generate png images from dataset"
+        "-d",
+        "--draw",
+        type=int,
+        default=1,
+        choices=[0, 1],
+        help="1 (default): generate png images from dataset, 0: turn images off",
     )
     args = parser.parse_args()
-    run_preprocessing(
+    _, _ = run_preprocessing(
         args.input_path,
         h5=args.h5,
         fname=args.fname,
+        output_path=args.output_path,
         json_pattern=args.json_pattern,
         crpt=args.crpt,
-        draw_images=args.draw,
+        draw=args.draw,
     )

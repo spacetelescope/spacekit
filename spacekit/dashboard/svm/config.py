@@ -1,14 +1,21 @@
-from spacekit.analyzer.explore import SingleVisitMosaic
-from spacekit.analyzer.scan import MegaScanner, import_dataset
+from spacekit.builder.architect import Builder
+from spacekit.analyzer.explore import HstSvmPlots
+from spacekit.analyzer.scan import SvmScanner
 
-mega = MegaScanner(perimeter="data/20??-*-*-*", primary=-1)
 
-df = import_dataset(
-    filename=mega.data,
-    kwargs=dict(index_col="index"),
-    decoder_key={"det": {0: "hrc", 1: "ir", 2: "sbc", 3: "uvis", 4: "wfc"}},
-)
-
-hst = SingleVisitMosaic(df, group="det")
-hst.df_by_detector()
+svm = SvmScanner(perimeter="data/20??-*-*-*", primary=-1)
+svm.scan_results()
+svm.load_dataframe()
+hst = HstSvmPlots(svm.df, group="det", show=False, save_html=None)
 hst.draw_plots()
+
+selection = svm.datapaths[svm.primary]
+model_path = f"{selection}/models"
+global ens
+ens = Builder(blueprint="ensemble", model_path=model_path)
+ens.load_saved_model()
+global tx_file
+tx_file = f"{model_path}/pt_transform"
+
+global NN
+NN = {"ens": ens}
