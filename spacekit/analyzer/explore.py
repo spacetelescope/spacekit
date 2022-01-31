@@ -16,21 +16,43 @@ font_dict = {"family": '"Titillium Web", monospace', "size": 16}
 mpl.rc("font", **font_dict)
 
 
-class ImagePlots:
+class ImagePreviews:
+    """Base parent class for rendering and displaying images as plots"""
+
     def __init__(self, X, y):
         self.X = X
         self.y = y
-        self.X_prime = None
-        self.y_prime = None
 
 
-class Preview(ImagePlots):
+class SVMPreviews(ImagePreviews):
+    """ImagePreviews subclass for previewing SVM images. Primarily can be used to compare original with augmented versions.
+
+    Parameters
+    ----------
+    ImagePlots : class
+        spacekit.analyzer.explore.ImagePreviews parent class
+    """
+
     def __init__(self, X, y, X_prime, y_prime):
-        super().init(self, X, y)
+        """Instantiates an SVMPreviews class object.
+
+        Parameters
+        ----------
+        X : ndarray
+            ndimensional array of image pixel values
+        y : ndarray
+            target class labels
+        X_prime : ndarray
+            ndimensional array of augmented image pixel values
+        y_prime : ndarray
+            target class labels for the augmented images
+        """
+        super().__init__(X, y)
         self.X_prime = X_prime
         self.y_prime = y_prime
 
     def preview_augmented(self):
+        """Finds the matching positive class images from both image sets and displays them in a grid."""
         posA = self.X[-self.X_prime.shape[0] :][self.y[-self.X_prime.shape[0] :] == 1]
         posB = self.X_prime[self.y_prime == 1]
 
@@ -52,7 +74,9 @@ class Preview(ImagePlots):
 
 
 class DataPlots:
-    def __init__(self, df, width=1300, height=700, show=True, save_html="."):
+    """Parent class for drawing exploratory data analysis plots from a dataframe."""
+
+    def __init__(self, df, width=1300, height=700, show=False, save_html=None):
         self.df = df
         self.width = width
         self.height = height
@@ -72,6 +96,13 @@ class DataPlots:
         self.kde = None
 
     def feature_subset(self):
+        """Create a set of groups from a categorical feature (dataframe column). Used for plotting multiple traces on a figure
+
+        Returns
+        -------
+        dictionary
+            self.categories attribute containing key-value pairs: groups of observations (values) for each category (keys)
+        """
         self.categories = {}
         feature_groups = self.df.groupby(self.group)
         for i in list(range(len(feature_groups))):
@@ -81,6 +112,18 @@ class DataPlots:
         return self.categories
 
     def feature_stats_by_target(self, feature):
+        """Calculates statistical info (mean and standard deviation) for a feature within each target class.
+
+        Parameters
+        ----------
+        feature : str
+            dataframe column to get statistical calculations on
+
+        Returns
+        -------
+        nested lists
+            list of means and list of standard deviations for a feature, subdivided for each target class.
+        """
         means, errs = [], []
         for c in self.classes:
             mu, ste = [], []
@@ -191,12 +234,12 @@ class DataPlots:
         width=700,
         height=500,
         cmap=["dodgerblue", "fuchsia"],
-        show=True,
         save_html=None,
     ):
 
         traces = []
         for i in self.classes:
+            i = int(i)
             trace = go.Bar(
                 x=X,
                 y=Y[i],
@@ -220,7 +263,7 @@ class DataPlots:
         fig = go.Figure(data=traces, layout=layout)
         if save_html:
             pyo.plot(fig, filename=f"{save_html}/{feature}-barplot.html")
-        if show:
+        if self.show:
             fig.show()
         else:
             return fig
@@ -236,24 +279,24 @@ class DataPlots:
         width=700,
         height=500,
         cmap=["#F66095", "#2BCDC1"],
-        show=True,
-        save_html=".",
     ):
         if norm is True:
-            df = PowerX(self.df, cols=cols, join_data=False)
+            df = PowerX(self.df, cols=cols, join_data=True).Xt
             cols = [c + "_scl" for c in cols]
+            tag = "-norm"
         else:
             df = self.df
+            tag = ""
         if targets is True:
             hist_data = [df.loc[df[self.target] == c][cols[0]] for c in self.classes]
-            group_labels = [f"{cols[0]}={i}" for i in self.labels]
+            group_labels = self.labels  # [f"{cols[0]}={i}" for i in self.labels]
             title = f"KDE {cols[0]} by target class ({self.target})"
-            name = f"kde-targets-{cols[0]}.html"
+            name = f"kde-targets-{cols[0]}{tag}.html"
         else:
             hist_data = [df[c] for c in cols]
             group_labels = cols
             title = f"KDE {group_labels[0]} vs {group_labels[1]}"
-            name = f"kde-{group_labels[0]}-{group_labels[1]}.html"
+            name = f"kde-{group_labels[0]}-{group_labels[1]}{tag}.html"
 
         fig = ff.create_distplot(
             hist_data,
@@ -272,18 +315,26 @@ class DataPlots:
             width=width,
             height=height,
         )
-        if save_html:
-            if not os.path.exists(save_html):
-                os.makedirs(save_html, exist_ok=True)
-            pyo.plot(fig, filename=f"{save_html}/{name}")
-        if show:
+        if self.save_html:
+            if not os.path.exists(self.save_html):
+                os.makedirs(self.save_html, exist_ok=True)
+            pyo.plot(fig, filename=f"{self.save_html}/{name}")
+        if self.show:
             fig.show()
         return fig
 
 
-class SingleVisitMosaic(DataPlots):
+class HstSvmPlots(DataPlots):
+    """Instantiates an HstSvmPlots class
+
+    Parameters
+    ----------
+    DataPlots : class
+        spacekit.analyzer.explore.DataPlots parent class
+    """
+
     def __init__(
-        self, df, group="det", width=1300, height=700, show=True, save_html=None
+        self, df, group="det", width=1300, height=700, show=False, save_html=None
     ):
         super().__init__(df, width=width, height=height, show=show, save_html=save_html)
         self.group = group
@@ -295,6 +346,7 @@ class SingleVisitMosaic(DataPlots):
         self.gkeys = self.group_keys()
         self.categories = self.feature_subset()
         self.continuous = ["rms_ra", "rms_dec", "gaia", "nmatches", "numexp"]
+        self.df_by_detector()
         self.bar = None
         self.scatter = None
         self.kde = None
@@ -303,7 +355,7 @@ class SingleVisitMosaic(DataPlots):
         self.bar = self.alignment_bars()
         self.scatter = self.alignment_scatters()
         self.kde = self.alignment_kde()
-        return self
+        # return self
 
     def alignment_bars(self):
         bars = []
@@ -326,14 +378,9 @@ class SingleVisitMosaic(DataPlots):
 
     def alignment_kde(self):
         cols = self.continuous
-        kde_rms = self.kde_plots(["rms_ra", "rms_dec"], save_html=self.save_html)
-        kde_targ = [
-            self.kde_plots([c], targets=True, save_html=self.save_html) for c in cols
-        ]
-        kde_norm = [
-            self.kde_plots([c], norm=True, targets=True, save_html=self.save_html)
-            for c in cols
-        ]
+        kde_rms = self.kde_plots(["rms_ra", "rms_dec"])
+        kde_targ = [self.kde_plots([c], targets=True) for c in cols]
+        kde_norm = [self.kde_plots([c], norm=True, targets=True) for c in cols]
         kdes = [kde_rms, kde_targ, kde_norm]
         return kdes
 
@@ -354,18 +401,27 @@ class SingleVisitMosaic(DataPlots):
         return group_keys
 
     def df_by_detector(self):
-        self.hrc = self.df.groupby("det").get_group(0)
-        self.ir = self.df.groupby("det").get_group(1)
-        self.sbc = self.df.groupby("det").get_group(2)
-        self.uvis = self.df.groupby("det").get_group(3)
-        self.wfc = self.df.groupby("det").get_group(4)
-        self.instr_dict = {
-            "hrc": [self.hrc, "#119dff"],  # lightblue
-            "ir": [self.ir, "salmon"],
-            "sbc": [self.sbc, "#66c2a5"],  # lightgreen
-            "uvis": [self.uvis, "fuchsia"],
-            "wfc": [self.wfc, "#f4d365"],  # softgold
-        }
+        """Instantiates grouped dataframes for each detector
+
+        Returns
+        -------
+        self
+        """
+        try:
+            self.hrc = self.df.groupby("det").get_group(0)
+            self.ir = self.df.groupby("det").get_group(1)
+            self.sbc = self.df.groupby("det").get_group(2)
+            self.uvis = self.df.groupby("det").get_group(3)
+            self.wfc = self.df.groupby("det").get_group(4)
+            self.instr_dict = {
+                "hrc": [self.hrc, "#119dff"],  # lightblue
+                "ir": [self.ir, "salmon"],
+                "sbc": [self.sbc, "#66c2a5"],  # lightgreen
+                "uvis": [self.uvis, "fuchsia"],
+                "wfc": [self.wfc, "#f4d365"],  # softgold
+            }
+        except Exception as e:
+            print(e)
         return self
 
     # TODO generalize and move up to main class
@@ -803,6 +859,6 @@ if __name__ == "__main__":
         # Drop extra columns in case raw / un-preprocessed dataset is loaded
         drops = ["category", "ra_targ", "dec_targ", "imgname"]
         df.drop([c for c in drops if c in df.columns], axis=1, inplace=True)
-        svm = SingleVisitMosaic(df)
+        svm = HstSvmPlots(df)
     else:
         print("More examples coming soon!")

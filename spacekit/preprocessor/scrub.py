@@ -8,8 +8,16 @@ from spacekit.preprocessor.encode import SvmEncoder
 from spacekit.preprocessor.encode import encode_target_data
 from spacekit.preprocessor.transform import array_to_tensor
 
+# These classes and methods will be made more general purpose in a future version, but for now they are very, very specific to SVM and essentially useless for anything else.
 
-class ScrubCols:
+# class Scrubber:
+#     def __init__(self, df):
+#         self.df = df
+
+
+class SvmColScrubber:
+    """Class for scrubbing SVM regression dataframe columns"""
+
     def __init__(self, data, dropnans=True):
         self.data = data
         self.dropnans = dropnans
@@ -88,7 +96,8 @@ class ScrubCols:
         return index_df
 
 
-class ScrubFits:
+# TODO: Shouldn't this go in scrape.py?
+class FitsScrubber:
     def __init__(self, data, input_path):
         self.data = data
         self.df = self.data.copy()
@@ -127,7 +136,9 @@ class ScrubFits:
         return self.df
 
 
-class ScrubSvm:
+class SvmScrubber:
+    """Class for invocating standard preprocessing steps of Single Visit Mosaic image classification data. This class quietly relies on other classes in the module to instantiate other scrubbing objects, although they are distinct and non-hierarchical (no inheritance between them)."""
+
     def __init__(
         self,
         df,
@@ -136,7 +147,7 @@ class ScrubSvm:
         output_file="svm_data",
         save_raw=True,
         make_pos_list=True,
-        crpt=False,
+        crpt=0,
         make_subsamples=False,
     ):
         self.df = df
@@ -150,12 +161,12 @@ class ScrubSvm:
         self.make_subsamples = make_subsamples
 
     def preprocess_data(self):
-        """Main calling function"""
-        self.df = ScrubCols(self.df).scrub_columns()
-        self.df = ScrubFits(self.df, self.input_path).scrub_fits()
+        """Main calling function to run each preprocessing step for SVM regression data."""
+        self.df = SvmColScrubber(self.df).scrub_columns()
+        self.df = FitsScrubber(self.df, self.input_path).scrub_fits()
         self.df = MastScraper(self.df).scrape_mast()
         if self.save_raw is True:
-            self.save_csv_file(raw=True)
+            self.save_csv_file(pfx="raw_")
         self.df = SvmEncoder(self.df).encode_features()
         self.df = self.drop_and_set_cols()
         self.make_pos_label_list()
@@ -165,11 +176,21 @@ class ScrubSvm:
             self.find_subsamples()
         self.save_csv_file()
 
-    def save_csv_file(self, raw=False):
-        if raw is True:
-            self.data_path = f"{self.output_path}/raw_{self.output_file}.csv"
-        else:
-            self.data_path = f"{self.output_path}/{self.output_file}.csv"
+    # TODO: This is pretty general and should be called from extractor.load
+    def save_csv_file(self, pfx=""):
+        """Saves dataframe to csv file on local disk.
+
+        Parameters
+        ----------
+        pfx : str, optional
+            Insert a prefix at start of filename, by default ""
+
+        Returns
+        -------
+        str
+            self.data_path where file is saved on disk.
+        """
+        self.data_path = f"{self.output_path}/{pfx}{self.output_file}.csv"
         self.df["index"] = self.df.index
         self.df.to_csv(self.data_path, index=False)
         print("Data saved to: ", self.data_path)
@@ -197,6 +218,7 @@ class ScrubSvm:
         return self.df
 
     def make_pos_label_list(self):
+        """Looks for target class labels in dataframe and saves a text file listing index names of positive class. Originally this was to automate moving images into class labeled directories."""
         if self.make_pos_list is True:
             if "label" in self.df.columns:
                 pos = list(self.df.loc[self.df["label"] == 1].index.values)
@@ -208,6 +230,13 @@ class ScrubSvm:
                 print("No labels found - skipping")
 
     def add_crpt_labels(self):
+        """For new synthetic datasets, adds "label" target column and assigns value of 1 to all rows.
+
+        Returns
+        -------
+        dataframe
+            self.df updated with label column (all values set = 1)
+        """
         labels = []
         for _ in range(len(self.df)):
             labels.append(1)
@@ -215,6 +244,7 @@ class ScrubSvm:
         return self.df
 
     def find_subsamples(self):
+        """Gets a varied sampling of dataframe observations and saves to local text file. This is one way of identifying a small subset for synthetic data generation."""
         if "label" not in self.df.columns:
             return
         self.df = self.df.loc[self.df["label"] == 0]

@@ -5,7 +5,7 @@ layout = html.Div(
     children=[
         html.Br(),
         html.H1("SPACEKIT", style={"padding": 15}),
-        html.H2("Dashboard"),
+        html.H2("SVM Dashboard"),
         html.Div(
             children=[
                 html.Div("Model Performance + Statistical Analysis"),
@@ -18,11 +18,11 @@ layout = html.Div(
         html.Div(
             [
                 html.Br(),
-                dcc.Link("Evaluation", href="/page-1"),
+                dcc.Link("Evaluation", href="/layouts/eval"),
                 html.Br(),
-                dcc.Link("Analysis", href="/page-2"),
+                dcc.Link("Analysis", href="/layouts/eda"),
                 html.Br(),
-                dcc.Link("Prediction", href="/page-3"),
+                dcc.Link("Prediction", href="/layouts/pred"),
             ]
         ),
     ],
