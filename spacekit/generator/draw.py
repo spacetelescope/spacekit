@@ -62,7 +62,6 @@ class DrawMosaics:
         self.status = {"new": [], "skip": [], "err": []}
         self.datasets = self.get_datasets()
 
-
     def check_output(self):
         """check if a custom output_path is set, otherwise create a subdirectory "img" in the current working directory and set as the output_path attribute.
 
@@ -76,14 +75,14 @@ class DrawMosaics:
             # TODO if permission error, write to /tmp
         os.makedirs(self.output_path, exist_ok=True)
         return self.output_path
-    
+
     def check_format(self, dname=None):
         if dname is None:
             dname = "??????"
         if self.crpt == 1:
             return f"{dname}_*_???_st??"
         else:
-            return dname        
+            return dname
 
     def get_hapfiles(self, dataset):
         if self.pattern:
@@ -152,10 +151,10 @@ class DrawMosaics:
         """
         search = self.pattern if self.pattern else self.rgx
         inputs = glob.glob(f"{self.input_path}/{search}")
-        if len(inputs) == 0: # try one more directory down
+        if len(inputs) == 0:  # try one more directory down
             print("None found - Checking subdirectories")
             inputs = glob.glob(f"{self.input_path}/*/{search}")
-        if len(inputs) == 0: # fall back to wildcard
+        if len(inputs) == 0:  # fall back to wildcard
             print("None found - using fallback (wildcard)")
             inputs = glob.glob(f"{self.input_path}/*{self.rgx}")
         try:

@@ -287,7 +287,14 @@ class Builder:
                 print("{}{}".format(indent + "    ", filename))
 
     def model_diagram(
-        self, model=None, output_path=None, show_shapes=True, show_dtype=False, LR=False, expand_nested=True, show_layer_names=False
+        self,
+        model=None,
+        output_path=None,
+        show_shapes=True,
+        show_dtype=False,
+        LR=False,
+        expand_nested=True,
+        show_layer_names=False,
     ):
         rank = "LR" if LR is True else "TB"
         if model is None:

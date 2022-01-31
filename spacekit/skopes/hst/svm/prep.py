@@ -71,7 +71,9 @@ def run_preprocessing(
     else:
         jsc = JsonScraper(h5_file=h5).load_h5_file()
     # 2: Scrape Fits Files and SCRUB DATAFRAME
-    scrub = ScrubSvm(jsc.data, input_path, output_path=output_path, output_file=fname, crpt=crpt)
+    scrub = ScrubSvm(
+        jsc.data, input_path, output_path=output_path, output_file=fname, crpt=crpt
+    )
     scrub.preprocess_data()
     # 3:  DRAW IMAGES
     if draw:
@@ -131,7 +133,12 @@ if __name__ == "__main__":
         help="set to 1 if using synthetic corruption data",
     )
     parser.add_argument(
-        "-d", "--draw", type=int, default=1, choices=[0,1], help="1 (default): generate png images from dataset, 0: turn images off"
+        "-d",
+        "--draw",
+        type=int,
+        default=1,
+        choices=[0, 1],
+        help="1 (default): generate png images from dataset, 0: turn images off",
     )
     args = parser.parse_args()
     _ = run_preprocessing(

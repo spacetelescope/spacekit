@@ -16,8 +16,8 @@ from spacekit.preprocessor.transform import array_to_tensor
 
 
 class SvmColScrubber:
-    """Class for scrubbing SVM regression dataframe columns
-    """
+    """Class for scrubbing SVM regression dataframe columns"""
+
     def __init__(self, data, dropnans=True):
         self.data = data
         self.dropnans = dropnans
@@ -137,8 +137,8 @@ class FitsScrubber:
 
 
 class SvmScrubber:
-    """Class for invocating standard preprocessing steps of Single Visit Mosaic image classification data. This class quietly relies on other classes in the module to instantiate other scrubbing objects, although they are distinct and non-hierarchical (no inheritance between them).
-    """
+    """Class for invocating standard preprocessing steps of Single Visit Mosaic image classification data. This class quietly relies on other classes in the module to instantiate other scrubbing objects, although they are distinct and non-hierarchical (no inheritance between them)."""
+
     def __init__(
         self,
         df,
@@ -161,8 +161,7 @@ class SvmScrubber:
         self.make_subsamples = make_subsamples
 
     def preprocess_data(self):
-        """Main calling function to run each preprocessing step for SVM regression data.
-        """
+        """Main calling function to run each preprocessing step for SVM regression data."""
         self.df = SvmColScrubber(self.df).scrub_columns()
         self.df = FitsScrubber(self.df, self.input_path).scrub_fits()
         self.df = MastScraper(self.df).scrape_mast()
@@ -219,8 +218,7 @@ class SvmScrubber:
         return self.df
 
     def make_pos_label_list(self):
-        """Looks for target class labels in dataframe and saves a text file listing index names of positive class. Originally this was to automate moving images into class labeled directories.
-        """
+        """Looks for target class labels in dataframe and saves a text file listing index names of positive class. Originally this was to automate moving images into class labeled directories."""
         if self.make_pos_list is True:
             if "label" in self.df.columns:
                 pos = list(self.df.loc[self.df["label"] == 1].index.values)
@@ -246,8 +244,7 @@ class SvmScrubber:
         return self.df
 
     def find_subsamples(self):
-        """Gets a varied sampling of dataframe observations and saves to local text file. This is one way of identifying a small subset for synthetic data generation.
-        """
+        """Gets a varied sampling of dataframe observations and saves to local text file. This is one way of identifying a small subset for synthetic data generation."""
         if "label" not in self.df.columns:
             return
         self.df = self.df.loc[self.df["label"] == 0]

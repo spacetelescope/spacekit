@@ -17,8 +17,8 @@ mpl.rc("font", **font_dict)
 
 
 class ImagePreviews:
-    """Base parent class for rendering and displaying images as plots
-    """
+    """Base parent class for rendering and displaying images as plots"""
+
     def __init__(self, X, y):
         self.X = X
         self.y = y
@@ -32,6 +32,7 @@ class SVMPreviews(ImagePreviews):
     ImagePlots : class
         spacekit.analyzer.explore.ImagePreviews parent class
     """
+
     def __init__(self, X, y, X_prime, y_prime):
         """Instantiates an SVMPreviews class object.
 
@@ -51,8 +52,7 @@ class SVMPreviews(ImagePreviews):
         self.y_prime = y_prime
 
     def preview_augmented(self):
-        """Finds the matching positive class images from both image sets and displays them in a grid.
-        """
+        """Finds the matching positive class images from both image sets and displays them in a grid."""
         posA = self.X[-self.X_prime.shape[0] :][self.y[-self.X_prime.shape[0] :] == 1]
         posB = self.X_prime[self.y_prime == 1]
 
@@ -74,8 +74,8 @@ class SVMPreviews(ImagePreviews):
 
 
 class DataPlots:
-    """Parent class for drawing exploratory data analysis plots from a dataframe. 
-    """
+    """Parent class for drawing exploratory data analysis plots from a dataframe."""
+
     def __init__(self, df, width=1300, height=700, show=False, save_html=None):
         self.df = df
         self.width = width
@@ -289,7 +289,7 @@ class DataPlots:
             tag = ""
         if targets is True:
             hist_data = [df.loc[df[self.target] == c][cols[0]] for c in self.classes]
-            group_labels = self.labels #[f"{cols[0]}={i}" for i in self.labels]
+            group_labels = self.labels  # [f"{cols[0]}={i}" for i in self.labels]
             title = f"KDE {cols[0]} by target class ({self.target})"
             name = f"kde-targets-{cols[0]}{tag}.html"
         else:
@@ -332,6 +332,7 @@ class HstSvmPlots(DataPlots):
     DataPlots : class
         spacekit.analyzer.explore.DataPlots parent class
     """
+
     def __init__(
         self, df, group="det", width=1300, height=700, show=False, save_html=None
     ):
@@ -378,13 +379,8 @@ class HstSvmPlots(DataPlots):
     def alignment_kde(self):
         cols = self.continuous
         kde_rms = self.kde_plots(["rms_ra", "rms_dec"])
-        kde_targ = [
-            self.kde_plots([c], targets=True) for c in cols
-        ]
-        kde_norm = [
-            self.kde_plots([c], norm=True, targets=True)
-            for c in cols
-        ]
+        kde_targ = [self.kde_plots([c], targets=True) for c in cols]
+        kde_norm = [self.kde_plots([c], norm=True, targets=True) for c in cols]
         kdes = [kde_rms, kde_targ, kde_norm]
         return kdes
 
@@ -405,6 +401,12 @@ class HstSvmPlots(DataPlots):
         return group_keys
 
     def df_by_detector(self):
+        """Instantiates grouped dataframes for each detector
+
+        Returns
+        -------
+        self
+        """
         try:
             self.hrc = self.df.groupby("det").get_group(0)
             self.ir = self.df.groupby("det").get_group(1)

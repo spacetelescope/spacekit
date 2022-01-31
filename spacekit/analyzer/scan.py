@@ -81,12 +81,12 @@ class MegaScanner:
             str(v)[:10] for v in self.datasets
         ]  # ["2021-11-04", "2021-10-28", "2021-08-22"]
         self.primary = primary
-        self.data = None # self.select_dataset()
+        self.data = None  # self.select_dataset()
         self.versions = None
         self.res_keys = None
         self.mega = None
-        self.df = None # dataframe loaded from self.data
-        self.dfs = [] # probably too memory intensive for large datasets...
+        self.df = None  # dataframe loaded from self.data
+        self.dfs = []  # probably too memory intensive for large datasets...
         self.scores = None  # self.compare_scores()
         self.acc_fig = None  # self.acc_bars()
         self.loss_fig = None  # self.loss_bars()
@@ -144,7 +144,7 @@ class MegaScanner:
         if len(versions) > 0:
             self.versions = versions
         return self.mega
-    
+
     def _scan_results(self, coms=[ComputeBinary], algs=["clf"], names=["test"]):
         """Scans local disk for Computer object-generated results files of model training iterations.
 
@@ -163,13 +163,13 @@ class MegaScanner:
                 com.load_results(com_out)
                 self.mega[v]["res"][N] = com
         return self.mega
-    
-    def load_dataframe(self, kwargs=dict(index_col="index"), decoder={"det": {0: "hrc", 1: "ir", 2: "sbc", 3: "uvis", 4: "wfc"}}):
-        self.df = import_dataset(
-            filename=self.data,
-            kwargs=kwargs,
-            decoder_key=decoder
-            )
+
+    def load_dataframe(
+        self,
+        kwargs=dict(index_col="index"),
+        decoder={"det": {0: "hrc", 1: "ir", 2: "sbc", 3: "uvis", 4: "wfc"}},
+    ):
+        self.df = import_dataset(filename=self.data, kwargs=kwargs, decoder_key=decoder)
         return self.df
 
     def compare_scores(self, target="mem_bin", score_type="acc_loss"):
