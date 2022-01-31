@@ -16,3 +16,5 @@ def test_run_prep(svm_visit_data):
     assert len(images) == 3
     df = pd.read_csv(fname, index_col="index")
     assert len(df) > 0
+
+#TODO: test_load_h5

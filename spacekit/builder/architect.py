@@ -287,25 +287,22 @@ class Builder:
                 print("{}{}".format(indent + "    ", filename))
 
     def model_diagram(
-        self, model=None, fname=None, shapes=True, dtype=False, LR=False, expand=True
+        self, model=None, output_path=None, show_shapes=True, show_dtype=False, LR=False, expand_nested=True, show_layer_names=False
     ):
+        rank = "LR" if LR is True else "TB"
         if model is None:
             model = self.model
-        if fname is None:
-            fname = model.name
-        if LR is True:
-            rank = "LR"
-        else:
-            rank = "TB"
+        if output_path is None:
+            output_path = os.getcwd()
         try:
             plot_model(
                 model,
-                to_file=fname,
-                show_shapes=shapes,
-                show_dtype=dtype,
-                show_layer_names=True,
+                to_file=f"{output_path}/{model.name}.png",
+                show_shapes=show_shapes,
+                show_dtype=show_dtype,
+                show_layer_names=show_layer_names,
                 rankdir=rank,
-                expand_nested=expand,
+                expand_nested=expand_nested,
                 dpi=96,
                 layer_range=None,
             )

@@ -1,16 +1,22 @@
+from spacekit.builder.architect import Builder
 from spacekit.analyzer.explore import HstSvmPlots
-from spacekit.analyzer.scan import SvmScanner, import_dataset
+from spacekit.analyzer.scan import SvmScanner
 
-mega = SvmScanner(perimeter="data/20??-*-*-*", primary=-1)
-mega.scan_results()
 
-df = mega.load_dataframe()
-# df = import_dataset(
-#     filename=mega.data,
-#     kwargs=dict(index_col="index"),
-#     decoder_key={"det": {0: "hrc", 1: "ir", 2: "sbc", 3: "uvis", 4: "wfc"}},
-# )
-
-hst = HstSvmPlots(df, group="det")
+svm = SvmScanner(perimeter="data/20??-*-*-*", primary=-1)
+svm.scan_results()
+svm.load_dataframe()
+hst = HstSvmPlots(svm.df, group="det", show=False, save_html=None)
 hst.df_by_detector()
 hst.draw_plots()
+
+selection = svm.datapaths[svm.primary]
+model_path = f"{selection}/models"
+global ens
+ens = Builder(blueprint="ensemble", model_path=model_path)
+ens.load_saved_model()
+global tx_file
+tx_file = f"{model_path}/pt_transform"
+
+global NN
+NN = {"ens": ens}
