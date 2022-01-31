@@ -15,7 +15,7 @@ df = run_preprocessing("home/syntheticdata", fname="synth2", crpt=1, draw=0)
 import argparse
 import os
 from spacekit.extractor.scrape import JsonScraper
-from spacekit.preprocessor.scrub import ScrubSvm
+from spacekit.preprocessor.scrub import SvmScrubber
 from spacekit.generator.draw import DrawMosaics
 
 
@@ -71,7 +71,7 @@ def run_preprocessing(
     else:
         jsc = JsonScraper(h5_file=h5).load_h5_file()
     # 2: Scrape Fits Files and SCRUB DATAFRAME
-    scrub = ScrubSvm(
+    scrub = SvmScrubber(
         jsc.data, input_path, output_path=output_path, output_file=fname, crpt=crpt
     )
     scrub.preprocess_data()
@@ -88,7 +88,7 @@ def run_preprocessing(
             crpt=crpt,
         )
         mos.generate_total_images()
-    return scrub.df
+    return scrub.df, scrub.data_path
 
 
 if __name__ == "__main__":
@@ -141,7 +141,7 @@ if __name__ == "__main__":
         help="1 (default): generate png images from dataset, 0: turn images off",
     )
     args = parser.parse_args()
-    _ = run_preprocessing(
+    _, _ = run_preprocessing(
         args.input_path,
         h5=args.h5,
         fname=args.fname,
