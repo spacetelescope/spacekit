@@ -7,7 +7,6 @@ svm = SvmScanner(perimeter="data/20??-*-*-*", primary=-1)
 svm.scan_results()
 svm.load_dataframe()
 hst = HstSvmPlots(svm.df, group="det", show=False, save_html=None)
-hst.df_by_detector()
 hst.draw_plots()
 
 selection = svm.datapaths[svm.primary]
