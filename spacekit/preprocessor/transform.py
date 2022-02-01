@@ -331,6 +331,8 @@ def normalize_training_data(df, cols, X_train, X_test, X_val=None, output_path=N
         normalized and scaled training, test, and validation sets
     """
     print("Applying Normalization (Leo-Johnson PowerTransform)")
+    if type(X_train) == np.ndarray:
+        cols = [i for i, c in enumerate(df.columns) if c in cols]
     Px = PowerX(df, cols=cols, save_tx=True, output_path=output_path)
     X_train = PowerX(X_train, cols=cols, tx_data=Px.tx_data).Xt
     X_test = PowerX(X_test, cols=cols, tx_data=Px.tx_data).Xt
