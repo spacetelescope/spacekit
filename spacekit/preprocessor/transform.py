@@ -205,7 +205,8 @@ class PowerX(Transformer):
     def __init__(
         self,
         data,
-        cols=[],
+        cols,
+        ncols=None,
         tx_data=None,
         tx_file=None,
         save_tx=False,
@@ -221,11 +222,16 @@ class PowerX(Transformer):
             save_tx=save_tx,
             output_path=output_path,
         )
+        self.check_columns(ncols=ncols)
         self.calculate_power()
         self.normalized = self.apply_power_matrix()
         self.Xt = super().normalizeX(
             self.normalized, join_data=join_data, rename=rename
         )
+
+    def check_columns(self, ncols=None):
+        if ncols is not None and type(self.data) == np.ndarray:
+            self.cols = ncols 
 
     def fitX(self):
         """Instantiates a scikit-learn PowerTransformer object and fits to the input data. If `tx_data` was passed as a kwarg or loaded from `tx_file`, the lambdas attribute for the transformer object will be updated to use these instead of calculated at the transform step.
@@ -331,13 +337,12 @@ def normalize_training_data(df, cols, X_train, X_test, X_val=None, output_path=N
         normalized and scaled training, test, and validation sets
     """
     print("Applying Normalization (Leo-Johnson PowerTransform)")
-    if type(X_train) == np.ndarray:
-        cols = [i for i, c in enumerate(df.columns) if c in cols]
-    Px = PowerX(df, cols=cols, save_tx=True, output_path=output_path)
-    X_train = PowerX(X_train, cols=cols, tx_data=Px.tx_data).Xt
-    X_test = PowerX(X_test, cols=cols, tx_data=Px.tx_data).Xt
+    ncols = [i for i, c in enumerate(df.columns) if c in cols]
+    Px = PowerX(df, cols=cols, ncols=ncols, save_tx=True, output_path=output_path)
+    X_train = PowerX(X_train, cols=cols, ncols=ncols, tx_data=Px.tx_data).Xt
+    X_test = PowerX(X_test, cols=cols, ncols=ncols, tx_data=Px.tx_data).Xt
     if X_val is not None:
-        X_val = PowerX(X_test, cols=cols, tx_data=Px.tx_data).Xt
+        X_val = PowerX(X_val, cols=cols, ncols=ncols, tx_data=Px.tx_data).Xt
         return X_train, X_test, X_val
     else:
         return X_train, X_test
