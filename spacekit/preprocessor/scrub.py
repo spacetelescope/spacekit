@@ -1,38 +1,110 @@
 import os
 import pandas as pd
 import numpy as np
-from astropy.io import fits
 from sklearn.model_selection import train_test_split
-from spacekit.extractor.scrape import MastScraper
+from spacekit.extractor.scrape import MastScraper, FitsScraper
 from spacekit.preprocessor.encode import SvmEncoder
 from spacekit.preprocessor.encode import encode_target_data
 from spacekit.preprocessor.transform import array_to_tensor
 
-# These classes and methods will be made more general purpose in a future version, but for now they are very, very specific to SVM and essentially useless for anything else.
+# This is a work in progress (currently too specific for SVM and CAL)
 
-# class Scrubber:
-#     def __init__(self, df):
-#         self.df = df
+class Scrubber:
+    """Base parent class for preprocessing data. Includes some basic column scrubbing methods for pandas dataframes. The heavy lifting is done via subclasses below. 
+    """
+    def __init__(self, data, cache=True):
+        self.df = data.copy()
+        self.data = self.cache_data(data, cache=cache)
+        #self.extracted = self.extract_matching_columns()
+        #self.cols = self.col_splitter()
+        
+    def cache_data(self, data, cache=True):
+        return data if cache is True else None
+
+    def extract_matching_columns(self, cols):
+        #print("\n*** Extracting FITS header prefix columns ***")
+        # extracted = []
+        # for c in cols:
+        #     extracted += [col for col in self.df if c in col]
+        # return extracted
+        extract = [c for c in cols if c in self.df.columns]
+        print("Extract matching columns: ", extract)
+        return self.df[extract]
+
+    def col_splitter(self, splitter=".", keep=-1, make_lowercase=True):
+        if make_lowercase is True:
+            cols = [col.split(splitter)[keep].lower() for col in self.df.columns]
+        else:
+            cols = [col.split(splitter)[keep] for col in self.df.columns]
+        print("Split columns: ", cols)
+        return cols
+
+    def rename_cols(self, cols=None):
+        print("\nRenaming columns")
+        if cols is None:
+            cols = self.col_splitter()
+        hc = dict(zip(self.df.columns, cols))
+        self.df.rename(hc, axis="columns", inplace=True)
+        print("New column names: ", self.df.columns)
+        return self.df
 
 
-class SvmColScrubber:
-    """Class for scrubbing SVM regression dataframe columns"""
+class SvmScrubber(Scrubber):
+    """Class for invocating standard preprocessing steps of Single Visit Mosaic regression test data. This class quietly relies on other classes in the module to instantiate other scrubbing objects, although they are distinct and non-hierarchical (no inheritance between them)."""
 
-    def __init__(self, data, dropnans=True):
-        self.data = data
+    def __init__(
+        self,
+        df,
+        input_path,
+        output_path=None,
+        output_file="svm_data",
+        dropnans=True,
+        save_raw=True,
+        make_pos_list=True,
+        crpt=0,
+        make_subsamples=False,
+        cache=True,
+    ):
+        super().__init__(df, cache=cache)
+        self.input_path = input_path
+        self.output_path = output_path
+        self.output_file = output_file
         self.dropnans = dropnans
-        self.df = self.data.copy()  # self.scrub_columns()
-        self.new_cols = self.set_new_cols()
-        self.col_pfx = self.set_prefix_cols()
-        self.raw_cols = self.get_raw_cols()
+        self.save_raw = save_raw
+        self.make_pos_list = make_pos_list
+        self.crpt = crpt
+        self.make_subsamples = make_subsamples
+        self.data_path = None
+        self.set_new_cols()
+        self.set_prefix_cols()
+        #self.scrub_columns()
 
+    def preprocess_data(self):
+        """Main calling function to run each preprocessing step for SVM regression data."""
+        # STAGE 1 scrubbing
+        self.df = self.scrub_columns()
+        # STAGE 2 initial encoding
+        self.df = FitsScraper(self.df, self.input_path).scrape_fits()
+        self.df = MastScraper(self.df).scrape_mast()
+        if self.save_raw is True:
+            self.save_csv_file(pfx="raw_")
+        # STAGE 3 final encoding
+        self.df = SvmEncoder(self.df).encode_features()
+        self.df = self.drop_and_set_cols()
+        # STAGE 4 target labels
+        self.make_pos_label_list()
+        self.add_crpt_labels()
+        self.find_subsamples()
+        self.save_csv_file()
+        return self
+    
     def scrub_columns(self):
         """Main calling function"""
-        self.df = self.rename_cols()
-        extract = [c for c in self.new_cols if c in self.df.columns]
-        self.df = self.df[extract]
-        print("New column names: ", self.df.columns)
+        split_cols = super().col_splitter()
+        self.df = super().rename_cols(cols=split_cols)
+        self.df = super().extract_matching_columns(self.new_cols)
         if self.dropnans:
+            print(self.df.isna().sum())
             self.df.dropna(axis=0, inplace=True)
         index_data = self.split_index()
         self.df = index_data.join(self.df, how="left")
@@ -61,24 +133,6 @@ class SvmColScrubber:
         ]
         return self.col_pfx
 
-    def get_raw_cols(self):
-        print("\n*** Extracting FITS header prefix columns ***")
-        self.raw_cols = []
-        for c in self.col_pfx:
-            self.raw_cols += [col for col in self.df if c in col]
-        return self.raw_cols
-
-    def col_splitter(self, splitter="."):
-        cols = [col.split(splitter)[-1].lower() for col in self.df.columns]
-        return cols
-
-    def rename_cols(self):
-        print("\nRenaming columns")
-        cols = self.col_splitter()
-        hc = dict(zip(self.df.columns, cols))
-        self.df.rename(hc, axis="columns", inplace=True)
-        return self.df
-
     def split_index(self):
         idx_dct = {}
         for idx, _ in self.df.iterrows():
@@ -94,87 +148,6 @@ class SvmColScrubber:
                 # idx_dct[n]['dataset'] = items[6][:6]
         index_df = pd.DataFrame.from_dict(idx_dct, orient="index")
         return index_df
-
-
-# TODO: Shouldn't this go in scrape.py?
-class FitsScrubber:
-    def __init__(self, data, input_path):
-        self.data = data
-        self.df = self.data.copy()
-        self.input_path = input_path
-        self.fits_keys = ["rms_ra", "rms_dec", "nmatches", "wcstype"]
-        self.drz_paths = self.find_drz_paths()
-        # self.data = self.extract_fits_data()
-
-    def find_drz_paths(self):
-        self.drz_paths = {}
-        for idx, row in self.df.iterrows():
-            self.drz_paths[idx] = ""
-            dname = row["dataset"]
-            drz = row["imgname"]
-            path = os.path.join(self.input_path, dname, drz)
-            self.drz_paths[idx] = path
-        return self.drz_paths
-
-    def scrub_fits(self):
-        print("\n*** Extracting fits data ***")
-        fits_dct = {}
-        for key, path in self.drz_paths.items():
-            fits_dct[key] = {}
-            scihdr = fits.getheader(path, ext=1)
-            for k in self.fits_keys:
-                if k in scihdr:
-                    if k == "wcstype":
-                        wcs = " ".join(scihdr[k].split(" ")[1:3])
-                        fits_dct[key][k] = wcs
-                    else:
-                        fits_dct[key][k] = scihdr[k]
-                else:
-                    fits_dct[key][k] = 0
-        fits_data = pd.DataFrame.from_dict(fits_dct, orient="index")
-        self.df = self.df.join(fits_data, how="left")
-        return self.df
-
-
-class SvmScrubber:
-    """Class for invocating standard preprocessing steps of Single Visit Mosaic image classification data. This class quietly relies on other classes in the module to instantiate other scrubbing objects, although they are distinct and non-hierarchical (no inheritance between them)."""
-
-    def __init__(
-        self,
-        df,
-        input_path,
-        output_path=None,
-        output_file="svm_data",
-        save_raw=True,
-        make_pos_list=True,
-        crpt=0,
-        make_subsamples=False,
-    ):
-        self.df = df
-        self.input_path = input_path
-        self.output_path = output_path
-        self.output_file = output_file
-        self.save_raw = save_raw
-        self.data_path = None
-        self.make_pos_list = make_pos_list
-        self.crpt = crpt
-        self.make_subsamples = make_subsamples
-
-    def preprocess_data(self):
-        """Main calling function to run each preprocessing step for SVM regression data."""
-        self.df = SvmColScrubber(self.df).scrub_columns()
-        self.df = FitsScrubber(self.df, self.input_path).scrub_fits()
-        self.df = MastScraper(self.df).scrape_mast()
-        if self.save_raw is True:
-            self.save_csv_file(pfx="raw_")
-        self.df = SvmEncoder(self.df).encode_features()
-        self.df = self.drop_and_set_cols()
-        self.make_pos_label_list()
-        if self.crpt:
-            self.df = self.add_crpt_labels()
-        if self.make_subsamples:
-            self.find_subsamples()
-        self.save_csv_file()
 
     # TODO: This is pretty general and should be called from extractor.load
     def save_csv_file(self, pfx=""):
@@ -237,32 +210,34 @@ class SvmScrubber:
         dataframe
             self.df updated with label column (all values set = 1)
         """
-        labels = []
-        for _ in range(len(self.df)):
-            labels.append(1)
-        self.df["label"] = pd.Series(labels).values
-        return self.df
+        if self.crpt:
+            labels = []
+            for _ in range(len(self.df)):
+                labels.append(1)
+            self.df["label"] = pd.Series(labels).values
+            return self.df
 
     def find_subsamples(self):
         """Gets a varied sampling of dataframe observations and saves to local text file. This is one way of identifying a small subset for synthetic data generation."""
-        if "label" not in self.df.columns:
-            return
-        self.df = self.df.loc[self.df["label"] == 0]
-        subsamples = []
-        categories = list(self.df["cat"].unique())
-        detectors = list(self.df["det"].unique())
-        for d in detectors:
-            det = self.df.loc[self.df["det"] == d]
-            for c in categories:
-                cat = det.loc[det["cat"] == c]
-                if len(cat) > 0:
-                    idx = np.random.randint(0, len(cat))
-                    samp = cat.index[idx]
-                    subsamples.append(samp.split("_")[-1])
-        output_path = os.path.dirname(self.output_file)
-        with open(f"{output_path}/subset.txt", "w") as f:
-            for s in subsamples:
-                f.writelines(f"{s}\n")
+        if self.make_subsamples:
+            if "label" not in self.df.columns:
+                return
+            self.df = self.df.loc[self.df["label"] == 0]
+            subsamples = []
+            categories = list(self.df["cat"].unique())
+            detectors = list(self.df["det"].unique())
+            for d in detectors:
+                det = self.df.loc[self.df["det"] == d]
+                for c in categories:
+                    cat = det.loc[det["cat"] == c]
+                    if len(cat) > 0:
+                        idx = np.random.randint(0, len(cat))
+                        samp = cat.index[idx]
+                        subsamples.append(samp.split("_")[-1])
+            output_path = os.path.dirname(self.output_file)
+            with open(f"{output_path}/subset.txt", "w") as f:
+                for s in subsamples:
+                    f.writelines(f"{s}\n")
 
 
 class ScrubCal:

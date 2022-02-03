@@ -216,6 +216,6 @@ if __name__ == "__main__":
     model_path = args.model_path
     output_path = args.output_path
     size = args.size
-    predict_alignment(
+    _ = predict_alignment(
         data_file, img_path, model_path=model_path, output_path=output_path, size=size
     )

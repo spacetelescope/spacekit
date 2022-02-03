@@ -7,7 +7,7 @@ from dash.exceptions import PreventUpdate
 
 from spacekit.dashboard.cal import nodegraph
 from spacekit.dashboard.cal.app import app
-from spacekit.dashboard.cal.config import NN, tx_file, df
+from spacekit.dashboard.cal.config import NN, tx_file, cal
 from spacekit.preprocessor.transform import CalX
 
 # global clf
@@ -792,7 +792,7 @@ def update_ipst(selected_ipst):
             "dtype": 0,
             "instr": 0,
         }
-        data = df.loc[selected_ipst]
+        data = cal.df.loc[selected_ipst]
         for key in list(inputs.keys()):
             inputs[key] = data[key]
         return list(inputs.values())

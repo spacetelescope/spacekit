@@ -12,10 +12,10 @@ hst.draw_plots()
 selection = svm.datapaths[svm.primary]
 model_path = f"{selection}/models"
 global ens
-ens = Builder(blueprint="ensemble", model_path=model_path)
+ens = Builder(blueprint="ensemble", model_path=model_path+"/ensemble_svm4")
 ens.load_saved_model()
 global tx_file
-tx_file = f"{model_path}/pt_transform"
+tx_file = f"{model_path}/tx_data"
 
 global NN
-NN = {"ens": ens}
+NN = {"ens": ens.model}

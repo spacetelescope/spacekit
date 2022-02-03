@@ -79,7 +79,7 @@ class Builder:
             pre-trained (and/or compiled) functional Keras model.
         """
         if self.model_path is None:
-            model_src = "spacekit.skopes.trained_networks"
+            model_src = "spacekit.builder.trained_networks"
             archive_file = f"{arch}.zip"
             with importlib.resources.path(model_src, archive_file) as mod:
                 self.model_path = mod
@@ -247,7 +247,7 @@ class Builder:
         list
             [callbacks.ModelCheckpoint, callbacks.EarlyStopping]
         """
-        model_name = str(self.model.name_scope().rstrip("/").upper())
+        model_name = str(self.model.name_scope().rstrip("/"))
         checkpoint_cb = callbacks.ModelCheckpoint(
             f"{model_name}_checkpoint.h5", save_best_only=True
         )
@@ -285,6 +285,7 @@ class Builder:
             print("{}{}/".format(indent, os.path.basename(root)))
             for filename in files:
                 print("{}{}".format(indent + "    ", filename))
+        self.model_path = model_path
 
     def model_diagram(
         self,
@@ -340,7 +341,7 @@ class Builder:
         """
         model_name = str(self.model.name_scope().rstrip("/").upper())
         print("FITTING MODEL...")
-        validation_data = (self.X_test, self.y_test)
+        validation_data = (self.X_test, self.y_test) if self.X_test is not None else None
 
         if self.early_stopping is not None:
             self.callbacks = self.set_callbacks()
@@ -381,7 +382,7 @@ class Builder:
             self.fit_params(**params)
         model_name = str(self.model.name_scope().rstrip("/").upper())
         print("FITTING MODEL...")
-        validation_data = (self.X_test, self.y_test)
+        validation_data = (self.X_test, self.y_test) if self.X_test is not None else None
 
         if self.early_stopping is not None:
             self.callbacks = self.set_callbacks()

@@ -9,14 +9,33 @@ import sys
 import json
 from stsci.tools import logutil
 from zipfile import ZipFile
-
-# from astropy.io import fits
+from astropy.io import fits
 from astroquery.mast import Observations
 from progressbar import ProgressBar
 
 # from botocore import Config
 # retry_config = Config(retries={"max_attempts": 3})
 client = boto3.client("s3")  # , config=retry_config)
+
+
+def home_data_base(data_home=None) -> str:
+    """Borrowed from ``sklearn.datasets._base.get_data_home`` function: Return the path of the spacekit data dir, and create one if not existing. Folder path can be set explicitly using ``data_home`` kwarg, otherwise it looks for the 'SPACEKIT_DATA' environment variable, or defaults to 'spacekit_data' in the user home directory (the '~' symbol is expanded to the user's home folder).
+
+    Parameters
+    ----------
+    data_home : str, optional
+        The path to spacekit data directory, by default `None` (will return `~/spacekit_data`)
+    
+    Returns
+    -------
+    data_home: str
+        The path to spacekit data directory, defaults to `~/spacekit_data`
+    """
+    if data_home is None:
+        data_home = os.environ.get("SPACEKIT_DATA", os.path.join("~", "spacekit_data"))
+    data_home = os.path.expanduser(data_home)
+    os.makedirs(data_home, exist_ok=True)
+    return data_home
 
 
 class Scraper:
@@ -152,6 +171,7 @@ class WebScraper(Scraper):
         cache_subdir="data",
         format="zip",
         extract=True,
+        clean=False #tmp
     ):
         """Uses dictionary of uri, filename and hash key-value pairs to download data securely from a website such as Github.
 
@@ -169,6 +189,7 @@ class WebScraper(Scraper):
             cache_subdir=cache_subdir,
             format=format,
             extract=extract,
+            clean=clean
         )
         self.uri = uri
         self.dataset = dataset
@@ -184,13 +205,13 @@ class WebScraper(Scraper):
         list
             paths to downloaded and extracted files
         """
-        keys = list(self.dataset.keys())
-        for key in keys:
-            fname = key["fname"]
+        for key, data in self.dataset.items():
+            fname = data["fname"]
             origin = f"{self.uri}/{fname}"
+            chksum = data["hash"]
             fpath = get_file(
                 origin=origin,
-                file_hash=key["hash"],
+                file_hash=chksum,
                 hash_algorithm=self.hash_algorithm,
                 cache_dir=self.cache_dir,
                 cache_subdir=self.cache_subdir,
@@ -284,11 +305,12 @@ class S3Scraper(Scraper):
         """
         err = None
         dataset_keys = list(self.dataset.keys())
-        for k in dataset_keys:
-            fname = k["fname"]
+        for k, d in self.dataset.items():
+            fname = d["fname"]
             obj = f"{self.pfx}/{fname}"
-            print(f"s3://{self.bucket}/{self.obj}")
+            print(f"s3://{self.bucket}/{obj}")
             fpath = f"{self.cache_dir}/{self.cache_subdir}/{fname}"
+            print(fpath)
             try:
                 with open(fpath, "wb") as f:
                     client.download_fileobj(self.bucket, obj, f)
@@ -322,6 +344,43 @@ class S3Scraper(Scraper):
     #     self.fpaths = extracted_fpaths
     #     return self.fpaths
 
+
+class FitsScraper:
+    def __init__(self, data, input_path):
+        self.df = data.copy()
+        self.input_path = input_path
+        self.fits_keys = ["rms_ra", "rms_dec", "nmatches", "wcstype"]
+        self.drz_paths = self.find_drz_paths()
+        # self.data = self.scrape_fits()
+
+    def find_drz_paths(self):
+        self.drz_paths = {}
+        for idx, row in self.df.iterrows():
+            self.drz_paths[idx] = ""
+            dname = row["dataset"]
+            drz = row["imgname"]
+            path = os.path.join(self.input_path, dname, drz)
+            self.drz_paths[idx] = path
+        return self.drz_paths
+
+    def scrape_fits(self):
+        print("\n*** Extracting fits data ***")
+        fits_dct = {}
+        for key, path in self.drz_paths.items():
+            fits_dct[key] = {}
+            scihdr = fits.getheader(path, ext=1)
+            for k in self.fits_keys:
+                if k in scihdr:
+                    if k == "wcstype":
+                        wcs = " ".join(scihdr[k].split(" ")[1:3])
+                        fits_dct[key][k] = wcs
+                    else:
+                        fits_dct[key][k] = scihdr[k]
+                else:
+                    fits_dct[key][k] = 0
+        fits_data = pd.DataFrame.from_dict(fits_dct, orient="index")
+        self.df = self.df.join(fits_data, how="left")
+        return self.df
 
 class MastScraper:
     """Class for scraping metadata from MAST (Mikulsky Archive for Space Telescopes) via ``astroquery``. Current functionality for this class is limited to extracting the `target_classification` values of HAP targets from the archive. An example of a target classification is "GALAXY" - an alphanumeric categorization of an image product/.fits file. Note - the files themselves are not downloaded, just this specific metadata listed in the online archive database. For downloading MAST science files, use the ``spacekit.extractor.radio`` module. The search parameter values needed for locating a HAP product on MAST can be extracted from the fits science extension headers using the ``astropy`` library. See the ``spacekit.preprocessor.scrub`` api for an example (or the astropy documentation)."""

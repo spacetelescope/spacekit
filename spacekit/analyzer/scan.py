@@ -456,6 +456,8 @@ class CalScanner(MegaScanner):
         self.res_keys = {"mem_bin": {}, "memory": {}, "wallclock": {}}
         self.data = self.select_dataset()
         self.mega = self.make_mega()
+        self.kwargs = dict(index_col="ipst")
+        self.decoder = {"instr": {0: "acs", 1: "cos", 2: "stis", 3: "wfc3"}}
         self.scores = None  # self.compare_scores()
         self.acc_fig = None  # self.acc_bars()
         self.loss_fig = None  # self.loss_bars()
@@ -506,6 +508,8 @@ class SvmScanner(MegaScanner):
         self.res_keys = {"test": {}, "val": {}}
         self.data = self.select_dataset()
         self.mega = self.make_mega()
+        self.kwargs = dict(index_col="index")
+        self.decoder = {"det": {0: "hrc", 1: "ir", 2: "sbc", 3: "uvis", 4: "wfc"}}
         self.scores = None  # self.compare_scores()
         self.acc_fig = None  # self.acc_bars()
         self.loss_fig = None  # self.loss_bars()

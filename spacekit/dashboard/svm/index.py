@@ -1,5 +1,5 @@
-import dash_core_components as dcc
-import dash_html_components as html
+from dash import dcc
+from dash import html
 from dash.dependencies import Input, Output
 
 from app import app
@@ -21,17 +21,18 @@ app.validation_layout = html.Div(
 
 @app.callback(Output("page-content", "children"), Input("url", "pathname"))
 def display_page(pathname):
-    if pathname == "/layouts/home":
+    if pathname == "layouts/home":
         return home.layout
-    elif pathname == "/layouts/eval":
+    elif pathname == "layouts/eval":
         return eval.layout
-    elif pathname == "/layouts/eda":
+    elif pathname == "layouts/eda":
         return eda.layout
-    elif pathname == "/layouts/pred":
+    elif pathname == "layouts/pred":
         return pred.layout
     else:
         return "404"
 
 
 if __name__ == "__main__":
-    app.run_server(debug=True)
+    app.run_server(host="0.0.0.0", port=8050, debug=True)
+    #app.run_server(host="0.0.0.0", port=8050, debug=True)
