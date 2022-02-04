@@ -32,8 +32,10 @@ def home_data_base(data_home=None) -> str:
         The path to spacekit data directory, defaults to `~/spacekit_data`
     """
     if data_home is None:
-        data_home = os.environ.get("SPACEKIT_DATA", os.path.join("~", "spacekit_data"))
-    data_home = os.path.expanduser(data_home)
+        data_home = os.environ.get("SPACEKIT_DATA", os.path.join("~", "data"))
+        data_home = os.path.expanduser(data_home)
+    else:
+        data_home = os.path.abspath(data_home)
     os.makedirs(data_home, exist_ok=True)
     return data_home
 
@@ -57,17 +59,27 @@ class Scraper:
         extract : bool, optional
             extract the contents of the compressed archive file, by default True
         """
-        self.cache_dir = cache_dir  # root path for downloads (home)
+        self.cache_dir = self.check_cache(cache_dir)  # root path for downloads (home)
         self.cache_subdir = cache_subdir  # subfolder
         self.format = format
         self.extract = extract  # extract if zip/tar archive
+        self.outpath = os.path.join(self.cache_dir, self.cache_subdir)
         self.clean = clean  # delete archive if extract successful
         self.source = None
+        self.fpaths = []
+    
+    def check_cache(self, cache):
+        if cache == "~":
+            return os.path.expanduser(cache)
+        elif cache is None or ".":
+            cache = home_data_base(data_home=cache)
+        else:
+            return cache
 
     def extract_archives(self):
         """Extract the contents of the compreseed archive file(s).
 
-        TODO: extract tar files also
+        TODO: extract other archive types (.tar, .tgz)
 
         Returns
         -------
@@ -79,16 +91,15 @@ class Scraper:
             return
         elif self.fpaths[0].split(".")[-1] != "zip":
             return self.fpaths
-        extract_to = f"{self.cache_dir}/{self.cache_subdir}"
-        os.makedirs(extract_to, exist_ok=True)
+        os.makedirs(self.outpath, exist_ok=True)
         for z in self.fpaths:
             with ZipFile(z, "r") as zip_ref:
-                zip_ref.extractall(extract_to)
+                zip_ref.extractall(self.outpath)
             # check successful extraction before deleting archive
-            fname = z.split(".")[0]
-            fpath = os.path.join(extract_to, fname)
-            if os.path.exists(fpath):
-                extracted_fpaths.append(fpath)
+            fname = str(z).split(".")[0]
+            extracted = os.path.join(self.outpath, fname)
+            if os.path.exists(extracted):
+                extracted_fpaths.append(extracted)
                 if self.clean is True:
                     os.remove(z)
         self.fpaths = extracted_fpaths
@@ -111,7 +122,7 @@ class FileScraper(Scraper):
         cache_subdir="data",
         format="zip",
         extract=True,
-        clean=True,
+        clean=False,
     ):
         """Instantiates a spacekit.extractor.scrape.FileScraper object.
 
@@ -171,7 +182,7 @@ class WebScraper(Scraper):
         cache_subdir="data",
         format="zip",
         extract=True,
-        clean=False #tmp
+        clean=True
     ):
         """Uses dictionary of uri, filename and hash key-value pairs to download data securely from a website such as Github.
 
@@ -205,7 +216,7 @@ class WebScraper(Scraper):
         list
             paths to downloaded and extracted files
         """
-        for key, data in self.dataset.items():
+        for _, data in self.dataset.items():
             fname = data["fname"]
             origin = f"{self.uri}/{fname}"
             chksum = data["hash"]
@@ -218,11 +229,13 @@ class WebScraper(Scraper):
                 extract=self.extract,
                 archive_format=self.format,
             )
-            self.fpaths.append(fpath)
+            extracted = str(os.path.relpath(fpath)).split(".")[0]
+            self.fpaths.append(extracted)
             if (
-                os.path.exists(fpath) and self.clean is True
+                self.clean is True and os.path.exists(extracted) 
             ):  # deletes archive if extraction was successful
-                os.remove(f"{self.cache_subdir}/{fname}")
+                os.remove(fpath)
+                #os.remove(f"{os.path.join(self.outpath, fname)}")
         return self.fpaths
 
 
@@ -304,8 +317,7 @@ class S3Scraper(Scraper):
             paths to downloaded and extracted files
         """
         err = None
-        dataset_keys = list(self.dataset.keys())
-        for k, d in self.dataset.items():
+        for _, d in self.dataset.items():
             fname = d["fname"]
             obj = f"{self.pfx}/{fname}"
             print(f"s3://{self.bucket}/{obj}")

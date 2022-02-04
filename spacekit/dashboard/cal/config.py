@@ -4,16 +4,12 @@ from spacekit.builder.architect import Builder
 
 # Find available datasets and load most recent (default)
 cal = CalScanner(perimeter="data/20??-*-*-*", primary=-1)
-
 cal.scan_results()
 cal.load_dataframe()
-# cal.compare_scores()
+cal.compare_scores()
 # self.acc_fig = None  # self.acc_bars()
 # self.loss_fig = None  # self.loss_bars()
 # self.acc_loss_figs = None  # self.acc_loss_subplots()
-
-# cal.data = cal.select_dataset() # "data/2021-11-04-1636048291/latest.csv"
-
 
 hst = HstCalPlots(cal.df).df_by_instr()
 

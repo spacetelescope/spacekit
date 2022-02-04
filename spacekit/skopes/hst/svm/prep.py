@@ -29,6 +29,7 @@ def run_preprocessing(
     draw=1,
 ):
     """Scrapes SVM data from raw files, preprocesses dataframe for MLP classifier and generates png images for image CNN.
+    #TODO: if no JSON files found, look for results_*.csv file instead and preprocess via alternative method
 
     Parameters
     ----------

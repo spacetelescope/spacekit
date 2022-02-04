@@ -50,7 +50,9 @@ class Scrubber:
 
 
 class SvmScrubber(Scrubber):
-    """Class for invocating standard preprocessing steps of Single Visit Mosaic regression test data. This class quietly relies on other classes in the module to instantiate other scrubbing objects, although they are distinct and non-hierarchical (no inheritance between them)."""
+    """Class for invocating standard preprocessing steps of Single Visit Mosaic regression test data. This class quietly relies on other classes in the module to instantiate other scrubbing objects, although they are distinct and non-hierarchical (no inheritance between them).
+    #TODO: check if ``df`` is string (csv filename): load and scrub input_path/results.csv file instead (when no JSON files)
+    """
 
     def __init__(
         self,
@@ -97,6 +99,29 @@ class SvmScrubber(Scrubber):
         self.find_subsamples()
         self.save_csv_file()
         return self
+    
+    def scrub_regression_csv(self):
+        """Alternative if no .json files available (QA step not run during processing)
+        #TODO: scrape point, segment, gaia sources from fits and catalog files (?)
+        """
+        data = pd.read_csv('single_visit_mosaics_2021-10-06.csv', index_col=0)
+        index = {'index': {}, 'detector':{}}
+        for i, row in data.iterrows():
+            prop = row['proposal']
+            visit = row['visit']
+            num = visit[-2:]
+            instr, det = row['config'].split("/")
+            name = f"hst_{prop}_{num}_{instr}_{det}_total_{visit}".lower()
+            index[i]['index'] = name
+            index[i]['detector'] = det.lower()
+        df_idx = pd.DataFrame.from_dict(index, orient='index', columns={'index', 'detector'})
+        df = data.join(df_idx, how='left')
+        df.set_index('index', inplace=True)
+        drops = ['dateobs', 'config', 'filter', 'aec', 'status', 'wcsname', 'creation_date']
+        df.drop([d for d in drops if d in df.columns], axis=1, inplace=True)
+        df.rename({'visit':'dataset', 'n_exposures':'numexp', 'target':'targname'}, axis=1, inplace=True)
+        
+        return df
     
     def scrub_columns(self):
         """Main calling function"""

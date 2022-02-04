@@ -84,9 +84,11 @@ class MegaScanner:
         self.data = None  # self.select_dataset()
         self.versions = None
         self.res_keys = None
-        self.mega = None
-        self.df = None  # dataframe loaded from self.data
-        self.dfs = []  # probably too memory intensive for large datasets...
+        self.classes = None
+        self.mega = None # self.make_mega()
+        self.kwargs=None
+        self.decoder=None
+        self.df = None  # self.load_dataframe()
         self.scores = None  # self.compare_scores()
         self.acc_fig = None  # self.acc_bars()
         self.loss_fig = None  # self.loss_bars()
@@ -144,6 +146,33 @@ class MegaScanner:
         if len(versions) > 0:
             self.versions = versions
         return self.mega
+    
+    def load_compute_object(self, Com=ComputeMulti, alg="clf", res_path="results", validation=False):
+        """Loads a single compute object of any type with results from one iteration.
+
+        Parameters
+        ----------
+        Com : spacekit.analyze.compute.Computer class, optional
+            Compute subclass, by default ComputeMulti
+        alg : str, optional
+            algorithm type, by default "clf"
+        res_path : str, optional
+            path to results directory, by default "results"
+        validation : bool, optional
+            validation data results (no training history), by default False
+
+        Returns
+        -------
+        spacekit.analyze.compute.Computer object
+            Results from the given path loaded as attributes into a Compute class object
+        """
+        if alg in ["reg", "linreg"]:
+            com = Com(algorithm=alg, res_path=res_path)
+        else:
+            com = Com(algorithm=alg, classes=self.classes, res_path=res_path, validation=validation)
+        out = com.upload()
+        com.load_results(out)
+        return com
 
     def _scan_results(self, coms=[ComputeBinary], algs=["clf"], names=["test"]):
         """Scans local disk for Computer object-generated results files of model training iterations.
@@ -164,15 +193,11 @@ class MegaScanner:
                 self.mega[v]["res"][N] = com
         return self.mega
 
-    def load_dataframe(
-        self,
-        kwargs=dict(index_col="index"),
-        decoder={"det": {0: "hrc", 1: "ir", 2: "sbc", 3: "uvis", 4: "wfc"}},
-    ):
-        self.df = import_dataset(filename=self.data, kwargs=kwargs, decoder_key=decoder)
+    def load_dataframe(self):
+        self.df = import_dataset(filename=self.data, kwargs=self.kwargs, decoder_key=self.decoder)
         return self.df
 
-    def compare_scores(self, target="mem_bin", score_type="acc_loss"):
+    def compare_scores(self, target="mem_bin", metric="acc_loss"):
         """Create a dictionary of model scores for multiple training iterations. Score type depends on the type of model: classifiers typically use "acc_loss"; Regression models typically use "loss".
 
         Parameters
@@ -187,14 +212,18 @@ class MegaScanner:
         Pandas dataframe
             model evaluation metrics scores (accuracy/loss by default) for each model training iteration
         """
-        df_list = []
+        score_dfs = []
         for v in self.versions:
-            score_dict = self.mega[v]["res"][target][score_type]
+            if metric == "acc_loss":
+                score_dict = self.mega[v]["res"][target].acc_loss
+            else:
+                score_dict = self.mega[v]["res"][target].loss
             df = pd.DataFrame.from_dict(score_dict, orient="index", columns=[v])
-            df_list.append(df)
-        self.scores = pd.concat([d for d in df_list], axis=1)
+            score_dfs.append(df)
+        self.scores = pd.concat([d for d in score_dfs], axis=1)
         return self.scores
 
+    #TODO: this can be combined with loss_bars, use kwargs to distinguish between metrics
     def accuracy_bars(self):
         """Barplots of training and test set accuracy scores loaded from a Pandas dataframe
 
@@ -290,10 +319,10 @@ class MegaScanner:
             x_title="Training Iteration",
             y_title="Score",
         )
-        self.acc_loss_fig.add_trace(self.acc.data[0], 1, 1)
-        self.acc_loss_fig.add_trace(self.acc.data[1], 1, 1)
-        self.acc_loss_fig.add_trace(self.loss.data[0], 1, 2)
-        self.acc_loss_fig.add_trace(self.loss.data[1], 1, 2)
+        self.acc_loss_fig.add_trace(self.acc_fig.data[0], 1, 1)
+        self.acc_loss_fig.add_trace(self.acc_fig.data[1], 1, 1)
+        self.acc_loss_fig.add_trace(self.loss_fig.data[0], 1, 2)
+        self.acc_loss_fig.add_trace(self.loss_fig.data[1], 1, 2)
         self.acc_loss_fig.update_layout(
             title_text="Accuracy vs. Loss",
             margin=dict(t=50, l=200),
@@ -449,11 +478,10 @@ class CalScanner(MegaScanner):
     MegaScanner : object
         Parent class object
     """
-
     def __init__(self, perimeter="data/20??-*-*-*", primary=-1):
         super().__init__(perimeter=perimeter, primary=primary)
         self.classes = ["2g", "8g", "16g", "64g"]
-        self.res_keys = {"mem_bin": {}, "memory": {}, "wallclock": {}}
+        self.res_keys = dict(mem_bin=None, memory=None, wallclock=None)
         self.data = self.select_dataset()
         self.mega = self.make_mega()
         self.kwargs = dict(index_col="ipst")
@@ -464,33 +492,43 @@ class CalScanner(MegaScanner):
         self.acc_loss_figs = None  # self.acc_loss_subplots()
 
     def scan_results(self):
-        """Scans local disk for Computer object-generated results files and loads them as new Compute objects (according to the model type) stored in a nested dictionary.
+        """Scans local disk for Computer object-generated results files and stores them as new Compute objects (according to the model type) in a nested dictionary.
 
         Returns
         -------
         CalScanner.mega dictionary attribute
             dictionary of model training results for each iteration found.
         """
-        self.mega = self.make_mega()
-        for i, d in enumerate(self.datapaths):
+        com_objects = []
+        for d in self.datapaths:
+            coms = self.load_cal_objects(d)
+            com_objects.append(coms)
+            del coms
+
+        for i in list(range(len(self.versions))):
             v = self.versions[i]
-            bCom = ComputeMulti(
-                algorithm="clf", classes=self.classes, res_path=f"{d}/results/mem_bin"
-            )
-            bin_out = bCom.upload()
-            bCom.load_results(bin_out)
-            self.mega[v]["res"]["mem_bin"] = bCom
-
-            mCom = ComputeRegressor(algorithm="reg", res_path=f"{d}/results/memory")
-            mem_out = mCom.upload()
-            mCom.load_results(mem_out)
-            self.mega[v]["res"]["memory"] = mCom
-
-            wCom = ComputeRegressor(algorithm="reg", res_path=f"{d}/results/wallclock")
-            wall_out = wCom.upload()
-            wCom.load_results(wall_out)
-            self.mega[v]["res"]["wallclock"] = wCom
+            b, m, w = com_objects[i]
+            self.mega[v]["res"] = dict(mem_bin=b, memory=m, wallclock=w)
+            del b, m, w
         return self.mega
+
+    def load_cal_objects(self, dpath):
+        """Loads Multi classifier and Regression compute objects (3 total) for a single iteration of results
+
+        Parameters
+        ----------
+        dpath : str
+            dataset subdirectory path, e.g. "data/2022-02-03/results"
+
+        Returns
+        -------
+        tuple
+            tuple of mem_bin, memory, wallclock compute objects for one iteration
+        """
+        B = super().load_compute_object(Com=ComputeMulti, alg="clf", res_path=f"{dpath}/results/mem_bin")
+        M = super().load_compute_object(Com=ComputeRegressor, alg="linreg", res_path=f"{dpath}/results/memory")
+        W = super().load_compute_object(Com=ComputeRegressor, alg="linreg", res_path=f"{dpath}/results/wallclock")
+        return (B, M, W)
 
 
 class SvmScanner(MegaScanner):
@@ -501,7 +539,6 @@ class SvmScanner(MegaScanner):
     MegaScanner : parent class object
         MegaScanner object
     """
-
     def __init__(self, perimeter="data/20??-*-*-*", primary=-1):
         super().__init__(perimeter=perimeter, primary=primary)
         self.classes = ["aligned", "misaligned"]
@@ -514,32 +551,70 @@ class SvmScanner(MegaScanner):
         self.acc_fig = None  # self.acc_bars()
         self.loss_fig = None  # self.loss_bars()
         self.acc_loss_figs = None  # self.acc_loss_subplots()
-
+    
     def scan_results(self):
-        """Scans local disk for Computer object-generated test and validation results files for SVM model training iterations.
+        """Scans local disk for Computer object-generated results files and stores them as new Compute objects (according to the model type) in a nested dictionary.
 
         Returns
         -------
         SvmScanner.mega dictionary attribute
             dictionary of model training results for each iteration found.
         """
-        self.mega = self.make_mega()
-        for i, d in enumerate(self.datapaths):
-            v = self.versions[i]
-            tCom = ComputeBinary(
-                algorithm="clf", classes=self.classes, res_path=f"{d}/results/test"
-            )
-            test_out = tCom.upload()
-            tCom.load_results(test_out)
-            self.mega[v]["res"]["test"] = tCom
+        com_objects = []
+        for d in self.datapaths:
+            coms = self.load_svm_objects(d)
+            com_objects.append(coms)
+            del coms
 
-            vCom = ComputeBinary(
-                algorithm="clf",
-                classes=self.classes,
-                res_path=f"{d}/results/val",
-                validation=True,
-            )
-            val_out = vCom.upload()
-            vCom.load_results(val_out)
-            self.mega[v]["res"]["val"] = vCom
+        for i in list(range(len(self.versions))):
+            v = self.versions[i]
+            tcom, vcom = com_objects[i]
+            self.mega[v]["res"] = dict(test=tcom, val=vcom)
+            del tcom, vcom
         return self.mega
+
+    def load_svm_objects(self, dpath):
+        """Load Binary classifier compute objects for a single iteration of test and validation results
+
+        Parameters
+        ----------
+        dpath : str
+            dataset subdirectory path, e.g. "data/2022-02-03/results"
+
+        Returns
+        -------
+        tuple
+            tuple of test and validation compute objects for one iteration
+        """
+        T = super().load_compute_object(Com=ComputeBinary, alg="clf", res_path=f"{dpath}/results/test")
+        V = super().load_compute_object(Com=ComputeBinary, alg="linreg", res_path=f"{dpath}/results/val", validation=True)
+        return (T, V)
+
+    # def scan_results(self):
+    #     """Scans local disk for Computer object-generated test and validation results files for SVM model training iterations.
+
+    #     Returns
+    #     -------
+    #     SvmScanner.mega dictionary attribute
+    #         dictionary of model training results for each iteration found.
+    #     """
+    #     self.mega = self.make_mega()
+    #     for i, d in enumerate(self.datapaths):
+    #         v = self.versions[i]
+    #         tCom = ComputeBinary(
+    #             algorithm="clf", classes=self.classes, res_path=f"{d}/results/test"
+    #         )
+    #         test_out = tCom.upload()
+    #         tCom.load_results(test_out)
+    #         self.mega[v]["res"]["test"] = tCom
+
+    #         vCom = ComputeBinary(
+    #             algorithm="clf",
+    #             classes=self.classes,
+    #             res_path=f"{d}/results/val",
+    #             validation=True,
+    #         )
+    #         val_out = vCom.upload()
+    #         vCom.load_results(val_out)
+    #         self.mega[v]["res"]["val"] = vCom
+    #     return self.mega

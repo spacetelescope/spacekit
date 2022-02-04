@@ -33,27 +33,25 @@ from spacekit.extractor.scrape import WebScraper, S3Scraper, FileScraper, home_d
 
 DATA = "spacekit.datasets.data"
 
-DD = home_data_base() # sets folder location where data is extracted
-
-def download(scrape="file:data", datasets=None):
+def download(scrape="file:data", datasets=None, dest="."):
     src, archive = scrape.split(":")
     if src == "git":
         print("Scraping Github Archive")
         cc = spacekit_collections[archive] # "calcloud", "svm"
-        scraper = WebScraper(cc["uri"], cc["data"], cache_dir=".", clean=False)
+        scraper = WebScraper(cc["uri"], cc["data"], cache_dir=dest)
     elif src == "s3":
         print("Scraping S3")
-        scraper = S3Scraper(archive, pfx="archive")
+        scraper = S3Scraper(archive, pfx="archive", cache_dir=dest)
         fnames = datasets.split(",")
         scraper.make_s3_keys(fnames=fnames)
     elif src == "file":  # args.src == "file"
         print("Scraping local directory")
         p = [f"{archive}/*.zip", f"{archive}/*"]
-        scraper = FileScraper(cache_dir=".", patterns=p, clean=False)
+        scraper = FileScraper(patterns=p, clean=False, cache_dir=dest)
     elif src == "web":
         with open(archive, "r") as j:
             collection = json.load(j)
-        scraper = WebScraper(collection["uri"], collection["data"])
+        scraper = WebScraper(collection["uri"], collection["data"], cache_dir=dest)
     try:
         scraper.scrape()
         if scraper.fpaths:
@@ -69,7 +67,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--scrape", default="git:calcloud")
     parser.add_argument("-d", "--datasets", default="2021-11-04-1636048291,2021-10-28-1635457222,2021-08-22-1629663047")
+    parser.add_argument("-o", "--out", default=None)
     args = parser.parse_args()
-    fpaths = download(scrape=args.scrape, datasets=args.datasets)
+    fpaths = download(scrape=args.scrape, datasets=args.datasets, dest=args.out)
     # fpaths = import_collection(archive)
     # scrape_archives(spacekit_collections[archive], data_home=DD)

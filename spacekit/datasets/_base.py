@@ -2,7 +2,7 @@
 Base IO code for all datasets (borrowing concepts from sklearn.datasets and keras.utils.load_data)
 """
 from importlib import resources
-from spacekit.extractor.scrape import WebScraper, home_data_base
+from spacekit.extractor.scrape import WebScraper, FileScraper, home_data_base
 from spacekit.analyzer.scan import import_dataset, CalScanner, SvmScanner
 from spacekit.datasets.meta import spacekit_collections
 
@@ -14,11 +14,12 @@ def import_collection(name):
     source = f"{DATA}.{name}"
     archives = spacekit_collections[name]["data"]
     fnames = [archives[date]["fname"] for date in archives.keys()]
-    collection = []
+    scr = FileScraper(cache_dir=".", clean=False)
     for fname in fnames:
         with resources.path(source, fname) as archive:
-            collection.append(archive)
-    return collection
+            scr.fpaths.append(archive)
+    fpaths = scr.extract_archives()
+    return fpaths
 
 
 def scrape_archives(archives, data_home=DD):
