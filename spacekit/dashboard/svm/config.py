@@ -6,14 +6,20 @@ from spacekit.analyzer.scan import SvmScanner
 svm = SvmScanner(perimeter="data/20??-*-*-*", primary=-1)
 svm.scan_results()
 svm.load_dataframe()
+svm.compare_scores()
+# self.acc_fig = None  # self.acc_bars()
+# self.loss_fig = None  # self.loss_bars()
+# self.acc_loss_figs = None  # self.acc_loss_subplots()
+
 hst = HstSvmPlots(svm.df, group="det", show=False, save_html=None)
 hst.draw_plots()
 
 selection = svm.datapaths[svm.primary]
 model_path = f"{selection}/models"
 global ens
-ens = Builder(blueprint="ensemble", model_path=model_path+"/ensemble_svm4")
+ens = Builder(blueprint="ensemble", model_path=model_path + "/ensemble_svm4")
 ens.load_saved_model()
+
 global tx_file
 tx_file = f"{model_path}/tx_data"
 

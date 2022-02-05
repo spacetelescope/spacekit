@@ -90,7 +90,7 @@ class MegaScanner:
         self.decoder=None
         self.df = None  # self.load_dataframe()
         self.scores = None  # self.compare_scores()
-        self.acc_fig = None  # self.acc_bars()
+        self.acc_fig = None  # self.accuracy_bars()
         self.loss_fig = None  # self.loss_bars()
         self.acc_loss_figs = None  # self.acc_loss_subplots()
         self.res_fig = None  # TODO
@@ -172,6 +172,11 @@ class MegaScanner:
             com = Com(algorithm=alg, classes=self.classes, res_path=res_path, validation=validation)
         out = com.upload()
         com.load_results(out)
+        if alg == "clf":
+            try:
+                com.draw_plots()
+            except Exception as e:
+                print(e)
         return com
 
     def _scan_results(self, coms=[ComputeBinary], algs=["clf"], names=["test"]):

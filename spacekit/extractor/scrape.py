@@ -356,6 +356,23 @@ class S3Scraper(Scraper):
     #     self.fpaths = extracted_fpaths
     #     return self.fpaths
 
+def scrape_catalogs(input_path, name, sfx='point'):
+    if sfx != 'ref':
+        cfiles = glob.glob(f"{input_path}/{name}_{sfx}-cat.ecsv")
+        if len(cfiles) > 0 and os.path.exists(cfiles[0]):
+            cat = ascii.read(cfiles[0]).to_pandas()
+            if len(cat) > 0:
+                flagcols = [c for c in cat.columns if "Flags" in c]
+                if len(flagcols) > 0:
+                    flags = cat.loc[:, flagcols]
+                    return flags[flags.values <= 5].shape[0]
+        else:
+            return 0
+    else:
+        cfiles = glob.glob(f"{input_path}/ref_cat.ecsv")
+        if len(cfiles) > 0 and os.path.exists(cfiles[0]):
+            cat = ascii.read(cfiles[0]).to_pandas()
+            return len(cat)
 
 class FitsScraper:
     def __init__(self, data, input_path):

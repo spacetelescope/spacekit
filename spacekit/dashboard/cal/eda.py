@@ -12,11 +12,11 @@ layout = html.Div(
         html.Div(
             children=[
                 html.Br(),
-                dcc.Link("Home", href="/layouts/home"),
+                dcc.Link("Home", href="/"),
                 html.Br(),
-                dcc.Link("Evaluation", href="/layouts/eval"),
+                dcc.Link("Evaluation", href="/eval"),
                 html.Br(),
-                dcc.Link("Prediction", href="/layouts/pred"),
+                dcc.Link("Prediction", href="/pred"),
                 html.Br(),
             ]
         ),

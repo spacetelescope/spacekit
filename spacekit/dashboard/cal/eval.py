@@ -10,11 +10,11 @@ layout = html.Div(
         html.Div(
             children=[
                 html.Br(),
-                dcc.Link("Home", href="/layouts/home"),
+                dcc.Link("Home", href="/"),
                 html.Br(),
-                dcc.Link("Analysis", href="/layouts/eda"),
+                dcc.Link("Analysis", href="/eda"),
                 html.Br(),
-                dcc.Link("Prediction", href="/layouts/pred"),
+                dcc.Link("Prediction", href="/pred"),
                 html.Br(),
             ]
         ),
@@ -79,6 +79,7 @@ layout = html.Div(
                                 ),
                                 dcc.Graph(
                                     id="keras-acc",
+                                    #figure=cal.mega[cal.versions[-1]]["res"]["mem_bin"].keras_acc_plot(),
                                     style={
                                         "display": "inline-block",
                                         "float": "center",
@@ -87,6 +88,7 @@ layout = html.Div(
                                 ),
                                 dcc.Graph(
                                     id="keras-loss",
+                                    #figure=cal.mega[cal.versions[-1]]["res"]["mem_bin"].keras_loss_plot(),
                                     style={
                                         "display": "inline-block",
                                         "float": "center",
@@ -126,6 +128,7 @@ layout = html.Div(
                                 ),
                                 dcc.Graph(
                                     id="roc-auc",
+                                    #figure=
                                     style={
                                         "display": "inline-block",
                                         "float": "center",
@@ -207,11 +210,15 @@ layout = html.Div(
     Input("version-picker", "value"),
 )
 def update_keras(selected_version):
-    com = cal.mega[selected_version]["res"]["mem_bin"]
-    com.acc_fig = com.keras_acc_plot()
-    com.loss_fig = com.keras_loss_plot()
-    keras_figs = [com.acc_fig, com.loss_fig]
-    return keras_figs
+    return [
+        cal.mega[selected_version]["res"]["mem_bin"].keras_acc_plot(),
+        cal.mega[selected_version]["res"]["mem_bin"].keras_loss_plot()
+        ]
+    #com = cal.mega[selected_version]["res"]["mem_bin"]
+    # com.acc_fig = com.keras_acc_plot()
+    # com.loss_fig = com.keras_loss_plot()
+    # keras_figs = [com.acc_fig, com.loss_fig]
+    # return keras_figs
 
 
 # ROC AUC CALLBACK

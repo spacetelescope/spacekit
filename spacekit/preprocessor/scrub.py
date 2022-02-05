@@ -2,24 +2,23 @@ import os
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
-from spacekit.extractor.scrape import MastScraper, FitsScraper
+from spacekit.extractor.scrape import MastScraper, FitsScraper, scrape_catalogs
 from spacekit.preprocessor.encode import SvmEncoder
 from spacekit.preprocessor.encode import encode_target_data
 from spacekit.preprocessor.transform import array_to_tensor
 
-# This is a work in progress (currently too specific for SVM and CAL)
+#TODO: test alt scrub process (no json files)
 
 class Scrubber:
     """Base parent class for preprocessing data. Includes some basic column scrubbing methods for pandas dataframes. The heavy lifting is done via subclasses below. 
     """
-    def __init__(self, data, cache=True):
-        self.df = data.copy()
-        self.data = self.cache_data(data, cache=cache)
+    def __init__(self, data=None):
+        self.df = self.cache_data(cache=data)
         #self.extracted = self.extract_matching_columns()
         #self.cols = self.col_splitter()
         
-    def cache_data(self, data, cache=True):
-        return data if cache is True else None
+    def cache_data(self, cache=None):
+        return cache.copy() if cache is not None else cache
 
     def extract_matching_columns(self, cols):
         #print("\n*** Extracting FITS header prefix columns ***")
@@ -67,7 +66,7 @@ class SvmScrubber(Scrubber):
         make_subsamples=False,
         cache=True,
     ):
-        super().__init__(df, cache=cache)
+        super().__init__(data=df)
         self.input_path = input_path
         self.output_path = output_path
         self.output_file = output_file
@@ -100,11 +99,37 @@ class SvmScrubber(Scrubber):
         self.save_csv_file()
         return self
     
-    def scrub_regression_csv(self):
+    def scrub(self):
+        if self.df is None:
+            return
+        elif type(self.df) == pd.DataFrame:
+            self.df = self.scrub_qa_data()
+        elif type(self.df) == str:
+            self.df = self.scrub_qa_summary()
+        if self.save_raw is True:
+            self.save_csv_file(pfx="raw_")
+        # STAGE 3 final encoding
+        self.df = SvmEncoder(self.df).encode_features()
+        self.df = self.drop_and_set_cols()
+        # STAGE 4 target labels
+        self.make_pos_label_list()
+        self.add_crpt_labels()
+        self.find_subsamples()
+        self.save_csv_file()
+    
+    def scrub_qa_data(self):
+        self.df = self.scrub_columns()
+        # STAGE 2 initial encoding
+        self.df = FitsScraper(self.df, self.input_path).scrape_fits()
+        self.df = MastScraper(self.df).scrape_mast()
+        return self.df
+
+    def scrub_qa_summary(self, idx=0):
         """Alternative if no .json files available (QA step not run during processing)
-        #TODO: scrape point, segment, gaia sources from fits and catalog files (?)
         """
-        data = pd.read_csv('single_visit_mosaics_2021-10-06.csv', index_col=0)
+        #fname = 'single_visit_mosaics_2021-10-06.csv'
+        fname = self.df # os.path.join(self.input_path, self.df)
+        data = pd.read_csv(fname, index_col=idx)
         index = {'index': {}, 'detector':{}}
         for i, row in data.iterrows():
             prop = row['proposal']
@@ -114,13 +139,16 @@ class SvmScrubber(Scrubber):
             name = f"hst_{prop}_{num}_{instr}_{det}_total_{visit}".lower()
             index[i]['index'] = name
             index[i]['detector'] = det.lower()
-        df_idx = pd.DataFrame.from_dict(index, orient='index', columns={'index', 'detector'})
+            index[i]['point'] = scrape_catalogs(self.input_path, name, sfx='point')
+            index[i]['segment'] = scrape_catalogs(self.input_path, name, sfx='segment')
+            index[i]['gaia'] = scrape_catalogs(self.input_path, name, sfx='ref')
+        add_cols = {'index', 'detector', 'point', 'segment', 'gaia'}
+        df_idx = pd.DataFrame.from_dict(index, orient='index', columns=add_cols)
         df = data.join(df_idx, how='left')
         df.set_index('index', inplace=True)
         drops = ['dateobs', 'config', 'filter', 'aec', 'status', 'wcsname', 'creation_date']
         df.drop([d for d in drops if d in df.columns], axis=1, inplace=True)
         df.rename({'visit':'dataset', 'n_exposures':'numexp', 'target':'targname'}, axis=1, inplace=True)
-        
         return df
     
     def scrub_columns(self):

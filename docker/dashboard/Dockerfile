@@ -45,5 +45,6 @@ WORKDIR /home/developer/
 RUN python -m pip install --upgrade pip && python -m pip install -r requirements.txt
 RUN mkdir /home/developer/data
 ENV SPACEKIT_DATA=/home/developer/data
+ENV TF_CPP_MIN_LOG_LEVEL=2
 ENTRYPOINT ["python","-m","spacekit.dashboard.cal.index"]
 # ["python","-m","spacekit.dashboard.svm.app"]

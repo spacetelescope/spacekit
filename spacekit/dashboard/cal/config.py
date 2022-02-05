@@ -7,9 +7,9 @@ cal = CalScanner(perimeter="data/20??-*-*-*", primary=-1)
 cal.scan_results()
 cal.load_dataframe()
 cal.compare_scores()
-# self.acc_fig = None  # self.acc_bars()
-# self.loss_fig = None  # self.loss_bars()
-# self.acc_loss_figs = None  # self.acc_loss_subplots()
+cal.acc_fig = cal.accuracy_bars()
+cal.loss_fig = cal.loss_bars()
+cal.acc_loss_subplots()
 
 hst = HstCalPlots(cal.df).df_by_instr()
 

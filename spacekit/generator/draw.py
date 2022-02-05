@@ -207,7 +207,7 @@ class DrawMosaics:
             return None, None  # 'yellow', 'Flag > 5'
 
     def draw_catalogs(self, cfile, catalog):
-        """Open and read .escv catalog file associated with the visit (if available) and map the appropriate values and coordinates to draw as an overlay on the original image.
+        """Open and read .escv catalog file associated with the visit (if available) and map the appropriate values and coordinates to draw as an overlay on the original image. Credit: based in part on code by M. Burger
 
         Parameters
         ----------
@@ -245,7 +245,7 @@ class DrawMosaics:
                 fcolor = fcolor_.apply(lambda x: x[0]).values
         return cat, fcolor_, fcolor
 
-    def create_image_name(self, name, dataset, P=0, S=0, G=0):
+    def create_image_name(self, name, dataset, P=0, S=0, G=0, fgroup=None):
         """Determines which suffix to append to the output png file based on which catalog(s) are used (if any).
 
         Parameters
@@ -279,8 +279,11 @@ class DrawMosaics:
         if self.crpt:
             sfx = "_".join(dataset.split("_")[1:])
             name = f"{name}_{sfx}"
-        img_out = f"{self.output_path}/{name}"
-        os.makedirs(img_out, exist_ok=True)
+        if fgroup: # rel filter images share same parent dir
+            img_out = fgroup
+        else:
+            img_out = f"{self.output_path}/{name}"
+            os.makedirs(img_out, exist_ok=True)
         imgpath = os.path.join(img_out, f"{name}{catstr}")
         return imgpath
 
@@ -457,8 +460,7 @@ class DrawMosaics:
                 ax.set_xlim(xlim)
                 ax.set_ylim(ylim)
                 ax.imshow(hdu.data, origin="lower", norm=norm, cmap="gray")
-
-            imgpath = self.create_image_name(name, dataset)
+            imgpath = self.create_image_name(name, dataset, fgroup=outpath)
             plt.savefig(imgpath, bbox_inches="tight")
             plt.close(fig)
             print(f"\t{imgpath}.png")

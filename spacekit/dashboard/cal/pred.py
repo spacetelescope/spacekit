@@ -10,22 +10,10 @@ from spacekit.dashboard.cal.app import app
 from spacekit.dashboard.cal.config import NN, tx_file, cal
 from spacekit.preprocessor.transform import CalX
 
-# global clf
-# clf = nodegraph.get_model(f"{model_path}/mem_clf")
-
-# global mem_reg
-# mem_reg = nodegraph.get_model(f"{model_path}/mem_reg")
-
-# global wall_reg
-# wall_reg = nodegraph.get_model(f"{model_path}/wall_reg")
-
-# global tx_file
-# tx_file = f"{model_path}/pt_transform"
-
 
 stylesheet = nodegraph.make_stylesheet()
 styles = nodegraph.make_styles()
-edges, nodes = nodegraph.make_neural_graph(NN=NN)
+edges, nodes = nodegraph.make_neural_graph(model=NN["mem_clf"])
 
 layout = html.Div(
     children=[
@@ -35,19 +23,19 @@ layout = html.Div(
                 html.P("|", style={"display": "inline-block"}),
                 dcc.Link(
                     "Home",
-                    href="/layouts/home",
+                    href="/",
                     style={"padding": 5, "display": "inline-block"},
                 ),
                 html.P("|", style={"display": "inline-block"}),
                 dcc.Link(
                     "Evaluation",
-                    href="/layouts/eval",
+                    href="/eval",
                     style={"padding": 5, "display": "inline-block"},
                 ),
                 html.P("|", style={"display": "inline-block"}),
                 dcc.Link(
                     "Analysis",
-                    href="/layouts/eda",
+                    href="/eda",
                     style={"padding": 10, "display": "inline-block"},
                 ),
                 html.P("|", style={"display": "inline-block"}),
@@ -118,7 +106,7 @@ layout = html.Div(
                                             id="select-ipst",
                                             options=[
                                                 {"label": i, "value": i}
-                                                for i in df.index.values
+                                                for i in cal.df.index.values
                                             ],
                                             value="idio03010",
                                             style={
