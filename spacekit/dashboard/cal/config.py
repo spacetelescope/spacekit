@@ -7,7 +7,7 @@ cal = CalScanner(perimeter="data/20??-*-*-*", primary=-1)
 cal.scan_results()
 # Initialize EVAL
 cal.make_barplots()
-cal.make_clf_plots()
+cal.make_clf_plots(target="mem_bin")
 
 # Initialize EDA
 cal.load_dataframe()

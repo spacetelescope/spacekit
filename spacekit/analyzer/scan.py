@@ -84,6 +84,8 @@ class MegaScanner:
         self.data = None  # self.select_dataset()
         self.versions = None
         self.res_keys = None
+        self.target = None
+        self.labels = None
         self.classes = None
         self.mega = None # self.make_mega()
         self.kwargs=None
@@ -170,9 +172,9 @@ class MegaScanner:
             Results from the given path loaded as attributes into a Compute class object
         """
         if alg in ["reg", "linreg"]:
-            com = Com(algorithm=alg, res_path=res_path)
+            com = Com(algorithm=alg, res_path=res_path, validation=validation)
         else:
-            com = Com(algorithm=alg, classes=self.classes, res_path=res_path, validation=validation)
+            com = Com(algorithm=alg, classes=self.labels, res_path=res_path, validation=validation)
         out = com.upload()
         com.load_results(out)
         if alg == "clf":
@@ -195,7 +197,7 @@ class MegaScanner:
         for i, d in enumerate(self.datapaths):
             v = self.versions[i]
             for C, A, N in objects:
-                com = C(algorithm=A, classes=self.classes, res_path=f"{d}/results/{N}")
+                com = C(algorithm=A, classes=self.labels, res_path=f"{d}/results/{N}")
                 com_out = com.upload()
                 com.load_results(com_out)
                 self.mega[v]["res"][N] = com
@@ -210,7 +212,7 @@ class MegaScanner:
             self.mega[v]["res"][target].draw_plots()
             self.keras[v] = [
                 self.mega[v]["res"][target].acc_fig,
-                self.mega[v]["res"]["mem_bin"].loss_fig,
+                self.mega[v]["res"][target].loss_fig,
             ]
             self.roc[v] = [
                 self.mega[v]["res"][target].roc_fig,
@@ -223,13 +225,13 @@ class MegaScanner:
         }
         return self
 
-    def make_barplots(self):
-        self.compare_scores()
+    def make_barplots(self, metric="acc_loss"):
+        self.compare_scores(metric=metric)
         self.acc_fig = self.accuracy_bars()
         self.loss_fig = self.loss_bars()
         self.acc_loss_subplots()
 
-    def compare_scores(self, target="mem_bin", metric="acc_loss"):
+    def compare_scores(self, metric="acc_loss"):
         """Create a dictionary of model scores for multiple training iterations. Score type depends on the type of model: classifiers typically use "acc_loss"; Regression models typically use "loss".
 
         Parameters
@@ -247,9 +249,9 @@ class MegaScanner:
         score_dfs = []
         for v in self.versions:
             if metric == "acc_loss":
-                score_dict = self.mega[v]["res"][target].acc_loss
+                score_dict = self.mega[v]["res"][self.target].acc_loss
             else:
-                score_dict = self.mega[v]["res"][target].loss
+                score_dict = self.mega[v]["res"][self.target].loss
             df = pd.DataFrame.from_dict(score_dict, orient="index", columns=[v])
             score_dfs.append(df)
         self.scores = pd.concat([d for d in score_dfs], axis=1)
@@ -366,7 +368,7 @@ class MegaScanner:
         )
         return self.acc_loss_fig
 
-    def single_cmx(self, cmx, classes, subtitles=("v0"), zmin=0.0, zmax=1.0, cmx_type="normalized"):
+    def single_cmx(self, cmx, subtitles=("v0"), zmin=0.0, zmax=1.0, cmx_type="normalized"):
         """Confusion matrix plot for a single model training iteration
 
         Parameters
@@ -387,7 +389,7 @@ class MegaScanner:
         plotly figure factory annotated heatmap figure
             interactive confusion matrix plot
         """
-        x = classes
+        x = self.labels
         y = x[::-1].copy()
         z = cmx[::-1]
         if cmx_type == "normalized":
@@ -436,7 +438,7 @@ class MegaScanner:
             fig.add_annotation(anno)
         return fig
 
-    def triple_cmx(self, cmx, cmx_type, classes=["2GB", "8GB", "16GB", "64GB"]):
+    def triple_cmx(self, cmx, cmx_type):
         """Plot three confusion matrices side by side
 
         Parameters
@@ -457,7 +459,7 @@ class MegaScanner:
             zmin = 0
             zmax = 100
             fmt = "{:d}"
-        x = classes
+        x = self.labels
         y = x[::-1].copy()
         subplot_titles = self.versions  # ("v1", "v2", "v3")
         fig = subplots.make_subplots(
@@ -516,8 +518,10 @@ class CalScanner(MegaScanner):
     """
     def __init__(self, perimeter="data/20??-*-*-*", primary=-1):
         super().__init__(perimeter=perimeter, primary=primary)
-        self.classes = ["2g", "8g", "16g", "64g"]
+        self.labels = ["2g", "8g", "16g", "64g"]
+        self.classes = [0, 1, 2, 3]
         self.res_keys = dict(mem_bin=None, memory=None, wallclock=None)
+        self.target = list(self.res_keys.keys())[0]
         self.data = self.select_dataset()
         self.mega = self.make_mega()
         self.kwargs = dict(index_col="ipst")
@@ -573,8 +577,10 @@ class SvmScanner(MegaScanner):
     """
     def __init__(self, perimeter="data/20??-*-*-*", primary=-1):
         super().__init__(perimeter=perimeter, primary=primary)
-        self.classes = ["aligned", "misaligned"]
+        self.labels = ["aligned", "misaligned"]
+        self.classes = [0, 1]
         self.res_keys = {"test": {}, "val": {}}
+        self.target = list(self.res_keys.keys())[0]
         self.data = self.select_dataset()
         self.mega = self.make_mega()
         self.kwargs = dict(index_col="index")
@@ -614,8 +620,8 @@ class SvmScanner(MegaScanner):
         tuple
             tuple of test and validation compute objects for one iteration
         """
-        T = super().load_compute_object(Com=ComputeBinary, alg="clf", res_path=f"{dpath}/results/test")
-        V = super().load_compute_object(Com=ComputeBinary, alg="linreg", res_path=f"{dpath}/results/val", validation=True)
+        T = super().load_compute_object(Com=ComputeBinary, alg="binary", res_path=f"{dpath}/results/test")
+        V = super().load_compute_object(Com=ComputeBinary, alg="binary", res_path=f"{dpath}/results/val", validation=True)
         return (T, V)
 
     # def scan_results(self):

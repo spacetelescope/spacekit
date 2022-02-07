@@ -91,7 +91,7 @@ def update_roc_auc(selected_version):
 @app.callback(Output("confusion-matrix", "figure"), Input("cmx-type", "value"))
 def update_cmx(cmx_type):
     v = list(svm.mega.keys())[-1]
-    return svm.triple_cmx(svm.cmx[cmx_type], cmx_type, classes=["2GB", "8GB", "16GB", "64GB"])
+    return svm.triple_cmx(svm.cmx[cmx_type], cmx_type)
 
 # TODO
 # SCATTER CALLBACK

@@ -94,7 +94,7 @@ def update_roc_auc(selected_version):
 @app.callback(Output("confusion-matrix", "figure"), Input("cmx-type", "value"))
 def update_cmx(cmx_type):
     v = list(cal.mega.keys())[-1]
-    return cal.triple_cmx(cal.cmx[cmx_type], cmx_type, classes=["2GB", "8GB", "16GB", "64GB"])
+    return cal.triple_cmx(cal.cmx[cmx_type], cmx_type)
 
 
 # Page 2 EDA callbacks

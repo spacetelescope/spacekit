@@ -59,7 +59,7 @@ layout = html.Div(
                                         html.Div(
                                             [
                                                 dcc.Dropdown(
-                                                    id="version-picker",
+                                                    id="keras-picker",
                                                     options=[
                                                         {"label": str(v), "value": v}
                                                         for v in svm.versions

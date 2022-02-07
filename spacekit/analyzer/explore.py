@@ -346,6 +346,8 @@ class HstSvmPlots(DataPlots):
         self.gkeys = self.group_keys()
         self.categories = self.feature_subset()
         self.continuous = ["rms_ra", "rms_dec", "gaia", "nmatches", "numexp"]
+        self.categorical = ["det", "wcs", "cat"]
+        self.feature_list = self.continuous + self.categorical
         self.df_by_detector()
         self.bar = None
         self.scatter = None
@@ -425,7 +427,7 @@ class HstSvmPlots(DataPlots):
         return self
     
     def make_svm_scatterplots(self):
-        self.scatter, target_figs = {}, {}, {}
+        self.scatter, target_figs = {}, {}
         for f in self.feature_list:
             target_figs[f] = super().make_scatter_figs(f, "label")
         self.scatter["label"] = target_figs

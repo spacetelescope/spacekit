@@ -7,7 +7,7 @@ svm = SvmScanner(perimeter="data/20??-*-*-*", primary=-1)
 svm.scan_results()
 # Initialize EVAL
 svm.make_barplots()
-svm.make_clf_plots(target="label")
+svm.make_clf_plots(target="test")
 
 # Initialize EDA
 svm.load_dataframe()
