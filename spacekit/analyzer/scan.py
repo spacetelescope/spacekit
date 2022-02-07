@@ -94,6 +94,9 @@ class MegaScanner:
         self.loss_fig = None  # self.loss_bars()
         self.acc_loss_figs = None  # self.acc_loss_subplots()
         self.res_fig = None  # TODO
+        self.keras = {}
+        self.roc = {}
+        self.cmx = {}
 
     def select_dataset(self, primary=None):
         """Select which dataset file (if there are multiple timestamps) to use, e.g. for performing EDA.
@@ -173,7 +176,7 @@ class MegaScanner:
         out = com.upload()
         com.load_results(out)
         if alg == "clf":
-            try:
+            try: # initialize Compute figure attrs
                 com.draw_plots()
             except Exception as e:
                 print(e)
@@ -201,6 +204,30 @@ class MegaScanner:
     def load_dataframe(self):
         self.df = import_dataset(filename=self.data, kwargs=self.kwargs, decoder_key=self.decoder)
         return self.df
+    
+    def make_clf_plots(self, target="mem_bin"):
+        for v in self.versions:
+            self.mega[v]["res"][target].draw_plots()
+            self.keras[v] = [
+                self.mega[v]["res"][target].acc_fig,
+                self.mega[v]["res"]["mem_bin"].loss_fig,
+            ]
+            self.roc[v] = [
+                self.mega[v]["res"][target].roc_fig,
+                self.mega[v]["res"][target].pr_fig
+            ]
+        #set_printoptions(precision=2)
+        self.cmx = {
+            "normalized": [self.mega[v]["res"][target].cmx_norm for v in self.versions],
+            "counts": [self.mega[v]["res"][target].cmx for v in self.versions],
+        }
+        return self
+
+    def make_barplots(self):
+        self.compare_scores()
+        self.acc_fig = self.accuracy_bars()
+        self.loss_fig = self.loss_bars()
+        self.acc_loss_subplots()
 
     def compare_scores(self, target="mem_bin", metric="acc_loss"):
         """Create a dictionary of model scores for multiple training iterations. Score type depends on the type of model: classifiers typically use "acc_loss"; Regression models typically use "loss".
@@ -339,7 +366,7 @@ class MegaScanner:
         )
         return self.acc_loss_fig
 
-    def single_cmx(self, cmx, zmin, zmax, classes, subtitles=("v0")):
+    def single_cmx(self, cmx, classes, subtitles=("v0"), zmin=0.0, zmax=1.0, cmx_type="normalized"):
         """Confusion matrix plot for a single model training iteration
 
         Parameters
@@ -363,7 +390,15 @@ class MegaScanner:
         x = classes
         y = x[::-1].copy()
         z = cmx[::-1]
-        z_text = [[str(y) for y in x] for x in z]
+        if cmx_type == "normalized":
+            zmin = 0.0
+            zmax = 1.0
+            fmt = "{:.2f}"
+        else:
+            zmin = 0
+            zmax = 100
+            fmt = "{:d}"
+        z_text = [[fmt.format(y) for y in x] for x in z]
         subplot_titles = subtitles
 
         fig = subplots.make_subplots(
@@ -401,13 +436,11 @@ class MegaScanner:
             fig.add_annotation(anno)
         return fig
 
-    def triple_cmx(self, coms, cmx_type):
+    def triple_cmx(self, cmx, cmx_type, classes=["2GB", "8GB", "16GB", "64GB"]):
         """Plot three confusion matrices side by side
 
         Parameters
         ----------
-        coms : list
-            spacekit.analyzer.compute.Computer objects
         cmx_type : str
             "normalized" will return a normalized CMX (percentage of FNFPs), otherwise raw numeric values are displayed.
 
@@ -419,13 +452,11 @@ class MegaScanner:
         if cmx_type == "normalized":
             zmin = 0.0
             zmax = 1.0
-            cmx0, cmx1, cmx2 = coms[0].cmx_norm, coms[1].cmx_norm, coms[2].cmx_norm
+            fmt = "{:.2f}"
         else:
             zmin = 0
             zmax = 100
-            cmx0, cmx1, cmx2 = coms[0].cmx, coms[1].cmx, coms[2].cmx
-        cmx = [cmx0, cmx1, cmx2]
-        classes = coms[0].classes  # ["2GB", "8GB", "16GB", "64GB"]
+            fmt = "{:d}"
         x = classes
         y = x[::-1].copy()
         subplot_titles = self.versions  # ("v1", "v2", "v3")
@@ -444,10 +475,10 @@ class MegaScanner:
             font={"color": "#ffffff"},
         )
         annos = []
-        for i in cmx:
+        for i in list(range(len(cmx))):
             col = i + 1
-            z = cmx[i][::-1]
-            z_text = [[str(y) for y in x] for x in z]
+            z = cmx[i][::-1] 
+            z_text = [[fmt.format(y) for y in x] for x in z]
             cmx_fig = ff.create_annotated_heatmap(
                 z=z,
                 x=x,
@@ -491,10 +522,6 @@ class CalScanner(MegaScanner):
         self.mega = self.make_mega()
         self.kwargs = dict(index_col="ipst")
         self.decoder = {"instr": {0: "acs", 1: "cos", 2: "stis", 3: "wfc3"}}
-        self.scores = None  # self.compare_scores()
-        self.acc_fig = None  # self.acc_bars()
-        self.loss_fig = None  # self.loss_bars()
-        self.acc_loss_figs = None  # self.acc_loss_subplots()
 
     def scan_results(self):
         """Scans local disk for Computer object-generated results files and stores them as new Compute objects (according to the model type) in a nested dictionary.
@@ -552,10 +579,6 @@ class SvmScanner(MegaScanner):
         self.mega = self.make_mega()
         self.kwargs = dict(index_col="index")
         self.decoder = {"det": {0: "hrc", 1: "ir", 2: "sbc", 3: "uvis", 4: "wfc"}}
-        self.scores = None  # self.compare_scores()
-        self.acc_fig = None  # self.acc_bars()
-        self.loss_fig = None  # self.loss_bars()
-        self.acc_loss_figs = None  # self.acc_loss_subplots()
     
     def scan_results(self):
         """Scans local disk for Computer object-generated results files and stores them as new Compute objects (according to the model type) in a nested dictionary.

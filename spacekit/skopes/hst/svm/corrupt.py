@@ -253,7 +253,11 @@ def run_svm(visit, outputs):
             os.chdir(m)
             drz_file = glob.glob("*.out")
             if len(drz_file) > 0:
-                runsinglehap.perform(drz_file[0], log_level="info")
+                try:
+                    runsinglehap.perform(drz_file[0], log_level="info")
+                except Exception as e: # FileNotFoundError
+                    with open("error.txt", "w") as f:
+                        f.write(str(e))
             os.chdir(home)
             # cmd = ["runsinglehap", drz_file]
             # err = subprocess.call(cmd)
@@ -472,19 +476,19 @@ if __name__ == "__main__":
         help="1: run svm drizzle workflow; 0 (default): skip",
     )
     parser.add_argument(
-        "-i",
-        "--imagegen",
+        "-d",
+        "--draw",
         type=int,
         choices=[0, 1],
         default=0,
-        help="1: run imagegen workflow; 0 (default): skip",
+        help="1: run draw images workflow; 0 (default): skip",
     )
     # get user-defined args and/or set defaults
     args = parser.parse_args()
     prc, cfg = make_process_config(
         crpt=args.crpt,
         runsvm=args.runsvm,
-        imagegen=args.imagegen,
+        imagegen=args.draw,
         palette=args.palette,
         expos=args.expos,
         mode=args.mode,

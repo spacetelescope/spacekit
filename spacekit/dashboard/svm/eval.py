@@ -11,11 +11,11 @@ layout = html.Div(
         html.Div(
             children=[
                 html.Br(),
-                dcc.Link("Home", href="/layouts/home"),
+                dcc.Link("Home", href="/"),
                 html.Br(),
-                dcc.Link("Analysis", href="/layouts/eda"),
+                dcc.Link("Analysis", href="/eda"),
                 html.Br(),
-                dcc.Link("Prediction", href="/layouts/pred"),
+                dcc.Link("Prediction", href="/pred"),
                 html.Br(),
             ]
         ),
@@ -199,36 +199,36 @@ layout = html.Div(
 )
 
 
-# Page 1 EVAL callbacks
-# KERAS CALLBACK
-@app.callback(
-    [Output("keras-acc", "figure"), Output("keras-loss", "figure")],
-    Input("version-picker", "value"),
-)
-def update_keras(selected_version):
-    com = svm.mega[selected_version]["res"]["test"]
-    com.acc_fig = com.keras_acc_plot()
-    com.loss_fig = com.keras_loss_plot()
-    keras_figs = [com.acc_fig, com.loss_fig]
-    return keras_figs
+# # Page 1 EVAL callbacks
+# # KERAS CALLBACK
+# @app.callback(
+#     [Output("keras-acc", "figure"), Output("keras-loss", "figure")],
+#     Input("version-picker", "value"),
+# )
+# def update_keras(selected_version):
+#     com = svm.mega[selected_version]["res"]["test"]
+#     com.acc_fig = com.keras_acc_plot()
+#     com.loss_fig = com.keras_loss_plot()
+#     keras_figs = [com.acc_fig, com.loss_fig]
+#     return keras_figs
 
 
-# ROC AUC CALLBACK
-@app.callback(
-    [Output("roc-auc", "figure"), Output("precision-recall-fig", "figure")],
-    Input("rocauc-picker", "value"),
-)
-def update_roc_auc(selected_version):
-    com = svm.mega[selected_version]["res"]["test"]
-    com.roc_fig = com.make_roc_curve()
-    com.pr_fig = com.make_pr_curve()
-    return [com.roc_fig, com.pr_fig]
+# # ROC AUC CALLBACK
+# @app.callback(
+#     [Output("roc-auc", "figure"), Output("precision-recall-fig", "figure")],
+#     Input("rocauc-picker", "value"),
+# )
+# def update_roc_auc(selected_version):
+#     com = svm.mega[selected_version]["res"]["test"]
+#     com.roc_fig = com.make_roc_curve()
+#     com.pr_fig = com.make_pr_curve()
+#     return [com.roc_fig, com.pr_fig]
 
 
-@app.callback(Output("confusion-matrix", "figure"), Input("cmx-type", "value"))
-def update_cmx(cmx_type):
-    # com.cm_fig
-    v = list(svm.mega.keys())[-1]
-    com = svm.mega[v]["res"]["test"]
-    cmx_fig = com.make_cmx_figure(com, cmx_type)
-    return cmx_fig
+# @app.callback(Output("confusion-matrix", "figure"), Input("cmx-type", "value"))
+# def update_cmx(cmx_type):
+#     # com.cm_fig
+#     v = list(svm.mega.keys())[-1]
+#     com = svm.mega[v]["res"]["test"]
+#     cmx_fig = com.make_cmx_figure(com, cmx_type)
+#     return cmx_fig

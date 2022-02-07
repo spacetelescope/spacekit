@@ -423,6 +423,13 @@ class HstSvmPlots(DataPlots):
         except Exception as e:
             print(e)
         return self
+    
+    def make_svm_scatterplots(self):
+        self.scatter, target_figs = {}, {}, {}
+        for f in self.feature_list:
+            target_figs[f] = super().make_scatter_figs(f, "label")
+        self.scatter["label"] = target_figs
+        return self.scatter
 
     # TODO generalize and move up to main class
     def grouped_barplot(self, save=False):
@@ -446,7 +453,7 @@ class HstSvmPlots(DataPlots):
         return fig
 
 
-# TODO
+
 class HstCalPlots(DataPlots):
     def __init__(self, df, group="instr"):
         super().__init__(df)
@@ -511,11 +518,20 @@ class HstCalPlots(DataPlots):
             "instr",
             "n_files",
             "total_mb",
-            "mem_bin",
-            "memory",
-            "wallclock",
+            # "mem_bin",
+            # "memory",
+            # "wallclock",
         ]
         return self.feature_list
+    
+    def make_cal_scatterplots(self):
+        self.scatter, memory_figs, wallclock_figs = {}, {}, {}
+        for f in self.feature_list:
+            memory_figs[f] = self.make_scatter_figs(f, "memory")
+            wallclock_figs[f] = self.make_scatter_figs(f, "wallclock")
+        self.scatter["memory"] = memory_figs
+        self.scatter["wallclock"] = wallclock_figs
+        return self.scatter
 
     def make_continuous_figs(self, vars):
         continuous_figs = []

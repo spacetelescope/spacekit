@@ -1,21 +1,17 @@
 # TODO: eda for regression test data (MLP data)
-
 from dash import dcc
 from dash import html
-from dash.dependencies import Input, Output
-from spacekit.dashboard.svm.app import app
-from spacekit.dashboard.svm.config import hst
 
 layout = html.Div(
     children=[
         html.Div(
             children=[
                 html.Br(),
-                dcc.Link("Home", href="/layouts/home"),
+                dcc.Link("Home", href="/"),
                 html.Br(),
-                dcc.Link("Evaluation", href="/layouts/eval"),
+                dcc.Link("Evaluation", href="/eval"),
                 html.Br(),
-                dcc.Link("Prediction", href="/layouts/pred"),
+                dcc.Link("Prediction", href="/pred"),
                 html.Br(),
             ]
         ),
@@ -123,43 +119,43 @@ layout = html.Div(
 )
 
 
-# SCATTER CALLBACK
-@app.callback(
-    [
-        Output("hrc-scatter", "figure"),
-        Output("ir-scatter", "figure"),
-        Output("sbc-scatter", "figure"),
-        Output("uvis-scatter", "figure"),
-        Output("wfc-scatter", "figure"),
-    ],
-    [Input("selected-scatter", "value")],
-)
-def update_scatter(selected_scatter):
-    # hst.scatter = [rms_scatter, source_scatter]
-    scatter_figs = {"rms-ra-dec": hst.scatter[0], "point-segment": hst.scatter[1]}
-    return scatter_figs[selected_scatter]
+# # SCATTER CALLBACK
+# @app.callback(
+#     [
+#         Output("hrc-scatter", "figure"),
+#         Output("ir-scatter", "figure"),
+#         Output("sbc-scatter", "figure"),
+#         Output("uvis-scatter", "figure"),
+#         Output("wfc-scatter", "figure"),
+#     ],
+#     [Input("selected-scatter", "value")],
+# )
+# def update_scatter(selected_scatter):
+#     # hst.scatter = [rms_scatter, source_scatter]
+#     scatter_figs = {"rms-ra-dec": hst.scatter[0], "point-segment": hst.scatter[1]}
+#     return scatter_figs[selected_scatter]
 
 
-# BARPLOT CALLBACK
-@app.callback(
-    [
-        Output("hrc-bars", "figure"),
-        Output("ir-bars", "figure"),
-        Output("sbc-bars", "figure"),
-        Output("uvis-bars", "figure"),
-        Output("wfc-bars", "figure"),
-    ],
-    [Input("selected-barplot", "value")],
-)
-def update_barplot(selected_barplot):
-    bar_figs = {
-        "rms_ra": hst.bar[0],
-        "rms_dec": hst.bar[1],
-        "gaia": hst.bar[2],
-        "nmatches": hst.bar[3],
-        "numexp": hst.bar[4],
-    }
-    return bar_figs[selected_barplot]
+# # BARPLOT CALLBACK
+# @app.callback(
+#     [
+#         Output("hrc-bars", "figure"),
+#         Output("ir-bars", "figure"),
+#         Output("sbc-bars", "figure"),
+#         Output("uvis-bars", "figure"),
+#         Output("wfc-bars", "figure"),
+#     ],
+#     [Input("selected-barplot", "value")],
+# )
+# def update_barplot(selected_barplot):
+#     bar_figs = {
+#         "rms_ra": hst.bar[0],
+#         "rms_dec": hst.bar[1],
+#         "gaia": hst.bar[2],
+#         "nmatches": hst.bar[3],
+#         "numexp": hst.bar[4],
+#     }
+#     return bar_figs[selected_barplot]
 
 
 # hst.kde = [kde_rms, kde_targ, kde_norm]

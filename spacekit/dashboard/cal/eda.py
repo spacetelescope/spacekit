@@ -1,10 +1,5 @@
 from dash import dcc
 from dash import html
-from dash.dependencies import Input, Output
-
-# from spacekit.analyzer.explore import HstCalPlots
-# from spacekit.analyzer.scan import import_dataset
-from spacekit.dashboard.cal.app import app
 from spacekit.dashboard.cal.config import hst
 
 layout = html.Div(
@@ -68,8 +63,8 @@ layout = html.Div(
                                         dcc.Dropdown(
                                             id="yaxis-features",
                                             options=[
-                                                {"label": f, "value": f}
-                                                for f in hst.feature_list
+                                                {"label": t, "value": t}
+                                                for t in ["memory", "wallclock"]
                                             ],
                                             value="memory",
                                         )
@@ -198,30 +193,30 @@ layout = html.Div(
 #     hst.df_by_instr()
 #     return hst
 
+# moved to index page
+# # SCATTER CALLBACK
+# @app.callback(
+#     [
+#         Output("acs-scatter", "figure"),
+#         Output("wfc3-scatter", "figure"),
+#         Output("cos-scatter", "figure"),
+#         Output("stis-scatter", "figure"),
+#     ],
+#     [Input("xaxis-features", "value"), Input("yaxis-features", "value")],
+# )
+# def update_scatter(xaxis_name, yaxis_name):
+#     scatter_figs = hst.make_scatter_figs(xaxis_name, yaxis_name)
+#     return scatter_figs
 
-# SCATTER CALLBACK
-@app.callback(
-    [
-        Output("acs-scatter", "figure"),
-        Output("wfc3-scatter", "figure"),
-        Output("cos-scatter", "figure"),
-        Output("stis-scatter", "figure"),
-    ],
-    [Input("xaxis-features", "value"), Input("yaxis-features", "value")],
-)
-def update_scatter(xaxis_name, yaxis_name):
-    scatter_figs = hst.make_scatter_figs(xaxis_name, yaxis_name)
-    return scatter_figs
 
-
-@app.callback(
-    [Output("n_files", "figure"), Output("total_mb", "figure")],
-    Input("continuous-vars", "value"),
-)
-def update_continuous(raw_norm):
-    if raw_norm == "raw":
-        vars = ["n_files", "total_mb"]
-    elif raw_norm == "norm":
-        vars = ["x_files", "x_size"]
-    continuous_figs = hst.make_continuous_figs(vars)
-    return continuous_figs
+# @app.callback(
+#     [Output("n_files", "figure"), Output("total_mb", "figure")],
+#     Input("continuous-vars", "value"),
+# )
+# def update_continuous(raw_norm):
+#     if raw_norm == "raw":
+#         vars = ["n_files", "total_mb"]
+#     elif raw_norm == "norm":
+#         vars = ["x_files", "x_size"]
+#     continuous_figs = hst.make_continuous_figs(vars)
+#     return continuous_figs

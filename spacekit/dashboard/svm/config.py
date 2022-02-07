@@ -2,17 +2,17 @@ from spacekit.builder.architect import Builder
 from spacekit.analyzer.explore import HstSvmPlots
 from spacekit.analyzer.scan import SvmScanner
 
-
+# Find available datasets and load most recent (default)
 svm = SvmScanner(perimeter="data/20??-*-*-*", primary=-1)
 svm.scan_results()
-svm.load_dataframe()
-svm.compare_scores()
-# self.acc_fig = None  # self.acc_bars()
-# self.loss_fig = None  # self.loss_bars()
-# self.acc_loss_figs = None  # self.acc_loss_subplots()
+# Initialize EVAL
+svm.make_barplots()
+svm.make_clf_plots(target="label")
 
+# Initialize EDA
+svm.load_dataframe()
 hst = HstSvmPlots(svm.df, group="det", show=False, save_html=None)
-hst.draw_plots()
+hst.make_svm_scatterplots()
 
 selection = svm.datapaths[svm.primary]
 model_path = f"{selection}/models"

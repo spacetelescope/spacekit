@@ -1,6 +1,5 @@
 from dash import dcc
 from dash import html
-from dash.dependencies import Input, Output
 from spacekit.dashboard.cal.app import app
 from spacekit.dashboard.cal.config import cal
 
@@ -60,7 +59,7 @@ layout = html.Div(
                                         html.Div(
                                             [
                                                 dcc.Dropdown(
-                                                    id="version-picker",
+                                                    id="keras-picker",
                                                     options=[
                                                         {"label": str(v), "value": v}
                                                         for v in cal.versions
@@ -79,7 +78,7 @@ layout = html.Div(
                                 ),
                                 dcc.Graph(
                                     id="keras-acc",
-                                    #figure=cal.mega[cal.versions[-1]]["res"]["mem_bin"].keras_acc_plot(),
+                                    figure=cal.keras[cal.versions[-1]][0],
                                     style={
                                         "display": "inline-block",
                                         "float": "center",
@@ -88,7 +87,7 @@ layout = html.Div(
                                 ),
                                 dcc.Graph(
                                     id="keras-loss",
-                                    #figure=cal.mega[cal.versions[-1]]["res"]["mem_bin"].keras_loss_plot(),
+                                    figure=cal.keras[cal.versions[-1]][1],
                                     style={
                                         "display": "inline-block",
                                         "float": "center",
@@ -128,7 +127,7 @@ layout = html.Div(
                                 ),
                                 dcc.Graph(
                                     id="roc-auc",
-                                    #figure=
+                                    figure=cal.roc[cal.versions[-1]][0],
                                     style={
                                         "display": "inline-block",
                                         "float": "center",
@@ -137,6 +136,7 @@ layout = html.Div(
                                 ),
                                 dcc.Graph(
                                     id="precision-recall-fig",
+                                    figure=cal.roc[cal.versions[-1]][1],
                                     style={
                                         "display": "inline-block",
                                         "float": "center",
@@ -159,7 +159,7 @@ layout = html.Div(
                                                     "value": "normalized",
                                                 },
                                             ],
-                                            value="normalized",
+                                            value="counts",
                                         )
                                     ],
                                     style={
@@ -171,6 +171,7 @@ layout = html.Div(
                                 ),
                                 dcc.Graph(
                                     id="confusion-matrix",
+                                    figure=cal.triple_cmx(cal.cmx["counts"], "counts") 
                                 ),
                             ],
                             style={
@@ -203,40 +204,27 @@ layout = html.Div(
 )
 
 
-# Page 1 EVAL callbacks
-# KERAS CALLBACK
-@app.callback(
-    [Output("keras-acc", "figure"), Output("keras-loss", "figure")],
-    Input("version-picker", "value"),
-)
-def update_keras(selected_version):
-    return [
-        cal.mega[selected_version]["res"]["mem_bin"].keras_acc_plot(),
-        cal.mega[selected_version]["res"]["mem_bin"].keras_loss_plot()
-        ]
-    #com = cal.mega[selected_version]["res"]["mem_bin"]
-    # com.acc_fig = com.keras_acc_plot()
-    # com.loss_fig = com.keras_loss_plot()
-    # keras_figs = [com.acc_fig, com.loss_fig]
-    # return keras_figs
+# Moved to Index page
+# # Page 1 EVAL callbacks
+# # KERAS CALLBACK
+# @app.callback(
+#     [Output("keras-acc", "figure"), Output("keras-loss", "figure")],
+#     Input("keras-picker", "value"),
+# )
+# def update_keras(selected_version):
+#     return cal.keras[selected_version]
 
 
-# ROC AUC CALLBACK
-@app.callback(
-    [Output("roc-auc", "figure"), Output("precision-recall-fig", "figure")],
-    Input("rocauc-picker", "value"),
-)
-def update_roc_auc(selected_version):
-    com = cal.mega[selected_version]["res"]["mem_bin"]
-    com.roc_fig = com.make_roc_curve()
-    com.pr_fig = com.make_pr_curve()
-    return [com.roc_fig, com.pr_fig]
+# # ROC AUC CALLBACK
+# @app.callback(
+#     [Output("roc-auc", "figure"), Output("precision-recall-fig", "figure")],
+#     Input("rocauc-picker", "value"),
+# )
+# def update_roc_auc(selected_version):
+#     return cal.roc[selected_version]
 
 
-@app.callback(Output("confusion-matrix", "figure"), Input("cmx-type", "value"))
-def update_cmx(cmx_type):
-    # com.cm_fig
-    v = list(cal.mega.keys())[-1]
-    com = cal.mega[v]["res"]["mem_bin"]
-    cmx_fig = com.make_cmx_figure(com, cmx_type)
-    return cmx_fig
+# @app.callback(Output("confusion-matrix", "figure"), Input("cmx-type", "value"))
+# def update_cmx(cmx_type):
+#     v = list(cal.mega.keys())[-1]
+#     return cal.triple_cmx(cal.cmx["counts"], cmx_type, classes=["2GB", "8GB", "16GB", "64GB"])

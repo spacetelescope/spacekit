@@ -1,7 +1,6 @@
 # TODO: pick a random visit - show the three image frames, make prediction
 from dash import dcc
 from dash import html
-# from dash.dependencies import Input, Output, State
 
 layout = html.Div(
             children=[
@@ -11,19 +10,19 @@ layout = html.Div(
                         html.P("|", style={"display": "inline-block"}),
                         dcc.Link(
                             "Home",
-                            href="/layouts/home",
+                            href="/",
                             style={"padding": 5, "display": "inline-block"},
                         ),
                         html.P("|", style={"display": "inline-block"}),
                         dcc.Link(
                             "Evaluation",
-                            href="/layouts/eval",
+                            href="/eval",
                             style={"padding": 5, "display": "inline-block"},
                         ),
                         html.P("|", style={"display": "inline-block"}),
                         dcc.Link(
                             "Analysis",
-                            href="/layouts/eda",
+                            href="/eda",
                             style={"padding": 10, "display": "inline-block"},
                         ),
                         html.P("|", style={"display": "inline-block"}),
