@@ -1,9 +1,11 @@
 # TODO: eda for regression test data (MLP data)
 from dash import dcc
 from dash import html
+from config import hst
 
 layout = html.Div(
     children=[
+        html.H3("Exploratory Data Analysis"),
         html.Div(
             children=[
                 html.Br(),
@@ -15,21 +17,119 @@ layout = html.Div(
                 html.Br(),
             ]
         ),
+        # FEATURE BARPLOTS
+        html.Div(
+            children=[
+                html.H4("Mean Feature Value by Detector"),
+                html.Div(
+                    children=[
+                        dcc.Dropdown(
+                            id="selected-barplot",
+                            options=[
+                                {"label": f, "value": f}
+                                for f in [
+                                    "rms_ra",
+                                    "rms_dec",
+                                    "gaia",
+                                    "nmatches",
+                                    "numexp",
+                                ]
+                            ],
+                            value="rms_ra",
+                        )
+                    ],
+                    style={
+                        "color": "black",
+                        "width": "20%",
+                        "display": "inline-block",
+                        "padding": 5,
+                    },
+                ),
+                html.Div(
+                    children=[
+                        dcc.Graph(
+                            id="bar-group",
+                            style={"display": "inline-block", "float": "center"},
+                        ),
+                    ],
+                    style={"color": "white", "width": "100%"},
+                ),
+            ],
+            style={
+                "color": "white",
+                "border": "2px #333 solid",
+                "borderRadius": 5,
+                "margin": 25,
+                "padding": 10,
+            }
+        ),
+        # KDE
+        html.Div(
+            children=[
+                html.H4("Kernel Density Estimates"),
+                html.Div(
+                    children=[
+                        dcc.Dropdown(
+                            id="selected-kde",
+                            options=[
+                                {"label": f, "value": f}
+                                for f in [
+                                    "rms_ra",
+                                    "rms_dec",
+                                    "gaia",
+                                    "nmatches",
+                                    "numexp",
+                                ]
+                            ],
+                            value="rms_ra",
+                        )
+                    ],
+                    style={
+                        "color": "black",
+                        "width": "20%",
+                        "display": "inline-block",
+                        "padding": 5,
+                    },
+                ),
+                html.Div(
+                        children=[
+                            html.H4("Kernel Density Estimate by Target"),
+                            dcc.Graph(
+                                id="kde-targ",
+                                style={"display": "inline-block", "float": "center"},
+                            ),
+                            html.H4("Normalized KDE"),
+                            dcc.Graph(
+                                id="kde-norm",
+                                style={"display": "inline-block", "float": "center"},
+                            ),
+                            html.H4("KDE rms_ra vs rms_dec"),
+                            dcc.Graph(
+                                id="kde-rms",
+                                style={"display": "inline-block", "float": "center"}
+                            ),
+                        ]
+                )
+            ]
+        ),
+
         # FEATURE SCATTERPLOTS
         html.Div(
             children=[
+                html.H4(children=["Feature Scatterplots by Detector"]),
                 html.Div(
                     [
                         dcc.Dropdown(
                             id="selected-scatter",
                             options=[
                                 {"label": f, "value": f}
-                                for f in ["rms-ra-dec", "point-segment"]
+                                for f in ["rms_ra_dec", "point_segment"]
                             ],
-                            value="rms-ra-dec",
+                            value="rms_ra_dec",
                         )
                     ],
                     style={
+                        "color": "black",
                         "width": "20%",
                         "display": "inline-block",
                         "padding": 5,
@@ -54,111 +154,71 @@ layout = html.Div(
                             style={"display": "inline-block", "float": "center"},
                         ),
                         dcc.Graph(
-                            id="wfc3-scatter",
+                            id="wfc-scatter",
                             style={"display": "inline-block", "float": "center"},
                         ),
                     ],
                     style={"color": "white", "width": "100%"},
                 ),
-            ]
+            ],
+            style={
+                "color": "white",
+                "border": "2px #333 solid",
+                "borderRadius": 5,
+                "margin": 25,
+                "padding": 10,
+            }
         ),
-        # FEATURE BARPLOTS
-        html.Div(
-            children=[
-                html.Div(
-                    [
-                        dcc.Dropdown(
-                            id="selected-barplot",
-                            options=[
-                                {"label": f, "value": f}
-                                for f in [
-                                    "rms_ra",
-                                    "rms_dec",
-                                    "gaia",
-                                    "nmatches",
-                                    "numexp",
-                                ]
-                            ],
-                            value="rms-ra",
+        html.Div(children=[
+            html.Div(
+                    dcc.Graph(
+                        id="scatter-3d",
+                        figure=hst.scatter3d('point', 'segment', 'gaia', width=1000, height=1000),
+                        style={"display": "inline-block", "float": "center", "height":700},
                         )
-                    ],
-                    style={
-                        "width": "20%",
-                        "display": "inline-block",
-                        "padding": 5,
-                    },
-                ),
-                html.Div(
-                    children=[
-                        dcc.Graph(
-                            id="hrc-bars",
-                            style={"display": "inline-block", "float": "center"},
-                        ),
-                        dcc.Graph(
-                            id="ir-bars",
-                            style={"display": "inline-block", "float": "center"},
-                        ),
-                        dcc.Graph(
-                            id="sbc-bars",
-                            style={"display": "inline-block", "float": "center"},
-                        ),
-                        dcc.Graph(
-                            id="uvis-bars",
-                            style={"display": "inline-block", "float": "center"},
-                        ),
-                        dcc.Graph(
-                            id="wfc3-bars",
-                            style={"display": "inline-block", "float": "center"},
-                        ),
-                    ],
-                    style={"color": "white", "width": "100%"},
-                ),
-            ]
-        ),
-    ]
+            ),
+            html.Div(
+                children=[
+                # html.P("POINT:"),
+                # dcc.RangeSlider(
+                #     id='point-slider',
+                #     min=0, max=125000, step=1000,
+                #     marks={0: '0', 125000: '125k'},
+                #     value=[0, 125000]
+                # ),
+                # html.P("SEGMENT:"),
+                # dcc.RangeSlider(
+                #     id='segment-slider',
+                #     min=0, max=150000, step=1000,
+                #     marks={0: '0', 150000: '150k'},
+                #     value=[0, 150000]
+                # ),
+                # html.P("GAIA:"),
+                # dcc.RangeSlider(
+                #     id='gaia-slider',
+                #     min=0, max=9000, step=100,
+                #     marks={0: '0', 9000: '9000'},
+                #     value=[0, 9000]
+                # )
+                ]
+            )
+        ],
+        style={
+                "color": "white",
+                "height": 800,
+                "border": "2px #333 solid",
+                "borderRadius": 5,
+                "margin": 25,
+                "padding": 10,
+        }
+    )
+    ],
+    style={
+        "backgroundColor": "#1b1f34",
+        "color": "white",
+        "textAlign": "center",
+        "width": "100%",
+        "display": "inline-block",
+        "float": "center",
+    },
 )
-
-
-# # SCATTER CALLBACK
-# @app.callback(
-#     [
-#         Output("hrc-scatter", "figure"),
-#         Output("ir-scatter", "figure"),
-#         Output("sbc-scatter", "figure"),
-#         Output("uvis-scatter", "figure"),
-#         Output("wfc-scatter", "figure"),
-#     ],
-#     [Input("selected-scatter", "value")],
-# )
-# def update_scatter(selected_scatter):
-#     # hst.scatter = [rms_scatter, source_scatter]
-#     scatter_figs = {"rms-ra-dec": hst.scatter[0], "point-segment": hst.scatter[1]}
-#     return scatter_figs[selected_scatter]
-
-
-# # BARPLOT CALLBACK
-# @app.callback(
-#     [
-#         Output("hrc-bars", "figure"),
-#         Output("ir-bars", "figure"),
-#         Output("sbc-bars", "figure"),
-#         Output("uvis-bars", "figure"),
-#         Output("wfc-bars", "figure"),
-#     ],
-#     [Input("selected-barplot", "value")],
-# )
-# def update_barplot(selected_barplot):
-#     bar_figs = {
-#         "rms_ra": hst.bar[0],
-#         "rms_dec": hst.bar[1],
-#         "gaia": hst.bar[2],
-#         "nmatches": hst.bar[3],
-#         "numexp": hst.bar[4],
-#     }
-#     return bar_figs[selected_barplot]
-
-
-# hst.kde = [kde_rms, kde_targ, kde_norm]
-# kde_rms = ["ra_dec"]
-# kde_targ = ["rms_ra", "rms_dec", "gaia", "nmatches", "numexp"]
-# kde_norm = ["rms_ra", "rms_dec", "gaia", "nmatches", "numexp"]

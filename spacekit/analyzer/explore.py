@@ -1,4 +1,5 @@
 # STANDARD libraries
+from ctypes.wintypes import tagRECT
 import os
 import pandas as pd
 import numpy as np
@@ -234,7 +235,6 @@ class DataPlots:
         width=700,
         height=500,
         cmap=["dodgerblue", "fuchsia"],
-        save_html=None,
     ):
 
         traces = []
@@ -261,8 +261,8 @@ class DataPlots:
             height=height,
         )
         fig = go.Figure(data=traces, layout=layout)
-        if save_html:
-            pyo.plot(fig, filename=f"{save_html}/{feature}-barplot.html")
+        if self.save_html:
+            pyo.plot(fig, filename=f"{self.save_html}/{feature}-barplot.html")
         if self.show:
             fig.show()
         else:
@@ -323,6 +323,45 @@ class DataPlots:
             fig.show()
         return fig
 
+    def scatter3d(self, x, y, z, mask=None, width=700, height=700):
+        if mask is None:
+            df = self.df
+        else:
+            df = mask
+        traces = []
+        for targ, group in df.groupby(self.target):
+            trace = go.Scatter3d(
+                x=group[x],
+                y=group[y],
+                z=group[z],
+                name=targ,
+                mode='markers',
+                marker=dict(
+                    size=10,
+                    color=targ,
+                    colorscale='Plasma',
+                    opacity=0.8
+                )
+            )
+            traces.append(trace)
+        layout = go.Layout(
+            title=f"3D Scatterplot: {x} - {y} - {z}",
+            paper_bgcolor="#242a44",
+            plot_bgcolor="#242a44",
+            font={"color": "#ffffff"},
+            # width=width,
+            # height=height,
+            legend_title_text=self.target,
+        )
+        fig = go.Figure(data=traces, layout=layout)
+        fig.update_layout(scene=dict(xaxis_title=x,yaxis_title=y, zaxis_title=z))
+        if self.save_html:
+            pyo.plot(fig, filename=f"{self.save_html}/scatter3d.html")
+        if self.show:
+            fig.show()
+        else:
+            return fig
+
 
 class HstSvmPlots(DataPlots):
     """Instantiates an HstSvmPlots class
@@ -360,13 +399,15 @@ class HstSvmPlots(DataPlots):
         # return self
 
     def alignment_bars(self):
-        bars = []
+        self.bar = {}
+        # bars = []
         X = sorted(list(self.gkeys.keys()))
         for f in self.continuous:
             means, errs = self.feature_stats_by_target(f)
-            bar = self.bar_plots(X, means, f, y_err=errs, save_html=self.save_html)
-            bars.append(bar)
-        return bars
+            bar = self.bar_plots(X, means, f, y_err=errs)
+            # bars.append(bar)
+            self.bar[f] = bar
+        return self.bar
 
     def alignment_scatters(self):
         rms_scatter = self.make_scatter_figs(
@@ -375,16 +416,18 @@ class HstSvmPlots(DataPlots):
         source_scatter = self.make_scatter_figs(
             "point", "segment", categories=self.categories
         )
-        scatters = [rms_scatter, source_scatter]
-        return scatters
+        self.scatter = {'rms_ra_dec': rms_scatter, 'point_segment': source_scatter}
+        return self.scatter
 
     def alignment_kde(self):
         cols = self.continuous
-        kde_rms = self.kde_plots(["rms_ra", "rms_dec"])
-        kde_targ = [self.kde_plots([c], targets=True) for c in cols]
-        kde_norm = [self.kde_plots([c], norm=True, targets=True) for c in cols]
-        kdes = [kde_rms, kde_targ, kde_norm]
-        return kdes
+        self.kde = dict(rms=self.kde_plots(["rms_ra", "rms_dec"]), targ={}, norm={})
+        targ = [self.kde_plots([c], targets=True) for c in cols]
+        norm = [self.kde_plots([c], norm=True, targets=True) for c in cols]
+        for i, c in enumerate(cols):
+            self.kde['targ'][c] = targ[i]
+            self.kde['norm'][c] = norm[i]
+        return self.kde
 
     def group_keys(self):
         if self.group in ["det", "detector"]:

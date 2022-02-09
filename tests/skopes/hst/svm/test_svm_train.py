@@ -15,13 +15,13 @@ params = dict(
 
 @mark.svm
 @mark.train
-#@mark.parametrize("norm", [(0), (1)])
-def test_svm_training(svm_labeled_dataset, svm_train_npz):
+@mark.parametrize("norm", [(0), (1)])
+def test_svm_training(svm_labeled_dataset, svm_train_npz, norm):
     ens, com, _ = run_training(
         svm_labeled_dataset, 
         svm_train_npz,
         img_size=128,
-        norm=0,
+        norm=norm,
         v=0.85,
         model_name="ensembleSVM",
         params=params,

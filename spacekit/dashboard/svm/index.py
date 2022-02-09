@@ -106,39 +106,60 @@ def update_cmx(cmx_type):
     [Input("selected-scatter", "value")],
 )
 def update_scatter(selected_scatter):
-    # hst.scatter = [rms_scatter, source_scatter]
-    scatter_figs = {"rms-ra-dec": hst.scatter[0], "point-segment": hst.scatter[1]}
-    return scatter_figs[selected_scatter]
+    #{'rms_ra_dec': rms_scatter, 'point_segment': source_scatter}
+    return hst.scatter[selected_scatter]
 
 
 # BARPLOT CALLBACK
 @app.callback(
-    [
-        Output("hrc-bars", "figure"),
-        Output("ir-bars", "figure"),
-        Output("sbc-bars", "figure"),
-        Output("uvis-bars", "figure"),
-        Output("wfc-bars", "figure"),
-    ],
+    Output("bar-group", "figure"),
     [Input("selected-barplot", "value")],
 )
 def update_barplot(selected_barplot):
-    bar_figs = {
-        "rms_ra": hst.bar[0],
-        "rms_dec": hst.bar[1],
-        "gaia": hst.bar[2],
-        "nmatches": hst.bar[3],
-        "numexp": hst.bar[4],
-    }
-    return bar_figs[selected_barplot]
+    return hst.bar[selected_barplot]
 
 
-# hst.kde = [kde_rms, kde_targ, kde_norm]
-# kde_rms = ["ra_dec"]
-# kde_targ = ["rms_ra", "rms_dec", "gaia", "nmatches", "numexp"]
-# kde_norm = ["rms_ra", "rms_dec", "gaia", "nmatches", "numexp"]
+# KDE CALLBACK
+@app.callback(
+    [Output("kde-targ", "figure"),
+    Output("kde-norm", "figure"),
+    Output("kde-rms", "figure")],
+    [Input("selected-kde", "value")]
+)
+def update_kde(selected_kde):
+    return [
+        hst.kde['targ'][selected_kde],
+        hst.kde['norm'][selected_kde],
+        hst.kde['rms']
+    ]
 
-
+# 3D Scatter
+# @app.callback(
+#     Output("scatter-3d", "figure"),
+#     Input("point-slider", "value")
+# )
+# def update_3d_scatter_point(p_range):
+#     p_low, p_high = p_range
+#     p_mask = (hst.df.point > p_low) & (hst.df.point < p_high)
+#     masked = hst.df[p_mask]
+#     fig = hst.scatter3d('point', 'segment', 'gaia', mask=masked, width=1000, height=1000)
+#     return fig
+# @app.callback(
+#     Output("scatter-3d", "figure"),
+#     [Input("point-slider", "value"),
+#     Input("segment-slider", "value"),
+#     Input("gaia-slider", "value")]
+# )
+# def update_3d_scatter_point(p_range, s_range, g_range):
+#     p_low, p_high = p_range
+#     p_mask = (hst.df.point > p_low) & (hst.df.point < p_high)
+#     s_low, s_high = s_range
+#     s_mask = (hst.df.segment > s_low) & (hst.df.segment < s_high)
+#     g_low, g_high = g_range
+#     g_mask = (hst.df.gaia > g_low) & (hst.df.gaia < g_high)
+#     masked = hst.df[p_mask & s_mask & g_mask]
+#     fig = hst.scatter3d('point', 'segment', 'gaia', mask=masked, width=1000, height=1000)
+#     return fig
 
 
 # # Box Plots

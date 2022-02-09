@@ -1,5 +1,6 @@
 import os
 from pytest import fixture
+
 # try:
 #     from pytest_astropy_header.display import (PYTEST_HEADER_MODULES,
 #                                                TESTED_VERSIONS)
@@ -65,3 +66,55 @@ def svm_train_png():
 def svm_train_npz():
     img_path = "tests/data/svm/train/img_data.npz"
     return img_path
+
+@fixture(params=["single_reg.csv"])
+def draw_mosaic_fname(request):
+    fname = os.path.join("tests/data/svm/prep", request.param)
+    return fname
+
+@fixture(params=["ibl738"])
+def draw_mosaic_visit(request):
+    visit = os.path.join("tests/data/svm/prep/singlevisits", request.param)
+
+@fixture(params=["*", "ibl*", ""])
+def draw_mosaic_pattern(request):
+    return request.param
+
+@fixture(scope='function')
+def raw_csv_file():
+    return "tests/data/svm/prep/single_scrub.csv"
+
+@fixture(scope='function')
+def h5_data():
+    return "tests/data/svm/prep/single_reg.h5"
+
+@fixture(scope='function')
+def scrubbed_cols_file():
+    return "tests/data/svm/prep/scrubbed_cols.csv"
+
+@fixture(scope='function')
+def scraped_fits_file():
+    return "tests/data/svm/prep/scraped_fits.csv"
+
+
+
+# @fixture(scope='class', params=["svm", "cal"])
+# def scanner(request):
+#     if request.param == "svm":
+#         scanner = SvmScanner(perimeter="data/20??-*-*-*", primary=-1)
+#     elif request.param == "cal":
+#         scanner = CalScanner(perimeter="data/20??-*-*-*", primary=-1)
+#     return scanner
+
+# @fixture(scope='class', params=["svm", "cal"])
+# def scanner(request):
+#     if request.param == "svm":
+#         scanner = SvmScanner(perimeter="data/20??-*-*-*", primary=-1)
+#     elif request.param == "cal":
+#         scanner = CalScanner(perimeter="data/20??-*-*-*", primary=-1)
+#     return scanner
+
+
+# @fixture(scope='class', params=["svm", "cal"])
+# def exp_scan(request):
+#     return EXPECTED[request.param]

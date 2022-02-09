@@ -12,7 +12,8 @@ svm.make_clf_plots(target="test")
 # Initialize EDA
 svm.load_dataframe()
 hst = HstSvmPlots(svm.df, group="det", show=False, save_html=None)
-hst.make_svm_scatterplots()
+hst.draw_plots()
+# hst.make_svm_scatterplots()
 
 selection = svm.datapaths[svm.primary]
 model_path = f"{selection}/models"

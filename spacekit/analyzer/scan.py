@@ -218,12 +218,11 @@ class MegaScanner:
                 self.mega[v]["res"][target].roc_fig,
                 self.mega[v]["res"][target].pr_fig
             ]
-        #set_printoptions(precision=2)
+        # cmx for all versions displayed at once, unlike the two attrs above
         self.cmx = {
             "normalized": [self.mega[v]["res"][target].cmx_norm for v in self.versions],
             "counts": [self.mega[v]["res"][target].cmx for v in self.versions],
         }
-        return self
 
     def make_barplots(self, metric="acc_loss"):
         self.compare_scores(metric=metric)

@@ -1,4 +1,5 @@
 import os
+import glob
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
@@ -14,8 +15,6 @@ class Scrubber:
     """
     def __init__(self, data=None):
         self.df = self.cache_data(cache=data)
-        #self.extracted = self.extract_matching_columns()
-        #self.cols = self.col_splitter()
         
     def cache_data(self, cache=None):
         return cache.copy() if cache is not None else cache
@@ -50,13 +49,12 @@ class Scrubber:
 
 class SvmScrubber(Scrubber):
     """Class for invocating standard preprocessing steps of Single Visit Mosaic regression test data. This class quietly relies on other classes in the module to instantiate other scrubbing objects, although they are distinct and non-hierarchical (no inheritance between them).
-    #TODO: check if ``df`` is string (csv filename): load and scrub input_path/results.csv file instead (when no JSON files)
     """
 
     def __init__(
         self,
-        df,
         input_path,
+        data=None,
         output_path=None,
         output_file="svm_data",
         dropnans=True,
@@ -64,9 +62,8 @@ class SvmScrubber(Scrubber):
         make_pos_list=True,
         crpt=0,
         make_subsamples=False,
-        cache=True,
     ):
-        super().__init__(data=df)
+        super().__init__(data=data)
         self.input_path = input_path
         self.output_path = output_path
         self.output_file = output_file
@@ -78,7 +75,6 @@ class SvmScrubber(Scrubber):
         self.data_path = None
         self.set_new_cols()
         self.set_prefix_cols()
-        #self.scrub_columns()
 
     def preprocess_data(self):
         """Main calling function to run each preprocessing step for SVM regression data."""
@@ -101,11 +97,9 @@ class SvmScrubber(Scrubber):
     
     def scrub(self):
         if self.df is None:
-            return
-        elif type(self.df) == pd.DataFrame:
-            self.df = self.scrub_qa_data()
-        elif type(self.df) == str:
             self.df = self.scrub_qa_summary()
+        else:
+            self.df = self.scrub_qa_data()
         if self.save_raw is True:
             self.save_csv_file(pfx="raw_")
         # STAGE 3 final encoding
@@ -124,14 +118,17 @@ class SvmScrubber(Scrubber):
         self.df = MastScraper(self.df).scrape_mast()
         return self.df
 
-    def scrub_qa_summary(self, idx=0):
+    def scrub_qa_summary(self, fname="single_visit_mosaics*.csv", idx=0):
         """Alternative if no .json files available (QA step not run during processing)
         """
         #fname = 'single_visit_mosaics_2021-10-06.csv'
-        fname = self.df # os.path.join(self.input_path, self.df)
-        data = pd.read_csv(fname, index_col=idx)
-        index = {'index': {}, 'detector':{}}
+        fpath = glob.glob(os.path.join(self.input_path, fname))
+        if len(fpath) == 0:
+            return
+        data = pd.read_csv(fpath[0], index_col=idx)
+        index = {}
         for i, row in data.iterrows():
+            index[i] = dict(index=None, detector=None)
             prop = row['proposal']
             visit = row['visit']
             num = visit[-2:]
@@ -152,12 +149,14 @@ class SvmScrubber(Scrubber):
         return df
     
     def scrub_columns(self):
-        """Main calling function"""
+        """Initial dataframe scrubbing to extract and rename columns, drop NaNs, and set the index."""
         split_cols = super().col_splitter()
         self.df = super().rename_cols(cols=split_cols)
         self.df = super().extract_matching_columns(self.new_cols)
         if self.dropnans:
+            print("Searching for NaNs...")
             print(self.df.isna().sum())
+            print("Dropping NaNs")
             self.df.dropna(axis=0, inplace=True)
         index_data = self.split_index()
         self.df = index_data.join(self.df, how="left")

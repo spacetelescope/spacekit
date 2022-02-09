@@ -9,7 +9,7 @@ import sys
 import json
 from stsci.tools import logutil
 from zipfile import ZipFile
-from astropy.io import fits
+from astropy.io import fits, ascii
 from astroquery.mast import Observations
 from progressbar import ProgressBar
 

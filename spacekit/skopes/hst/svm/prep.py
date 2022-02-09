@@ -76,7 +76,7 @@ def run_preprocessing(
         jsc = JsonScraper(h5_file=h5).load_h5_file()
     # 2: Scrape Fits Files and SCRUB DATAFRAME
     scrub = SvmScrubber(
-        jsc.data, input_path, output_path=output_path, output_file=fname, crpt=crpt
+        input_path, data=jsc.data, output_path=output_path, output_file=fname, crpt=crpt
     )
     scrub.preprocess_data()
     # 3:  DRAW IMAGES
