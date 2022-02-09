@@ -54,11 +54,10 @@ app.validation_layout = html.Div(
 )
 
 
-
 @app.callback(Output("page-content", "children"), Input("url", "pathname"))
 def display_page(pathname):
     if pathname == "/":
-        return index_layout # home.layout
+        return index_layout  # home.layout
     elif pathname == "/eval":
         return eval.layout
     elif pathname == "/eda":
@@ -67,6 +66,7 @@ def display_page(pathname):
         return pred.layout
     else:
         return "Woops! 404 :("
+
 
 # Page 1 EVAL callbacks
 # KERAS CALLBACK
@@ -93,6 +93,7 @@ def update_cmx(cmx_type):
     v = list(svm.mega.keys())[-1]
     return svm.triple_cmx(svm.cmx[cmx_type], cmx_type)
 
+
 # TODO
 # SCATTER CALLBACK
 @app.callback(
@@ -106,7 +107,7 @@ def update_cmx(cmx_type):
     [Input("selected-scatter", "value")],
 )
 def update_scatter(selected_scatter):
-    #{'rms_ra_dec': rms_scatter, 'point_segment': source_scatter}
+    # {'rms_ra_dec': rms_scatter, 'point_segment': source_scatter}
     return hst.scatter[selected_scatter]
 
 
@@ -121,17 +122,20 @@ def update_barplot(selected_barplot):
 
 # KDE CALLBACK
 @app.callback(
-    [Output("kde-targ", "figure"),
-    Output("kde-norm", "figure"),
-    Output("kde-rms", "figure")],
-    [Input("selected-kde", "value")]
+    [
+        Output("kde-targ", "figure"),
+        Output("kde-norm", "figure"),
+        Output("kde-rms", "figure"),
+    ],
+    [Input("selected-kde", "value")],
 )
 def update_kde(selected_kde):
     return [
-        hst.kde['targ'][selected_kde],
-        hst.kde['norm'][selected_kde],
-        hst.kde['rms']
+        hst.kde["targ"][selected_kde],
+        hst.kde["norm"][selected_kde],
+        hst.kde["rms"],
     ]
+
 
 # 3D Scatter
 # @app.callback(
@@ -178,4 +182,4 @@ def update_kde(selected_kde):
 
 if __name__ == "__main__":
     app.run_server(host="0.0.0.0", port=8050, debug=True, dev_tools_prune_errors=False)
-    #app.run_server(debug=True)
+    # app.run_server(debug=True)

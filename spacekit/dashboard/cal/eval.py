@@ -171,7 +171,7 @@ layout = html.Div(
                                 ),
                                 dcc.Graph(
                                     id="confusion-matrix",
-                                    figure=cal.triple_cmx(cal.cmx["counts"], "counts") 
+                                    figure=cal.triple_cmx(cal.cmx["counts"], "counts"),
                                 ),
                             ],
                             style={

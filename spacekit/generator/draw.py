@@ -279,7 +279,7 @@ class DrawMosaics:
         if self.crpt:
             sfx = "_".join(dataset.split("_")[1:])
             name = f"{name}_{sfx}"
-        if fgroup: # rel filter images share same parent dir
+        if fgroup:  # rel filter images share same parent dir
             img_out = fgroup
         else:
             img_out = f"{self.output_path}/{name}"

@@ -29,15 +29,17 @@ import sys
 import json
 from spacekit.datasets.meta import spacekit_collections
 from spacekit.extractor.scrape import WebScraper, S3Scraper, FileScraper, home_data_base
-#from spacekit.datasets import scrape_archives, import_collection
+
+# from spacekit.datasets import scrape_archives, import_collection
 
 DATA = "spacekit.datasets.data"
+
 
 def download(scrape="file:data", datasets=None, dest="."):
     src, archive = scrape.split(":")
     if src == "git":
         print("Scraping Github Archive")
-        cc = spacekit_collections[archive] # "calcloud", "svm"
+        cc = spacekit_collections[archive]  # "calcloud", "svm"
         scraper = WebScraper(cc["uri"], cc["data"], cache_dir=dest)
     elif src == "s3":
         print("Scraping S3")
@@ -66,7 +68,11 @@ def download(scrape="file:data", datasets=None, dest="."):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--scrape", default="git:calcloud")
-    parser.add_argument("-d", "--datasets", default="2021-11-04-1636048291,2021-10-28-1635457222,2021-08-22-1629663047")
+    parser.add_argument(
+        "-d",
+        "--datasets",
+        default="2021-11-04-1636048291,2021-10-28-1635457222,2021-08-22-1629663047",
+    )
     parser.add_argument("-o", "--out", default=None)
     args = parser.parse_args()
     fpaths = download(scrape=args.scrape, datasets=args.datasets, dest=args.out)

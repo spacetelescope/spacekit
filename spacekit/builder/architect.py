@@ -341,7 +341,9 @@ class Builder:
         """
         model_name = str(self.model.name_scope().rstrip("/").upper())
         print("FITTING MODEL...")
-        validation_data = (self.X_test, self.y_test) if self.X_test is not None else None
+        validation_data = (
+            (self.X_test, self.y_test) if self.X_test is not None else None
+        )
 
         if self.early_stopping is not None:
             self.callbacks = self.set_callbacks()
@@ -382,7 +384,9 @@ class Builder:
             self.fit_params(**params)
         model_name = str(self.model.name_scope().rstrip("/").upper())
         print("FITTING MODEL...")
-        validation_data = (self.X_test, self.y_test) if self.X_test is not None else None
+        validation_data = (
+            (self.X_test, self.y_test) if self.X_test is not None else None
+        )
 
         if self.early_stopping is not None:
             self.callbacks = self.set_callbacks()

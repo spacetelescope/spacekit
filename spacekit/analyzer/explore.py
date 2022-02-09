@@ -335,13 +335,8 @@ class DataPlots:
                 y=group[y],
                 z=group[z],
                 name=targ,
-                mode='markers',
-                marker=dict(
-                    size=10,
-                    color=targ,
-                    colorscale='Plasma',
-                    opacity=0.8
-                )
+                mode="markers",
+                marker=dict(size=10, color=targ, colorscale="Plasma", opacity=0.8),
             )
             traces.append(trace)
         layout = go.Layout(
@@ -354,7 +349,7 @@ class DataPlots:
             legend_title_text=self.target,
         )
         fig = go.Figure(data=traces, layout=layout)
-        fig.update_layout(scene=dict(xaxis_title=x,yaxis_title=y, zaxis_title=z))
+        fig.update_layout(scene=dict(xaxis_title=x, yaxis_title=y, zaxis_title=z))
         if self.save_html:
             pyo.plot(fig, filename=f"{self.save_html}/scatter3d.html")
         if self.show:
@@ -416,7 +411,7 @@ class HstSvmPlots(DataPlots):
         source_scatter = self.make_scatter_figs(
             "point", "segment", categories=self.categories
         )
-        self.scatter = {'rms_ra_dec': rms_scatter, 'point_segment': source_scatter}
+        self.scatter = {"rms_ra_dec": rms_scatter, "point_segment": source_scatter}
         return self.scatter
 
     def alignment_kde(self):
@@ -425,8 +420,8 @@ class HstSvmPlots(DataPlots):
         targ = [self.kde_plots([c], targets=True) for c in cols]
         norm = [self.kde_plots([c], norm=True, targets=True) for c in cols]
         for i, c in enumerate(cols):
-            self.kde['targ'][c] = targ[i]
-            self.kde['norm'][c] = norm[i]
+            self.kde["targ"][c] = targ[i]
+            self.kde["norm"][c] = norm[i]
         return self.kde
 
     def group_keys(self):
@@ -468,7 +463,7 @@ class HstSvmPlots(DataPlots):
         except Exception as e:
             print(e)
         return self
-    
+
     def make_svm_scatterplots(self):
         self.scatter, target_figs = {}, {}
         for f in self.feature_list:
@@ -496,7 +491,6 @@ class HstSvmPlots(DataPlots):
         if save is True:
             pyo.plot(fig, filename="bar2.html")
         return fig
-
 
 
 class HstCalPlots(DataPlots):
@@ -568,7 +562,7 @@ class HstCalPlots(DataPlots):
             # "wallclock",
         ]
         return self.feature_list
-    
+
     def make_cal_scatterplots(self):
         self.scatter, memory_figs, wallclock_figs = {}, {}, {}
         for f in self.feature_list:

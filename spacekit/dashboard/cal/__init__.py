@@ -7,5 +7,5 @@ __all__ = [
     # "home",
     "eda",
     "eval",
-    "pred"
+    "pred",
 ]

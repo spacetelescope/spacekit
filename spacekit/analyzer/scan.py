@@ -87,9 +87,9 @@ class MegaScanner:
         self.target = None
         self.labels = None
         self.classes = None
-        self.mega = None # self.make_mega()
-        self.kwargs=None
-        self.decoder=None
+        self.mega = None  # self.make_mega()
+        self.kwargs = None
+        self.decoder = None
         self.df = None  # self.load_dataframe()
         self.scores = None  # self.compare_scores()
         self.acc_fig = None  # self.accuracy_bars()
@@ -151,8 +151,10 @@ class MegaScanner:
         if len(versions) > 0:
             self.versions = versions
         return self.mega
-    
-    def load_compute_object(self, Com=ComputeMulti, alg="clf", res_path="results", validation=False):
+
+    def load_compute_object(
+        self, Com=ComputeMulti, alg="clf", res_path="results", validation=False
+    ):
         """Loads a single compute object of any type with results from one iteration.
 
         Parameters
@@ -174,11 +176,16 @@ class MegaScanner:
         if alg in ["reg", "linreg"]:
             com = Com(algorithm=alg, res_path=res_path, validation=validation)
         else:
-            com = Com(algorithm=alg, classes=self.labels, res_path=res_path, validation=validation)
+            com = Com(
+                algorithm=alg,
+                classes=self.labels,
+                res_path=res_path,
+                validation=validation,
+            )
         out = com.upload()
         com.load_results(out)
         if alg == "clf":
-            try: # initialize Compute figure attrs
+            try:  # initialize Compute figure attrs
                 com.draw_plots()
             except Exception as e:
                 print(e)
@@ -204,9 +211,11 @@ class MegaScanner:
         return self.mega
 
     def load_dataframe(self):
-        self.df = import_dataset(filename=self.data, kwargs=self.kwargs, decoder_key=self.decoder)
+        self.df = import_dataset(
+            filename=self.data, kwargs=self.kwargs, decoder_key=self.decoder
+        )
         return self.df
-    
+
     def make_clf_plots(self, target="mem_bin"):
         for v in self.versions:
             self.mega[v]["res"][target].draw_plots()
@@ -216,7 +225,7 @@ class MegaScanner:
             ]
             self.roc[v] = [
                 self.mega[v]["res"][target].roc_fig,
-                self.mega[v]["res"][target].pr_fig
+                self.mega[v]["res"][target].pr_fig,
             ]
         # cmx for all versions displayed at once, unlike the two attrs above
         self.cmx = {
@@ -256,7 +265,7 @@ class MegaScanner:
         self.scores = pd.concat([d for d in score_dfs], axis=1)
         return self.scores
 
-    #TODO: this can be combined with loss_bars, use kwargs to distinguish between metrics
+    # TODO: this can be combined with loss_bars, use kwargs to distinguish between metrics
     def accuracy_bars(self):
         """Barplots of training and test set accuracy scores loaded from a Pandas dataframe
 
@@ -367,7 +376,9 @@ class MegaScanner:
         )
         return self.acc_loss_fig
 
-    def single_cmx(self, cmx, subtitles=("v0"), zmin=0.0, zmax=1.0, cmx_type="normalized"):
+    def single_cmx(
+        self, cmx, subtitles=("v0"), zmin=0.0, zmax=1.0, cmx_type="normalized"
+    ):
         """Confusion matrix plot for a single model training iteration
 
         Parameters
@@ -478,7 +489,7 @@ class MegaScanner:
         annos = []
         for i in list(range(len(cmx))):
             col = i + 1
-            z = cmx[i][::-1] 
+            z = cmx[i][::-1]
             z_text = [[fmt.format(y) for y in x] for x in z]
             cmx_fig = ff.create_annotated_heatmap(
                 z=z,
@@ -515,6 +526,7 @@ class CalScanner(MegaScanner):
     MegaScanner : object
         Parent class object
     """
+
     def __init__(self, perimeter="data/20??-*-*-*", primary=-1):
         super().__init__(perimeter=perimeter, primary=primary)
         self.labels = ["2g", "8g", "16g", "64g"]
@@ -560,9 +572,15 @@ class CalScanner(MegaScanner):
         tuple
             tuple of mem_bin, memory, wallclock compute objects for one iteration
         """
-        B = super().load_compute_object(Com=ComputeMulti, alg="clf", res_path=f"{dpath}/results/mem_bin")
-        M = super().load_compute_object(Com=ComputeRegressor, alg="linreg", res_path=f"{dpath}/results/memory")
-        W = super().load_compute_object(Com=ComputeRegressor, alg="linreg", res_path=f"{dpath}/results/wallclock")
+        B = super().load_compute_object(
+            Com=ComputeMulti, alg="clf", res_path=f"{dpath}/results/mem_bin"
+        )
+        M = super().load_compute_object(
+            Com=ComputeRegressor, alg="linreg", res_path=f"{dpath}/results/memory"
+        )
+        W = super().load_compute_object(
+            Com=ComputeRegressor, alg="linreg", res_path=f"{dpath}/results/wallclock"
+        )
         return (B, M, W)
 
 
@@ -574,6 +592,7 @@ class SvmScanner(MegaScanner):
     MegaScanner : parent class object
         MegaScanner object
     """
+
     def __init__(self, perimeter="data/20??-*-*-*", primary=-1):
         super().__init__(perimeter=perimeter, primary=primary)
         self.labels = ["aligned", "misaligned"]
@@ -584,7 +603,7 @@ class SvmScanner(MegaScanner):
         self.mega = self.make_mega()
         self.kwargs = dict(index_col="index")
         self.decoder = {"det": {0: "hrc", 1: "ir", 2: "sbc", 3: "uvis", 4: "wfc"}}
-    
+
     def scan_results(self):
         """Scans local disk for Computer object-generated results files and stores them as new Compute objects (according to the model type) in a nested dictionary.
 
@@ -619,8 +638,15 @@ class SvmScanner(MegaScanner):
         tuple
             tuple of test and validation compute objects for one iteration
         """
-        T = super().load_compute_object(Com=ComputeBinary, alg="binary", res_path=f"{dpath}/results/test")
-        V = super().load_compute_object(Com=ComputeBinary, alg="binary", res_path=f"{dpath}/results/val", validation=True)
+        T = super().load_compute_object(
+            Com=ComputeBinary, alg="binary", res_path=f"{dpath}/results/test"
+        )
+        V = super().load_compute_object(
+            Com=ComputeBinary,
+            alg="binary",
+            res_path=f"{dpath}/results/val",
+            validation=True,
+        )
         return (T, V)
 
     # def scan_results(self):

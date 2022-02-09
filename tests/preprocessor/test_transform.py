@@ -3,7 +3,8 @@ from spacekit.extractor.load import load_datasets, SVMFileIO
 from spacekit.preprocessor.transform import PowerX
 
 #filename, img_path, img_size=128, dim=3, ch=3, norm=0, v=0.85, output_path=None
-
+@mark.preprocessor
+@mark.transform
 def test_powerX_transform(svm_labeled_dataset):
     output_path = "tmp"
     df = load_datasets([svm_labeled_dataset])

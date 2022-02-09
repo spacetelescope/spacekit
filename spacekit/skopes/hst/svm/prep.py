@@ -60,7 +60,7 @@ def run_preprocessing(
     os.makedirs(output_path, exist_ok=True)
     fname = os.path.basename(fname).split(".")[0]
     # 1: SCRAPE JSON FILES and make dataframe
-    if h5 is None: 
+    if h5 is None:
         search_path = os.path.join(input_path, visit) if visit else input_path
         patterns = json_pattern.split(",")
         jsc = JsonScraper(

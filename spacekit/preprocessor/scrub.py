@@ -8,19 +8,20 @@ from spacekit.preprocessor.encode import SvmEncoder
 from spacekit.preprocessor.encode import encode_target_data
 from spacekit.preprocessor.transform import array_to_tensor
 
-#TODO: test alt scrub process (no json files)
+# TODO: test alt scrub process (no json files)
+
 
 class Scrubber:
-    """Base parent class for preprocessing data. Includes some basic column scrubbing methods for pandas dataframes. The heavy lifting is done via subclasses below. 
-    """
+    """Base parent class for preprocessing data. Includes some basic column scrubbing methods for pandas dataframes. The heavy lifting is done via subclasses below."""
+
     def __init__(self, data=None):
         self.df = self.cache_data(cache=data)
-        
+
     def cache_data(self, cache=None):
         return cache.copy() if cache is not None else cache
 
     def extract_matching_columns(self, cols):
-        #print("\n*** Extracting FITS header prefix columns ***")
+        # print("\n*** Extracting FITS header prefix columns ***")
         # extracted = []
         # for c in cols:
         #     extracted += [col for col in self.df if c in col]
@@ -48,8 +49,7 @@ class Scrubber:
 
 
 class SvmScrubber(Scrubber):
-    """Class for invocating standard preprocessing steps of Single Visit Mosaic regression test data. This class quietly relies on other classes in the module to instantiate other scrubbing objects, although they are distinct and non-hierarchical (no inheritance between them).
-    """
+    """Class for invocating standard preprocessing steps of Single Visit Mosaic regression test data. This class quietly relies on other classes in the module to instantiate other scrubbing objects, although they are distinct and non-hierarchical (no inheritance between them)."""
 
     def __init__(
         self,
@@ -94,7 +94,7 @@ class SvmScrubber(Scrubber):
         self.find_subsamples()
         self.save_csv_file()
         return self
-    
+
     def scrub(self):
         if self.df is None:
             self.df = self.scrub_qa_summary()
@@ -110,7 +110,7 @@ class SvmScrubber(Scrubber):
         self.add_crpt_labels()
         self.find_subsamples()
         self.save_csv_file()
-    
+
     def scrub_qa_data(self):
         self.df = self.scrub_columns()
         # STAGE 2 initial encoding
@@ -119,9 +119,8 @@ class SvmScrubber(Scrubber):
         return self.df
 
     def scrub_qa_summary(self, fname="single_visit_mosaics*.csv", idx=0):
-        """Alternative if no .json files available (QA step not run during processing)
-        """
-        #fname = 'single_visit_mosaics_2021-10-06.csv'
+        """Alternative if no .json files available (QA step not run during processing)"""
+        # fname = 'single_visit_mosaics_2021-10-06.csv'
         fpath = glob.glob(os.path.join(self.input_path, fname))
         if len(fpath) == 0:
             return
@@ -129,25 +128,37 @@ class SvmScrubber(Scrubber):
         index = {}
         for i, row in data.iterrows():
             index[i] = dict(index=None, detector=None)
-            prop = row['proposal']
-            visit = row['visit']
+            prop = row["proposal"]
+            visit = row["visit"]
             num = visit[-2:]
-            instr, det = row['config'].split("/")
+            instr, det = row["config"].split("/")
             name = f"hst_{prop}_{num}_{instr}_{det}_total_{visit}".lower()
-            index[i]['index'] = name
-            index[i]['detector'] = det.lower()
-            index[i]['point'] = scrape_catalogs(self.input_path, name, sfx='point')
-            index[i]['segment'] = scrape_catalogs(self.input_path, name, sfx='segment')
-            index[i]['gaia'] = scrape_catalogs(self.input_path, name, sfx='ref')
-        add_cols = {'index', 'detector', 'point', 'segment', 'gaia'}
-        df_idx = pd.DataFrame.from_dict(index, orient='index', columns=add_cols)
-        df = data.join(df_idx, how='left')
-        df.set_index('index', inplace=True)
-        drops = ['dateobs', 'config', 'filter', 'aec', 'status', 'wcsname', 'creation_date']
+            index[i]["index"] = name
+            index[i]["detector"] = det.lower()
+            index[i]["point"] = scrape_catalogs(self.input_path, name, sfx="point")
+            index[i]["segment"] = scrape_catalogs(self.input_path, name, sfx="segment")
+            index[i]["gaia"] = scrape_catalogs(self.input_path, name, sfx="ref")
+        add_cols = {"index", "detector", "point", "segment", "gaia"}
+        df_idx = pd.DataFrame.from_dict(index, orient="index", columns=add_cols)
+        df = data.join(df_idx, how="left")
+        df.set_index("index", inplace=True)
+        drops = [
+            "dateobs",
+            "config",
+            "filter",
+            "aec",
+            "status",
+            "wcsname",
+            "creation_date",
+        ]
         df.drop([d for d in drops if d in df.columns], axis=1, inplace=True)
-        df.rename({'visit':'dataset', 'n_exposures':'numexp', 'target':'targname'}, axis=1, inplace=True)
+        df.rename(
+            {"visit": "dataset", "n_exposures": "numexp", "target": "targname"},
+            axis=1,
+            inplace=True,
+        )
         return df
-    
+
     def scrub_columns(self):
         """Initial dataframe scrubbing to extract and rename columns, drop NaNs, and set the index."""
         split_cols = super().col_splitter()

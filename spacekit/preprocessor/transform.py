@@ -231,7 +231,7 @@ class PowerX(Transformer):
 
     def check_columns(self, ncols=None):
         if ncols is not None and type(self.data) == np.ndarray:
-            self.cols = ncols 
+            self.cols = ncols
 
     def fitX(self):
         """Instantiates a scikit-learn PowerTransformer object and fits to the input data. If `tx_data` was passed as a kwarg or loaded from `tx_file`, the lambdas attribute for the transformer object will be updated to use these instead of calculated at the transform step.

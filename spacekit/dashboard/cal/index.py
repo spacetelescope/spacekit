@@ -61,7 +61,7 @@ app.validation_layout = html.Div(
 @app.callback(Output("page-content", "children"), Input("url", "pathname"))
 def display_page(pathname):
     if pathname == "/":
-        return index_layout # home.layout
+        return index_layout  # home.layout
     elif pathname == "/eval":
         return eval.layout
     elif pathname == "/eda":
@@ -70,6 +70,7 @@ def display_page(pathname):
         return pred.layout
     else:
         return "Woops! 404 :("
+
 
 # Page 1 EVAL callbacks
 # KERAS CALLBACK
@@ -269,6 +270,7 @@ def displayTapEdgeData(data):
         w = nodegraph.edge_weight_clicks(src, trg)
         return f"weight: {src} and {trg} = {str(w)}"
 
+
 @app.callback(
     Output("cytoscape-mouseoverNodeData-output", "children"),
     Input("cytoscape-compound", "mouseoverNodeData"),
@@ -281,6 +283,7 @@ def displayMouseNodeData(data):
         else:
             b = None
         return f"bias: {node} = {str(b)}"
+
 
 @app.callback(
     Output("cytoscape-mouseoverEdgeData-output", "children"),
@@ -296,4 +299,4 @@ def displayMouseEdgeData(data):
 
 if __name__ == "__main__":
     app.run_server(host="0.0.0.0", port=8050, debug=True, dev_tools_prune_errors=False)
-    #app.run_server(debug=True)
+    # app.run_server(debug=True)

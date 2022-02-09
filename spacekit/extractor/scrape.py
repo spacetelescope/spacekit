@@ -25,7 +25,7 @@ def home_data_base(data_home=None) -> str:
     ----------
     data_home : str, optional
         The path to spacekit data directory, by default `None` (will return `~/spacekit_data`)
-    
+
     Returns
     -------
     data_home: str
@@ -67,7 +67,7 @@ class Scraper:
         self.clean = clean  # delete archive if extract successful
         self.source = None
         self.fpaths = []
-    
+
     def check_cache(self, cache):
         if cache == "~":
             return os.path.expanduser(cache)
@@ -182,7 +182,7 @@ class WebScraper(Scraper):
         cache_subdir="data",
         format="zip",
         extract=True,
-        clean=True
+        clean=True,
     ):
         """Uses dictionary of uri, filename and hash key-value pairs to download data securely from a website such as Github.
 
@@ -200,7 +200,7 @@ class WebScraper(Scraper):
             cache_subdir=cache_subdir,
             format=format,
             extract=extract,
-            clean=clean
+            clean=clean,
         )
         self.uri = uri
         self.dataset = dataset
@@ -231,11 +231,11 @@ class WebScraper(Scraper):
             )
             extracted = str(os.path.relpath(fpath)).split(".")[0]
             self.fpaths.append(extracted)
-            if (
-                self.clean is True and os.path.exists(extracted) 
+            if self.clean is True and os.path.exists(
+                extracted
             ):  # deletes archive if extraction was successful
                 os.remove(fpath)
-                #os.remove(f"{os.path.join(self.outpath, fname)}")
+                # os.remove(f"{os.path.join(self.outpath, fname)}")
         return self.fpaths
 
 
@@ -356,8 +356,9 @@ class S3Scraper(Scraper):
     #     self.fpaths = extracted_fpaths
     #     return self.fpaths
 
-def scrape_catalogs(input_path, name, sfx='point'):
-    if sfx != 'ref':
+
+def scrape_catalogs(input_path, name, sfx="point"):
+    if sfx != "ref":
         cfiles = glob.glob(f"{input_path}/{name}_{sfx}-cat.ecsv")
         if len(cfiles) > 0 and os.path.exists(cfiles[0]):
             cat = ascii.read(cfiles[0]).to_pandas()
@@ -373,6 +374,7 @@ def scrape_catalogs(input_path, name, sfx='point'):
         if len(cfiles) > 0 and os.path.exists(cfiles[0]):
             cat = ascii.read(cfiles[0]).to_pandas()
             return len(cat)
+
 
 class FitsScraper:
     def __init__(self, data, input_path):
@@ -410,6 +412,7 @@ class FitsScraper:
         fits_data = pd.DataFrame.from_dict(fits_dct, orient="index")
         self.df = self.df.join(fits_data, how="left")
         return self.df
+
 
 class MastScraper:
     """Class for scraping metadata from MAST (Mikulsky Archive for Space Telescopes) via ``astroquery``. Current functionality for this class is limited to extracting the `target_classification` values of HAP targets from the archive. An example of a target classification is "GALAXY" - an alphanumeric categorization of an image product/.fits file. Note - the files themselves are not downloaded, just this specific metadata listed in the online archive database. For downloading MAST science files, use the ``spacekit.extractor.radio`` module. The search parameter values needed for locating a HAP product on MAST can be extracted from the fits science extension headers using the ``astropy`` library. See the ``spacekit.preprocessor.scrub`` api for an example (or the astropy documentation)."""

@@ -61,7 +61,7 @@ layout = html.Div(
                 "borderRadius": 5,
                 "margin": 25,
                 "padding": 10,
-            }
+            },
         ),
         # KDE
         html.Div(
@@ -92,27 +92,26 @@ layout = html.Div(
                     },
                 ),
                 html.Div(
-                        children=[
-                            html.H4("Kernel Density Estimate by Target"),
-                            dcc.Graph(
-                                id="kde-targ",
-                                style={"display": "inline-block", "float": "center"},
-                            ),
-                            html.H4("Normalized KDE"),
-                            dcc.Graph(
-                                id="kde-norm",
-                                style={"display": "inline-block", "float": "center"},
-                            ),
-                            html.H4("KDE rms_ra vs rms_dec"),
-                            dcc.Graph(
-                                id="kde-rms",
-                                style={"display": "inline-block", "float": "center"}
-                            ),
-                        ]
-                )
+                    children=[
+                        html.H4("Kernel Density Estimate by Target"),
+                        dcc.Graph(
+                            id="kde-targ",
+                            style={"display": "inline-block", "float": "center"},
+                        ),
+                        html.H4("Normalized KDE"),
+                        dcc.Graph(
+                            id="kde-norm",
+                            style={"display": "inline-block", "float": "center"},
+                        ),
+                        html.H4("KDE rms_ra vs rms_dec"),
+                        dcc.Graph(
+                            id="kde-rms",
+                            style={"display": "inline-block", "float": "center"},
+                        ),
+                    ]
+                ),
             ]
         ),
-
         # FEATURE SCATTERPLOTS
         html.Div(
             children=[
@@ -167,51 +166,58 @@ layout = html.Div(
                 "borderRadius": 5,
                 "margin": 25,
                 "padding": 10,
-            }
+            },
         ),
-        html.Div(children=[
-            html.Div(
+        html.Div(
+            children=[
+                html.Div(
                     dcc.Graph(
                         id="scatter-3d",
-                        figure=hst.scatter3d('point', 'segment', 'gaia', width=1000, height=1000),
-                        style={"display": "inline-block", "float": "center", "height":700},
-                        )
-            ),
-            html.Div(
-                children=[
-                # html.P("POINT:"),
-                # dcc.RangeSlider(
-                #     id='point-slider',
-                #     min=0, max=125000, step=1000,
-                #     marks={0: '0', 125000: '125k'},
-                #     value=[0, 125000]
-                # ),
-                # html.P("SEGMENT:"),
-                # dcc.RangeSlider(
-                #     id='segment-slider',
-                #     min=0, max=150000, step=1000,
-                #     marks={0: '0', 150000: '150k'},
-                #     value=[0, 150000]
-                # ),
-                # html.P("GAIA:"),
-                # dcc.RangeSlider(
-                #     id='gaia-slider',
-                #     min=0, max=9000, step=100,
-                #     marks={0: '0', 9000: '9000'},
-                #     value=[0, 9000]
-                # )
-                ]
-            )
-        ],
-        style={
+                        figure=hst.scatter3d(
+                            "point", "segment", "gaia", width=1000, height=1000
+                        ),
+                        style={
+                            "display": "inline-block",
+                            "float": "center",
+                            "height": 700,
+                        },
+                    )
+                ),
+                html.Div(
+                    children=[
+                        # html.P("POINT:"),
+                        # dcc.RangeSlider(
+                        #     id='point-slider',
+                        #     min=0, max=125000, step=1000,
+                        #     marks={0: '0', 125000: '125k'},
+                        #     value=[0, 125000]
+                        # ),
+                        # html.P("SEGMENT:"),
+                        # dcc.RangeSlider(
+                        #     id='segment-slider',
+                        #     min=0, max=150000, step=1000,
+                        #     marks={0: '0', 150000: '150k'},
+                        #     value=[0, 150000]
+                        # ),
+                        # html.P("GAIA:"),
+                        # dcc.RangeSlider(
+                        #     id='gaia-slider',
+                        #     min=0, max=9000, step=100,
+                        #     marks={0: '0', 9000: '9000'},
+                        #     value=[0, 9000]
+                        # )
+                    ]
+                ),
+            ],
+            style={
                 "color": "white",
                 "height": 800,
                 "border": "2px #333 solid",
                 "borderRadius": 5,
                 "margin": 25,
                 "padding": 10,
-        }
-    )
+            },
+        ),
     ],
     style={
         "backgroundColor": "#1b1f34",

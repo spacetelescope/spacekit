@@ -13,6 +13,8 @@ params = dict(
     ensemble=True,
 )
 @mark.skip
+@mark.builder
+@mark.architect
 def test_ensemble_builder(svm_labeled_dataset, svm_train_npz):
     tv_idx, XTR, YTR, XTS, YTS, XVL, YVL = load_ensemble_data(
         svm_labeled_dataset, svm_train_npz, img_size=128, norm=0, v=0.85, output_path="tmp"

@@ -14,7 +14,7 @@ def hst_svm():
     return hst
 
 @mark.analyzer
-@mark.scan
+@mark.explore
 @parametrize(["hst"], (lazy_fixture('hst_svm')))
 class TestExploreSvm:
 
