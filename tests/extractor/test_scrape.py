@@ -64,11 +64,11 @@ def test_json_scraper(raw_csv_file, svm_visit_data):
 
 @mark.extractor
 @mark.scrape
-def test_scrape_fits(scrubbed_cols_file, svm_visit_data):
+def test_scrape_fits(scrubbed_cols_file, single_visit_path):
     data = pd.read_csv(scrubbed_cols_file, index_col="index")
-    scraper = FitsScraper(data, svm_visit_data)
+    scraper = FitsScraper(data, single_visit_path)
     assert scraper.drz_paths == {
-        'hst_12286_38_wfc3_ir_total_ibl738': f'{svm_visit_data}/ibl738/hst_12286_38_wfc3_ir_total_ibl738_drz.fits'
+        'hst_12286_38_wfc3_ir_total_ibl738': f'{single_visit_path}/ibl738/hst_12286_38_wfc3_ir_total_ibl738_drz.fits'
     }
     scraper.scrape_fits()
     assert scraper.df.shape == (1, 14)
@@ -81,7 +81,7 @@ def test_scrape_fits(scrubbed_cols_file, svm_visit_data):
 
 @mark.extractor
 @mark.scrape
-def test_scrape_mast(scraped_fits_file, svm_visit_data):
+def test_scrape_mast(scraped_fits_file):
     data = pd.read_csv(scraped_fits_file, index_col="index")
     scraper = MastScraper(data)
     scraper.scrape_mast()

@@ -9,7 +9,7 @@ import tensorflow as tf
 
 class Transformer:
     def __init__(
-        self, data, cols=[], tx_data=None, tx_file=None, save_tx=True, output_path=None
+        self, data, cols=None, ncols=None, tx_data=None, tx_file=None, save_tx=True, join_data=True, rename=True, output_path=None
     ):
         """Instantiates a Transformer class object. Unless the `cols` attribute is empty, it will automatically instantiate some of the other attributes needed to transform the data. Using the Transformer subclasses instead is recommended (this class is mainly used as an object with general methods to load or save the transform data as well as instantiate some of the initial attributes).
 
@@ -30,12 +30,20 @@ class Transformer:
         """
         self.data = data
         self.cols = cols
+        self.ncols = self.check_columns(ncols=ncols)
         self.tx_file = tx_file
         self.save_tx = save_tx
+        self.join_data = join_data
+        self.rename = rename
         self.output_path = output_path
         self.tx_data = self.load_transformer_data(tx=tx_data)
         self.continuous = self.continuous_data()
         self.categorical = self.categorical_data()
+    
+    def check_columns(self, ncols=None):
+        if ncols is not None and type(self.data) == np.ndarray:
+            self.cols = ncols
+        self.ncols = ncols
 
     def load_transformer_data(self, tx=None):
         """Loads saved transformer metadata from a dictionary or a json file on local disk.
@@ -104,6 +112,9 @@ class Transformer:
         dataframe or ndarray
             "categorical" i.e. non-continuous feature vectors (as determined by `cols` attribute)
         """
+        if self.cols is None:
+            #print("`cols` attribute not instantiated.")
+            return None
         if type(self.data) == pd.DataFrame:
             return self.data.drop(self.cols, axis=1, inplace=False)
         elif type(self.data) == np.ndarray:
@@ -111,7 +122,7 @@ class Transformer:
             cat_cols = [c for c in ncols if c not in self.cols]
             return self.data[:, cat_cols]
 
-    def normalized_dataframe(self, normalized, join_data=True, rename=True):
+    def normalized_dataframe(self, normalized):
         """Creates a new dataframe with the normalized data. Optionally combines with non-continuous vectors (original data) and appends `_scl` to the original column names for the ones that have been transformed.
 
         Parameters
@@ -133,12 +144,12 @@ class Transformer:
         except AttributeError:
             print("Cannot index a numpy array; use `normalized_matrix` instead.")
             return None
-        if rename is True:
+        if self.rename is True:
             newcols = [c + "_scl" for c in self.cols]
         else:
             newcols = self.cols
         data_norm = pd.DataFrame(normalized, index=idx, columns=newcols)
-        if join_data is True:
+        if self.join_data is True:
             data_norm = data_norm.join(self.categorical, how="left")
         return data_norm
 
@@ -161,7 +172,7 @@ class Transformer:
             cat = self.categorical
         return np.concatenate((normalized, cat), axis=1)
 
-    def normalizeX(self, normalized, join_data=True, rename=True):
+    def normalizeX(self, normalized):
         """Combines original non-continuous features/vectors with the transformed/normalized data. Determines datatype (array or dataframe) and calls the appropriate method.
 
         Parameters
@@ -179,9 +190,7 @@ class Transformer:
             array or dataframe of same shape and datatype as inputs, with continuous vectors/features normalized
         """
         if type(self.data) == pd.DataFrame:
-            return self.normalized_dataframe(
-                normalized, join_data=join_data, rename=rename
-            )
+            return self.normalized_dataframe(normalized)
         elif type(self.data) == np.ndarray:
             return self.normalized_matrix(normalized)
         else:
@@ -217,21 +226,17 @@ class PowerX(Transformer):
         super().__init__(
             data,
             cols=cols,
+            ncols=ncols,
             tx_data=tx_data,
             tx_file=tx_file,
             save_tx=save_tx,
+            join_data=join_data,
+            rename=rename,
             output_path=output_path,
         )
-        self.check_columns(ncols=ncols)
         self.calculate_power()
         self.normalized = self.apply_power_matrix()
-        self.Xt = super().normalizeX(
-            self.normalized, join_data=join_data, rename=rename
-        )
-
-    def check_columns(self, ncols=None):
-        if ncols is not None and type(self.data) == np.ndarray:
-            self.cols = ncols
+        self.Xt = super().normalizeX(self.normalized)
 
     def fitX(self):
         """Instantiates a scikit-learn PowerTransformer object and fits to the input data. If `tx_data` was passed as a kwarg or loaded from `tx_file`, the lambdas attribute for the transformer object will be updated to use these instead of calculated at the transform step.
@@ -315,7 +320,7 @@ class PowerX(Transformer):
         return self.normalized
 
 
-def normalize_training_data(df, cols, X_train, X_test, X_val=None, output_path=None):
+def normalize_training_data(df, cols, X_train, X_test, X_val=None, rename=False, output_path=None):
     """Apply Leo-Johnson PowerTransform (via scikit learn) normalization and scaling to the training data, saving the transform metadata to json file on local disk and transforming the train, test and val sets separately (to prevent data leakage).
 
     Parameters
@@ -338,11 +343,11 @@ def normalize_training_data(df, cols, X_train, X_test, X_val=None, output_path=N
     """
     print("Applying Normalization (Leo-Johnson PowerTransform)")
     ncols = [i for i, c in enumerate(df.columns) if c in cols]
-    Px = PowerX(df, cols=cols, ncols=ncols, save_tx=True, output_path=output_path)
-    X_train = PowerX(X_train, cols=cols, ncols=ncols, tx_data=Px.tx_data).Xt
-    X_test = PowerX(X_test, cols=cols, ncols=ncols, tx_data=Px.tx_data).Xt
+    Px = PowerX(df, cols=cols, ncols=ncols, save_tx=True, rename=rename, output_path=output_path)
+    X_train = PowerX(X_train, cols=cols, ncols=ncols, rename=rename, tx_data=Px.tx_data).Xt
+    X_test = PowerX(X_test, cols=cols, ncols=ncols, rename=rename, tx_data=Px.tx_data).Xt
     if X_val is not None:
-        X_val = PowerX(X_val, cols=cols, ncols=ncols, tx_data=Px.tx_data).Xt
+        X_val = PowerX(X_val, cols=cols, ncols=ncols, rename=rename, tx_data=Px.tx_data).Xt
         return X_train, X_test, X_val
     else:
         return X_train, X_test

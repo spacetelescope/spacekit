@@ -1,6 +1,6 @@
 import pandas as pd
 from spacekit.analyzer.explore import HstSvmPlots
-from pytest import parametrize, fixture, lazy_fixture, mark
+from pytest import mark, fixture, lazy_fixture
 
 # @parametrize(["scanner", "exp_scan"], [
 #     (lazy_fixture('svm_scanner'), lazy_fixture('svm_exp_scan')),
@@ -15,7 +15,7 @@ def hst_svm():
 
 @mark.analyzer
 @mark.explore
-@parametrize(["hst"], (lazy_fixture('hst_svm')))
+@mark.parametrize(["hst"], (lazy_fixture('hst_svm')))
 class TestExploreSvm:
 
     def make_scatter_plots(hst):

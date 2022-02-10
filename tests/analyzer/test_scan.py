@@ -1,4 +1,4 @@
-from pytest import mark, fixture, parametrize, lazy_fixture
+from pytest import mark, fixture, lazy_fixture
 from spacekit.analyzer.scan import SvmScanner, CalScanner
 import plotly.graph_objs
 
@@ -23,20 +23,20 @@ EXPECTED = {
     },
     "cal": {
         "classes": [0, 1, 2, 3],
-        "labels": ['aligned', 'misaligned'],
+        "labels": ['2g', '8g', '16g', '64g'],
         "target": "mem_bin",
         "versions": ['v0', 'v1', 'v2'],
-        "date": '2022-01-16',
-        "time": 1642337739,
+        "date": '2021-10-28',
+        "time": 1635457222,
         "metric": "acc_loss",
         "score_index": ['train_acc', 'train_loss', 'test_acc', 'test_loss'],
         "score_vals": [1.0, 0.01, 0.92, 0.65],
         "fig_lengths": [2, 2, 4],
         "keras_title": "Accuracy",
-        "roc_label": "lab_0",
+        "roc_label": "bin_0",
         "cmx_shape": (2, 2),
         "df_ncol": 12,
-        "df_key": "det_key"
+        "df_key": "instr_key"
     }
 }
 
@@ -59,15 +59,16 @@ def cal_scanner():
     return scanner
 
 
-# @parametrize(["scanner", "exp_scan"], [
-#     (lazy_fixture('svm_scanner'), lazy_fixture('svm_exp_scan')),
-#     (lazy_fixture('cal_scanner'), lazy_fixture('cal_exp_scan'))
+
+# @mark.parametrize("scanner, exp_scan", [
+#     (svm_scanner, svm_exp_scan),
+#     (cal_scanner, cal_exp_scan)
 # ])
 @mark.analyzer
 @mark.scan
-@parametrize(["scanner", "exp_scan"], [
-    (svm_scanner, svm_exp_scan),
-    (cal_scanner, cal_exp_scan)
+@mark.parametrize(["scanner", "exp_scan"], [
+    (lazy_fixture('svm_scanner'), lazy_fixture('svm_exp_scan')),
+    (lazy_fixture('cal_scanner'), lazy_fixture('cal_exp_scan'))
 ])
 class TestScanner:
 

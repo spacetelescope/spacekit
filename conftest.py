@@ -1,6 +1,6 @@
 import os
 from pytest import fixture
-
+import tarfile
 # try:
 #     from pytest_astropy_header.display import (PYTEST_HEADER_MODULES,
 #                                                TESTED_VERSIONS)
@@ -29,68 +29,97 @@ enable_deprecations_as_exceptions()
 
 TESTED_VERSIONS['spacekit'] = version
 
+# @fixture(scope='session')
+# def svm_train_png_images(tmp_path_factory):
+#     img = tmp_path_factory.getbasetemp() / 'sample_image_small.tif'
+#     #img.write_bytes(b'something')
+#     return img
+
 # SVM PREP
+# @fixture(scope='session')
+# def svm_visit_data(tmp_path_factory):
+#     basepath = tmp_path_factory.getbasetemp()
+#     visit_data = os.path.join(basepath, "singlevisits")
+#     return visit_data
+
+@fixture(scope='session') # "ibl738.tgz"
+def single_visit_path(tmp_path_factory):
+    visit_path = os.path.abspath("tests/data/svm/prep/singlevisits.tgz")
+    basepath = tmp_path_factory.getbasetemp()
+    with tarfile.TarFile.open(visit_path) as tar:
+        tar.extractall(basepath)
+        dname = os.path.basename(visit_path.split(".")[0])
+        visit_path = os.path.join(basepath, dname)
+    return visit_path
+
 @fixture(scope='function')
-def svm_visit_data():
-    visit_data = "tests/data/svm/prep/singlevisits"
-    return visit_data
+def img_outpath(tmp_path):
+    return os.path.join(tmp_path, "img")
+
 
 # SVM PREDICT
 @fixture(scope='function')
 def svm_unlabeled_dataset():
-    svm_unlabeled_data = "tests/data/svm/predict/unlabeled.csv"
-    return svm_unlabeled_data
+    return "tests/data/svm/predict/unlabeled.csv"
+
 
 @fixture(params=["img", "img_pred.npz"])
 def svm_pred_img(request):
-    img_path = os.path.join("tests/data/svm/predict", request.param)
-    return img_path
+    return os.path.join("tests/data/svm/predict", request.param)
+
 
 # SVM TRAIN
 @fixture(scope='function') # session
 def svm_labeled_dataset():
-    svm_labeled_data = "tests/data/svm/train/training.csv"
-    return svm_labeled_data
+    return "tests/data/svm/train/training.csv"
+    
 
-@fixture(params=["img", "img_data.npz"])
-def svm_train_img(request):
+@fixture(scope='session', params=["img.tgz", "img_data.npz"])
+def svm_train_img(request, tmp_path_factory):
     img_path = os.path.join("tests/data/svm/train", request.param)
+    if img_path.split(".")[-1] == "tgz":
+        basepath = tmp_path_factory.getbasetemp()
+        with tarfile.TarFile.open(img_path) as tar:
+            tar.extractall(basepath)
+            fname = os.path.basename(img_path.split(".")[0])
+            img_path = os.path.join(basepath, fname)
     return img_path
 
-@fixture(scope='function')
-def svm_train_png():
-    img_path = "tests/data/svm/train/img"
-    return img_path
+
+# @fixture(scope='function')
+# def svm_train_png():
+#     img_path = "tests/data/svm/train/img"
+#     return img_path
 
 @fixture(scope='function')
 def svm_train_npz():
-    img_path = "tests/data/svm/train/img_data.npz"
-    return img_path
+    return "tests/data/svm/train/img_data.npz"
+
 
 @fixture(params=["single_reg.csv"])
 def draw_mosaic_fname(request):
-    fname = os.path.join("tests/data/svm/prep", request.param)
-    return fname
+    return os.path.join("tests/data/svm/prep", request.param)
 
-@fixture(params=["ibl738"])
-def draw_mosaic_visit(request):
-    visit = os.path.join("tests/data/svm/prep/singlevisits", request.param)
 
 @fixture(params=["*", "ibl*", ""])
 def draw_mosaic_pattern(request):
     return request.param
 
+
 @fixture(scope='function')
 def raw_csv_file():
     return "tests/data/svm/prep/single_scrub.csv"
+
 
 @fixture(scope='function')
 def h5_data():
     return "tests/data/svm/prep/single_reg.h5"
 
+
 @fixture(scope='function')
 def scrubbed_cols_file():
     return "tests/data/svm/prep/scrubbed_cols.csv"
+
 
 @fixture(scope='function')
 def scraped_fits_file():

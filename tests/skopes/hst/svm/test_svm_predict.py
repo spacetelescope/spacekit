@@ -1,10 +1,9 @@
 import os
-from pytest import mark, parametrize
+from pytest import mark
 from spacekit.skopes.hst.svm.predict import predict_alignment, load_mixed_inputs, classify_alignments
 
 @mark.svm
 @mark.predict
-# @parametrize(["norm"], [(0), (1)])
 def test_predict_alignment(svm_unlabeled_dataset, svm_pred_img):
     preds = predict_alignment(svm_unlabeled_dataset, svm_pred_img, output_path="tmp", size=128)
     pred_files = os.path.join("tmp", "predictions")

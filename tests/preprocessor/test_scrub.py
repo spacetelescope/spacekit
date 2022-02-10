@@ -18,10 +18,10 @@ SCRUBBED_COLS = [
 
 @mark.preprocessor
 @mark.scrub
-def test_svm_scrubber(raw_csv_file, svm_visit_data):
+def test_svm_scrubber(raw_csv_file, single_visit_path):
     data = pd.read_csv(raw_csv_file, index_col="index")
     scrub = SvmScrubber(
-        data, svm_visit_data, output_path="tmp", output_file="scrubbed", crpt=0
+        data, single_visit_path, output_path="tmp", output_file="scrubbed", crpt=0
     )
     scrub.preprocess_data()
     assert os.path.exists(scrub.fname)
@@ -30,10 +30,10 @@ def test_svm_scrubber(raw_csv_file, svm_visit_data):
 # TEST SCRUBCOLS
 @mark.preprocessor
 @mark.scrub
-def test_scrub_cols(raw_csv_file, svm_visit_data):
+def test_scrub_cols(raw_csv_file, single_visit_path):
     data = pd.read_csv(raw_csv_file, index_col="index")
     scrubber = SvmScrubber(
-        svm_visit_data, df=data, output_path="tmp", output_file="scrubbed", crpt=0
+        single_visit_path, df=data, output_path="tmp", output_file="scrubbed", crpt=0
     )
     df = scrubber.scrub_columns()
     assert df.shape == (1, 10)
