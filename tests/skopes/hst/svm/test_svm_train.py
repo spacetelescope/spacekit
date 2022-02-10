@@ -56,7 +56,7 @@ def test_svm_training(svm_labeled_dataset, svm_train_npz, norm):
     res_actual = os.listdir(com.res_path)
     assert [r in res_actual for r in EXPECTED_RES]
 
-@mark.skip
+
 @mark.svm
 @mark.train
 def test_load_training_data(svm_labeled_dataset, svm_train_img):

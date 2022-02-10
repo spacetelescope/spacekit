@@ -29,19 +29,14 @@ enable_deprecations_as_exceptions()
 
 TESTED_VERSIONS['spacekit'] = version
 
-# @fixture(scope='session')
-# def svm_train_png_images(tmp_path_factory):
-#     img = tmp_path_factory.getbasetemp() / 'sample_image_small.tif'
-#     #img.write_bytes(b'something')
-#     return img
 
-# SVM PREP
 # @fixture(scope='session')
 # def svm_visit_data(tmp_path_factory):
 #     basepath = tmp_path_factory.getbasetemp()
 #     visit_data = os.path.join(basepath, "singlevisits")
 #     return visit_data
 
+# SVM PREP
 @fixture(scope='session') # "ibl738.tgz"
 def single_visit_path(tmp_path_factory):
     visit_path = os.path.abspath("tests/data/svm/prep/singlevisits.tgz")
@@ -51,6 +46,7 @@ def single_visit_path(tmp_path_factory):
         dname = os.path.basename(visit_path.split(".")[0])
         visit_path = os.path.join(basepath, dname)
     return visit_path
+
 
 @fixture(scope='function')
 def img_outpath(tmp_path):
@@ -63,9 +59,16 @@ def svm_unlabeled_dataset():
     return "tests/data/svm/predict/unlabeled.csv"
 
 
-@fixture(params=["img", "img_pred.npz"])
-def svm_pred_img(request):
-    return os.path.join("tests/data/svm/predict", request.param)
+@fixture(scope='session', params=["img.tgz", "img_pred.npz"])
+def svm_pred_img(request, tmp_path_factory):
+    img_path = os.path.join("tests/data/svm/predict", request.param)
+    if img_path.split(".")[-1] == "tgz":
+        basepath = tmp_path_factory.getbasetemp()
+        with tarfile.TarFile.open(img_path) as tar:
+            tar.extractall(basepath)
+            fname = os.path.basename(img_path.split(".")[0])
+            img_path = os.path.join(basepath, fname)
+    return img_path
 
 
 # SVM TRAIN
@@ -86,16 +89,12 @@ def svm_train_img(request, tmp_path_factory):
     return img_path
 
 
-# @fixture(scope='function')
-# def svm_train_png():
-#     img_path = "tests/data/svm/train/img"
-#     return img_path
-
 @fixture(scope='function')
 def svm_train_npz():
     return "tests/data/svm/train/img_data.npz"
 
 
+# GENERATOR: DRAW
 @fixture(params=["single_reg.csv"])
 def draw_mosaic_fname(request):
     return os.path.join("tests/data/svm/prep", request.param)
@@ -106,6 +105,7 @@ def draw_mosaic_pattern(request):
     return request.param
 
 
+# PREPROCESSOR: SCRUB
 @fixture(scope='function')
 def raw_csv_file():
     return "tests/data/svm/prep/single_scrub.csv"
