@@ -10,7 +10,7 @@ This script (and/or its functions) should be used in conjunction with spacekit.s
 import os
 import argparse
 import datetime as dt
-from spacekit.extractor.load import load_datasets, SVMFileIO
+from spacekit.extractor.load import load_datasets, SVMImageIO
 from spacekit.generator.augment import training_data_aug, training_img_aug
 from spacekit.preprocessor.transform import (
     normalize_training_data,
@@ -117,7 +117,7 @@ def load_ensemble_data(
     print("\tREG DATA: ", df.shape)
     print(f"\nClass Labels (0=Aligned, 1=Misaligned)\n{df['label'].value_counts()}")
 
-    (X, y), (train, test, val) = SVMFileIO(
+    (X, y), (train, test, val) = SVMImageIO(
         img_path, w=img_size, h=img_size, d=dim * ch, inference=False, data=df, v=v
     ).load()
 

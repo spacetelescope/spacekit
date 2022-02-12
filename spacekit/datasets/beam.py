@@ -28,7 +28,7 @@ import argparse
 import sys
 import json
 from spacekit.datasets.meta import spacekit_collections
-from spacekit.extractor.scrape import WebScraper, S3Scraper, FileScraper, home_data_base
+from spacekit.extractor.scrape import WebScraper, S3Scraper, FileScraper
 
 # from spacekit.datasets import scrape_archives, import_collection
 

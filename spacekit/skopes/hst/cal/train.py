@@ -18,16 +18,16 @@ Wallclock Regressor
 -------------------
 Estimates maximum execution or "kill" time in seconds it will take to complete the job. AWS Batch requires a minimum threshold of 60 seconds, with a large proportion of jobs completing below the one minute mark. Some jobs can take hours or even days to complete - if a job fails in memory after running for 24 hours, it would have to be re-submitted (huge cost). Likewise, if a job is allocated appropriate memory size but fails prematurely because it passes the maximum wallclock threshold, it would have to be resubmitted at a higher time allocation (huge cost). The relationship between memory needs and wallclock time is not linear, hence why there is a need for two separate models.
 
-
-
 Ex:
 python -m spacekit.skopes.hst.cal.train data/2021-11-04-1636048291
 """
 
 from argparse import ArgumentParser
-from spacekit.datasets import hst_cal
-from spacekit.preprocessor.scrub import ScrubCal
-from spacekit.builder.networks import (
+import sys
+import os
+from spacekit.datasets import load
+from spacekit.preprocessor.prep import CalPrep
+from spacekit.builder.architect import (
     MemoryClassifier,
     MemoryRegressor,
     WallclockRegressor,
@@ -41,12 +41,78 @@ from spacekit.analyzer.compute import ComputeMulti, ComputeRegressor
 # bcom2.load_results(bin_out)
 """
 
+COLUMN_ORDER = ["n_files", "total_mb", "drizcorr", "pctecorr", "crsplit","subarray", "detector", "dtype", "instr"]
 
-def load_prep(data_path="data/2021-11-04-1636048291/latest.csv"):
-    df = hst_cal.load_data(fpath=data_path)
-    data = ScrubCal(df).prep_data()
+
+# def get_paths(timestamp):
+#     if timestamp == "now":
+#         train_time = dt.datetime.now()
+#     elif isinstance(timestamp, str):
+#         if len(timestamp) <= 14:
+#             train_time = dt.datetime.fromtimestamp(int(timestamp))
+#         else:
+#             train_time = dt.datetime.fromisoformat(timestamp)
+#     elif isinstance(timestamp, int) or isinstance(timestamp, float):
+#         train_time = dt.datetime.fromtimestamp(timestamp)
+#     else:
+#         print(
+#             f"Timestamp type must be a string (datetime, isoformat) or int/float (timestamp). You passed {type(timestamp)}."
+#         )
+#         raise ValueError
+#     t0 = train_time.timestamp()
+#     data_path = f"{dt.date.fromtimestamp(t0).isoformat()}-{str(int(t0))}"
+#     return data_path
+
+def find_data_sources(source_path, fname=None, date_key=None):
+    fpath = []
+    for root, _, files in os.walk(source_path):
+        if fname is not None:
+            name = os.path.join(root, fname)
+            if os.path.exists(name):
+                #print(f"Found dataset: {name}")
+                fpath.append(name)
+        else:
+            for f in files:
+                if f.split(".")[-1] == "csv":
+                    name = os.path.join(root, f)
+                    fpath.append(name)
+    if len(fpath) > 0:
+        if date_key is None:
+            print(f"Found datasets: \n {fpath}")
+            print(f"Defaulting to most recent: {fpath[-1]}")
+        else:
+            for f in fpath:
+                if date_key in f:
+                    fpath = [f]
+                    print(f"Found matching dataset: {f}")
+        fpath = fpath[-1]
+    else:
+        print("No datasets found :( \n Check the source_path exists and there's a .csv file in one of its subdirectories.")
+        sys.exit(1)
+    return fpath
+
+
+def load_prep(date_key=None, fpath=None):
+    df = load(name="calcloud", date_key=date_key, fpath=fpath)
+    data = CalPrep(df, "mem_bin")
+    data.prep_data()
     return data
 
+# def save_preprocessed(self):
+    # if src == "ddb":  # dynamodb 'calcloud-hst-data'
+    #     ddb_data = io.ddb_download(table_name, attr)
+    #     io.write_to_csv(ddb_data, "batch.csv")
+    #     df = pd.read_csv("batch.csv", index_col="ipst")
+
+# def preprocess(bucket_mod, prefix, src, table_name, attr):
+#     # MAKE TRAINING SET - single df for ingested data
+
+#     # update power transform
+#     df, pt_transform = update_power_transform(df)
+#     io.save_dataframe(df, "latest.csv")
+#     io.save_json(pt_transform, "pt_transform")
+#     io.s3_upload(["pt_transform", "latest.csv"], bucket_mod, f"{prefix}/data")
+#     return df
 
 def build_fit(BuildClass, data, y_train, y_test, test_idx, model_path=None):
     builder = BuildClass(data.X_train, y_train, data.X_test, y_test, test_idx=test_idx)
@@ -72,28 +138,20 @@ def compute_cache(builder, res_path):
 def train_models(data, res_path, mem_clf=1, mem_reg=1, wall_reg=1, model_path=None):
     model_objects = {}
     if mem_clf:
-        y_train, y_test, test_idx = data.y_bin_train, data.y_bin_test, data.bin_test_idx
         clf = build_fit(
-            MemoryClassifier, data, y_train, y_test, test_idx, model_path=model_path
+            MemoryClassifier, data, data.y_bin_train, data.y_bin_test, data.bin_test_idx, model_path=model_path
         )
         bcom = compute_cache(clf, res_path=f"{res_path}/mem_bin")
         model_objects["mem_clf"] = {"builder": clf, "results": bcom}
     if mem_reg:
-        y_train, y_test, test_idx = data.y_mem_train, data.y_mem_test, data.mem_test_idx
         mem = build_fit(
-            MemoryRegressor, data, y_train, y_test, test_idx, model_path=model_path
+            MemoryRegressor, data, data.y_mem_train, data.y_mem_test, data.mem_test_idx, model_path=model_path
         )
         mcom = compute_cache(mem, res_path=f"{res_path}/memory")
         model_objects["mem_reg"] = {"builder": mem, "results": mcom}
     if wall_reg:
-        y_train, y_test, test_idx = (
-            data.y_wall_train,
-            data.y_wall_test,
-            data.wall_test_idx,
-        )
         wall = build_fit(
-            WallclockRegressor, data, y_train, y_test, test_idx, model_path=model_path
-        )
+            WallclockRegressor, data, data.y_wall_train, data.y_wall_test, data.wall_test_idx, model_path=model_path)
         wcom = compute_cache(wall, res_path=f"{res_path}/wallclock")
         model_objects["wall_reg"] = {"builder": wall, "results": wcom}
     return model_objects
@@ -101,12 +159,16 @@ def train_models(data, res_path, mem_clf=1, mem_reg=1, wall_reg=1, model_path=No
 
 def parse_user_args(args):
     # import and preprocess data
-    data = load_prep(data_path=f"{args.source_path}/data/{args.fname}")
-    res_path = f"{args.source_path}/results"
-    if args.save_models is True:
-        model_path = args.source_path  # auto creates "models" subdir
-    else:
-        model_path = None  # don't save the models (for testing)
+    fpath = None
+    model_path = None
+    res_path = os.path.join(os.getcwd(), "results")
+    if args.source_path:
+        fpath = find_data_sources(args.source_path, fname=args.fname, date_key=args.date_key)
+        if args.overwrite:
+            model_path = args.source_path  # auto creates "models" subdir
+            res_path = os.path.join(args.source_path, "results")
+    data = load_prep(date_key=args.date_key, fpath=fpath)
+    
     # build, train and evaluate models
     return train_models(
         data,
@@ -121,10 +183,16 @@ def parse_user_args(args):
 if __name__ == "__main__":
     parser = ArgumentParser(prog="spacekit hst calibration model training")
     parser.add_argument(
-        "source_path",
+        "--archive_date",
         type=str,
-        default="data/2021-11-04-1636048291",
-        help="source data directory base path",
+        default="2021-11-04",
+        help="date key of the archived dataset in the spacekit collection (defaults to most recent)",
+    ) # data/2021-11-04-1636048291/data
+    parser.add_argument(
+        "--source_path",
+        type=str,
+        default=None,
+        help="top level (parent) directory of source data (absolute path or relative to current working directory, e.g. `data/2021-11-04-1636048291/` or just `data`",
     )
     parser.add_argument(
         "--fname", type=str, default="latest.csv", help="name of training data csv file"
@@ -139,9 +207,9 @@ if __name__ == "__main__":
         "--wall_reg", type=int, default=1, help="bool: train wallclock regressor"
     )
     parser.add_argument(
-        "--save_models",
+        "--overwrite",
         type=int,
         default=0,
-        help="save trained models and weights to disk",
+        help="overwrite saved results and models on disk",
     )
     parse_user_args(parser.parse_args())

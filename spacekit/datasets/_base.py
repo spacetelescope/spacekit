@@ -10,10 +10,13 @@ DATA = "spacekit.datasets.data"
 DD = home_data_base()
 
 
-def import_collection(name):
+def import_collection(name, date_key=None):
     source = f"{DATA}.{name}"
     archives = spacekit_collections[name]["data"]
-    fnames = [archives[date]["fname"] for date in archives.keys()]
+    if date_key is None:
+        fnames = [archives[date]["fname"] for date in archives.keys()]
+    else:
+        fnames = [archives[date_key]["fname"]]
     scr = FileScraper(cache_dir=".", clean=False)
     for fname in fnames:
         with resources.path(source, fname) as archive:
@@ -78,3 +81,13 @@ def load_svm(fpath=None, date_key=None):
 def load_k2(fpath=None, date_key=None):
     k2 = spacekit_collections["k2"]
     train, test = scrape_archives(k2, data_home=DD)
+
+def load(name="calcloud", date_key=None, fpath=None):
+    if fpath is None:
+        fpath = import_collection(name, date_key=date_key)
+    if name == "calcloud":
+        scn = CalScanner(perimeter=fpath)
+    elif name == "svm":
+        scn = SvmScanner(perimeter=fpath)
+    df = scn.load_dataframe(kwargs=scn.kwargs, decoder=scn.decoder)
+    return df

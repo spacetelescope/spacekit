@@ -6,6 +6,7 @@ from ._base import load_cal
 from ._base import load_svm
 from ._base import load_k2
 from ._base import import_collection
+from ._base import load
 
 __all__ = [
     "scrape_archives",
@@ -14,4 +15,5 @@ __all__ = [
     "load_svm",
     "load_k2",
     "import_collection",
+    "load"
 ]

@@ -1,5 +1,5 @@
 from pytest import mark
-from spacekit.extractor.load import load_datasets, SVMFileIO
+from spacekit.extractor.load import load_datasets, SVMImageIO
 from spacekit.preprocessor.transform import PowerX
 import numpy as np
 
@@ -28,7 +28,7 @@ def test_powerX_transform(svm_labeled_dataset):
     assert type(Px.normalized) == np.ndarray
     
     img_path = "tests/data/svm/train/img_data.npz"
-    (X, _), _ = SVMFileIO(img_path, w=128, h=128, d=3 * 3, inference=False, data=df, v=0.85).load()
+    (X, _), _ = SVMImageIO(img_path, w=128, h=128, d=3 * 3, inference=False, data=df, v=0.85).load()
     X_train = PowerX(X[0], cols=cols, ncols=ncols, tx_data=Px.tx_data).Xt
     assert list(X_train.columns) == EXPECTED_COLS
     for col in EXPECTED_COLS[:6]:

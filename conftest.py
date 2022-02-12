@@ -1,6 +1,8 @@
 import os
 from pytest import fixture
 import tarfile
+from zipfile import ZipFile
+from spacekit.analyzer.scan import SvmScanner, CalScanner
 # try:
 #     from pytest_astropy_header.display import (PYTEST_HEADER_MODULES,
 #                                                TESTED_VERSIONS)
@@ -126,24 +128,17 @@ def scraped_fits_file():
     return "tests/data/svm/prep/scraped_fits.csv"
 
 
-
-# @fixture(scope='class', params=["svm", "cal"])
-# def scanner(request):
-#     if request.param == "svm":
-#         scanner = SvmScanner(perimeter="data/20??-*-*-*", primary=-1)
-#     elif request.param == "cal":
-#         scanner = CalScanner(perimeter="data/20??-*-*-*", primary=-1)
-#     return scanner
-
-# @fixture(scope='class', params=["svm", "cal"])
-# def scanner(request):
-#     if request.param == "svm":
-#         scanner = SvmScanner(perimeter="data/20??-*-*-*", primary=-1)
-#     elif request.param == "cal":
-#         scanner = CalScanner(perimeter="data/20??-*-*-*", primary=-1)
-#     return scanner
-
-
-# @fixture(scope='class', params=["svm", "cal"])
-# def exp_scan(request):
-#     return EXPECTED[request.param]
+@fixture(scope='session', params=["cal", "svm"])
+def scanner(request, tmp_path_factory):
+    basepath = tmp_path_factory.getbasetemp()
+    data_file = os.path.join(f"tests/data/{request.param}/data.zip")   
+    with ZipFile(data_file, "r") as z:
+        z.extractall(basepath)
+        dname = os.path.basename(data_file.split(".")[0])
+        data_path = os.path.join(basepath, dname)
+    if request.param == "svm":
+        scanner = SvmScanner(perimeter=f"{data_path}/20??-*-*-*", primary=-1)
+    elif request.param == "cal":
+        scanner = CalScanner(perimeter=f"{data_path}/20??-*-*-*", primary=-1)
+    scanner.exp = request.param
+    return scanner

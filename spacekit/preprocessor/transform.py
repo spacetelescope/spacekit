@@ -9,7 +9,7 @@ import tensorflow as tf
 
 class Transformer:
     def __init__(
-        self, data, cols=None, ncols=None, tx_data=None, tx_file=None, save_tx=True, join_data=True, rename=True, output_path=None
+        self, data, cols=None, ncols=None, tx_data=None, tx_file=None, save_tx=True, join_data=1, rename="_scl", output_path=None
     ):
         """Instantiates a Transformer class object. Unless the `cols` attribute is empty, it will automatically instantiate some of the other attributes needed to transform the data. Using the Transformer subclasses instead is recommended (this class is mainly used as an object with general methods to load or save the transform data as well as instantiate some of the initial attributes).
 
@@ -25,10 +25,14 @@ class Transformer:
             path to saved transformer metadata, by default None
         save_tx : bool, optional
             save the transformer metadata as json file on local disk, by default True
+        join_data : int, optional
+            1: join normalized data with remaining columns of original; 2: join with complete original, all columns (requires renaming)
+        rename : str or list
+            if string, will be appended to normalized col names; if list, will rename normalized columns in this order
         output_path : string, optional
             where to save the transformer metadata, by default None (current working directory)
         """
-        self.data = data
+        self.data = self.check_shape(data)
         self.cols = cols
         self.ncols = self.check_columns(ncols=ncols)
         self.tx_file = tx_file
@@ -40,6 +44,11 @@ class Transformer:
         self.continuous = self.continuous_data()
         self.categorical = self.categorical_data()
     
+    def check_shape(self, data):
+        if type(data) == np.ndarray and len(data.shape) == 1:
+            data = data.reshape(1, -1)
+        return data
+
     def check_columns(self, ncols=None):
         if ncols is not None and type(self.data) == np.ndarray:
             self.cols = ncols
@@ -79,7 +88,7 @@ class Transformer:
             self.output_path = os.getcwd()
         else:
             os.makedirs(self.output_path, exist_ok=True)
-        self.tx_file = f"{self.output_path}/tx_data"
+        self.tx_file = f"{self.output_path}/tx_data.json"
         with open(self.tx_file, "w") as j:
             if tx is None:
                 json.dump(self.tx_data, j)
@@ -118,8 +127,8 @@ class Transformer:
         if type(self.data) == pd.DataFrame:
             return self.data.drop(self.cols, axis=1, inplace=False)
         elif type(self.data) == np.ndarray:
-            ncols = list(range(self.data.shape[1]))
-            cat_cols = [c for c in ncols if c not in self.cols]
+            allcols = list(range(self.data.shape[1]))
+            cat_cols = [c for c in allcols if c not in self.cols]
             return self.data[:, cat_cols]
 
     def normalized_dataframe(self, normalized):
@@ -144,14 +153,23 @@ class Transformer:
         except AttributeError:
             print("Cannot index a numpy array; use `normalized_matrix` instead.")
             return None
-        if self.rename is True:
-            newcols = [c + "_scl" for c in self.cols]
-        else:
+        if self.rename is None:
             newcols = self.cols
-        data_norm = pd.DataFrame(normalized, index=idx, columns=newcols)
-        if self.join_data is True:
-            data_norm = data_norm.join(self.categorical, how="left")
-        return data_norm
+        elif type(self.rename) == str:
+            newcols = [c + self.rename for c in self.cols]
+        elif type(self.rename) == list:
+            newcols = self.rename
+        try:   
+            data_norm = pd.DataFrame(normalized, index=idx, columns=newcols)
+            if self.join_data == 1:
+                data_norm = data_norm.join(self.categorical, how="left")
+            elif self.join_data == 2:
+                data_norm = data_norm.join(self.data, how='left')
+            return data_norm
+        except Exception as e:
+            print(e)
+            return None
+
 
     def normalized_matrix(self, normalized):
         """Concatenates arrays of normalized data with original non-continuous data along the y-axis (axis=1).
@@ -220,8 +238,8 @@ class PowerX(Transformer):
         tx_file=None,
         save_tx=False,
         output_path=None,
-        join_data=True,
-        rename=True,
+        join_data=1,
+        rename="_scl",
     ):
         super().__init__(
             data,
@@ -309,14 +327,14 @@ class PowerX(Transformer):
         ndarray
             power transformed continuous feature vectors
         """
-        nrows = self.continuous.shape[0]
-        ncols = self.continuous.shape[1]
-        self.normalized = np.empty((nrows, ncols))
-        for i in range(ncols):
+        xrow = self.continuous.shape[0]
+        xcol = self.continuous.shape[1]
+        self.normalized = np.empty((xrow, xcol))
+        for i in range(xcol):
             v = self.input_matrix[:, i]
             m = self.tx_data["mu"][i]
             s = self.tx_data["sigma"][i]
-            self.normalized[:, i] = (v - m) / s
+            self.normalized[:, i] = np.round((v - m) / s, 5)
         return self.normalized
 
 
@@ -353,19 +371,20 @@ def normalize_training_data(df, cols, X_train, X_test, X_val=None, rename=False,
         return X_train, X_test
 
 
-# TODO: add/test single input array transformation (and reshape) to PowerX subclass, delete this one
-class CalX(Transformer):
-    def __init__(self, data, tx_file=None):
-        super().__init__(data, cols=["n_files", "total_mb"], tx_file=tx_file)
+# planned deprecation
+class CalX(PowerX):
+    def __init__(self, data, tx_file=None, tx_data=None, rename=False):
+        super().__init__(data, cols=["n_files", "total_mb"], ncols=[0,1], tx_file=tx_file, tx_data=tx_data, rename=rename)
         self.tx_data = self.load_transformer_data()
         self.X = self.powerX()
 
     def transform(self):
         if self.tx_data is not None:
             self.inputs = self.scrub_keys()
-            self.lambdas = np.array(
-                [self.tx_data["f_lambda"], self.tx_data["s_lambda"]]
-            )
+            #self.lambdas = np.array(
+            #    [self.tx_data["f_lambda"], self.tx_data["s_lambda"]]
+            #)
+            self.lambdas = self.tx_data['lambdas']
             self.f_mean = self.tx_data["f_mean"]
             self.f_sigma = self.tx_data["f_sigma"]
             self.s_mean = self.tx_data["s_mean"]
@@ -398,10 +417,11 @@ class CalX(Transformer):
             return None
         else:
             X = self.inputs
-            n_files = X[0]
-            total_mb = X[1]
+            # n_files = X[0]
+            # total_mb = X[1]
             # apply power transformer normalization to continuous vars
-            x = np.array([[n_files], [total_mb]]).reshape(1, -1)
+            x = np.array([X[c] for c in self.ncols]).reshape(1, -1)
+            #x = np.array([[n_files], [total_mb]]).reshape(1, -1)
             self.transformer.lambdas_ = self.lambdas
             xt = self.transformer.transform(x)
             # normalization (zero mean, unit variance)
@@ -412,33 +432,6 @@ class CalX(Transformer):
             ).reshape(1, -1)
             print(self.X)
             return self.X
-
-
-# planned deprecation
-def save_transformer_data(tx_data, output_path=None):
-    """Save the transform metadata to a json file on local disk. Typical use-case is when you need to transform new inputs prior to generating a prediction but don't have access to the original dataset used to train the model.
-
-    Parameters
-    ----------
-    tx_data : dictionary
-        statistical metadata calculated when applying a transform to the training dataset; for PowerTransform this consists of lambdas, means and standard deviations for each continuous feature vector of the dataset.
-    output_path : string, optional
-        where to save the data as a json file on disk, by default None (defaults to current working directory)
-
-    Returns
-    -------
-    string
-        path where json file is saved on disk
-    """
-    if output_path is None:
-        output_path = os.getcwd()
-    else:
-        os.makedirs(output_path, exist_ok=True)
-    tx_file = f"{output_path}/tx_data"
-    with open(tx_file, "w") as j:
-        json.dump(tx_data, j)
-    print("TX data saved as json file: ", tx_file)
-    return tx_file
 
 
 def normalize_training_images(X_tr, X_ts, X_vl=None):
@@ -467,22 +460,25 @@ def normalize_training_images(X_tr, X_ts, X_vl=None):
         return X_tr, X_ts
 
 
-# planned deprecation
-def make_tensors(X_train, y_train, X_test, y_test):
-    """Convert Arrays to Tensors"""
-    X_train = tf.convert_to_tensor(X_train, dtype=tf.float32)
-    y_train = tf.convert_to_tensor(y_train, dtype=tf.float32)
-    X_test = tf.convert_to_tensor(X_test, dtype=tf.float32)
-    y_test = tf.convert_to_tensor(y_test, dtype=tf.float32)
-    return X_train, y_train, X_test, y_test
-
-
-# planned deprecation
-def array_to_tensor(arr):
+def array_to_tensor(arr, reshape=False):
+    if reshape is True:
+        arr = arr.reshape(-1, 1)
     return tf.convert_to_tensor(arr, dtype=tf.float32)
 
 
-def arrays_to_tensors(X_train, y_train, X_test, y_test):
+def y_tensors(y_train, y_test, reshape=True):
+    y_train = array_to_tensor(y_train, reshape=reshape)
+    y_test =  array_to_tensor(y_test, reshape=reshape)
+    return y_train, y_test
+
+
+def X_tensors(X_train, X_test):
+    X_train = array_to_tensor(X_train)
+    X_test = array_to_tensor(X_test)
+    return X_train, X_test
+
+
+def arrays_to_tensors(X_train, y_train, X_test, y_test, reshape_y=False):
     """Converts multiple numpy arrays into tensorflow tensor datatypes at once (for convenience).
 
     Parameters
@@ -501,10 +497,10 @@ def arrays_to_tensors(X_train, y_train, X_test, y_test):
     tensorflow.tensors
         X_train, y_train, X_test, y_test
     """
-    X_train = tf.convert_to_tensor(X_train, dtype=tf.float32)
-    y_train = tf.convert_to_tensor(y_train, dtype=tf.float32)
-    X_test = tf.convert_to_tensor(X_test, dtype=tf.float32)
-    y_test = tf.convert_to_tensor(y_test, dtype=tf.float32)
+    X_train = array_to_tensor(X_train)
+    y_train = array_to_tensor(y_train, reshape=reshape_y)
+    X_test = array_to_tensor(X_test)
+    y_test =array_to_tensor(y_test, reshape=reshape_y)
     return X_train, y_train, X_test, y_test
 
 
@@ -553,15 +549,6 @@ def tensors_to_arrays(X_train, y_train, X_test, y_test):
     X_test = tensor_to_array(X_test)
     y_test = tensor_to_array(y_test, reshape=True)
     return X_train, y_train, X_test, y_test
-
-
-# deprecated
-# def make_arrays(X_train, y_train, X_test, y_test):
-#     X_train = X_train.values
-#     y_train = y_train.values.reshape(-1, 1)
-#     X_test = X_test.values
-#     y_test = y_test.values.reshape(-1, 1)
-#     return X_train, y_train, X_test, y_test
 
 
 def hypersonic_pliers(

@@ -2,13 +2,8 @@ import os
 import glob
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
 from spacekit.extractor.scrape import MastScraper, FitsScraper, scrape_catalogs
 from spacekit.preprocessor.encode import SvmEncoder
-from spacekit.preprocessor.encode import encode_target_data
-from spacekit.preprocessor.transform import array_to_tensor
-
-# TODO: test alt scrub process (no json files)
 
 
 class Scrubber:
@@ -301,78 +296,3 @@ class SvmScrubber(Scrubber):
             with open(f"{output_path}/subset.txt", "w") as f:
                 for s in subsamples:
                     f.writelines(f"{s}\n")
-
-
-class ScrubCal:
-    def __init__(self, data, tensors=True):
-        self.data = data
-        self.tensors = tensors
-        self.mem_bin = data["mem_bin"]
-        self.memory = data["memory"]
-        self.wallclock = data["wallclock"]
-        self.input_cols = [
-            "x_files",
-            "x_size",
-            "drizcorr",
-            "pctecorr",
-            "crsplit",
-            "subarray",
-            "detector",
-            "dtype",
-            "instr",
-        ]
-        self.X = self.data[self.input_cols]
-        self.X_train = None
-        self.X_test = None
-        self.test_idx = None
-        self.train_idx = None
-        self.y_bin_train = None
-        self.y_bin_test = None
-        self.y_mem_train = None
-        self.y_mem_test = None
-        self.y_wall_train = None
-        self.y_wall_test = None
-        self.bin_test_idx = None
-        self.mem_test_idx = None
-        self.wall_test_idx = None
-
-    def prep_data(self):
-        """main calling function"""
-        self.X_train, self.X_test, y_train, y_test = self.stratify_split(self.mem_bin)
-        self.test_idx = self.make_test_index(y_test)
-        self.train_idx = self.make_test_index(y_train)
-        self.bin_test_idx = self.test_idx
-        self.y_bin_train, self.y_bin_test = self.encode_y(y_train, y_test)
-        self.y_mem_train, self.y_mem_test, self.mem_test_idx = self.prep_reg(
-            target_col="memory"
-        )
-        self.y_wall_train, self.y_wall_test, self.wall_test_idx = self.prep_reg(
-            target_col="wallclock"
-        )
-        if self.tensors is True:
-            self.X_train = array_to_tensor(self.X_train)
-            self.X_test = array_to_tensor(self.X_test)
-        return self
-
-    def stratify_split(self, y):
-        return train_test_split(self.X, y, test_size=0.2, stratify=y)
-
-    def make_test_index(self, y, target_col="mem_bin"):
-        test_idx = pd.DataFrame(y, index=y.index, columns={target_col})
-        return test_idx
-
-    def encode_y(self, y_train, y_test):
-        y_train, y_test = encode_target_data(y_train, y_test)
-        if self.tensors is True:
-            y_train = array_to_tensor(y_train)
-            y_test = array_to_tensor(y_test)
-        return y_train, y_test
-
-    def prep_reg(self, target_col="memory"):
-        y_test = self.data.loc[self.test_idx.index][target_col]
-        y_train = self.data.loc[self.train_idx.index][target_col]
-        test_idx = self.make_test_index(y_test, target_col=target_col)
-        y_train, y_test = y_train.values.reshape(-1, 1), y_test.values.reshape(-1, 1)
-        if self.tensors is True:
-            y_train, y_test = array_to_tensor(y_train), array_to_tensor(y_test)
-        return y_train, y_test, test_idx

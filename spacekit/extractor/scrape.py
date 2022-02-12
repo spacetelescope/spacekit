@@ -7,16 +7,19 @@ import collections
 import glob
 import sys
 import json
+import csv
 from stsci.tools import logutil
 from zipfile import ZipFile
 from astropy.io import fits, ascii
 from astroquery.mast import Observations
 from progressbar import ProgressBar
+from botocore.config import Config
+from decimal import Decimal
+from boto3.dynamodb.conditions import Attr
 
-# from botocore import Config
-# retry_config = Config(retries={"max_attempts": 3})
-client = boto3.client("s3")  # , config=retry_config)
-
+retry_config = Config(retries={"max_attempts": 3})
+client = boto3.client("s3", config=retry_config)
+dynamodb = boto3.resource("dynamodb", config=retry_config, region_name="us-east-1")
 
 def home_data_base(data_home=None) -> str:
     """Borrowed from ``sklearn.datasets._base.get_data_home`` function: Return the path of the spacekit data dir, and create one if not existing. Folder path can be set explicitly using ``data_home`` kwarg, otherwise it looks for the 'SPACEKIT_DATA' environment variable, or defaults to 'spacekit_data' in the user home directory (the '~' symbol is expanded to the user's home folder).
@@ -38,6 +41,37 @@ def home_data_base(data_home=None) -> str:
         data_home = os.path.abspath(data_home)
     os.makedirs(data_home, exist_ok=True)
     return data_home
+
+
+def scrape_catalogs(input_path, name, sfx="point"):
+    if sfx != "ref":
+        cfiles = glob.glob(f"{input_path}/{name}_{sfx}-cat.ecsv")
+        if len(cfiles) > 0 and os.path.exists(cfiles[0]):
+            cat = ascii.read(cfiles[0]).to_pandas()
+            if len(cat) > 0:
+                flagcols = [c for c in cat.columns if "Flags" in c]
+                if len(flagcols) > 0:
+                    flags = cat.loc[:, flagcols]
+                    return flags[flags.values <= 5].shape[0]
+        else:
+            return 0
+    else:
+        cfiles = glob.glob(f"{input_path}/ref_cat.ecsv")
+        if len(cfiles) > 0 and os.path.exists(cfiles[0]):
+            cat = ascii.read(cfiles[0]).to_pandas()
+            return len(cat)
+
+def format_hst_cal_row_item(row):
+    row["timestamp"] = int(row["timestamp"])
+    row["x_files"] = float(row["x_files"])
+    row["x_size"] = float(row["x_size"])
+    row["bin_pred"] = float(row["bin_pred"])
+    row["mem_pred"] = float(row["mem_pred"])
+    row["wall_pred"] = float(row["wall_pred"])
+    row["wc_mean"] = float(row["wc_mean"])
+    row["wc_std"] = float(row["wc_std"])
+    row["wc_err"] = float(row["wc_err"])
+    return row
 
 
 class Scraper:
@@ -337,43 +371,178 @@ class S3Scraper(Scraper):
                 self.fpaths = super().extract_archives()
         return self.fpaths
 
-    # def extract_archive(self):
-    #     """Extract the contents of the compreseed archive file(s).
+    @staticmethod
+    def s3_upload(keys, bucket_name, prefix):
+        err = None
+        for key in keys:
+            obj = f"{prefix}/{key}"  # training/date-timestamp/filename
+            try:
+                with open(f"{key}", "rb") as f:
+                    client.upload_fileobj(f, bucket_name, obj)
+                    print(f"Uploaded: {obj}")
+            except Exception as e:
+                err = e
+                continue
+        if err is not None:
+            print(err)
 
-    #     Returns
-    #     -------
-    #     list
-    #         paths to downloaded and extracted files
-    #     """
-    #     extracted_fpaths = []
-    #     for fpath in self.fpaths:
-    #         with ZipFile(fpath, "r") as zip_ref:
-    #             zip_ref.extractall()
-    #         fname = fpath.split(".")[0]
-    #         if os.path.exists(fname):  # delete archive
-    #             os.remove(fpath)
-    #             extracted_fpaths.append(fname)
-    #     self.fpaths = extracted_fpaths
-    #     return self.fpaths
+    @staticmethod
+    def s3_download(keys, bucket_name, prefix):
+        err = None
+        for key in keys:
+            obj = f"{prefix}/{key}"  # latest/master.csv
+            print("s3 key: ", obj)
+            try:
+                with open(f"{key}", "wb") as f:
+                    client.download_fileobj(bucket_name, obj, f)
+            except Exception as e:
+                err = e
+                continue
+        if err is not None:
+            print(err)
 
 
-def scrape_catalogs(input_path, name, sfx="point"):
-    if sfx != "ref":
-        cfiles = glob.glob(f"{input_path}/{name}_{sfx}-cat.ecsv")
-        if len(cfiles) > 0 and os.path.exists(cfiles[0]):
-            cat = ascii.read(cfiles[0]).to_pandas()
-            if len(cat) > 0:
-                flagcols = [c for c in cat.columns if "Flags" in c]
-                if len(flagcols) > 0:
-                    flags = cat.loc[:, flagcols]
-                    return flags[flags.values <= 5].shape[0]
+class DynamoDBScraper(Scraper):
+
+    def __init__(self, table_name, attr=None, fname="batch.csv", formatter=format_hst_cal_row_item, cache_dir="~", cache_subdir="data", format="zip", extract=True, clean=True):
+        super().__init__(cache_dir=cache_dir, cache_subdir=cache_subdir, format=format, extract=extract, clean=clean)
+        self.table_name = table_name
+        self.attr = attr
+        self.ddb_data
+        self.fname = fname
+        self.formatter = formatter
+
+    def get_keys(self, items):
+        keys = set([])
+        for item in items:
+            keys = keys.union(set(item.keys()))
+        return keys
+
+    def make_fxp(self):
+        """
+        Generates filter expression based on attributes dict to retrieve a subset of the database using conditional operators and keyword pairs. Returns dict containing filter expression which can be passed into the dynamodb table.scan() method.
+        Args:
+        `name` : one of db column names ('timestamp', 'mem_bin', etc.)
+        `method`: begins_with, between, eq, gt, gte, lt, lte
+        `value`: str, int, float or low/high list of values if using 'between' method
+        Ex: to retrieve a subset of data with 'timestamp' col greater than 1620740441:
+        setting attr={'name':'timestamp', 'method': 'gt', 'value': 1620740441}
+        returns dict: {'FilterExpression': Attr('timestamp').gt(0)}
+        """
+        # table.scan(FilterExpression=Attr('mem_bin').gt(2))
+        n = self.attr["name"]
+        m = self.attr["method"]
+
+        if self.attr["type"] == "int":
+            v = [int(a.strip()) for a in self.attr["value"].split(",")]
+        elif self.attr["type"] == "float":
+            v = [float(a.strip()) for a in self.attr["value"].split(",")]
         else:
-            return 0
-    else:
-        cfiles = glob.glob(f"{input_path}/ref_cat.ecsv")
-        if len(cfiles) > 0 and os.path.exists(cfiles[0]):
-            cat = ascii.read(cfiles[0]).to_pandas()
-            return len(cat)
+            v = [str(a.strip()) for a in self.attr["value"].split(",")]
+
+        print(f"DDB Subset: {n} - {m} - {v}")
+
+        if m == "eq":
+            fxp = Attr(n).eq(v[0])
+        elif m == "gt":
+            fxp = Attr(n).gt(v[0])
+        elif m == "gte":
+            fxp = Attr(n).gte(v[0])
+        elif m == "lt":
+            fxp = Attr(n).lt(v[0])
+        elif m == "lte":
+            fxp = Attr(n).lte(v[0])
+        elif m == "begins_with":
+            fxp = Attr(n).begins_with(v[0])
+        elif m == "between":
+            fxp = Attr(n).between(np.min(v), np.max(v))
+
+        return {"FilterExpression": fxp}
+
+
+    def ddb_download(self, attr=None):
+        """retrieves data from dynamodb
+        Args:
+        table_name: dynamodb table name
+        p_key: (default is 'ipst') primary key in dynamodb table
+        attr: (optional) retrieve a subset using an attribute dictionary
+        If attr is none, returns all items in database.
+        """
+        table = dynamodb.Table(self.table_name)
+        key_set = ["ipst"]  # primary key
+        if attr:
+            scan_kwargs = self.make_fxp(attr)
+            raw_data = table.scan(**scan_kwargs)
+        else:
+            raw_data = table.scan()
+        if raw_data is None:
+            return None
+        items = raw_data["Items"]
+        fieldnames = set([]).union(self.get_keys(items))
+
+        while raw_data.get("LastEvaluatedKey"):
+            print("Downloading ", end="")
+            if attr:
+                raw_data = table.scan(ExclusiveStartKey=raw_data["LastEvaluatedKey"], **scan_kwargs)
+            else:
+                raw_data = table.scan(ExclusiveStartKey=raw_data["LastEvaluatedKey"])
+            items.extend(raw_data["Items"])
+            fieldnames - fieldnames.union(self.get_keys(items))
+
+        print("\nTotal downloaded records: {}".format(len(items)))
+        for f in fieldnames:
+            if f not in key_set:
+                key_set.append(f)
+        self.ddb_data = {"items": items, "keys": key_set}
+        return self.ddb_data
+
+
+    def write_to_csv(self):
+        with open(self.fname, "w") as csvfile:
+            writer = csv.DictWriter(csvfile, delimiter=",", fieldnames=self.ddb_data["keys"], quotechar='"')
+            writer.writeheader()
+            writer.writerows(self.ddb_data["items"])
+        print(f"DDB data saved to: {self.fname}")
+
+
+    def format_row_item(self, row):
+        row = self.formatter(row)
+        return json.loads(json.dumps(row, allow_nan=True), parse_int=Decimal, parse_float=Decimal)
+
+
+    def write_to_dynamo(self, rows):
+        try:
+            table = dynamodb.Table(self.table_name)
+        except Exception as e:
+            print("Error loading DynamoDB table. Check if table was created correctly and environment variable.")
+            print(e)
+        try:
+            with table.batch_writer() as batch:
+                for i in range(len(rows)):
+                    batch.put_item(Item=rows[i])
+        except Exception as e:
+            print("Error executing batch_writer")
+            print(e)
+
+
+    def batch_ddb_writer(self, key):
+        input_file = csv.DictReader(open(key))
+
+        batch_size = 100
+        batch = []
+
+        for row in input_file:
+            item = self.format_row_item(row)
+
+            if len(batch) >= batch_size:
+                self.write_to_dynamo(batch)
+                batch.clear()
+
+            batch.append(item)
+        if batch:
+            self.write_to_dynamo(batch)
+        return {"statusCode": 200, "body": json.dumps("Uploaded to DynamoDB Table")}
+
 
 
 class FitsScraper:

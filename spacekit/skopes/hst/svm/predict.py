@@ -15,7 +15,7 @@ import argparse
 import os
 import sys
 import datetime as dt
-from spacekit.extractor.load import load_datasets, SVMFileIO
+from spacekit.extractor.load import load_datasets, SVMImageIO
 from spacekit.builder.architect import Builder
 
 # from spacekit.builder.blueprints import Blueprint
@@ -61,7 +61,7 @@ def load_mixed_inputs(data_file, img_path, size=128):
     X_data = load_datasets([data_file], column_order=cols)
     # idx, X_img = load_image_data(X_data, img_path, size=size)
     print("Loading images into arrays...")
-    idx, X_img = SVMFileIO(img_path, w=size, h=size, d=9, data=X_data).load()
+    idx, X_img = SVMImageIO(img_path, w=size, h=size, d=9, data=X_data).load()
     diff = X_data.shape[0] - X_img.shape[0]
     if diff > 0:
         X_data = X_data.loc[X_data.index.isin(idx)]
