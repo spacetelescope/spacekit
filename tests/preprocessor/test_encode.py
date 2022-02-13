@@ -18,7 +18,9 @@ ENCODED_COL_EXPECTED = [
     'nmatches',
     'wcstype',
     'category',
-    'cat'
+    'cat',
+    'wcs',
+    'det'
 ]
 
 @mark.preprocessor
@@ -27,7 +29,7 @@ def test_scrape_mast(scraped_mast_file):
     data = pd.read_csv(scraped_mast_file, index_col="index")
     enc = SvmEncoder(data)
     enc.encode_features()
-    assert enc.df.shape == (1, 16)
+    assert enc.df.shape == (1, 18)
     for col in ENCODED_COL_EXPECTED:
         if col in list(enc.df.columns):
             assert True

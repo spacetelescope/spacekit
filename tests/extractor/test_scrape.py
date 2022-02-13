@@ -39,12 +39,12 @@ def test_load_from_h5(h5_data):
 
 @mark.extractor
 @mark.scrape
-def test_json_scraper(raw_csv_file, svm_visit_data):
+def test_json_scraper(raw_csv_file, single_visit_path):
     output_path = "tmp"
     os.makedirs(output_path, exist_ok=True)
     fname = os.path.basename(raw_csv_file).split(".")[0]
     jsc = JsonScraper(
-        search_path=svm_visit_data,
+        search_path=single_visit_path,
         file_basename=fname,
         crpt=0,
         output_path=output_path,

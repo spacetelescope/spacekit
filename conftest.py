@@ -207,3 +207,8 @@ def scrubbed_cols_file():
 @fixture(scope='function')
 def scraped_fits_file():
     return "tests/data/svm/prep/scraped_fits.csv"
+
+
+@fixture(scope='function')
+def scraped_mast_file():
+    return "tests/data/svm/prep/scraped_mast.csv"
