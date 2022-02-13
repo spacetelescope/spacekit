@@ -99,7 +99,7 @@ class DataPlots:
         self.bar = None
         self.groupedbar = None
         self.kde = None
-    
+
     def group_keys(self):
         if self.group in ["instr", "instrument"]:
             keys = ["acs", "cos", "stis", "wfc3"]
@@ -108,7 +108,7 @@ class DataPlots:
             if len(uniq) == 2:
                 keys = ["wfc-uvis", "other"]
             else:
-                keys = ["hrc", "ir", "sbc", "uvis", "wfc"] 
+                keys = ["hrc", "ir", "sbc", "uvis", "wfc"]
         # TODO: target classification / "category"
         elif self.group in ["cat", "category"]:
             keys = [
@@ -226,7 +226,7 @@ class DataPlots:
         marker_size=15,
         cmap=["cyan", "fuchsia"],
         categories=None,
-        target=None
+        target=None,
     ):
         if categories is None:
             categories = {"all": self.df}
@@ -417,17 +417,17 @@ class DataPlots:
         self.box = {}
         features = self.continuous + targets
         for f in features:
-            traces =[]
+            traces = []
             for _, name in self.gkeys.items():
                 trace = go.Box(y=self.categories[name][f], name=name)
                 traces.append(trace)
 
             layout = go.Layout(
-                    title=f"{f} by {self.group}",
-                    hovermode="closest",
-                    paper_bgcolor="#242a44",
-                    plot_bgcolor="#242a44",
-                    font={"color": "#ffffff"},
+                title=f"{f} by {self.group}",
+                hovermode="closest",
+                paper_bgcolor="#242a44",
+                plot_bgcolor="#242a44",
+                font={"color": "#ffffff"},
             )
             fig = go.Figure(data=traces, layout=layout)
             self.box[f] = fig
@@ -440,7 +440,9 @@ class DataPlots:
         traces = []
         for key, value in self.gkeys.items():
             dx = groups.get_group(key).value_counts()
-            trace = go.Bar(x=dx.index, y=dx, name=value.upper(), marker=dict(color=cmap[key]))
+            trace = go.Bar(
+                x=dx.index, y=dx, name=value.upper(), marker=dict(color=cmap[key])
+            )
             traces.append(trace)
         layout = go.Layout(title=f"{target.title()} by {self.group.title()}")
         fig = go.Figure(data=traces, layout=layout)
@@ -577,7 +579,15 @@ class HstCalPlots(DataPlots):
         self.instr_dict = None
         self.instruments = list(self.df["instr_key"].unique())
         self.continuous = ["n_files", "total_mb", "x_files", "x_size"]
-        self.categorical = ["drizcorr", "pctecorr", "crsplit", "subarray", "detector","dtype", "instr",]
+        self.categorical = [
+            "drizcorr",
+            "pctecorr",
+            "crsplit",
+            "subarray",
+            "detector",
+            "dtype",
+            "instr",
+        ]
         self.feature_list = self.continuous + self.categorical
         self.cmap = ["#119dff", "salmon", "#66c2a5", "fuchsia"]
         self.scatter = None
@@ -596,13 +606,13 @@ class HstCalPlots(DataPlots):
             "stis": [self.stis, "fuchsia"],
         }
         return self
-    
+
     def draw_plots(self):
         self.scatter = self.make_cal_scatterplots()
         self.box = self.make_box_figs2(targets=["memory", "wallclock"])
         self.scatter3 = self.make_cal_scatter3d()
-        #self.bar
-        #self.kde
+        # self.bar
+        # self.kde
 
     def make_cal_scatterplots(self):
         memory_figs, wallclock_figs = {}, {}
@@ -611,13 +621,15 @@ class HstCalPlots(DataPlots):
             wallclock_figs[f] = self.make_scatter_figs(f, "wallclock")
         self.scatter = dict(memory=memory_figs, wallclock=wallclock_figs)
         return self.scatter
-    
+
     def make_cal_scatter3d(self):
         x, y = "memory", "wallclock"
         self.scatter3 = {}
         for z in self.continuous:
-            data = self.df[[x, y, z, 'instr_key']]
-            scat3d = super().scatter3d(x, y, z, mask=data, target='instr_key', width=700, height=700)
+            data = self.df[[x, y, z, "instr_key"]]
+            scat3d = super().scatter3d(
+                x, y, z, mask=data, target="instr_key", width=700, height=700
+            )
             self.scatter3[z] = scat3d
 
     def make_box_figs(self, vars):

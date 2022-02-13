@@ -21,6 +21,7 @@ retry_config = Config(retries={"max_attempts": 3})
 client = boto3.client("s3", config=retry_config)
 dynamodb = boto3.resource("dynamodb", config=retry_config, region_name="us-east-1")
 
+
 def home_data_base(data_home=None) -> str:
     """Borrowed from ``sklearn.datasets._base.get_data_home`` function: Return the path of the spacekit data dir, and create one if not existing. Folder path can be set explicitly using ``data_home`` kwarg, otherwise it looks for the 'SPACEKIT_DATA' environment variable, or defaults to 'spacekit_data' in the user home directory (the '~' symbol is expanded to the user's home folder).
 
@@ -60,6 +61,7 @@ def scrape_catalogs(input_path, name, sfx="point"):
         if len(cfiles) > 0 and os.path.exists(cfiles[0]):
             cat = ascii.read(cfiles[0]).to_pandas()
             return len(cat)
+
 
 def format_hst_cal_row_item(row):
     row["timestamp"] = int(row["timestamp"])
@@ -403,9 +405,25 @@ class S3Scraper(Scraper):
 
 
 class DynamoDBScraper(Scraper):
-
-    def __init__(self, table_name, attr=None, fname="batch.csv", formatter=format_hst_cal_row_item, cache_dir="~", cache_subdir="data", format="zip", extract=True, clean=True):
-        super().__init__(cache_dir=cache_dir, cache_subdir=cache_subdir, format=format, extract=extract, clean=clean)
+    def __init__(
+        self,
+        table_name,
+        attr=None,
+        fname="batch.csv",
+        formatter=format_hst_cal_row_item,
+        cache_dir="~",
+        cache_subdir="data",
+        format="zip",
+        extract=True,
+        clean=True,
+    ):
+        super().__init__(
+            cache_dir=cache_dir,
+            cache_subdir=cache_subdir,
+            format=format,
+            extract=extract,
+            clean=clean,
+        )
         self.table_name = table_name
         self.attr = attr
         self.ddb_data
@@ -459,7 +477,6 @@ class DynamoDBScraper(Scraper):
 
         return {"FilterExpression": fxp}
 
-
     def ddb_download(self, attr=None):
         """retrieves data from dynamodb
         Args:
@@ -483,7 +500,9 @@ class DynamoDBScraper(Scraper):
         while raw_data.get("LastEvaluatedKey"):
             print("Downloading ", end="")
             if attr:
-                raw_data = table.scan(ExclusiveStartKey=raw_data["LastEvaluatedKey"], **scan_kwargs)
+                raw_data = table.scan(
+                    ExclusiveStartKey=raw_data["LastEvaluatedKey"], **scan_kwargs
+                )
             else:
                 raw_data = table.scan(ExclusiveStartKey=raw_data["LastEvaluatedKey"])
             items.extend(raw_data["Items"])
@@ -496,25 +515,28 @@ class DynamoDBScraper(Scraper):
         self.ddb_data = {"items": items, "keys": key_set}
         return self.ddb_data
 
-
     def write_to_csv(self):
         with open(self.fname, "w") as csvfile:
-            writer = csv.DictWriter(csvfile, delimiter=",", fieldnames=self.ddb_data["keys"], quotechar='"')
+            writer = csv.DictWriter(
+                csvfile, delimiter=",", fieldnames=self.ddb_data["keys"], quotechar='"'
+            )
             writer.writeheader()
             writer.writerows(self.ddb_data["items"])
         print(f"DDB data saved to: {self.fname}")
 
-
     def format_row_item(self, row):
         row = self.formatter(row)
-        return json.loads(json.dumps(row, allow_nan=True), parse_int=Decimal, parse_float=Decimal)
-
+        return json.loads(
+            json.dumps(row, allow_nan=True), parse_int=Decimal, parse_float=Decimal
+        )
 
     def write_to_dynamo(self, rows):
         try:
             table = dynamodb.Table(self.table_name)
         except Exception as e:
-            print("Error loading DynamoDB table. Check if table was created correctly and environment variable.")
+            print(
+                "Error loading DynamoDB table. Check if table was created correctly and environment variable."
+            )
             print(e)
         try:
             with table.batch_writer() as batch:
@@ -523,7 +545,6 @@ class DynamoDBScraper(Scraper):
         except Exception as e:
             print("Error executing batch_writer")
             print(e)
-
 
     def batch_ddb_writer(self, key):
         input_file = csv.DictReader(open(key))
@@ -542,7 +563,6 @@ class DynamoDBScraper(Scraper):
         if batch:
             self.write_to_dynamo(batch)
         return {"statusCode": 200, "body": json.dumps("Uploaded to DynamoDB Table")}
-
 
 
 class FitsScraper:

@@ -9,7 +9,16 @@ import tensorflow as tf
 
 class Transformer:
     def __init__(
-        self, data, cols=None, ncols=None, tx_data=None, tx_file=None, save_tx=True, join_data=1, rename="_scl", output_path=None
+        self,
+        data,
+        cols=None,
+        ncols=None,
+        tx_data=None,
+        tx_file=None,
+        save_tx=True,
+        join_data=1,
+        rename="_scl",
+        output_path=None,
     ):
         """Instantiates a Transformer class object. Unless the `cols` attribute is empty, it will automatically instantiate some of the other attributes needed to transform the data. Using the Transformer subclasses instead is recommended (this class is mainly used as an object with general methods to load or save the transform data as well as instantiate some of the initial attributes).
 
@@ -43,7 +52,7 @@ class Transformer:
         self.tx_data = self.load_transformer_data(tx=tx_data)
         self.continuous = self.continuous_data()
         self.categorical = self.categorical_data()
-    
+
     def check_shape(self, data):
         if type(data) == np.ndarray and len(data.shape) == 1:
             data = data.reshape(1, -1)
@@ -122,7 +131,7 @@ class Transformer:
             "categorical" i.e. non-continuous feature vectors (as determined by `cols` attribute)
         """
         if self.cols is None:
-            #print("`cols` attribute not instantiated.")
+            # print("`cols` attribute not instantiated.")
             return None
         if type(self.data) == pd.DataFrame:
             return self.data.drop(self.cols, axis=1, inplace=False)
@@ -159,17 +168,16 @@ class Transformer:
             newcols = [c + self.rename for c in self.cols]
         elif type(self.rename) == list:
             newcols = self.rename
-        try:   
+        try:
             data_norm = pd.DataFrame(normalized, index=idx, columns=newcols)
             if self.join_data == 1:
                 data_norm = data_norm.join(self.categorical, how="left")
             elif self.join_data == 2:
-                data_norm = data_norm.join(self.data, how='left')
+                data_norm = data_norm.join(self.data, how="left")
             return data_norm
         except Exception as e:
             print(e)
             return None
-
 
     def normalized_matrix(self, normalized):
         """Concatenates arrays of normalized data with original non-continuous data along the y-axis (axis=1).
@@ -338,7 +346,9 @@ class PowerX(Transformer):
         return self.normalized
 
 
-def normalize_training_data(df, cols, X_train, X_test, X_val=None, rename=None, output_path=None):
+def normalize_training_data(
+    df, cols, X_train, X_test, X_val=None, rename=None, output_path=None
+):
     """Apply Leo-Johnson PowerTransform (via scikit learn) normalization and scaling to the training data, saving the transform metadata to json file on local disk and transforming the train, test and val sets separately (to prevent data leakage).
 
     Parameters
@@ -361,11 +371,19 @@ def normalize_training_data(df, cols, X_train, X_test, X_val=None, rename=None, 
     """
     print("Applying Normalization (Leo-Johnson PowerTransform)")
     ncols = [i for i, c in enumerate(df.columns) if c in cols]
-    Px = PowerX(df, cols=cols, ncols=ncols, save_tx=True, rename=rename, output_path=output_path)
-    X_train = PowerX(X_train, cols=cols, ncols=ncols, rename=rename, tx_data=Px.tx_data).Xt
-    X_test = PowerX(X_test, cols=cols, ncols=ncols, rename=rename, tx_data=Px.tx_data).Xt
+    Px = PowerX(
+        df, cols=cols, ncols=ncols, save_tx=True, rename=rename, output_path=output_path
+    )
+    X_train = PowerX(
+        X_train, cols=cols, ncols=ncols, rename=rename, tx_data=Px.tx_data
+    ).Xt
+    X_test = PowerX(
+        X_test, cols=cols, ncols=ncols, rename=rename, tx_data=Px.tx_data
+    ).Xt
     if X_val is not None:
-        X_val = PowerX(X_val, cols=cols, ncols=ncols, rename=rename, tx_data=Px.tx_data).Xt
+        X_val = PowerX(
+            X_val, cols=cols, ncols=ncols, rename=rename, tx_data=Px.tx_data
+        ).Xt
         return X_train, X_test, X_val
     else:
         return X_train, X_test
@@ -374,17 +392,24 @@ def normalize_training_data(df, cols, X_train, X_test, X_val=None, rename=None, 
 # planned deprecation
 class CalX(PowerX):
     def __init__(self, data, tx_file=None, tx_data=None, rename=False):
-        super().__init__(data, cols=["n_files", "total_mb"], ncols=[0,1], tx_file=tx_file, tx_data=tx_data, rename=rename)
+        super().__init__(
+            data,
+            cols=["n_files", "total_mb"],
+            ncols=[0, 1],
+            tx_file=tx_file,
+            tx_data=tx_data,
+            rename=rename,
+        )
         self.tx_data = self.load_transformer_data()
         self.X = self.powerX()
 
     def transform(self):
         if self.tx_data is not None:
             self.inputs = self.scrub_keys()
-            #self.lambdas = np.array(
+            # self.lambdas = np.array(
             #    [self.tx_data["f_lambda"], self.tx_data["s_lambda"]]
-            #)
-            self.lambdas = self.tx_data['lambdas']
+            # )
+            self.lambdas = self.tx_data["lambdas"]
             self.f_mean = self.tx_data["f_mean"]
             self.f_sigma = self.tx_data["f_sigma"]
             self.s_mean = self.tx_data["s_mean"]
@@ -421,7 +446,7 @@ class CalX(PowerX):
             # total_mb = X[1]
             # apply power transformer normalization to continuous vars
             x = np.array([X[c] for c in self.ncols]).reshape(1, -1)
-            #x = np.array([[n_files], [total_mb]]).reshape(1, -1)
+            # x = np.array([[n_files], [total_mb]]).reshape(1, -1)
             self.transformer.lambdas_ = self.lambdas
             xt = self.transformer.transform(x)
             # normalization (zero mean, unit variance)
@@ -468,7 +493,7 @@ def array_to_tensor(arr, reshape=False):
 
 def y_tensors(y_train, y_test, reshape=True):
     y_train = array_to_tensor(y_train, reshape=reshape)
-    y_test =  array_to_tensor(y_test, reshape=reshape)
+    y_test = array_to_tensor(y_test, reshape=reshape)
     return y_train, y_test
 
 
@@ -500,7 +525,7 @@ def arrays_to_tensors(X_train, y_train, X_test, y_test, reshape_y=False):
     X_train = array_to_tensor(X_train)
     y_train = array_to_tensor(y_train, reshape=reshape_y)
     X_test = array_to_tensor(X_test)
-    y_test =array_to_tensor(y_test, reshape=reshape_y)
+    y_test = array_to_tensor(y_test, reshape=reshape_y)
     return X_train, y_train, X_test, y_test
 
 

@@ -82,6 +82,7 @@ def load_k2(fpath=None, date_key=None):
     k2 = spacekit_collections["k2"]
     train, test = scrape_archives(k2, data_home=DD)
 
+
 def load(name="calcloud", date_key=None, fpath=None):
     if fpath is None:
         fpath = import_collection(name, date_key=date_key)

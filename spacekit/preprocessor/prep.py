@@ -5,7 +5,17 @@ from sklearn.model_selection import train_test_split
 
 
 class Prep:
-    def __init__(self, data, y_target, X_cols=[], tensors=True, normalize=True, random=None, tsize=0.2, encode_targets=True):
+    def __init__(
+        self,
+        data,
+        y_target,
+        X_cols=[],
+        tensors=True,
+        normalize=True,
+        random=None,
+        tsize=0.2,
+        encode_targets=True,
+    ):
         self.data = data
         self.y_target = y_target
         self.X_cols = self.check_input_cols(X_cols)
@@ -22,7 +32,7 @@ class Prep:
         self.X_test = None
         self.y_train = None
         self.y_test = None
-    
+
     def check_input_cols(self, X_cols):
         if len(X_cols) == 0:
             X_cols = list(self.data.columns)
@@ -35,13 +45,17 @@ class Prep:
         y = self.data[y_target]
 
         if stratify is True:
-            self.train_idx, self.test_idx = train_test_split(self.X, y, test_size=self.tsize, stratify=y, random_state=self.random)
+            self.train_idx, self.test_idx = train_test_split(
+                self.X, y, test_size=self.tsize, stratify=y, random_state=self.random
+            )
         else:
-            self.train_idx, self.test_idx = train_test_split(self.X, y, test_size=self.tsize, random_state=self.random)
-        self.data['split'] = 'train'
-        self.data.loc[self.test_idx, 'split'] = 'test'
+            self.train_idx, self.test_idx = train_test_split(
+                self.X, y, test_size=self.tsize, random_state=self.random
+            )
+        self.data["split"] = "train"
+        self.data.loc[self.test_idx, "split"] = "test"
         return self
-    
+
     def get_X_y(self, group, y_target):
         if group == "train":
             X_train = self.data.loc[self.train_idx, self.X_cols]
@@ -51,7 +65,7 @@ class Prep:
             X_test = self.data.loc[self.test_idx, self.X_cols]
             y_test = self.data.loc[self.test_idx, y_target]
             return X_test, y_test
-    
+
     def get_X_train_test(self):
         X_train = self.data.loc[self.train_idx, self.X_cols]
         X_test = self.data.loc[self.test_idx, self.X_cols]
@@ -61,7 +75,7 @@ class Prep:
         y_train = self.data.loc[self.train_idx, y_target]
         y_test = self.data.loc[self.test_idx, y_target]
         return y_train, y_test
-    
+
     def get_test_index(self, target_col):
         test_idx = self.data.loc[self.test_idx, target_col]
         # test_idx = pd.DataFrame(y, index=y.index, columns={target_col})
@@ -70,7 +84,9 @@ class Prep:
     def _prep_data(self, y_target, stratify=True):
         """main calling function"""
         if self.train_idx is None:
-            self.stratify_split(y_target=y_target, stratify=stratify) # data, train_idx, test_idx
+            self.stratify_split(
+                y_target=y_target, stratify=stratify
+            )  # data, train_idx, test_idx
         self.X_train, self.y_train = self.get_X_y("train", y_target)
         self.X_test, self.y_test = self.get_X_y("test", y_target)
         # y_train encode, reshape
@@ -80,7 +96,9 @@ class Prep:
             self.apply_normalization()
         if self.tensors is True:
             train_test_data = [self.X_train, self.y_train, self.X_test, self.y_test]
-            self.X_train, self.y_train, self.X_test, self.y_test = arrays_to_tensors(*train_test_data)
+            self.X_train, self.y_train, self.X_test, self.y_test = arrays_to_tensors(
+                *train_test_data
+            )
         return self
 
     def encode_y(self, y_train, y_test):
@@ -90,15 +108,27 @@ class Prep:
     def apply_normalization(self, T=PowerX, cols=[], ncols=[], rename=None, join=1):
         if len(cols) == 0:
             cols = self.X_cols
-        if len(ncols) == 0: 
+        if len(ncols) == 0:
             ncols = [i for i, c in enumerate(self.X.cols) if c in cols]
-        self.Tx = T(self.X, cols, ncols=ncols, save_tx=True, rename=rename, join_data=join)
+        self.Tx = T(
+            self.X, cols, ncols=ncols, save_tx=True, rename=rename, join_data=join
+        )
         self.X_train = T(self.X_train, cols, ncols=ncols, tx_data=self.Tx.tx_data).Xt
         self.X_test = T(self.X_test, cols, ncols=ncols, tx_data=self.Tx.tx_data).Xt
 
 
 class CalPrep(Prep):
-    def __init__(self, data, y_target, X_cols=[], tensors=True, normalize=True, random=None, tsize=0.2, encode_targets=True):
+    def __init__(
+        self,
+        data,
+        y_target,
+        X_cols=[],
+        tensors=True,
+        normalize=True,
+        random=None,
+        tsize=0.2,
+        encode_targets=True,
+    ):
         super().__init__(
             data,
             y_target,
@@ -107,9 +137,9 @@ class CalPrep(Prep):
             normalize=normalize,
             random=random,
             tsize=tsize,
-            encode_targets=encode_targets
+            encode_targets=encode_targets,
         )
-        self.norm_cols = ['n_files', 'total_mb']
+        self.norm_cols = ["n_files", "total_mb"]
         self.mem_bin = data["mem_bin"]
         self.memory = data["memory"]
         self.wallclock = data["wallclock"]
@@ -138,9 +168,13 @@ class CalPrep(Prep):
             ]
 
     def prep_data(self):
-        super().stratify_split(y_target="mem_bin", stratify=True) # data, train_idx, test_idx
+        super().stratify_split(
+            y_target="mem_bin", stratify=True
+        )  # data, train_idx, test_idx
         self.X_train, self.X_test = super().get_X_train_test()
-        super().apply_normalization(T=PowerX, cols=self.norm_cols, rename=['x_files', 'x_size'], join=2)
+        super().apply_normalization(
+            T=PowerX, cols=self.norm_cols, rename=["x_files", "x_size"], join=2
+        )
         self.prep_mem_bin()
         self.prep_mem_reg()
         self.prep_wall_reg()
@@ -150,7 +184,7 @@ class CalPrep(Prep):
         y_train, y_test = super().get_y_train_test(self, "mem_bin")
         y_train, y_test = self.encode_y(y_train, y_test)
         self.y_bin_train, self.y_bin_test = y_tensors(y_train, y_test, reshape=True)
-    
+
     def prep_mem_reg(self):
         y_train, y_test = super().get_y_train_test(self, "memory")
         self.y_mem_train, self.y_mem_test = y_tensors(y_train, y_test, reshape=True)

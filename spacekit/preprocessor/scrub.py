@@ -9,7 +9,15 @@ from spacekit.preprocessor.encode import SvmEncoder
 class Scrubber:
     """Base parent class for preprocessing data. Includes some basic column scrubbing methods for pandas dataframes. The heavy lifting is done via subclasses below."""
 
-    def __init__(self, data=None, col_order=None, output_path=None, output_file=None, dropnans=True, save_raw=True):
+    def __init__(
+        self,
+        data=None,
+        col_order=None,
+        output_path=None,
+        output_file=None,
+        dropnans=True,
+        save_raw=True,
+    ):
         self.df = self.cache_data(cache=data)
         self.output_path = output_path
         self.output_file = output_file
@@ -47,7 +55,7 @@ class Scrubber:
         hc = dict(zip(old, new))
         self.df.rename(hc, axis="columns", inplace=True)
         print("New column names: ", self.df.columns)
-    
+
     def drop_nans(self):
         if self.dropnans is True:
             print("Searching for NaNs...")
@@ -66,7 +74,7 @@ class Scrubber:
         drops = [col for col in self.df.columns if col not in self.col_order]
         self.df = self.df.drop(drops, axis=1)
         self.df = self.df[self.col_order]
-    
+
     def save_csv_file(self, pfx="", index_col="index"):
         """Saves dataframe to csv file on local disk.
 
@@ -103,7 +111,14 @@ class SvmScrubber(Scrubber):
         make_subsamples=False,
     ):
         self.col_order = self.set_col_order()
-        super().__init__(data=data, col_order=self.col_order, output_path=output_path, output_file=output_file, dropnans=dropnans, save_raw=save_raw)
+        super().__init__(
+            data=data,
+            col_order=self.col_order,
+            output_path=output_path,
+            output_file=output_file,
+            dropnans=dropnans,
+            save_raw=save_raw,
+        )
         self.input_path = input_path
         self.make_pos_list = make_pos_list
         self.crpt = crpt
@@ -176,7 +191,10 @@ class SvmScrubber(Scrubber):
         df_idx = pd.DataFrame.from_dict(index, orient="index", columns=add_cols)
         self.df = data.join(df_idx, how="left")
         self.df.set_index("index", inplace=True)
-        super().rename_cols(old=["visit", "n_exposures", "target"], new=["dataset", "numexp", "targname"])
+        super().rename_cols(
+            old=["visit", "n_exposures", "target"],
+            new=["dataset", "numexp", "targname"],
+        )
 
     def scrub_columns(self):
         """Initial dataframe scrubbing to extract and rename columns, drop NaNs, and set the index."""
@@ -187,20 +205,20 @@ class SvmScrubber(Scrubber):
         index_data = self.split_index()
         self.df = index_data.join(self.df, how="left")
         super().rename_cols(old=["number_of_gaia_sources"], new=["gaia"])
-    
+
     def set_col_order(self):
         return [
-                "numexp",
-                "rms_ra",
-                "rms_dec",
-                "nmatches",
-                "point",
-                "segment",
-                "gaia",
-                "det",
-                "wcs",
-                "cat",
-            ]
+            "numexp",
+            "rms_ra",
+            "rms_dec",
+            "nmatches",
+            "point",
+            "segment",
+            "gaia",
+            "det",
+            "wcs",
+            "cat",
+        ]
 
     def set_new_cols(self):
         self.new_cols = [

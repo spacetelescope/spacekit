@@ -15,5 +15,5 @@ __all__ = [
     "load_svm",
     "load_k2",
     "import_collection",
-    "load"
+    "load",
 ]
