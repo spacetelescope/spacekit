@@ -1,6 +1,6 @@
 import os
 from pytest import mark
-from spacekit.builder.architect import Builder
+from spacekit.builder.architect import BuilderEnsemble
 from spacekit.skopes.hst.svm.train import load_ensemble_data
 
 # params = dict(
@@ -12,7 +12,7 @@ from spacekit.skopes.hst.svm.train import load_ensemble_data
 #     verbose=2,
 #     ensemble=True,
 # )
-@mark.skip
+
 @mark.builder
 @mark.architect
 def test_ensemble_builder(svm_labeled_dataset, svm_train_npz):
@@ -28,7 +28,7 @@ def test_ensemble_builder(svm_labeled_dataset, svm_train_npz):
         verbose=2,
         ensemble=True,
     )
-    ens = Builder.BuilderEnsemble(
+    ens = BuilderEnsemble(
         XTR,
         YTR,
         XTS,

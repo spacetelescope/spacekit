@@ -135,7 +135,7 @@ def load_ensemble_data(
     if norm:
         cols = ["numexp", "rms_ra", "rms_dec", "nmatches", "point", "segment", "gaia"]
         X_train, X_test, X_val = normalize_training_data(
-            df, cols, X_train, X[1], X_val=X[2], output_path=output_path
+            df, cols, X_train, X[1], X_val=X[2], output_path=output_path, rename=None
         )
         X_tr, X_ts, X_vl = normalize_training_images(X_tr, X_ts, X_vl=X_vl)
     else:

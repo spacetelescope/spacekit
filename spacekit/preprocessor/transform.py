@@ -338,7 +338,7 @@ class PowerX(Transformer):
         return self.normalized
 
 
-def normalize_training_data(df, cols, X_train, X_test, X_val=None, rename=False, output_path=None):
+def normalize_training_data(df, cols, X_train, X_test, X_val=None, rename=None, output_path=None):
     """Apply Leo-Johnson PowerTransform (via scikit learn) normalization and scaling to the training data, saving the transform metadata to json file on local disk and transforming the train, test and val sets separately (to prevent data leakage).
 
     Parameters

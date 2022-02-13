@@ -24,7 +24,7 @@ def test_powerX_transform(svm_labeled_dataset):
     df = load_datasets([svm_labeled_dataset])
     cols = ["numexp", "rms_ra", "rms_dec", "nmatches", "point", "segment", "gaia"]
     ncols = [i for i, c in enumerate(df.columns) if c in cols]
-    Px = PowerX(df, cols=cols, ncols=ncols, save_tx=True, output_path=output_path)
+    Px = PowerX(df, cols=cols, ncols=ncols, save_tx=True, output_path=output_path, rename=None)
     assert type(Px.normalized) == np.ndarray
     
     img_path = "tests/data/svm/train/img_data.npz"
