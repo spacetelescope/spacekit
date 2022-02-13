@@ -12,7 +12,7 @@ def test_draw_from_pattern(single_visit_path, img_outpath, draw_mosaic_pattern):
         pattern=draw_mosaic_pattern,
     )
     assert mos.datasets[0] == "ibl738"
-    datasets = mos.local_search()
+    mos.local_search()
     assert len(mos.datasets) > 0
 
 
@@ -64,11 +64,7 @@ def test_draw_from_priority(single_visit_path, img_outpath, draw_mosaic_fname):
 
 @mark.generator
 @mark.draw
-@mark.parametrize("P, S, G", [
-    (0, 0, 0),
-    (1, 1, 0),
-    (0, 0, 1)
-])
+@mark.parametrize("P, S, G", [(0, 0, 0), (1, 1, 0), (0, 0, 1)])
 def test_draw_total_images(single_visit_path, img_outpath, P, S, G):
     mos = DrawMosaics(single_visit_path, output_path=img_outpath)
     mos.draw_total_images(mos.datasets[0], P=P, S=S, G=G)

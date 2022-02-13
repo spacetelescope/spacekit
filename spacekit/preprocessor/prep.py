@@ -1,4 +1,3 @@
-import pandas as pd
 from spacekit.preprocessor.encode import encode_target_data
 from spacekit.preprocessor.transform import arrays_to_tensors, y_tensors, PowerX
 from sklearn.model_selection import train_test_split
@@ -91,7 +90,7 @@ class Prep:
         self.X_test, self.y_test = self.get_X_y("test", y_target)
         # y_train encode, reshape
         if self.encode_targets is True:
-            y_train, y_test = self.encode_y(y_train, y_test)
+            self.y_train, self.y_test = self.encode_y(self.y_train, self.y_test)
         if self.normalize:
             self.apply_normalization()
         if self.tensors is True:

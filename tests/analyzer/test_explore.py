@@ -1,5 +1,6 @@
 from pytest import mark
 
+
 @mark.analyzer
 @mark.explore
 def make_scatter_plots(explorer):

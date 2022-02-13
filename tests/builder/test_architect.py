@@ -1,4 +1,3 @@
-import os
 from pytest import mark
 from spacekit.builder.architect import BuilderEnsemble
 from spacekit.skopes.hst.svm.train import load_ensemble_data
@@ -13,11 +12,17 @@ from spacekit.skopes.hst.svm.train import load_ensemble_data
 #     ensemble=True,
 # )
 
+
 @mark.builder
 @mark.architect
 def test_ensemble_builder(svm_labeled_dataset, svm_train_npz):
     tv_idx, XTR, YTR, XTS, YTS, _, _ = load_ensemble_data(
-        svm_labeled_dataset, svm_train_npz, img_size=128, norm=0, v=0.85, output_path="tmp"
+        svm_labeled_dataset,
+        svm_train_npz,
+        img_size=128,
+        norm=0,
+        v=0.85,
+        output_path="tmp",
     )
     params = dict(
         batch_size=14,

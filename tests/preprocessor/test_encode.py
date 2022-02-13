@@ -2,26 +2,27 @@ from pytest import mark
 from spacekit.preprocessor.encode import SvmEncoder
 import pandas as pd
 
-ENCODED_COL_EXPECTED = [ 
-    'detector',
-    'dataset',
-    'targname',
-    'ra_targ',
-    'dec_targ',
-    'numexp',
-    'imgname',
-    'point',
-    'segment',
-    'gaia',
-    'rms_ra',
-    'rms_dec',
-    'nmatches',
-    'wcstype',
-    'category',
-    'cat',
-    'wcs',
-    'det'
+ENCODED_COL_EXPECTED = [
+    "detector",
+    "dataset",
+    "targname",
+    "ra_targ",
+    "dec_targ",
+    "numexp",
+    "imgname",
+    "point",
+    "segment",
+    "gaia",
+    "rms_ra",
+    "rms_dec",
+    "nmatches",
+    "wcstype",
+    "category",
+    "cat",
+    "wcs",
+    "det",
 ]
+
 
 @mark.preprocessor
 @mark.encode

@@ -4,16 +4,16 @@ from spacekit.preprocessor.transform import PowerX
 import numpy as np
 
 EXPECTED_COLS = [
-    'numexp_scl',
-    'rms_ra_scl',
-    'rms_dec_scl',
-    'nmatches_scl',
-    'point_scl',
-    'segment_scl',
-    'gaia_scl',
-    'det',
-    'wcs',
-    'cat'
+    "numexp_scl",
+    "rms_ra_scl",
+    "rms_dec_scl",
+    "nmatches_scl",
+    "point_scl",
+    "segment_scl",
+    "gaia_scl",
+    "det",
+    "wcs",
+    "cat",
 ]
 
 
@@ -24,11 +24,15 @@ def test_powerX_transform(svm_labeled_dataset):
     df = load_datasets([svm_labeled_dataset])
     cols = ["numexp", "rms_ra", "rms_dec", "nmatches", "point", "segment", "gaia"]
     ncols = [i for i, c in enumerate(df.columns) if c in cols]
-    Px = PowerX(df, cols=cols, ncols=ncols, save_tx=True, output_path=output_path, rename=None)
+    Px = PowerX(
+        df, cols=cols, ncols=ncols, save_tx=True, output_path=output_path, rename=None
+    )
     assert type(Px.normalized) == np.ndarray
-    
+
     img_path = "tests/data/svm/train/img_data.npz"
-    (X, _), _ = SVMImageIO(img_path, w=128, h=128, d=3 * 3, inference=False, data=df, v=0.85).load()
+    (X, _), _ = SVMImageIO(
+        img_path, w=128, h=128, d=3 * 3, inference=False, data=df, v=0.85
+    ).load()
     X_train = PowerX(X[0], cols=cols, ncols=ncols, tx_data=Px.tx_data).Xt
     assert list(X_train.columns) == EXPECTED_COLS
     for col in EXPECTED_COLS[:6]:

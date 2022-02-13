@@ -1,10 +1,9 @@
 from dash import html
 from dash import dcc
-from dash.dependencies import Input, Output, State
-from dash.exceptions import PreventUpdate
+from dash.dependencies import Input, Output
 from app import app
 from spacekit.dashboard.svm import eda, eval, pred
-from spacekit.dashboard.svm.config import svm, hst, NN, tx_file
+from spacekit.dashboard.svm.config import svm, hst
 
 
 url_bar_and_content_div = html.Div(
@@ -90,7 +89,6 @@ def update_roc_auc(selected_version):
 # CMX Callback
 @app.callback(Output("confusion-matrix", "figure"), Input("cmx-type", "value"))
 def update_cmx(cmx_type):
-    v = list(svm.mega.keys())[-1]
     return svm.triple_cmx(svm.cmx[cmx_type], cmx_type)
 
 

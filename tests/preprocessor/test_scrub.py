@@ -4,30 +4,31 @@ import pandas as pd
 import os
 
 SCRUBBED_COLS = [
-    'detector',
-    'dataset',
-    'targname',
-    'ra_targ',
-    'dec_targ',
-    'numexp',
-    'imgname',
-    'point',
-    'segment',
-    'gaia'
+    "detector",
+    "dataset",
+    "targname",
+    "ra_targ",
+    "dec_targ",
+    "numexp",
+    "imgname",
+    "point",
+    "segment",
+    "gaia",
 ]
 
 FINAL_COLS = [
-    'numexp',
-    'rms_ra',
-    'rms_dec',
-    'nmatches',
-    'point',
-    'segment',
-    'gaia',
-    'det',
-    'wcs',
-    'cat'
+    "numexp",
+    "rms_ra",
+    "rms_dec",
+    "nmatches",
+    "point",
+    "segment",
+    "gaia",
+    "det",
+    "wcs",
+    "cat",
 ]
+
 
 @mark.preprocessor
 @mark.scrub

@@ -1,6 +1,5 @@
 from dash import dcc
 from dash import html
-from spacekit.dashboard.cal.app import app
 from spacekit.dashboard.cal.config import cal
 
 

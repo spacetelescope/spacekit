@@ -94,7 +94,6 @@ def update_roc_auc(selected_version):
 # CMX Callback
 @app.callback(Output("confusion-matrix", "figure"), Input("cmx-type", "value"))
 def update_cmx(cmx_type):
-    v = list(cal.mega.keys())[-1]
     return cal.triple_cmx(cal.cmx[cmx_type], cmx_type)
 
 

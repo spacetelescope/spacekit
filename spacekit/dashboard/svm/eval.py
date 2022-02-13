@@ -1,8 +1,6 @@
 # TODO: comparative model analysis and evaluation
 from dash import dcc
 from dash import html
-from dash.dependencies import Input, Output
-from spacekit.dashboard.svm.app import app
 from spacekit.dashboard.svm.config import svm
 
 
