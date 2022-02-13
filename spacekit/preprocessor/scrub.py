@@ -9,8 +9,13 @@ from spacekit.preprocessor.encode import SvmEncoder
 class Scrubber:
     """Base parent class for preprocessing data. Includes some basic column scrubbing methods for pandas dataframes. The heavy lifting is done via subclasses below."""
 
-    def __init__(self, data=None):
+    def __init__(self, data=None, col_order=None, output_path=None, output_file=None, dropnans=True, save_raw=True):
         self.df = self.cache_data(cache=data)
+        self.output_path = output_path
+        self.output_file = output_file
+        self.dropnans = dropnans
+        self.save_raw = save_raw
+        self.data_path = None
 
     def cache_data(self, cache=None):
         return cache.copy() if cache is not None else cache
@@ -23,7 +28,7 @@ class Scrubber:
         # return extracted
         extract = [c for c in cols if c in self.df.columns]
         print("Extract matching columns: ", extract)
-        return self.df[extract]
+        self.df = self.df[extract]
 
     def col_splitter(self, splitter=".", keep=-1, make_lowercase=True):
         if make_lowercase is True:
@@ -33,14 +38,53 @@ class Scrubber:
         print("Split columns: ", cols)
         return cols
 
-    def rename_cols(self, cols=None):
+    def rename_cols(self, old=None, new=None):
         print("\nRenaming columns")
-        if cols is None:
-            cols = self.col_splitter()
-        hc = dict(zip(self.df.columns, cols))
+        if old is None:
+            old = self.df.columns
+        if new is None:
+            new = self.col_splitter()
+        hc = dict(zip(old, new))
         self.df.rename(hc, axis="columns", inplace=True)
         print("New column names: ", self.df.columns)
-        return self.df
+    
+    def drop_nans(self):
+        if self.dropnans is True:
+            print("Searching for NaNs...")
+            print(self.df.isna().sum())
+            print("Dropping NaNs")
+            self.df.dropna(axis=0, inplace=True)
+
+    def drop_and_set_cols(self, label_cols=["label"]):
+        if self.col_order is None:
+            print("col_order attribute not set - skipping.")
+            return self.df
+        if label_cols:
+            for lab in label_cols:
+                if lab in self.df.columns and lab not in self.col_order:
+                    self.col_order.append(lab)
+        drops = [col for col in self.df.columns if col not in self.col_order]
+        self.df = self.df.drop(drops, axis=1)
+        self.df = self.df[self.col_order]
+    
+    def save_csv_file(self, pfx="", index_col="index"):
+        """Saves dataframe to csv file on local disk.
+
+        Parameters
+        ----------
+        pfx : str, optional
+            Insert a prefix at start of filename, by default ""
+
+        Returns
+        -------
+        str
+            self.data_path where file is saved on disk.
+        """
+        self.data_path = f"{self.output_path}/{pfx}{self.output_file}.csv"
+        self.df[index_col] = self.df.index
+        self.df.to_csv(self.data_path, index=False)
+        print("Data saved to: ", self.data_path)
+        self.df.drop(index_col, axis=1, inplace=True)
 
 
 class SvmScrubber(Scrubber):
@@ -58,60 +102,55 @@ class SvmScrubber(Scrubber):
         crpt=0,
         make_subsamples=False,
     ):
-        super().__init__(data=data)
+        self.col_order = self.set_col_order()
+        super().__init__(data=data, col_order=self.col_order, output_path=output_path, output_file=output_file, dropnans=dropnans, save_raw=save_raw)
         self.input_path = input_path
-        self.output_path = output_path
-        self.output_file = output_file
-        self.dropnans = dropnans
-        self.save_raw = save_raw
         self.make_pos_list = make_pos_list
         self.crpt = crpt
         self.make_subsamples = make_subsamples
-        self.data_path = None
         self.set_new_cols()
         self.set_prefix_cols()
 
     def preprocess_data(self):
         """Main calling function to run each preprocessing step for SVM regression data."""
         # STAGE 1 scrubbing
-        self.df = self.scrub_columns()
+        self.scrub_columns()
         # STAGE 2 initial encoding
         self.df = FitsScraper(self.df, self.input_path).scrape_fits()
         self.df = MastScraper(self.df).scrape_mast()
         if self.save_raw is True:
-            self.save_csv_file(pfx="raw_")
+            super().save_csv_file(pfx="raw_")
         # STAGE 3 final encoding
         self.df = SvmEncoder(self.df).encode_features()
-        self.df = self.drop_and_set_cols()
+        super().drop_and_set_cols()
         # STAGE 4 target labels
         self.make_pos_label_list()
         self.add_crpt_labels()
         self.find_subsamples()
-        self.save_csv_file()
+        super().save_csv_file()
         return self
 
-    def scrub(self):
+    def scrub2(self):
         if self.df is None:
-            self.df = self.scrub_qa_summary()
+            self.scrub_qa_summary()
         else:
-            self.df = self.scrub_qa_data()
+            self.scrub_qa_data()
         if self.save_raw is True:
-            self.save_csv_file(pfx="raw_")
+            super().save_csv_file(pfx="raw_")
         # STAGE 3 final encoding
         self.df = SvmEncoder(self.df).encode_features()
-        self.df = self.drop_and_set_cols()
+        super().drop_and_set_cols()
         # STAGE 4 target labels
         self.make_pos_label_list()
         self.add_crpt_labels()
         self.find_subsamples()
-        self.save_csv_file()
+        super().save_csv_file()
 
     def scrub_qa_data(self):
-        self.df = self.scrub_columns()
+        self.scrub_columns()
         # STAGE 2 initial encoding
         self.df = FitsScraper(self.df, self.input_path).scrape_fits()
         self.df = MastScraper(self.df).scrape_mast()
-        return self.df
 
     def scrub_qa_summary(self, fname="single_visit_mosaics*.csv", idx=0):
         """Alternative if no .json files available (QA step not run during processing)"""
@@ -135,39 +174,33 @@ class SvmScrubber(Scrubber):
             index[i]["gaia"] = scrape_catalogs(self.input_path, name, sfx="ref")
         add_cols = {"index", "detector", "point", "segment", "gaia"}
         df_idx = pd.DataFrame.from_dict(index, orient="index", columns=add_cols)
-        df = data.join(df_idx, how="left")
-        df.set_index("index", inplace=True)
-        drops = [
-            "dateobs",
-            "config",
-            "filter",
-            "aec",
-            "status",
-            "wcsname",
-            "creation_date",
-        ]
-        df.drop([d for d in drops if d in df.columns], axis=1, inplace=True)
-        df.rename(
-            {"visit": "dataset", "n_exposures": "numexp", "target": "targname"},
-            axis=1,
-            inplace=True,
-        )
-        return df
+        self.df = data.join(df_idx, how="left")
+        self.df.set_index("index", inplace=True)
+        super().rename_cols(old=["visit", "n_exposures", "target"], new=["dataset", "numexp", "targname"])
 
     def scrub_columns(self):
         """Initial dataframe scrubbing to extract and rename columns, drop NaNs, and set the index."""
         split_cols = super().col_splitter()
-        self.df = super().rename_cols(cols=split_cols)
-        self.df = super().extract_matching_columns(self.new_cols)
-        if self.dropnans:
-            print("Searching for NaNs...")
-            print(self.df.isna().sum())
-            print("Dropping NaNs")
-            self.df.dropna(axis=0, inplace=True)
+        super().rename_cols(new=split_cols)
+        super().extract_matching_columns(self.new_cols)
+        super().drop_nans()
         index_data = self.split_index()
         self.df = index_data.join(self.df, how="left")
-        self.df.rename({"number_of_gaia_sources": "gaia"}, axis=1, inplace=True)
-        return self.df
+        super().rename_cols(old=["number_of_gaia_sources"], new=["gaia"])
+    
+    def set_col_order(self):
+        return [
+                "numexp",
+                "rms_ra",
+                "rms_dec",
+                "nmatches",
+                "point",
+                "segment",
+                "gaia",
+                "det",
+                "wcs",
+                "cat",
+            ]
 
     def set_new_cols(self):
         self.new_cols = [
@@ -200,53 +233,10 @@ class SvmScrubber(Scrubber):
             idx_dct[n]["detector"] = items[4]
             if len(items) > 7:
                 idx_dct[n]["dataset"] = "_".join(items[6:])
-                # idx_dct[n]['dataset'] = items[6][:6] + '_' + items[7]
             else:
                 idx_dct[n]["dataset"] = items[6]
-                # idx_dct[n]['dataset'] = items[6][:6]
         index_df = pd.DataFrame.from_dict(idx_dct, orient="index")
         return index_df
-
-    # TODO: This is pretty general and should be called from extractor.load
-    def save_csv_file(self, pfx=""):
-        """Saves dataframe to csv file on local disk.
-
-        Parameters
-        ----------
-        pfx : str, optional
-            Insert a prefix at start of filename, by default ""
-
-        Returns
-        -------
-        str
-            self.data_path where file is saved on disk.
-        """
-        self.data_path = f"{self.output_path}/{pfx}{self.output_file}.csv"
-        self.df["index"] = self.df.index
-        self.df.to_csv(self.data_path, index=False)
-        print("Data saved to: ", self.data_path)
-        self.df.drop("index", axis=1, inplace=True)
-        return self.data_path
-
-    def drop_and_set_cols(self):
-        column_order = [
-            "numexp",
-            "rms_ra",
-            "rms_dec",
-            "nmatches",
-            "point",
-            "segment",
-            "gaia",
-            "det",
-            "wcs",
-            "cat",
-        ]
-        if "label" in self.df.columns:
-            column_order.append("label")
-        drops = [col for col in self.df.columns if col not in column_order]
-        self.df = self.df.drop(drops, axis=1)
-        self.df = self.df[column_order]
-        return self.df
 
     def make_pos_label_list(self):
         """Looks for target class labels in dataframe and saves a text file listing index names of positive class. Originally this was to automate moving images into class labeled directories."""

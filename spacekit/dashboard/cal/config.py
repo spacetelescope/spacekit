@@ -11,7 +11,7 @@ cal.make_clf_plots(target="mem_bin")
 
 # Initialize EDA
 cal.load_dataframe()
-hst = HstCalPlots(cal.df).df_by_instr()
+hst = HstCalPlots(cal.df) #.df_by_instr()
 hst.make_cal_scatterplots()
 
 # Initialize PRED

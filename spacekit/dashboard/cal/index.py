@@ -118,13 +118,13 @@ def update_scatter(xaxis_name, yaxis_name):
     [Output("n_files", "figure"), Output("total_mb", "figure")],
     Input("continuous-vars", "value"),
 )
-def update_continuous(raw_norm):
+def update_box(raw_norm):
     if raw_norm == "raw":
         vars = ["n_files", "total_mb"]
     elif raw_norm == "norm":
         vars = ["x_files", "x_size"]
-    continuous_figs = hst.make_continuous_figs(vars)
-    return continuous_figs
+    box_figs = hst.make_box_figs(vars)
+    return box_figs
 
 
 # PAGE 3 CALLBACKS

@@ -1,2 +1,2 @@
-header.TARGNAME,header.RA_TARG,header.DEC_TARG,header.NUMEXP,gen_info.imgname,Number_of_GAIA_sources.Number_of_GAIA_sources,number_of_sources.detector,number_of_sources.point,number_of_sources.segment
-ANY,262.4699055743,52.32648710525,2,hst_12286_38_wfc3_ir_total_ibl738_drz.fits,7,ir,284,185
+header.TARGNAME,header.RA_TARG,header.DEC_TARG,header.NUMEXP,gen_info.imgname,Number_of_GAIA_sources.Number_of_GAIA_sources,number_of_sources.detector,number_of_sources.point,number_of_sources.segment,index
+ANY,262.4699055743,52.32648710525,2,hst_12286_38_wfc3_ir_total_ibl738_drz.fits,7,ir,284,185,hst_12286_38_wfc3_ir_total_ibl738

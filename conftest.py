@@ -2,7 +2,9 @@ import os
 from pytest import fixture
 import tarfile
 from zipfile import ZipFile
-from spacekit.analyzer.scan import SvmScanner, CalScanner
+from spacekit.analyzer.explore import HstCalPlots, HstSvmPlots
+from spacekit.analyzer.scan import SvmScanner, CalScanner, import_dataset
+
 # try:
 #     from pytest_astropy_header.display import (PYTEST_HEADER_MODULES,
 #                                                TESTED_VERSIONS)
@@ -32,11 +34,90 @@ enable_deprecations_as_exceptions()
 TESTED_VERSIONS['spacekit'] = version
 
 
-# @fixture(scope='session')
-# def svm_visit_data(tmp_path_factory):
-#     basepath = tmp_path_factory.getbasetemp()
-#     visit_data = os.path.join(basepath, "singlevisits")
-#     return visit_data
+class Config:
+    
+    def __init__(self, env):
+        SUPPORTED_ENVS = ['svm', 'cal']
+        self.env = env
+        
+        if env.lower() not in SUPPORTED_ENVS:
+            raise Exception(f"{env} is not a supported environment (supported envs: {SUPPORTED_ENVS})")
+            
+        self.data_path = {
+			'svm': os.path.join(f"tests/data/{env}/data.zip"),
+			'cal': os.path.join(f"tests/data/{env}/data.zip"),
+		}[env]
+
+        self.kwargs = {
+            "svm": dict(index_col="index"),
+            "cal": dict(index_col="ipst")
+        }
+
+        self.decoder = {
+            "svm": {"det": {0: "hrc", 1: "ir", 2: "sbc", 3: "uvis", 4: "wfc"}},
+            "cal": {"instr": {0: "acs", 1: "cos", 2: "stis", 3: "wfc3"}}
+        }
+        
+
+
+def pytest_addoption(parser):
+	parser.addoption(
+		"--env",
+		action="store",
+		help="Environment to run tests against"
+	)
+
+
+@fixture(scope="session")
+def env(request):
+	return request.config.getoption("--env")
+
+
+@fixture(scope="session")
+def app_config(env):
+	cfg = Config(env)
+	return cfg
+
+
+@fixture(scope='session')
+def res_data_path(app_config, tmp_path_factory):
+    basepath = tmp_path_factory.getbasetemp()
+    data_file = app_config.data_path
+    with ZipFile(data_file, "r") as z:
+        z.extractall(basepath)
+        dname = os.path.basename(data_file.split(".")[0])
+        data_path = os.path.join(basepath, dname)
+    return data_path
+
+
+@fixture(scope='session')
+def scanner(app_config, res_data_path):
+    # basepath = tmp_path_factory.getbasetemp()
+    # data_file = app_config.data_path
+    # with ZipFile(data_file, "r") as z:
+    #     z.extractall(basepath)
+    #     dname = os.path.basename(data_file.split(".")[0])
+    #     data_path = os.path.join(basepath, dname)
+    if app_config.env == "svm":
+        scanner = SvmScanner(perimeter=f"{res_data_path}/20??-*-*-*", primary=-1)
+    elif app_config.env == "cal":
+        scanner = CalScanner(perimeter=f"{res_data_path}/20??-*-*-*", primary=-1)
+    scanner.exp = app_config.env
+    return scanner
+
+
+@fixture(scope='session')
+def explorer(app_config, res_data_path):
+    #fname = "tests/data/svm/train/training.csv"
+    fname = res_data_path
+    df = import_dataset(filename=fname, kwargs=app_config.kwargs, decoder=app_config.decoder)
+    if app_config.env == "svm":
+        hst = HstSvmPlots(df)
+    elif app_config.env == "cal":
+        hst = HstCalPlots(df)
+    hst.env = app_config.env
+    return hst
+
 
 # SVM PREP
 @fixture(scope='session') # "ibl738.tgz"
@@ -115,7 +196,7 @@ def raw_csv_file():
 
 @fixture(scope='function')
 def h5_data():
-    return "tests/data/svm/prep/single_reg.h5"
+    return "tests/data/svm/prep/single_reg"
 
 
 @fixture(scope='function')
@@ -126,19 +207,3 @@ def scrubbed_cols_file():
 @fixture(scope='function')
 def scraped_fits_file():
     return "tests/data/svm/prep/scraped_fits.csv"
-
-
-@fixture(scope='session', params=["cal", "svm"])
-def scanner(request, tmp_path_factory):
-    basepath = tmp_path_factory.getbasetemp()
-    data_file = os.path.join(f"tests/data/{request.param}/data.zip")   
-    with ZipFile(data_file, "r") as z:
-        z.extractall(basepath)
-        dname = os.path.basename(data_file.split(".")[0])
-        data_path = os.path.join(basepath, dname)
-    if request.param == "svm":
-        scanner = SvmScanner(perimeter=f"{data_path}/20??-*-*-*", primary=-1)
-    elif request.param == "cal":
-        scanner = CalScanner(perimeter=f"{data_path}/20??-*-*-*", primary=-1)
-    scanner.exp = request.param
-    return scanner

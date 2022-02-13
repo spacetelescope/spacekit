@@ -1,3 +1,4 @@
+from cmath import exp
 from pytest import mark, fixture
 from pytest import lazy_fixture
 
@@ -45,61 +46,60 @@ EXPECTED = {
 }
 
 
-@fixture(scope="module") #params=["cal"]
-def exp_scan(request):
-    return EXPECTED[request.param]
+#@fixture(scope="module") #params=["cal"]
+def exp(scanner):
+    global e
+    e = EXPECTED[scanner.exp]
+    return e
 
 
 @mark.analyzer
 @mark.scan
-@mark.parametrize((lazy_fixture("scanner"),lazy_fixture("exp_scan")), [
-    ("svm", "svm"),
-    ("cal", "cal")
-    ])
-def test_scan_attrs(scanner, exp_scan):
-    assert scanner.classes == exp_scan["classes"]
-    assert scanner.labels == exp_scan["labels"]
-    assert scanner.target == exp_scan["target"]
+def test_scan_attrs(scanner):
+    e = exp(scanner)
+    assert scanner.classes == e["classes"]
+    assert scanner.labels == e["labels"]
+    assert scanner.target == e["target"]
 
 
 @mark.analyzer
 @mark.scan
-def test_scan_results(scanner, exp_scan):
+def test_scan_results(scanner):
     scanner.scan_results()
-    assert list(scanner.mega.keys()) == exp_scan["versions"]
+    assert list(scanner.mega.keys()) == e["versions"]
     v0 = scanner.mega['v0']
     v1 = scanner.mega['v1']
-    target = exp_scan["target"]
-    assert v0['date'] == exp_scan["date"]
-    assert v0['time'] == exp_scan["time"]
-    assert exp_scan["target"] in v0['res']
+    target = e["target"]
+    assert v0['date'] == e["date"]
+    assert v0['time'] == e["time"]
+    assert e["target"] in v0['res']
     com0 = v0['res'][target]
     com1 = v1['res'][target]
     assert com0 != com1
-    assert str(type(com1)) == exp_scan["comtype1"]
-    target2 = exp_scan["target2"]
+    assert str(type(com1)) == e["comtype1"]
+    target2 = e["target2"]
     com2 = v0['res'][target2]
-    assert str(type(com2)) == exp_scan["comtype2"]
+    assert str(type(com2)) == e["comtype2"]
 
 
 @mark.analyzer
 @mark.scan
-def test_scan_compare_scores(scanner, exp_scan):
-    metric = exp_scan["metric"]
+def test_scan_compare_scores(scanner):
+    metric = e["metric"]
     scanner.compare_scores(metric=metric)
-    assert list(scanner.scores.index) == exp_scan["score_index"]
-    assert list(scanner.scores.columns) ==  exp_scan["versions"]
-    assert list(scanner.scores.v0.values) == exp_scan["score_vals"]
+    assert list(scanner.scores.index) == e["score_index"]
+    assert list(scanner.scores.columns) ==  e["versions"]
+    assert list(scanner.scores.v0.values) == e["score_vals"]
 
 
 @mark.analyzer
 @mark.scan
-def test_scan_acc_loss_bars(scanner, exp_scan):
+def test_scan_acc_loss_bars(scanner):
     scanner.acc_fig = scanner.accuracy_bars()
     scanner.loss_fig = scanner.loss_bars()
     scanner.acc_loss_subplots()
     figs = [scanner.acc_fig, scanner.loss_fig, scanner.acc_loss_fig]
-    fig_lengths = exp_scan["fig_lengths"]
+    fig_lengths = e["fig_lengths"]
     for fig, length in list(zip(figs, fig_lengths)):
         assert str(type(fig)) == "<class 'plotly.graph_objs._figure.Figure'>"
         assert len(fig.data) == length
@@ -107,10 +107,10 @@ def test_scan_acc_loss_bars(scanner, exp_scan):
 
 @mark.analyzer
 @mark.scan
-def test_scan_make_barplots(scanner, exp_scan):
+def test_scan_make_barplots(scanner):
     scanner.scores, scanner.acc_fig, scanner.loss_fig, scanner.acc_loss_fig = None, None, None, None
-    fig_lengths = exp_scan["fig_lengths"]
-    fig_lengths.extend([len(exp_scan["score_vals"])])
+    fig_lengths = e["fig_lengths"]
+    fig_lengths.extend([len(e["score_vals"])])
     scanner.make_barplots()
     attr_names = ["acc_fig", "loss_fig", "acc_loss_fig", "scores"]
     for attr, length in list(zip(attr_names, fig_lengths)):
@@ -122,23 +122,23 @@ def test_scan_make_barplots(scanner, exp_scan):
 
 @mark.analyzer
 @mark.scan
-def test_scan_make_clf_plots(scanner, exp_scan):
-    target = exp_scan["target"]
+def test_scan_make_clf_plots(scanner):
+    target = e["target"]
     scanner.make_clf_plots(target=target)
     for v in scanner.versions:
-        assert scanner.keras[v][0].layout["title"]["text"] == exp_scan["keras_title"]
-        assert scanner.roc[v][0].data[0]["name"].split(" ")[0] == exp_scan["roc_label"]
+        assert scanner.keras[v][0].layout["title"]["text"] == e["keras_title"]
+        assert scanner.roc[v][0].data[0]["name"].split(" ")[0] == e["roc_label"]
     assert list(scanner.cmx.keys()) == ["normalized", "counts"]
     for i in list(range(len(scanner.cmx['normalized']))):
-        assert scanner.cmx['normalized'][i].shape == exp_scan["cmx_shape"]
-        assert scanner.cmx['counts'][i].shape == exp_scan["cmx_shape"]
+        assert scanner.cmx['normalized'][i].shape == e["cmx_shape"]
+        assert scanner.cmx['counts'][i].shape == e["cmx_shape"]
         assert str(type(scanner.cmx["normalized"][i].ravel()[0])) == "<class 'numpy.float64'>"
         assert str(type(scanner.cmx["counts"][i].ravel()[0])) == "<class 'numpy.int64'>"
 
 @mark.analyzer
 @mark.scan
-def test_scan_load_dataframe(scanner, exp_scan):
+def test_scan_load_dataframe(scanner):
     scanner.load_dataframe()
-    assert scanner.df.shape[1] == exp_scan["df_ncol"]
+    assert scanner.df.shape[1] == e["df_ncol"]
     assert len(scanner.df) > 0
-    assert exp_scan["df_key"] in scanner.df.columns
+    assert e["df_key"] in scanner.df.columns
