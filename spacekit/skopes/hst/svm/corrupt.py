@@ -7,6 +7,7 @@ The default corruption method is on CRVAL1 and/or CRVAL2 only. Corruption can al
 
 """
 import os
+from pyexpat import model
 import sys
 import argparse
 import shutil
@@ -42,14 +43,13 @@ def pick_random_exposures(dataset):
     return selected_files
 
 
-def pick_random_filter(dataset):
-    drizzle_dct = find_filter_files(dataset)
+def pick_random_filter(dataset, drizzle_dct=None):
+    if drizzle_dct is None:
+        drizzle_dct = find_filter_files(dataset)
     i = np.random.randint(0, len(drizzle_dct))
     f = list(drizzle_dct.keys())[i]
-    print(f"\nRANDOM FILTER SELECTED: {f}")
-    drz_files = drizzle_dct[f]
-    print(f"\nFILES SELECTED: {drz_files}")
-    return drz_files
+    print(f"\nRANDOM FILTER SELECTED: {dataset}:{f}")
+    return f
 
 
 def find_filter_files(dataset):
@@ -60,11 +60,16 @@ def find_filter_files(dataset):
         for s in input_strings:
             tokens = s.split(",")
             drizzle_file = f"{dataset}/{tokens[0]}"
-            fltr = tokens[-3].replace(";", "_")
-            if fltr not in drizzle_dct:
-                drizzle_dct[fltr] = [drizzle_file]
+            if os.path.exists(drizzle_file):
+                fltr = tokens[-3].replace(";", "_")
+                if fltr not in drizzle_dct:
+                    drizzle_dct[fltr] = [drizzle_file]
+                else:
+                    drizzle_dct[fltr].append(drizzle_file)
             else:
-                drizzle_dct[fltr].append(drizzle_file)
+                print(f"File missing: {drizzle_file}")
+                raise FileNotFoundError
+                continue
     return drizzle_dct
 
 
@@ -191,23 +196,18 @@ def run_header_corruption(selected_files, mode="stoc", thresh="any"):
             print_corruptions(wcs_valid, wcs_corrupt)
 
 
-def artificial_misalignment(dataset, outputs, palette):
-    dname = dataset.split("/")[-1]
-    name = f"{outputs}/{dname}_{palette}"
-    shutil.copytree(dataset, name)
-    if palette == "rex":
-        selected_files = pick_random_exposures(name)
-    elif palette == "rfi":
-        selected_files = pick_random_filter(name)
-    run_header_corruption(selected_files)
-
-
-def multiple_permutations(dataset, outputs, expos, mode, thresh="any"):
+def multiple_permutations(dataset, outputs, cfg):
     drizzle_dct = find_filter_files(dataset)
+    if cfg["palette"] == "rfi":
+        f = pick_random_filter(dataset)
+        drizzle_dct ={f: drizzle_dct[f]}
+    elif cfg["palette"] == "rex":
+        drz_files = pick_random_exposures(dataset)
+        drizzle_dct = dict(f999r=drz_files)
     filters = list(drizzle_dct.keys())
+    expos, mode = cfg["expos"], cfg["mode"]
     separator = "---" * 5
     bar = ProgressBar().start()
-
     for x, f in zip(bar(range(len(filters))), filters):
         dname = dataset.split("/")[-1]
         name = f"{outputs}/{dname}_{f.lower()}_{expos}_{mode}"
@@ -228,7 +228,7 @@ def multiple_permutations(dataset, outputs, expos, mode, thresh="any"):
                 if len(filter_files) == 1:
                     err += 1
                 selected_files = pick_random_subset(filter_files)
-            run_header_corruption(selected_files, mode=mode, thresh=thresh)
+            run_header_corruption(selected_files, mode=mode, thresh=cfg["thresh"])
             sys.stdout = out
         if err == 1:
             with open(f"{name}/warning.txt", "w") as warning:
@@ -299,19 +299,19 @@ def all_permutations(dataset, outputs):
     multiple_permutations(dataset, outputs, "sub", "stoc")
 
 
-def get_datasets(search_pattern="*", srcpath=None, outputs="synthetic"):
+def get_datasets(srcpath, search_pattern="*", outputs="synthetic", prc=4):
     pattern = search_pattern.lstrip("/")
-    # if nothing is found in srcpath, only CRPT cannot run
-    if srcpath:
-        datasets = glob.glob(f"{srcpath.rstrip('/')}/{pattern}")
+    search_src = f"{srcpath.rstrip('/')}/{pattern}"
+    search_out = f"{outputs.rstrip('/')}/{pattern}"
+    datasets = glob.glob(search_src)
     # all other processes can run if matching datasets are found in outputs path
-    elif os.path.exists(outputs):
-        datasets = glob.glob(f"{outputs.rstrip('/')}/{pattern}")
-    if len(datasets) < 1:
-        print("No datasets found matching the search pattern.")
+    if len(datasets) < 1 or prc < 4:
+        datasets = glob.glob(search_out)
+    elif len(datasets) < 1 or prc >= 4:
+        # if nothing is found in srcpath CRPT cannot run
+        print(f"No source data found matching {search_src}")
         sys.exit(1)
-    else:
-        return datasets
+    return datasets
 
 
 def make_process_config(
@@ -324,53 +324,71 @@ def make_process_config(
     threshold="any",
 ):
     """Generates process and configuration dictionaries for running workflows.
+
     Returns
-        prc (dict)
-        cfg (dict)
+    -------
+    prc : int
+        single converted value to indicate which processes will run.
+    cfg : dict
+        configuration parameters for artificial corruption of images
     """
-    prc = dict(crpt=crpt, runsvm=runsvm, imagegen=imagegen)
+    C = 4 if crpt else 0
+    R = 2 if runsvm else 0
+    D = 1 if imagegen else 0
+    prc = C + R + D
+    print(prc)
+    #prc = dict(crpt=crpt, runsvm=runsvm, imagegen=imagegen)
     cfg = dict(palette=palette, expos=expos, mode=mode, thresh=threshold)
     return prc, cfg
 
 
+def run_corrupt(datasets, outputs, cfg):
+    prcname = "CORRUPTION"
+    start = time.time()
+    stopwatch(prcname, t0=start)
+    for dataset in tqdm(datasets):
+        if cfg["palette"] == "multi":
+            all_permutations(dataset, outputs)
+        else:
+            multiple_permutations(dataset, outputs, cfg)
+    end = time.time()
+    stopwatch(prcname, t0=start, t1=end)
+
+
+def run_svm_alignment(datasets, outputs):
+    prcname = "ALIGNMENT"
+    start = time.time()
+    stopwatch(prcname, t0=start)
+    # prevent repetitions on single dataset if pattern="*"
+    visits = list(set([d.split("/")[-1][:6] for d in datasets]))
+    for visit in tqdm(visits):
+        run_svm(visit, outputs)
+    end = time.time()
+    stopwatch(prcname, t0=start, t1=end)
+
+
+def run_image_gen(outputs, pattern):
+    prcname = "IMAGE GENERATION"
+    start = time.time()
+    stopwatch(prcname, t0=start)
+    generate_images(outputs, pattern=pattern)
+    end = time.time()
+    stopwatch(prcname, t0=start, t1=end)
+
+
 def run_blocks(prc, cfg, pattern="*", srcpath=None, outputs="synthetic"):
-    datasets = get_datasets(search_pattern=pattern, srcpath=srcpath, outputs=outputs)
+    datasets = get_datasets(srcpath, search_pattern=pattern, outputs=outputs, prc=prc)
     start_block = time.time()
     stopwatch("Block Workflow", t0=start_block)
-    if prc["crpt"]:
-        prcname = "CORRUPTION"
-        start = time.time()
-        stopwatch(prcname, t0=start)
-        for dataset in tqdm(datasets):
-            if cfg["palette"] == "multi":
-                all_permutations(dataset, outputs)
-            elif cfg["palette"] == "mfi":
-                multiple_permutations(
-                    dataset, outputs, cfg["expos"], cfg["mode"], cfg["thresh"]
-                )
-            elif cfg["palette"] in ["rex", "rfi"]:
-                artificial_misalignment(dataset, outputs, cfg["palette"])
-        end = time.time()
-        stopwatch(prcname, t0=start, t1=end)
+    if prc >= 4:
+        run_corrupt(datasets, outputs, cfg)
 
-    if prc["runsvm"]:
-        prcname = "ALIGNMENT"
-        start = time.time()
-        stopwatch(prcname, t0=start)
-        # prevent repetitions on single dataset if pattern="*"
-        visits = list(set([d.split("/")[-1][:6] for d in datasets]))
-        for visit in tqdm(visits):
-            run_svm(visit, outputs)
-        end = time.time()
-        stopwatch(prcname, t0=start, t1=end)
+    if prc in [2, 3, 6, 7]:
+        run_svm_alignment(datasets, outputs)
 
-    if prc["imagegen"]:
-        prcname = "IMAGE GENERATION"
-        start = time.time()
-        stopwatch(prcname, t0=start)
-        generate_images(outputs, pattern=pattern)
-        end = time.time()
-        stopwatch(prcname, t0=start, t1=end)
+    if prc in [1, 3, 5, 7]:
+        run_image_gen(outputs, pattern)
+
     end_block = time.time()
     stopwatch("Block Workflow", t0=start_block, t1=end_block)
 
@@ -382,20 +400,16 @@ def run_pipes(prc, cfg, pattern="*", srcpath=None, outputs="synthetic"):
     for dataset in tqdm(datasets):
         t0 = time.time()
         stopwatch(dataset, t0=t0)
-        if prc["crpt"]:
+        if prc >= 4:
             if cfg["palette"] == "multi":
                 all_permutations(dataset, outputs)
-            elif cfg["palette"] == "mfi":
-                multiple_permutations(
-                    dataset, outputs, cfg["expos"], cfg["mode"], thresh=cfg["thresh"]
-                )
-            elif cfg["palette"] in ["rex", "rfi"]:
-                artificial_misalignment(dataset, outputs, cfg["palette"])
-        if prc["runsvm"]:
+            else:
+                multiple_permutations(dataset, outputs, cfg)
+        if prc in [2, 3, 6, 7]:
             visits = list(set([d.split("/")[-1][:6] for d in datasets]))
             for visit in tqdm(visits):
                 run_svm(visit, outputs)
-        if prc["imagegen"]:
+        if prc in [1, 3, 5, 7]:
             generate_images(outputs, visit=dataset, pattern=pattern)
         t1 = time.time()
         stopwatch(dataset, t0=t0, t1=t1)
@@ -410,7 +424,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("srcpath", type=str, help="single visit dataset(s) directory")
     parser.add_argument(
-        "outputs", type=str, help="path for saving corrupt versions of HAP files"
+        "-o", "--outputs", type=str, default="synthetic", help="path for saving corrupt versions of HAP files"
     )
     parser.add_argument(
         "-p",

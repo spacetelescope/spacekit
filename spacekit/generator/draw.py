@@ -61,6 +61,8 @@ class DrawMosaics:
         self.rgx = self.check_format()
         self.status = {"new": [], "skip": [], "err": []}
         self.datasets = self.get_datasets()
+        self.clip = True
+        self.manual = None
 
     def check_output(self):
         """check if a custom output_path is set, otherwise create a subdirectory "img" in the current working directory and set as the output_path attribute.
@@ -331,25 +333,27 @@ class DrawMosaics:
             for hfile in hfiles:
                 name = os.path.basename(hfile).split(".")[0][:-4]
                 detector = name.split("_")[4]
-                ras, decs = np.ndarray((0,)), np.ndarray((0,))
                 with fits.open(hfile) as ff:
                     hdu = ff[1]
                     wcs = WCS(hdu.header)
                     footprint = wcs.calc_footprint(hdu.header)
-                    ras = np.append(ras, footprint[:, 0])
-                    decs = np.append(decs, footprint[:, 1])
-                    ralim = [np.max(ras), np.min(ras)]
-                    declim = [np.max(decs), np.min(decs)]
+                    ralim = [np.max(footprint[:, 0]), np.min(footprint[:, 0])]
+                    declim = [np.max(footprint[:, 1]), np.min(footprint[:, 1])]
                     radeclim = np.stack([ralim, declim], axis=1)
                     fig = plt.figure(figsize=self.size)
                     ax = fig.add_subplot(111, projection=wcs, frameon=False)
                     plt.axis(False)
                     interval = ZScaleInterval()
-                    # TODO: alt settings (a few images come out and require manual param adjustments)
-                    _, vmax = interval.get_limits(hdu.data)
-                    # if vmax == 0:
-                    #     norm = ImageNormalize(hdu.data, clip=True)
-                    norm = ImageNormalize(hdu.data, vmin=0, vmax=vmax * 2, clip=True)
+                    zmin, zmax = interval.get_limits(hdu.data)
+                    if self.manual is None:
+                        norm = ImageNormalize(hdu.data, vmin=0, vmax=zmax * 2, clip=self.clip)
+                    elif self.manual == "zscale":
+                        norm = ImageNormalize(hdu.data, vmin=zmin, vmax=zmax, clip=self.clip)
+                    elif type(self.manual) == dict:
+                        try:
+                            norm = ImageNormalize(hdu.data, **self.manual)
+                        except Exception as e:
+                            print(e)
                     ax.imshow(hdu.data, origin="lower", norm=norm, cmap="gray")
 
                 if P:

@@ -16,6 +16,7 @@ import os
 import sys
 import datetime as dt
 from spacekit.extractor.load import load_datasets, SVMImageIO
+from spacekit.preprocessor.transform import PowerX
 from spacekit.builder.architect import Builder
 
 # from spacekit.builder.blueprints import Blueprint
@@ -29,7 +30,7 @@ SHAPE = (DIM, SIZE, SIZE, CH)
 TF_CPP_MIN_LOG_LEVEL = 2
 
 
-def load_mixed_inputs(data_file, img_path, size=128):
+def load_mixed_inputs(data_file, img_path, tx=None, size=128, norm=0):
     """Load the regression test data and image input data, then stacks the arrays into a single combined input (list) for the ensemble model.
 
     Parameters
@@ -59,9 +60,17 @@ def load_mixed_inputs(data_file, img_path, size=128):
         "cat",
     ]
     X_data = load_datasets([data_file], column_order=cols)
-    # idx, X_img = load_image_data(X_data, img_path, size=size)
+
     print("Loading images into arrays...")
     idx, X_img = SVMImageIO(img_path, w=size, h=size, d=9, data=X_data).load()
+    if norm:
+        if tx is None:
+            Tx = PowerX(X_data, cols=cols[:-3], rename=None)
+        else:
+            Tx = PowerX(X_data, cols=cols[:-3], tx_file=tx, rename=None)
+        X_data = Tx.Xt
+        X_img /= 255.0
+
     diff = X_data.shape[0] - X_img.shape[0]
     if diff > 0:
         X_data = X_data.loc[X_data.index.isin(idx)]
@@ -118,7 +127,7 @@ def classification_report(df, output_path):
     print(f"\nSuspicious/Compromised List created: {output_path}/compromised.txt")
 
 
-def classify_alignments(X, model_path=None, output_path=None):
+def classify_alignments(X, model, output_path=None):
     """Returns classifier predictions and probability scores
 
     Parameters
@@ -139,7 +148,6 @@ def classify_alignments(X, model_path=None, output_path=None):
         output_path = os.getcwd()
     output_path = os.path.join(output_path, "predictions")
     os.makedirs(output_path, exist_ok=True)
-    model = Builder(model_path=model_path).load_saved_model()
     y_proba = model.predict(X)
     y_pred = np.round(y_proba[:, 0]).reshape(-1, 1)
     # y_proba = proba[:, 0].reshape(-1, 1)
@@ -170,8 +178,11 @@ def predict_alignment(data_file, img_path, model_path=None, output_path=None, si
     size : int, optional
         image size (width and height), by default None (128)
     """
-    X = load_mixed_inputs(data_file, img_path, size=size)
-    preds = classify_alignments(X, model_path=model_path, output_path=output_path)
+    builder = Builder(model_path=model_path)
+    model = builder.load_saved_model()
+    tx_file = builder.find_tx_file()
+    X = load_mixed_inputs(data_file, img_path, tx=tx_file, size=size)
+    preds = classify_alignments(X, model=model, output_path=output_path)
     return preds
 
 

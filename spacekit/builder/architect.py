@@ -62,6 +62,7 @@ class Builder:
         self.batch_maker = None
         self.history = None
         self.name = None
+        self.tx_file = None
 
     def load_saved_model(self, arch="ensembleSVM", compile_params=None):
         """Load saved keras model from local disk (located at the ``model_path`` attribute) or a pre-trained model from spacekit.skopes.trained_networks (if ``model_path`` attribute is None). Example for ``compile_params``: ``dict(loss="binary_crossentropy", metrics=["accuracy"], optimizer=Adam(learning_rate=optimizers.schedules.ExponentialDecay(lr=1e-4, decay_steps=100000, decay_rate=0.96, staircase=True)))``
@@ -110,6 +111,12 @@ class Builder:
             zip_ref.extractall(extract_to)
         self.model_path = os.path.join(extract_to, model_base)
         return self.model_path
+    
+    def find_tx_file(self, name="tx_data.json"):
+        if self.model_path:
+            tx_file = os.path.join(self.model_path, name)
+        if os.path.exists(tx_file):
+            self.tx_file = tx_file
 
     def set_build_params(
         self,
