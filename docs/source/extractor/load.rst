@@ -15,12 +15,12 @@ spacekit.extractor.load
 
 .. autofunction:: read_channels
 
-.. autoclass:: FileIO
+.. autoclass:: ImageIO
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. autoclass:: SVMFileIO
+.. autoclass:: SVMImageIO
    :members:
    :undoc-members:
    :show-inheritance:

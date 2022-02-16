@@ -1,0 +1,2 @@
+detector,dataset,targname,ra_targ,dec_targ,numexp,imgname,point,segment,gaia,index
+ir,ibl738,ANY,262.4699055743,52.32648710525,2,hst_12286_38_wfc3_ir_total_ibl738_drz.fits,284,185,7,hst_12286_38_wfc3_ir_total_ibl738

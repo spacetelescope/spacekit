@@ -393,11 +393,11 @@ def nested_image_index(tr, ts, vl=()):
         list of nested tuples [(indices), (tuples)]
     """
     if len(vl) > 0:
-        indices = (tr[0], ts[0])
-        labels = (tr[1], ts[1])
-    else:
         indices = (tr[0], ts[0], vl[0])
         labels = (tr[1], ts[1], vl[1])
+    else:
+        indices = (tr[0], ts[0])
+        labels = (tr[1], ts[1])
     return [indices, labels]
 
 

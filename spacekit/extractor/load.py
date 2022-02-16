@@ -1,6 +1,9 @@
 import os
 import pandas as pd
 import numpy as np
+import json
+import pickle
+import zipfile
 from keras.preprocessing import image
 from tqdm import tqdm
 import time
@@ -143,8 +146,8 @@ def read_channels(channels, w, h, d, exp=None, color_mode="rgb"):
     return img
 
 
-class FileIO:
-    """Parent Class for file input/output operations"""
+class ImageIO:
+    """Parent Class for image file input/output operations"""
 
     def __init__(self, img_path, format="png", data=None):
         self.img_path = img_path
@@ -267,13 +270,13 @@ class FileIO:
         return X, y
 
 
-class SVMFileIO(FileIO):
+class SVMImageIO(ImageIO):
     """Subclass for loading Single Visit Mosaic total detection .png images from local disk into numpy arrays and performing initial preprocessing and labeling for training a CNN or generating predictions on unlabeled data.
 
     Parameters
     ----------
-    FileIO: class
-        FileIO parent class
+    ImageIO: class
+        ImageIO parent class
     """
 
     def __init__(
@@ -475,3 +478,89 @@ class SVMFileIO(FileIO):
         print("Channels: ", X_img.shape[4])
         print("Input Shape: ", X_img.shape)
         return idx, X_img
+
+
+def save_dct_to_txt(data_dict):
+    """Saves the key-value pairs of a dictionary to text files on local disk, with each key as a filename and its value(s) as the contents of that file.
+
+    Parameters
+    ----------
+    data_dict : dict
+        dictionary containing keys as filenames and values as the contents to be saved to a text file.
+
+    Returns
+    -------
+    list
+        list of paths to each file saved to local disk.
+    """
+    keys = []
+    for filename, data in data_dict.items():
+        key = f"{filename}.txt"
+        keys.append(key)
+        with open(f"{key}", "w") as f:
+            for item in data:
+                f.writelines(f"{item}\n")
+    print(f"Saved file keys:\n {keys}")
+    return keys
+
+
+def save_dict(data_dict, df_key=None):
+    keys = []
+    for key, data in data_dict.items():
+        filename = f"{key}.txt"
+        with open(filename, "w") as f:
+            try:
+                json.dump(data, f)
+            except Exception as e:
+                print(e)
+                f.writelines(data)
+        keys.append(filename)
+    if df_key is not None:
+        keys.append(df_key)
+    print(f"File keys:\n {keys}")
+    return keys
+
+
+def save_json(data, name):
+    with open(name, "w") as fp:
+        json.dump(data, fp)
+    print(f"\nJSON file saved:\n {os.path.abspath(name)}")
+
+
+def save_dataframe(df, df_key, index_col="ipst"):
+    df[index_col] = df.index
+    df.to_csv(df_key, index=False)
+    print(f"Dataframe saved as: {df_key}")
+    df.set_index(index_col, drop=True, inplace=True)
+    return df
+
+
+def save_to_pickle(data_dict, target_col=None, df_key=None):
+    keys = []
+    for k, v in data_dict.items():
+        if target_col is not None:
+            os.makedirs(f"{target_col}", exist_ok=True)
+            key = f"{target_col}/{k}"
+        else:
+            key = k
+        with open(key, "wb") as file_pi:
+            pickle.dump(v, file_pi)
+            print(f"{k} saved as {key}")
+            keys.append(key)
+    if df_key is not None:
+        keys.append(df_key)
+    print(f"File keys:\n {keys}")
+    return keys
+
+
+def zip_subdirs(top_path, zipname="models.zip"):
+    file_paths = []
+    for root, _, files in os.walk(top_path):
+        for filename in files:
+            filepath = os.path.join(root, filename)
+            file_paths.append(filepath)
+    print("Zipping model files:")
+    with zipfile.ZipFile(zipname, "w") as zip_ref:
+        for file in file_paths:
+            zip_ref.write(file)
+            print(file)

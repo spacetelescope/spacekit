@@ -1,7 +1,7 @@
 from spacekit.extractor.scrape import WebScraper
 from spacekit.analyzer.scan import import_dataset
 
-calcloud_uri = "https://raw.githubusercontent.com/alphasentaurii/spacekit/main/datasets/hst/calcloud/"
+calcloud_uri = "https://raw.githubusercontent.com/alphasentaurii/spacekit/main/spacekit/datasets/hst/calcloud"
 
 calcloud_data = {
     "2021-11-04": {
@@ -30,7 +30,8 @@ def download_single_archive(date_key=None):
         date_key = sorted(list(calcloud_data.keys()))[-1]
     # limit data download to single archive
     dataset = {date_key: calcloud_data[date_key]}
-    scraper = WebScraper(calcloud_uri, dataset).scrape()
+    scraper = WebScraper(calcloud_uri, dataset)
+    scraper.scrape()
     fpath = scraper.fpaths[0]
     print(fpath)
     return fpath

@@ -13,6 +13,7 @@ __pycache__
 */version.py
 */cython_version.py
 htmlcov
+.benchmarks
 .coverage
 MANIFEST
 .ipynb_checkpoints

@@ -11,7 +11,6 @@ df = run_preprocessing("home/singlevisits")
 df = run_preprocessing("home/syntheticdata", fname="synth2", crpt=1, draw=0)
 
 """
-
 import argparse
 import os
 from spacekit.extractor.scrape import JsonScraper
@@ -25,10 +24,12 @@ def run_preprocessing(
     fname="svm_data",
     output_path=None,
     json_pattern="*_total*_svm_*.json",
+    visit=None,
     crpt=0,
     draw=1,
 ):
     """Scrapes SVM data from raw files, preprocesses dataframe for MLP classifier and generates png images for image CNN.
+    #TODO: if no JSON files found, look for results_*.csv file instead and preprocess via alternative method
 
     Parameters
     ----------
@@ -42,6 +43,8 @@ def run_preprocessing(
         where to save output files. Defaults to current working directory., by default None
     json_pattern : str, optional
         glob-based search pattern, by default "*_total*_svm_*.json"
+    visit: str, optional
+        single visit name (e.g. "id8f34") matching subdirectory of input_path; will search and preprocess this visit only (rather than all visits contained in the input_path), by default None
     crpt : int, optional
         set to 1 if using synthetic corruption data, by default 0
     draw : int, optional
@@ -58,9 +61,10 @@ def run_preprocessing(
     fname = os.path.basename(fname).split(".")[0]
     # 1: SCRAPE JSON FILES and make dataframe
     if h5 is None:
+        search_path = os.path.join(input_path, visit) if visit else input_path
         patterns = json_pattern.split(",")
         jsc = JsonScraper(
-            search_path=input_path,
+            search_path=search_path,
             search_patterns=patterns,
             file_basename=fname,
             crpt=crpt,
@@ -72,7 +76,7 @@ def run_preprocessing(
         jsc = JsonScraper(h5_file=h5).load_h5_file()
     # 2: Scrape Fits Files and SCRUB DATAFRAME
     scrub = SvmScrubber(
-        jsc.data, input_path, output_path=output_path, output_file=fname, crpt=crpt
+        input_path, data=jsc.data, output_path=output_path, output_file=fname, crpt=crpt
     )
     scrub.preprocess_data()
     # 3:  DRAW IMAGES
