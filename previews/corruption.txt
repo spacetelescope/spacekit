@@ -1,0 +1,54 @@
+---------------
+
+FILTER:  CLEAR1L_F814W
+
+Selecting 4 out of 9 files
+
+Shuffled random index: [6, 3, 7, 1]
+
+Files selected for corruption:  ['synthetic/j8ny02_clear1l_f814w_sub_stat/j8ny02zdq_flc.fits', 'synthetic/j8ny02_clear1l_f814w_sub_stat/j8ny02z1q_flc.fits', 'synthetic/j8ny02_clear1l_f814w_sub_stat/j8ny02zkq_flc.fits', 'synthetic/j8ny02_clear1l_f814w_sub_stat/j8ny02z9q_flc.fits']
+
+Starting static corruption
+
+PIXEL offset:  11.575769359407083
+DEGREE offset: + 0.0001286196595489676
+
+Applying static augment:  synthetic/j8ny02_clear1l_f814w_sub_stat/j8ny02zdq_flc.fits
+
+CRVAL1-old:  290.2469494107
+CRVAL1-new:  290.24707803035955
+
+CRVAL2-old:  37.800939549323
+CRVAL2-new:  37.801068168982546
+
+---!@#$%^&*()_+------!@#$%^&*()_+------!@#$%^&*()_+---
+
+Applying static augment:  synthetic/j8ny02_clear1l_f814w_sub_stat/j8ny02z1q_flc.fits
+
+CRVAL1-old:  290.2469301429
+CRVAL1-new:  290.24705876255956
+
+CRVAL2-old:  37.800906889977
+CRVAL2-new:  37.80103550963655
+
+---!@#$%^&*()_+------!@#$%^&*()_+------!@#$%^&*()_+---
+
+Applying static augment:  synthetic/j8ny02_clear1l_f814w_sub_stat/j8ny02zkq_flc.fits
+
+CRVAL1-old:  290.24698294709
+CRVAL1-new:  290.24711156674954
+
+CRVAL2-old:  37.800934145397
+CRVAL2-new:  37.80106276505655
+
+---!@#$%^&*()_+------!@#$%^&*()_+------!@#$%^&*()_+---
+
+Applying static augment:  synthetic/j8ny02_clear1l_f814w_sub_stat/j8ny02z9q_flc.fits
+
+CRVAL1-old:  290.2469493685
+CRVAL1-new:  290.24707798815956
+
+CRVAL2-old:  37.800950527088
+CRVAL2-new:  37.80107914674755
+
+---!@#$%^&*()_+------!@#$%^&*()_+------!@#$%^&*()_+---

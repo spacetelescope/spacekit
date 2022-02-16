@@ -82,18 +82,65 @@ class DataPlots:
         self.height = height
         self.show = show
         self.save_html = save_html
-        self.target = None  # target (y) column e.g. "label", "memory", "wallclock"
+        self.target = None  # target (y) name e.g. "label", "memory", "wallclock"
         self.labels = None  #
         self.classes = None  # target classes e.g. [0,1] or [0,1,2,3]
         self.n_classes = None
         self.group = None  # e.g. "detector" or "instr"
+        self.gkeys = None
         self.categories = None
+        self.cmap = None
+        self.continuous = None
+        self.categorical = None
+        self.feature_list = None
         self.telescope = None
         self.figures = None
         self.scatter = None
         self.bar = None
         self.groupedbar = None
         self.kde = None
+
+    def group_keys(self):
+        if self.group in ["instr", "instrument"]:
+            keys = ["acs", "cos", "stis", "wfc3"]
+        elif self.group in ["det", "detector"]:
+            uniq = list(self.df[self.group].unique())
+            if len(uniq) == 2:
+                keys = ["wfc-uvis", "other"]
+            else:
+                keys = ["hrc", "ir", "sbc", "uvis", "wfc"]
+        # TODO: target classification / "category"
+        elif self.group in ["cat", "category"]:
+            keys = [
+                "calibration",
+                "galaxy",
+                "galaxy_cluster",
+                "ISM",
+                "star",
+                "stellar_cluster",
+                "unidentified",
+            ]
+        # TODO: filters
+        group_keys = dict(enumerate(keys))
+        return group_keys
+
+    def map_data(self):
+        """Instantiates grouped dataframes for each detector
+
+        Returns
+        -------
+        dict
+            data_map dictionary of grouped data frames and color map
+        """
+        if self.cmap is None:
+            cmap = ["#119dff", "salmon", "#66c2a5", "fuchsia", "#f4d365"]
+        else:
+            cmap = self.cmap
+        self.data_map = {}
+        for key, name in self.gkeys.items():
+            data = self.categories[name]
+            self.data_map[name] = dict(data=data, color=cmap[key])
+        return self.data_map
 
     def feature_subset(self):
         """Create a set of groups from a categorical feature (dataframe column). Used for plotting multiple traces on a figure
@@ -179,13 +226,15 @@ class DataPlots:
         marker_size=15,
         cmap=["cyan", "fuchsia"],
         categories=None,
+        target=None,
     ):
         if categories is None:
             categories = {"all": self.df}
-
+        if target is None:
+            target = self.target
         scatter_figs = []
         for key, data in categories.items():
-            target_groups = data.groupby(self.target)
+            target_groups = data.groupby(target)
             traces = []
             for i in list(range(len(target_groups))):
                 dx = target_groups.get_group(i)
@@ -220,10 +269,18 @@ class DataPlots:
                     os.makedirs(self.save_html, exist_ok=True)
                 pyo.plot(
                     fig,
-                    filename=f"{self.save_html}/{key}-{xaxis_name}-{yaxis_name}-scatter.html",
+                    filename=f"{self.save_html}/{key}-{xaxis_name}-{yaxis_name}-{target}-scatter.html",
                 )
             scatter_figs.append(fig)
         return scatter_figs
+
+    def make_target_scatter(self, target=None):
+        if target is None:
+            target = self.target
+        target_figs = {}
+        for f in self.feature_list:
+            target_figs[f] = self.make_scatter_figs(f, target)
+        return target_figs
 
     def bar_plots(
         self,
@@ -234,7 +291,6 @@ class DataPlots:
         width=700,
         height=500,
         cmap=["dodgerblue", "fuchsia"],
-        save_html=None,
     ):
 
         traces = []
@@ -261,8 +317,8 @@ class DataPlots:
             height=height,
         )
         fig = go.Figure(data=traces, layout=layout)
-        if save_html:
-            pyo.plot(fig, filename=f"{save_html}/{feature}-barplot.html")
+        if self.save_html:
+            pyo.plot(fig, filename=f"{self.save_html}/{feature}-barplot.html")
         if self.show:
             fig.show()
         else:
@@ -323,6 +379,80 @@ class DataPlots:
             fig.show()
         return fig
 
+    def scatter3d(self, x, y, z, mask=None, target=None):
+        if mask is None:
+            df = self.df
+        else:
+            df = mask
+        if target is None:
+            target = self.target
+        traces = []
+        for targ, group in df.groupby(target):
+            trace = go.Scatter3d(
+                x=group[x],
+                y=group[y],
+                z=group[z],
+                name=targ,
+                mode="markers",
+                marker=dict(size=10, color=targ, colorscale="Plasma", opacity=0.8),
+            )
+            traces.append(trace)
+        layout = go.Layout(
+            title=f"3D Scatterplot: {x} - {y} - {z}",
+            paper_bgcolor="#242a44",
+            plot_bgcolor="#242a44",
+            font={"color": "#ffffff"},
+            legend_title_text=target,
+        )
+        fig = go.Figure(data=traces, layout=layout)
+        fig.update_layout(scene=dict(xaxis_title=x, yaxis_title=y, zaxis_title=z))
+        if self.save_html:
+            pyo.plot(fig, filename=f"{self.save_html}/scatter3d.html")
+        if self.show:
+            fig.show()
+        else:
+            return fig
+
+    def make_box_figs2(self, targets=[]):
+        self.box = {}
+        features = self.continuous + targets
+        for f in features:
+            traces = []
+            for _, name in self.gkeys.items():
+                trace = go.Box(y=self.categories[name][f], name=name)
+                traces.append(trace)
+
+            layout = go.Layout(
+                title=f"{f} by {self.group}",
+                hovermode="closest",
+                paper_bgcolor="#242a44",
+                plot_bgcolor="#242a44",
+                font={"color": "#ffffff"},
+            )
+            fig = go.Figure(data=traces, layout=layout)
+            self.box[f] = fig
+
+    def grouped_barplot(self, target="label", cmap=None, save=False):
+        df = self.df
+        if cmap is None:
+            cmap = ["red", "orange", "yellow", "purple", "blue"]
+        groups = df.groupby([self.group])[target]
+        traces = []
+        for key, value in self.gkeys.items():
+            dx = groups.get_group(key).value_counts()
+            trace = go.Bar(
+                x=dx.index, y=dx, name=value.upper(), marker=dict(color=cmap[key])
+            )
+            traces.append(trace)
+        layout = go.Layout(title=f"{target.title()} by {self.group.title()}")
+        fig = go.Figure(data=traces, layout=layout)
+        if self.save_html:
+            pyo.plot(fig, filename=f"{self.save_html}/grouped-bar.html")
+        if self.show:
+            fig.show()
+        else:
+            return fig
+
 
 class HstSvmPlots(DataPlots):
     """Instantiates an HstSvmPlots class
@@ -343,9 +473,12 @@ class HstSvmPlots(DataPlots):
         self.classes = list(set(df[self.target].values))  # [0, 1]
         self.labels = ["aligned", "misaligned"]
         self.n_classes = len(set(self.labels))
-        self.gkeys = self.group_keys()
+        self.gkeys = super().group_keys()
         self.categories = self.feature_subset()
         self.continuous = ["rms_ra", "rms_dec", "gaia", "nmatches", "numexp"]
+        self.categorical = ["det", "wcs", "cat"]
+        self.feature_list = self.continuous + self.categorical
+        self.cmap = ["#119dff", "salmon", "#66c2a5", "fuchsia", "#f4d365"]
         self.df_by_detector()
         self.bar = None
         self.scatter = None
@@ -358,13 +491,15 @@ class HstSvmPlots(DataPlots):
         # return self
 
     def alignment_bars(self):
-        bars = []
+        self.bar = {}
+        # bars = []
         X = sorted(list(self.gkeys.keys()))
         for f in self.continuous:
             means, errs = self.feature_stats_by_target(f)
-            bar = self.bar_plots(X, means, f, y_err=errs, save_html=self.save_html)
-            bars.append(bar)
-        return bars
+            bar = self.bar_plots(X, means, f, y_err=errs)
+            # bars.append(bar)
+            self.bar[f] = bar
+        return self.bar
 
     def alignment_scatters(self):
         rms_scatter = self.make_scatter_figs(
@@ -373,32 +508,34 @@ class HstSvmPlots(DataPlots):
         source_scatter = self.make_scatter_figs(
             "point", "segment", categories=self.categories
         )
-        scatters = [rms_scatter, source_scatter]
-        return scatters
+        self.scatter = {"rms_ra_dec": rms_scatter, "point_segment": source_scatter}
+        return self.scatter
 
     def alignment_kde(self):
         cols = self.continuous
-        kde_rms = self.kde_plots(["rms_ra", "rms_dec"])
-        kde_targ = [self.kde_plots([c], targets=True) for c in cols]
-        kde_norm = [self.kde_plots([c], norm=True, targets=True) for c in cols]
-        kdes = [kde_rms, kde_targ, kde_norm]
-        return kdes
+        self.kde = dict(rms=self.kde_plots(["rms_ra", "rms_dec"]), targ={}, norm={})
+        targ = [self.kde_plots([c], targets=True) for c in cols]
+        norm = [self.kde_plots([c], norm=True, targets=True) for c in cols]
+        for i, c in enumerate(cols):
+            self.kde["targ"][c] = targ[i]
+            self.kde["norm"][c] = norm[i]
+        return self.kde
 
-    def group_keys(self):
-        if self.group in ["det", "detector"]:
-            keys = ["hrc", "ir", "sbc", "uvis", "wfc"]
-        elif self.group in ["cat", "category"]:
-            keys = [
-                "calibration",
-                "galaxy",
-                "galaxy_cluster",
-                "ISM",
-                "star",
-                "stellar_cluster",
-                "unidentified",
-            ]
-        group_keys = dict(enumerate(keys))
-        return group_keys
+    # def group_keys(self):
+    #     if self.group in ["det", "detector"]:
+    #         keys = ["hrc", "ir", "sbc", "uvis", "wfc"]
+    #     elif self.group in ["cat", "category"]:
+    #         keys = [
+    #             "calibration",
+    #             "galaxy",
+    #             "galaxy_cluster",
+    #             "ISM",
+    #             "star",
+    #             "stellar_cluster",
+    #             "unidentified",
+    #         ]
+    #     group_keys = dict(enumerate(keys))
+    #     return group_keys
 
     def df_by_detector(self):
         """Instantiates grouped dataframes for each detector
@@ -424,29 +561,7 @@ class HstSvmPlots(DataPlots):
             print(e)
         return self
 
-    # TODO generalize and move up to main class
-    def grouped_barplot(self, save=False):
-        df = self.df
-        groups = df.groupby(["dete_cat"])["label"]
-        hrc = groups.get_group(0.0).value_counts()
-        ir = groups.get_group(1.0).value_counts()
-        sbc = groups.get_group(2.0).value_counts()
-        uvis = groups.get_group(3.0).value_counts()
-        wfc = groups.get_group(4.0).value_counts()
-        trace1 = go.Bar(x=hrc.index, y=hrc, name="HRC", marker=dict(color="red"))
-        trace2 = go.Bar(x=ir.index, y=ir, name="IR", marker=dict(color="orange"))
-        trace3 = go.Bar(x=sbc.index, y=sbc, name="SBC", marker=dict(color="yellow"))
-        trace4 = go.Bar(x=uvis.index, y=uvis, name="UVIS", marker=dict(color="purple"))
-        trace5 = go.Bar(x=wfc.index, y=wfc, name="WFC", marker=dict(color="blue"))
-        data = [trace1, trace2, trace3, trace4, trace5]
-        layout = go.Layout(title="SVM Alignment Labels by Detector")
-        fig = go.Figure(data=data, layout=layout)
-        if save is True:
-            pyo.plot(fig, filename="bar2.html")
-        return fig
 
-
-# TODO
 class HstCalPlots(DataPlots):
     def __init__(self, df, group="instr"):
         super().__init__(df)
@@ -463,27 +578,21 @@ class HstCalPlots(DataPlots):
         self.wfc3 = None
         self.instr_dict = None
         self.instruments = list(self.df["instr_key"].unique())
-        self.feature_list = self.make_feature_list()
-
-    def group_keys(self):
-        if self.group in ["instr", "instrument"]:
-            keys = ["acs", "cos", "stis", "wfc3"]
-        elif self.group in ["det", "detector"]:
-            keys = ["wfc-uvis", "other"]
-        # TODO: target classification / "category"
-        elif self.group in ["cat", "category"]:
-            keys = [
-                "calibration",
-                "galaxy",
-                "galaxy_cluster",
-                "ISM",
-                "star",
-                "stellar_cluster",
-                "unidentified",
-            ]
-        # TODO: filters
-        group_keys = dict(enumerate(keys))
-        return group_keys
+        self.continuous = ["n_files", "total_mb", "x_files", "x_size"]
+        self.categorical = [
+            "drizcorr",
+            "pctecorr",
+            "crsplit",
+            "subarray",
+            "detector",
+            "dtype",
+            "instr",
+        ]
+        self.feature_list = self.continuous + self.categorical
+        self.cmap = ["#119dff", "salmon", "#66c2a5", "fuchsia"]
+        self.scatter = None
+        self.box = None
+        self.scatter3 = None
 
     def df_by_instr(self):
         self.acs = self.df.groupby("instr").get_group(0)
@@ -498,28 +607,33 @@ class HstCalPlots(DataPlots):
         }
         return self
 
-    def make_feature_list(self):
-        self.feature_list = [
-            "x_files",
-            "x_size",
-            "drizcorr",
-            "pctecorr",
-            "crsplit",
-            "subarray",
-            "detector",
-            "dtype",
-            "instr",
-            "n_files",
-            "total_mb",
-            "mem_bin",
-            "memory",
-            "wallclock",
-        ]
-        return self.feature_list
+    def draw_plots(self):
+        self.scatter = self.make_cal_scatterplots()
+        self.box = self.make_box_figs2(targets=["memory", "wallclock"])
+        self.scatter3 = self.make_cal_scatter3d()
+        # self.bar
+        # self.kde
 
-    def make_continuous_figs(self, vars):
-        continuous_figs = []
+    def make_cal_scatterplots(self):
+        memory_figs, wallclock_figs = {}, {}
+        for f in self.feature_list:
+            memory_figs[f] = self.make_scatter_figs(f, "memory")
+            wallclock_figs[f] = self.make_scatter_figs(f, "wallclock")
+        self.scatter = dict(memory=memory_figs, wallclock=wallclock_figs)
+        return self.scatter
 
+    def make_cal_scatter3d(self):
+        x, y = "memory", "wallclock"
+        self.scatter3 = {}
+        for z in self.continuous:
+            data = self.df[[x, y, z, "instr_key"]]
+            scat3d = super().scatter3d(
+                x, y, z, mask=data, target="instr_key", width=700, height=700
+            )
+            self.scatter3[z] = scat3d
+
+    def make_box_figs(self, vars):
+        box_figs = []
         for v in vars:
             data = [
                 go.Box(y=self.acs[v], name="acs"),
@@ -535,14 +649,16 @@ class HstCalPlots(DataPlots):
                 font={"color": "#ffffff"},
             )
             fig = go.Figure(data=data, layout=layout)
-            continuous_figs.append(fig)
-        return continuous_figs
+            box_figs.append(fig)
+        return box_figs
 
     def make_scatter_figs(self, xaxis_name, yaxis_name):
-        if self.instr_dict is None:
-            self.df_by_instr()
+        if self.data_map is None:
+            self.map_data()
         scatter_figs = []
-        for instr, (data, color) in self.instr_dict.items():
+        for instr, datacolor in self.data_map.items():
+            data = datacolor["data"]
+            color = datacolor["color"]
             trace = go.Scatter(
                 x=data[xaxis_name],
                 y=data[yaxis_name],
@@ -556,7 +672,6 @@ class HstCalPlots(DataPlots):
                 xaxis={"title": xaxis_name},
                 yaxis={"title": yaxis_name},
                 title=instr,
-                # margin={'l': 40, 'b': 40, 't': 10, 'r': 0},
                 hovermode="closest",
                 paper_bgcolor="#242a44",
                 plot_bgcolor="#242a44",

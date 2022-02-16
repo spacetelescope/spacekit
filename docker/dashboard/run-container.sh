@@ -1,4 +1,7 @@
 #! /bin/bash -eu
+#export DATES=('2021-11-04-1636048291' '2022-02-14-1644848448' '2021-10-28-1635457222')
+#sh scrape.sh $BUCKET $DATES
+
 src_data=${1:-"${HOME}/data"} # "$(pwd)"/${svm_data}
 docker run \
 -it \
@@ -27,4 +30,4 @@ alphasentaurii/spacekit:dashboard
 
 ## Git ##
 ## Download 3 latest datasets, results, models from github
-# python -m spacekit.dashboard.cal.app -s=git
+# python -m spacekit.dashboard.cal.index -s=git

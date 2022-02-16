@@ -383,7 +383,7 @@ class Computer(object):
             go.Scatter(
                 x=n_epochs,
                 y=acc_test,
-                name=f"Test {keys[1].title()}",
+                name=f"Test {keys[3].title()}",
                 marker=dict(color="#66c2a5"),
             ),
         ]
@@ -425,12 +425,12 @@ class Computer(object):
             go.Scatter(
                 x=n_epochs,
                 y=loss_test,
-                name=f"Test {keys[0].title()}",
+                name=f"Test {keys[2].title()}",
                 marker=dict(color="#66c2a5"),
             ),
         ]
         layout = go.Layout(
-            title="Loss",
+            title=f"{keys[0].title()}",
             xaxis={"title": "n_epochs"},
             yaxis={"title": "score"},
             width=800,

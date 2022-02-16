@@ -61,6 +61,8 @@ class DrawMosaics:
         self.rgx = self.check_format()
         self.status = {"new": [], "skip": [], "err": []}
         self.datasets = self.get_datasets()
+        self.clip = True
+        self.manual = None
 
     def check_output(self):
         """check if a custom output_path is set, otherwise create a subdirectory "img" in the current working directory and set as the output_path attribute.
@@ -207,7 +209,7 @@ class DrawMosaics:
             return None, None  # 'yellow', 'Flag > 5'
 
     def draw_catalogs(self, cfile, catalog):
-        """Open and read .escv catalog file associated with the visit (if available) and map the appropriate values and coordinates to draw as an overlay on the original image.
+        """Open and read .escv catalog file associated with the visit (if available) and map the appropriate values and coordinates to draw as an overlay on the original image. Credit: based in part on code by M. Burger
 
         Parameters
         ----------
@@ -245,7 +247,7 @@ class DrawMosaics:
                 fcolor = fcolor_.apply(lambda x: x[0]).values
         return cat, fcolor_, fcolor
 
-    def create_image_name(self, name, dataset, P=0, S=0, G=0):
+    def create_image_name(self, name, dataset, P=0, S=0, G=0, fgroup=None):
         """Determines which suffix to append to the output png file based on which catalog(s) are used (if any).
 
         Parameters
@@ -279,15 +281,19 @@ class DrawMosaics:
         if self.crpt:
             sfx = "_".join(dataset.split("_")[1:])
             name = f"{name}_{sfx}"
-        img_out = f"{self.output_path}/{name}"
-        os.makedirs(img_out, exist_ok=True)
+        if fgroup:  # rel filter images share same parent dir
+            img_out = fgroup
+        else:
+            img_out = f"{self.output_path}/{name}"
+            os.makedirs(img_out, exist_ok=True)
         imgpath = os.path.join(img_out, f"{name}{catstr}")
         return imgpath
 
     def generate_total_images(self):
         """Batch image generation method for multiple datasets (and multiple catalog types)"""
+        base = os.path.dirname(os.path.abspath(self.output_path))
         start = time.time()
-        stopwatch("DRAWING IMAGES", t0=start)
+        stopwatch("DRAWING IMAGES", t0=start, out=base)
         if self.datasets is None:
             print("No datasets available. Exiting")
             sys.exit(1)
@@ -306,7 +312,7 @@ class DrawMosaics:
             else:  # original (0)
                 self.draw_total_images(dataset)
         end = time.time()
-        stopwatch("IMAGE GENERATION", t0=start, t1=end)
+        stopwatch("IMAGE GENERATION", t0=start, t1=end, out=base)
 
     def draw_total_images(self, dataset, P=0, S=0, G=0):
         """Primary class method for plotting the data, drawing the catalogs (if any) and saving to local disk as png.
@@ -327,25 +333,31 @@ class DrawMosaics:
             for hfile in hfiles:
                 name = os.path.basename(hfile).split(".")[0][:-4]
                 detector = name.split("_")[4]
-                ras, decs = np.ndarray((0,)), np.ndarray((0,))
                 with fits.open(hfile) as ff:
                     hdu = ff[1]
                     wcs = WCS(hdu.header)
                     footprint = wcs.calc_footprint(hdu.header)
-                    ras = np.append(ras, footprint[:, 0])
-                    decs = np.append(decs, footprint[:, 1])
-                    ralim = [np.max(ras), np.min(ras)]
-                    declim = [np.max(decs), np.min(decs)]
+                    ralim = [np.max(footprint[:, 0]), np.min(footprint[:, 0])]
+                    declim = [np.max(footprint[:, 1]), np.min(footprint[:, 1])]
                     radeclim = np.stack([ralim, declim], axis=1)
                     fig = plt.figure(figsize=self.size)
                     ax = fig.add_subplot(111, projection=wcs, frameon=False)
                     plt.axis(False)
                     interval = ZScaleInterval()
-                    # TODO: alt settings (a few images come out and require manual param adjustments)
-                    _, vmax = interval.get_limits(hdu.data)
-                    # if vmax == 0:
-                    #     norm = ImageNormalize(hdu.data, clip=True)
-                    norm = ImageNormalize(hdu.data, vmin=0, vmax=vmax * 2, clip=True)
+                    zmin, zmax = interval.get_limits(hdu.data)
+                    if self.manual is None:
+                        norm = ImageNormalize(
+                            hdu.data, vmin=0, vmax=zmax * 2, clip=self.clip
+                        )
+                    elif self.manual == "zscale":
+                        norm = ImageNormalize(
+                            hdu.data, vmin=zmin, vmax=zmax, clip=self.clip
+                        )
+                    elif type(self.manual) == dict:
+                        try:
+                            norm = ImageNormalize(hdu.data, **self.manual)
+                        except Exception as e:
+                            print(e)
                     ax.imshow(hdu.data, origin="lower", norm=norm, cmap="gray")
 
                 if P:
@@ -457,8 +469,7 @@ class DrawMosaics:
                 ax.set_xlim(xlim)
                 ax.set_ylim(ylim)
                 ax.imshow(hdu.data, origin="lower", norm=norm, cmap="gray")
-
-            imgpath = self.create_image_name(name, dataset)
+            imgpath = self.create_image_name(name, dataset, fgroup=outpath)
             plt.savefig(imgpath, bbox_inches="tight")
             plt.close(fig)
             print(f"\t{imgpath}.png")
