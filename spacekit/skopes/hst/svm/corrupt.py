@@ -7,7 +7,6 @@ The default corruption method is on CRVAL1 and/or CRVAL2 only. Corruption can al
 
 """
 import os
-from pyexpat import model
 import sys
 import argparse
 import shutil
@@ -200,7 +199,7 @@ def multiple_permutations(dataset, outputs, cfg):
     drizzle_dct = find_filter_files(dataset)
     if cfg["palette"] == "rfi":
         f = pick_random_filter(dataset)
-        drizzle_dct ={f: drizzle_dct[f]}
+        drizzle_dct = {f: drizzle_dct[f]}
     elif cfg["palette"] == "rex":
         drz_files = pick_random_exposures(dataset)
         drizzle_dct = dict(f999r=drz_files)
@@ -337,7 +336,7 @@ def make_process_config(
     D = 1 if imagegen else 0
     prc = C + R + D
     print(prc)
-    #prc = dict(crpt=crpt, runsvm=runsvm, imagegen=imagegen)
+    # prc = dict(crpt=crpt, runsvm=runsvm, imagegen=imagegen)
     cfg = dict(palette=palette, expos=expos, mode=mode, thresh=threshold)
     return prc, cfg
 
@@ -424,7 +423,11 @@ if __name__ == "__main__":
     )
     parser.add_argument("srcpath", type=str, help="single visit dataset(s) directory")
     parser.add_argument(
-        "-o", "--outputs", type=str, default="synthetic", help="path for saving corrupt versions of HAP files"
+        "-o",
+        "--outputs",
+        type=str,
+        default="synthetic",
+        help="path for saving corrupt versions of HAP files",
     )
     parser.add_argument(
         "-p",

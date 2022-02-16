@@ -111,7 +111,7 @@ class Builder:
             zip_ref.extractall(extract_to)
         self.model_path = os.path.join(extract_to, model_base)
         return self.model_path
-    
+
     def find_tx_file(self, name="tx_data.json"):
         if self.model_path:
             tx_file = os.path.join(self.model_path, name)

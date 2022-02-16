@@ -346,9 +346,13 @@ class DrawMosaics:
                     interval = ZScaleInterval()
                     zmin, zmax = interval.get_limits(hdu.data)
                     if self.manual is None:
-                        norm = ImageNormalize(hdu.data, vmin=0, vmax=zmax * 2, clip=self.clip)
+                        norm = ImageNormalize(
+                            hdu.data, vmin=0, vmax=zmax * 2, clip=self.clip
+                        )
                     elif self.manual == "zscale":
-                        norm = ImageNormalize(hdu.data, vmin=zmin, vmax=zmax, clip=self.clip)
+                        norm = ImageNormalize(
+                            hdu.data, vmin=zmin, vmax=zmax, clip=self.clip
+                        )
                     elif type(self.manual) == dict:
                         try:
                             norm = ImageNormalize(hdu.data, **self.manual)
