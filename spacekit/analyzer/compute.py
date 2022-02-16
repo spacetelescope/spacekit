@@ -686,8 +686,8 @@ class ComputeClassifier(Computer):
         print(f"\n ACC/LOSS: {self.acc_loss}")
         print(f"\n ROC_AUC: {self.roc_auc}")
         print(f"\nFalse -/+\n{self.cmx}")
-        print(f"\nFalse Negatives Index\n{self.fnfp['fn_idx']}\n")
-        print(f"\nFalse Positives Index\n{self.fnfp['fp_idx']}\n")
+        print(f"\nFalse Negatives: {len(self.fnfp['fn_idx'])}")
+        print(f"\nFalse Positives: {len(self.fnfp['fp_idx'])}\n")
 
 
 class ComputeBinary(ComputeClassifier):
