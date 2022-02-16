@@ -4,7 +4,7 @@ import tarfile
 from zipfile import ZipFile
 from spacekit.analyzer.explore import HstCalPlots, HstSvmPlots
 from spacekit.analyzer.scan import SvmScanner, CalScanner, import_dataset
-
+from spacekit.extractor.load import load_datasets
 # try:
 #     from pytest_astropy_header.display import (PYTEST_HEADER_MODULES,
 #                                                TESTED_VERSIONS)
@@ -50,12 +50,41 @@ class Config:
             "cal": os.path.join(f"tests/data/{env}/data.zip"),
         }[env]
 
-        self.kwargs = {"svm": dict(index_col="index"), "cal": dict(index_col="ipst")}
+        self.kwargs = {"svm": dict(index_col="index"), "cal": dict(index_col="ipst")}[env]
 
         self.decoder = {
             "svm": {"det": {0: "hrc", 1: "ir", 2: "sbc", 3: "uvis", 4: "wfc"}},
             "cal": {"instr": {0: "acs", 1: "cos", 2: "stis", 3: "wfc3"}},
-        }
+        }[env]
+
+        self.labeled = {
+            "svm": "tests/data/svm/train/training.csv",
+            "cal": "tests/data/cal/train/training.csv",
+        }[env]
+
+        self.unlabeled = {
+            "svm": "tests/data/svm/predict/unlabeled.csv",
+            "cal": "tests/data/cal/predict/unlabeled.csv",
+        }[env]
+
+        self.norm_cols = {
+            "svm": ["numexp", "rms_ra", "rms_dec", "nmatches", "point", "segment", "gaia"],
+            "cal": ["n_files", "total_mb"],
+        }[env]
+        self.rename_cols = {
+            "svm": "_scl",
+            "cal": ["x_files", "x_size"]
+        }[env]
+
+        self.enc_cols = {
+            "svm": ["det", "wcs", "cat"],
+            "cal": ["drizcorr", "pctecorr", "crsplit", "subarray", "detector", "dtype", "instr"]
+        }[env]
+
+        self.tx_file = {
+            "svm": "tests/data/svm/tx_data.json",
+            "cal": "tests/data/cal/tx_data.json",
+        }[env]
 
 
 def pytest_addoption(parser):
@@ -68,50 +97,52 @@ def env(request):
 
 
 @fixture(scope="session")
-def app_config(env):
+def cfg(env):
     cfg = Config(env)
     return cfg
 
 
 @fixture(scope="session")
-def res_data_path(app_config, tmp_path_factory):
+def res_data_path(cfg, tmp_path_factory):
     basepath = tmp_path_factory.getbasetemp()
-    data_file = app_config.data_path
+    data_file = cfg.data_path
     with ZipFile(data_file, "r") as z:
         z.extractall(basepath)
         dname = os.path.basename(data_file.split(".")[0])
         data_path = os.path.join(basepath, dname)
     return data_path
 
+    
+@fixture(scope='session')
+def df_ncols(cfg):
+    fname = cfg.labeled
+    X_cols = cfg.norm_cols + cfg.enc_cols
+    df = load_datasets([fname], index_col=cfg.kwargs["index_col"], column_order=X_cols)
+    ncols = [i for i, c in enumerate(df.columns) if c in cfg.norm_cols]
+    return (df, ncols)
+
 
 @fixture(scope="session")
-def scanner(app_config, res_data_path):
-    # basepath = tmp_path_factory.getbasetemp()
-    # data_file = app_config.data_path
-    # with ZipFile(data_file, "r") as z:
-    #     z.extractall(basepath)
-    #     dname = os.path.basename(data_file.split(".")[0])
-    #     data_path = os.path.join(basepath, dname)
-    if app_config.env == "svm":
+def scanner(cfg, res_data_path):
+    if cfg.env == "svm":
         scanner = SvmScanner(perimeter=f"{res_data_path}/20??-*-*-*", primary=-1)
-    elif app_config.env == "cal":
+    elif cfg.env == "cal":
         scanner = CalScanner(perimeter=f"{res_data_path}/20??-*-*-*", primary=-1)
-    scanner.exp = app_config.env
+    scanner.exp = cfg.env
     return scanner
 
 
 @fixture(scope="session")
-def explorer(app_config, res_data_path):
-    # fname = "tests/data/svm/train/training.csv"
+def explorer(cfg, res_data_path):
     fname = res_data_path
     df = import_dataset(
-        filename=fname, kwargs=app_config.kwargs, decoder=app_config.decoder
+        filename=fname, kwargs=cfg.kwargs, decoder=cfg.decoder
     )
-    if app_config.env == "svm":
+    if cfg.env == "svm":
         hst = HstSvmPlots(df)
-    elif app_config.env == "cal":
+    elif cfg.env == "cal":
         hst = HstCalPlots(df)
-    hst.env = app_config.env
+    hst.env = cfg.env
     return hst
 
 
@@ -208,3 +239,9 @@ def scraped_fits_file():
 @fixture(scope="function")
 def scraped_mast_file():
     return "tests/data/svm/prep/scraped_mast.csv"
+
+
+# CAL
+@fixture(scope="function")
+def cal_labeled_dataset():
+    return "tests/data/cal/train/training.csv"

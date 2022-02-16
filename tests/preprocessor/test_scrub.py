@@ -29,7 +29,7 @@ FINAL_COLS = [
     "cat",
 ]
 
-
+@mark.svm
 @mark.preprocessor
 @mark.scrub
 def test_svm_scrubber(raw_csv_file, single_visit_path):
@@ -49,6 +49,7 @@ def test_svm_scrubber(raw_csv_file, single_visit_path):
 
 
 # TEST SCRUBCOLS
+@mark.svm
 @mark.preprocessor
 @mark.scrub
 def test_scrub_cols(raw_csv_file, single_visit_path):
