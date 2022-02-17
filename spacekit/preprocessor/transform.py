@@ -54,8 +54,16 @@ class Transformer:
         self.categorical = self.categorical_data()
 
     def check_shape(self, data):
-        if type(data) == np.ndarray and len(data.shape) == 1:
-            data = data.reshape(1, -1)
+        if len(data.shape) == 1:
+            if type(data) == np.ndarray:
+                data = data.reshape(1, -1)
+            elif type(data) == pd.Series:
+                name = data.name
+                data = pd.DataFrame(
+                    data.values.reshape(1, -1), columns=list(data.index)
+                )
+                data["index"] = name
+                data.set_index("index", inplace=True)
         return data
 
     def check_columns(self, ncols=None):
@@ -486,6 +494,8 @@ def normalize_training_images(X_tr, X_ts, X_vl=None):
 
 
 def array_to_tensor(arr, reshape=False):
+    if type(arr) == tf.Tensor:
+        return arr
     if reshape is True:
         arr = arr.reshape(-1, 1)
     return tf.convert_to_tensor(arr, dtype=tf.float32)

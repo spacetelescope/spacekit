@@ -45,13 +45,13 @@ EXPECTED = {
 }
 
 
-# @fixture(scope="module") #params=["cal"]
 def exp(scanner):
     global e
     e = EXPECTED[scanner.exp]
     return e
 
 
+@mark.hst
 @mark.analyzer
 @mark.scan
 def test_scan_attrs(scanner):
@@ -61,6 +61,7 @@ def test_scan_attrs(scanner):
     assert scanner.target == e["target"]
 
 
+@mark.hst
 @mark.analyzer
 @mark.scan
 def test_scan_results(scanner):
@@ -81,6 +82,7 @@ def test_scan_results(scanner):
     assert str(type(com2)) == e["comtype2"]
 
 
+@mark.hst
 @mark.analyzer
 @mark.scan
 def test_scan_compare_scores(scanner):
@@ -91,6 +93,7 @@ def test_scan_compare_scores(scanner):
     assert list(scanner.scores.v0.values) == e["score_vals"]
 
 
+@mark.hst
 @mark.analyzer
 @mark.scan
 def test_scan_acc_loss_bars(scanner):
@@ -104,6 +107,7 @@ def test_scan_acc_loss_bars(scanner):
         assert len(fig.data) == length
 
 
+@mark.hst
 @mark.analyzer
 @mark.scan
 def test_scan_make_barplots(scanner):
@@ -124,6 +128,7 @@ def test_scan_make_barplots(scanner):
             assert len(scanner.__getattribute__(attr).data) == length
 
 
+@mark.hst
 @mark.analyzer
 @mark.scan
 def test_scan_make_clf_plots(scanner):
@@ -143,6 +148,7 @@ def test_scan_make_clf_plots(scanner):
         assert str(type(scanner.cmx["counts"][i].ravel()[0])) == "<class 'numpy.int64'>"
 
 
+@mark.hst
 @mark.analyzer
 @mark.scan
 def test_scan_load_dataframe(scanner):

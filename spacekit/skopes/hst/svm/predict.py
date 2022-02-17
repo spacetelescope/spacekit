@@ -162,7 +162,9 @@ def classify_alignments(X, model, output_path=None):
     return preds
 
 
-def predict_alignment(data_file, img_path, model_path=None, output_path=None, size=128):
+def predict_alignment(
+    data_file, img_path, model_path=None, output_path=None, size=128, norm=0
+):
     """Main calling function to load the data and model, generate predictions, and save results to disk.
 
     Parameters
@@ -181,8 +183,8 @@ def predict_alignment(data_file, img_path, model_path=None, output_path=None, si
     builder = Builder(model_path=model_path)
     model = builder.load_saved_model()
     tx_file = builder.find_tx_file()
-    X = load_mixed_inputs(data_file, img_path, tx=tx_file, size=size)
-    preds = classify_alignments(X, model=model, output_path=output_path)
+    X = load_mixed_inputs(data_file, img_path, tx=tx_file, size=size, norm=norm)
+    preds = classify_alignments(X, model, output_path=output_path)
     return preds
 
 
@@ -221,12 +223,19 @@ if __name__ == "__main__":
         default=128,
         help="image size (width and height). Default is 128.",
     )
+    parser.add_argument(
+        "-n",
+        "--normalization",
+        type=int,
+        default=0,
+        help="apply normalization and scaling",
+    )
     args = parser.parse_args()
-    data_file = args.data_file
-    img_path = args.img_path
-    model_path = args.model_path
-    output_path = args.output_path
-    size = args.size
     _ = predict_alignment(
-        data_file, img_path, model_path=model_path, output_path=output_path, size=size
+        args.data_file,
+        args.img_path,
+        model_path=args.model_path,
+        output_path=args.output_path,
+        size=args.size,
+        norm=args.normalization,
     )

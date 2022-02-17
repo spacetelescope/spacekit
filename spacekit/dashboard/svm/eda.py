@@ -174,7 +174,9 @@ layout = html.Div(
                     dcc.Graph(
                         id="scatter-3d",
                         figure=hst.scatter3d(
-                            "point", "segment", "gaia", width=1000, height=1000
+                            "point",
+                            "segment",
+                            "gaia",
                         ),
                         style={
                             "display": "inline-block",

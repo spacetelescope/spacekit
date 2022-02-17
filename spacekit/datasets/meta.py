@@ -1,6 +1,6 @@
 calcloud = {
-    "uri": "https://raw.githubusercontent.com/alphasentaurii/spacekit/main/spacekit/datasets/hst/calcloud",
-    # "uri": "https://raw.githubusercontent.com/alphasentaurii/spacekit/main/spacekit/datasets/data/calcloud",
+    # "uri": "https://raw.githubusercontent.com/alphasentaurii/spacekit/main/spacekit/datasets/hst/calcloud",
+    "uri": "https://raw.githubusercontent.com/alphasentaurii/spacekit/main/spacekit/datasets/data/calcloud",
     "data": {
         "2021-11-04": {
             "fname": "2021-11-04-1636048291.zip",
@@ -24,8 +24,8 @@ calcloud = {
 }
 
 svm = {
-    "uri": "https://raw.githubusercontent.com/alphasentaurii/spacekit/main/spacekit/datasets/hst/svm/",
-    # "uri": "https://raw.githubusercontent.com/alphasentaurii/spacekit/main/spacekit/datasets/data/svm",
+    # "uri": "https://raw.githubusercontent.com/alphasentaurii/spacekit/main/spacekit/datasets/hst/svm/",
+    "uri": "https://raw.githubusercontent.com/alphasentaurii/spacekit/main/spacekit/datasets/data/svm",
     "data": {
         "2022-01-16": {
             "fname": "2022-01-16-1642337739.zip",
@@ -57,7 +57,7 @@ svm = {
     "model": {
         "basepath": "spacekit.builder.trained_networks",
         "fname": "ensembleSVM.zip",
-        "hash": "602b9d9129940820e57ed3db87cb70eb15aec503",
+        "hash": "15a88d6a14e018b68a6c411fccd5ffe496fcb23d",
     },
 }
 

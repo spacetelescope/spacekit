@@ -24,9 +24,10 @@ ENCODED_COL_EXPECTED = [
 ]
 
 
+@mark.svm
 @mark.preprocessor
 @mark.encode
-def test_scrape_mast(scraped_mast_file):
+def test_svm_encoder(scraped_mast_file):
     data = pd.read_csv(scraped_mast_file, index_col="index")
     enc = SvmEncoder(data)
     enc.encode_features()
