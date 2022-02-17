@@ -50,6 +50,7 @@ def exp(scanner):
     e = EXPECTED[scanner.exp]
     return e
 
+
 @mark.hst
 @mark.analyzer
 @mark.scan

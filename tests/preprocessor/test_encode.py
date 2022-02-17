@@ -23,6 +23,7 @@ ENCODED_COL_EXPECTED = [
     "det",
 ]
 
+
 @mark.svm
 @mark.preprocessor
 @mark.encode

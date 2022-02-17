@@ -4,7 +4,7 @@ from spacekit.preprocessor.transform import PowerX
 import numpy as np
 import os
 
-RENAMED_COLS = { 
+RENAMED_COLS = {
     "svm": [
         "numexp_scl",
         "rms_ra_scl",
@@ -17,7 +17,7 @@ RENAMED_COLS = {
     "cal": [
         "x_files",
         "x_size",
-    ]
+    ],
 }
 
 
@@ -28,11 +28,12 @@ def test_transform_arrays_from_file(cfg, df_ncols):
     (df, ncols) = df_ncols
     X_arr = np.asarray(df)
     Px = PowerX(X_arr, cols=ncols, tx_file=cfg.tx_file)
-    assert list(Px.tx_data.keys()) == ['lambdas', 'mu', 'sigma']
+    assert list(Px.tx_data.keys()) == ["lambdas", "mu", "sigma"]
     X_norm = Px.Xt
     for i in ncols:
         assert np.abs(np.round(np.mean(X_norm[:, i]))) == 0.0
         assert np.abs(np.round(np.std(X_norm[:, i]))) == 1.0
+
 
 @mark.hst
 @mark.preprocessor
@@ -40,7 +41,13 @@ def test_transform_arrays_from_file(cfg, df_ncols):
 def test_powerx_from_df(cfg, df_ncols):
     (df, ncols) = df_ncols
     Px = PowerX(
-        df, cols=cfg.norm_cols, ncols=ncols, save_tx=True, output_path="tmp", rename=cfg.rename_cols, join_data=1
+        df,
+        cols=cfg.norm_cols,
+        ncols=ncols,
+        save_tx=True,
+        output_path="tmp",
+        rename=cfg.rename_cols,
+        join_data=1,
     )
     assert os.path.exists("tmp/tx_data.json")
     df_norm = Px.Xt
@@ -54,14 +61,13 @@ def test_powerx_from_df(cfg, df_ncols):
         assert np.abs(np.round(np.mean(X_norm[:, i]))) == 0.0
         assert np.abs(np.round(np.std(X_norm[:, i]))) == 1.0
 
+
 @mark.hst
 @mark.preprocessor
 @mark.transform
 def test_transform_join_options(cfg, df_ncols):
     (df, ncols) = df_ncols
-    Px0 = PowerX(
-        df, cols=cfg.norm_cols, ncols=ncols, rename=None, join_data=0
-    )
+    Px0 = PowerX(df, cols=cfg.norm_cols, ncols=ncols, rename=None, join_data=0)
     norm0 = Px0.Xt
     assert norm0.shape[1] == len(cfg.norm_cols)
     assert list(norm0.columns) == cfg.norm_cols
@@ -77,7 +83,8 @@ def test_transform_join_options(cfg, df_ncols):
     )
     norm2 = Px2.Xt
     assert norm2.shape[1] == len(df.columns) + len(cfg.norm_cols)
-    assert list(norm2.columns) == RENAMED_COLS[cfg.env] + list(df.columns) 
+    assert list(norm2.columns) == RENAMED_COLS[cfg.env] + list(df.columns)
+
 
 @mark.hst
 @mark.preprocessor
@@ -89,6 +96,7 @@ def test_transform_1d_series(cfg, df_ncols):
     assert len(x_norm.shape) == 2
     assert x_norm.shape[0] == 1
 
+
 @mark.hst
 @mark.preprocessor
 @mark.transform
@@ -98,6 +106,7 @@ def test_transform_1d_array(cfg, df_ncols):
     x_norm = PowerX(x, cols=ncols, tx_file=cfg.tx_file).Xt
     assert len(x_norm.shape) == 2
     assert x_norm.shape[0] == 1
+
 
 @mark.svm
 @mark.preprocessor
@@ -109,9 +118,7 @@ def test_svm_normalize_training(svm_labeled_dataset, svm_train_npz):
     ).load()
     cols = ["numexp", "rms_ra", "rms_dec", "nmatches", "point", "segment", "gaia"]
     ncols = [i for i, c in enumerate(X[0].columns) if c in cols]
-    Px = PowerX(
-        df, cols=cols, ncols=ncols, rename="_scl"
-    )
+    Px = PowerX(df, cols=cols, ncols=ncols, rename="_scl")
     X_train = PowerX(X[0], cols=cols, ncols=ncols, tx_data=Px.tx_data).Xt
     expected = RENAMED_COLS["svm"] + ["det", "wcs", "cat"]
     assert list(X_train.columns) == expected

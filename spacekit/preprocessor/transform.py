@@ -59,7 +59,9 @@ class Transformer:
                 data = data.reshape(1, -1)
             elif type(data) == pd.Series:
                 name = data.name
-                data = pd.DataFrame(data.values.reshape(1, -1), columns=list(data.index))
+                data = pd.DataFrame(
+                    data.values.reshape(1, -1), columns=list(data.index)
+                )
                 data["index"] = name
                 data.set_index("index", inplace=True)
         return data
@@ -493,7 +495,7 @@ def normalize_training_images(X_tr, X_ts, X_vl=None):
 
 def array_to_tensor(arr, reshape=False):
     if type(arr) == tf.Tensor:
-        return(arr)
+        return arr
     if reshape is True:
         arr = arr.reshape(-1, 1)
     return tf.convert_to_tensor(arr, dtype=tf.float32)
