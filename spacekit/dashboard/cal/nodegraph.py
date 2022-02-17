@@ -107,7 +107,7 @@ def softmax_activation(out):
     """
     e = np.zeros(shape=(4))
     for i, E in enumerate(out):
-        e[i] = E ** E
+        e[i] = E**E
     print(f"\n*** SOFTMAX: {e}")
     denom = e[0] + e[1] + e[2] + e[3]
     with np.printoptions(floatmode="maxprec"):

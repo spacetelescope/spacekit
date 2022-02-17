@@ -4,55 +4,11 @@
 ![GitHub repo size](https://img.shields.io/github/repo-size/alphasentaurii/spacekit)
 ![GitHub license](https://img.shields.io/github/license/alphasentaurii/spacekit?color=black)
 
+
 Astronomical Data Science and Machine Learning Toolkit
 
-```python
-spacekit
-└── spacekit
-    └── analyzer
-        └── compute.py
-        └── explore.py
-        └── scan.py
-        └── track.py
-    └── builder
-        └── networks.py
-    └── dashboard
-        └── cal
-            └── app.py
-        └── svm
-            └── app.py
-    └── datasets
-        └── hst_cal.py
-        └── hst_svm.py
-        └── k2_exo.py
-    └── extractor
-        └── load.py
-        └── radio.py
-        └── scrape.py
-    └── generator
-        └── augment.py
-        └── draw.py
-    └── preprocessor
-        └── encode.py
-        └── scrub.py
-        └── transform.py
-    └── skopes
-        └── hst
-            └── cal
-                └── train.py
-            └── svm
-                    └── corrupt.py
-                    └── predict.py
-                    └── prep.py
-                    └── train.py
-        └── kepler
-            └── light_curves.py
-        └── trained_networks
-└── setup.py
-└── tests
-└── LICENSE
-└── README.md
-```
+
+![ML Dashboard](./previews/neural-network-graph.png)
 
 ## Setup
 
@@ -70,99 +26,123 @@ $ cd spacekit
 $ pip install -e .
 ```
 
-## Run
 
-**Example: HST Single Visit Mosaic Alignment Classification**
+### Pre-Trained Neural Nets
 
-### Classify new data using pre-trained model:
+**Single Visit Mosaic Alignment (HST)**
 
-1. Preprocess data (scrape from regression test json and fits files, scrub/preprocess dataframe, generate png images for ML)
+[SVM Docs](https://spacekit.readthedocs.io/en/latest/skopes/hst/svm.html)
 
-***from the command line***
+* Preprocessing: ``spacekit.skopes.hst.svm.prep``
+* Predict Image Alignments: ``spacekit.skopes.hst.svm.predict``
+* Train Ensemble Classifier: ``spacekit.skopes.hst.svm.train``
+* Generate synthetic misalignments†: ``spacekit.skopes.hst.svm.corrupt``
+        
+*† requires Drizzlepac*
+    
+**Calibration Data Pipeline (HST)**
 
-```bash
-$ python -m spacekit.skopes.hst.svm.prep path/to/svmdata -f=svm_data.csv
-```
+[CAL Docs](https://spacekit.readthedocs.io/en/latest/skopes/hst/cal.html)
 
-***from python***
+* ``spacekit.skopes.hst.cal.train``
 
-```python
-from spacekit.skopes.hst.svm.prep import run_preprocessing
-input_path = "/path/to/svm/datasets"
-fname = run_preprocessing(input_path)
-print(fname)
-# svm_data.csv
 
-# This is equivalent to using the default kwargs:
-fname = run_preprocessing(input_path, h5=None, fname="svm_data", output_path=None, json_pattern="*_total*_svm_*.json", crpt=0, draw_images=1)
-print(fname)
-# default is "svm_data.csv"; customize filename and location using kwargs `fname` and `output_path`
-```
+**Exoplanet Detection with time-series photometry (K2, TESS)**
 
-Outputs:
-* svm_data.csv
-* raw_svm_data.csv
-* svm_data.h5
-* img/
+[K2 Docs](https://spacekit.readthedocs.io/en/latest/skopes/kepler/light-curves.html)
 
-2. Generate predictions
+* ``spacekit.skopes.kepler.light_curves``
 
-***from the command line***
 
-```bash
-$ python -m spacekit.skopes.hst.svm.predict svm_data.csv img
-```
+### Customizable Model Building Classes
 
-***from python***
+Build, train and experiment with multiple model iterations using the ``builder.architect.Builder`` classes
+
+Example: Build and train an MLP and 3D CNN ensemble network
+
+- continuous/encoded data for the multi-layer perceptron
+- 3 RGB image "frames" per image input for the CNN
+- Stack mixed inputs and use the outputs of MLP and CNN as inputs for the final ensemble model
 
 ```python
-from spacekit.skopes.hst.svm.predict import predict_alignment
-data_file = "svm_data.csv" # same as `fname` returned in `prep.py` above
-img_path = "img" # default image foldername created above
-predict_alignment(data_file, img_path)
+ens = BuilderEnsemble(XTR, YTR, XTS, YTS, name="svm_ensemble")
+ens.build()
+ens.batch_fit()
 
-# This is equivalent to using the default kwargs:
-predict_alignment(data_file, img_path, model_path=None, output_path=None, size=None)
+# Save Training Metrics
+outputs = f"data/{date_timestamp}"
+com = ComputeBinary(builder=ens, res_path=f"{outputs}/results/test")
+com.calculate_results()
 ```
+# Load and plot metrics to evaluate and compare model performance
 
-Outputs:
-* predictions/
-    * clf_report.txt
-    * compromised.txt
-    * predictions.csv
-
-----
-
-### Build, train, evaluate new classifier from labeled data
-
-Run step 1 (prep) above, then:
-
-***from the command line***
-
-```bash
-# Note: there are several option flags you can also include in this command
-$ python -m spacekit.skopes.hst.svm.train svm_data.csv img
-```
-
-***from Python***
+Analyze and compare results across iterations from metrics saved using ``analyze.compute.Computer`` class objects. Almost all plots are made using plotly and are dynamic/interactive.
 
 ```python
-# import spacekit training submodule
-from spacekit.skopes.hst.svm.train import run_training
+# Load data and metrics
+from spacekit.analyzer.scan import MegaScanner
+res = MegaScanner(perimeter="data/2022-*-*-*")
+res._scan_results()
+```
 
-training_data = "svm_data.csv" # preprocessed dataframe (see step 1 above)
-img_path = "img" # preprocessed PNG image files (see step 1 above)
+![ROC](./previews/roc-auc.png)
 
-run_training(training_data, img_path)
+![Eval](./previews/model-performance.png)
 
-# This is the same as using the default kwargs
-com, val = run_training(
-    training_data, img_path, synth_data=None, norm=0, model_name=None, params=None, output_path=None
-)
 
-# Optional: view plots
-com.draw_plots()
-val.draw_plots()
+### Preprocessing and Analysis Tools for Space Telescope Instrument Data
+
+![box](./previews/eda-box-plots.png)
+
+```python
+from spacekit.analyzer.explore import HstCalPlots
+res.load_dataframe()
+hst = HstCalPlots(res.df, group="instr")
+hst.scatter
+```
+
+![scatter](./previews/eda-scatterplots.png)
+
+
+```python
+spacekit
+└── spacekit
+    └── analyzer
+        └── compute.py
+        └── explore.py
+        └── scan.py
+        └── track.py
+    └── builder
+        └── architect.py
+        └── blueprints.py
+    └── dashboard
+    └── datasets
+    └── extractor
+        └── load.py
+        └── radio.py
+        └── scrape.py
+    └── generator
+        └── augment.py
+        └── draw.py
+    └── preprocessor
+        └── encode.py
+        └── scrub.py
+        └── transform.py
+    └── skopes
+        └── hst
+            └── cal
+            └── svm
+                └── corrupt.py
+                └── predict.py
+                └── prep.py
+                └── train.py
+        └── kepler
+        └── trained_networks
+└── setup.py
+└── tests
+└── docker
+└── LICENSE
+└── README.md
 ```
 
 

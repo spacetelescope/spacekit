@@ -25,7 +25,7 @@ mpl.rc("font", **font_dict)
 
 class Computer(object):
     def __init__(self, algorithm, res_path=None, show=False, validation=False):
-        self.algorithm = algorithm  # test/val; clf/reg
+        self.algorithm = algorithm
         self.res_path = res_path
         self.show = show
         self.validation = validation
@@ -91,7 +91,18 @@ class Computer(object):
         return self
 
     def builder_inputs(self, builder=None):
-        """produces same result as `inputs` method, using a builder object's attributes instead. Allows for automatic switch to validation set."""
+        """Produces same result as `inputs` method, using a builder object's attributes instead. Allows for automatic switch to validation set.
+
+        Parameters
+        ----------
+        builder : spacekit.builder.networks.Builder object, optional
+            Builder object used to train the model (instantiantes its own attributes from it), by default None
+
+        Returns
+        -------
+        self
+            Computer object updated with Builder attributes
+        """
         if builder:
             if self.validation is True:
                 try:
@@ -117,8 +128,10 @@ class Computer(object):
     def download(self, outputs):
         """Downloads model training results (`outputs` calculated by Computer obj) to local pickle objects for later retrieval and plotting/analysis.
 
-        Args:
-            outputs (dict): Outputs created by their respective subclasses (due to distinct diffs btw clf and reg models).
+        Parameters
+        ----------
+        outputs : dictionary
+            Outputs created by their respective subclasses using the ``make_outputs`` method.
         """
         if self.res_path is None:
             timestamp = int(dt.datetime.now().timestamp())
@@ -133,7 +146,13 @@ class Computer(object):
         print(f"Results saved to: {self.res_path}")
 
     def upload(self):
-        """Imports model training results (`outputs` previously calculated by Computer obj) from local pickle objects. These can then be used for plotting/analysis."""
+        """Imports model training results (`outputs` previously calculated by Computer obj) from local pickle objects. These can then be used for plotting/analysis.
+
+        Returns
+        -------
+        dictionary
+            model training results loaded from files on local disk.
+        """
         if self.res_path is None:
             try:
                 self.res_path = glob.glob(f"data/*/results/{self.algorithm}")[0]
@@ -154,11 +173,15 @@ class Computer(object):
     def onehot_y(self, prefix="lab"):
         """Generates onehot-encoded dataframe of categorical target class values (for multiclassification models).
 
-        Args:
-            prefix (str, optional): abbreviated string prefix for target class name. Defaults to "lab" (abbr for "label").
+        Parameters
+        ----------
+        prefix : str, optional
+            abbreviated string prefix for target class name. Defaults to "lab" (abbr for "label")., by default "lab"
 
-        Returns:
-            Pandas Dataframe: Dummy-coded data
+        Returns
+        -------
+        dataframe
+            one-hot encoded target class labels (dummies)
         """
         self.y_onehot = pd.get_dummies(self.y_test.ravel(), prefix=prefix)
         return self.y_onehot
@@ -166,8 +189,10 @@ class Computer(object):
     def score_y(self):
         """Probability scores for classification model predictions (`y_pred` probabilities)
 
-        Returns:
-            numpy.ndarray: y_scores probabilities array
+        Returns
+        -------
+        ndarray
+            y_scores probabilities array
         """
         self.y_scores = self.model.predict(self.X_test)
         if self.y_scores.shape[1] < 2:
@@ -179,8 +204,10 @@ class Computer(object):
     def acc_loss_scores(self):
         """Calculate overall accuracy and loss metrics of training and test sets.
 
-        Returns:
-            Dictionary: mean accuracy and loss scores of training and test sets (generated via Keras history)
+        Returns
+        -------
+        dictionary
+            mean accuracy and loss scores of training and test sets (generated via Keras history)
         """
         train_scores = self.model.evaluate(self.X_train, self.y_train, verbose=2)
         test_scores = self.model.evaluate(self.X_test, self.y_test, verbose=2)
@@ -260,7 +287,13 @@ class Computer(object):
         return roc, fig
 
     def make_roc_curve(self):
+        """Plots the Receiver-Operator Characteristic (Area Under the Curve).
 
+        Returns
+        -------
+        plotly.graph_obj Figure
+            ROC-AUC interactive figure plot
+        """
         fig = go.Figure()
         fig.add_shape(type="line", line=dict(dash="dash"), x0=0, x1=1, y0=0, y1=1)
 
@@ -291,6 +324,13 @@ class Computer(object):
         return fig
 
     def make_pr_curve(self):
+        """Plots the Precision-Recall Curve
+
+        Returns
+        -------
+        plotly.graph_obj Figure
+            Precision-Recall curve figure plot
+        """
 
         fig = go.Figure()
         fig.add_shape(type="line", line=dict(dash="dash"), x0=0, x1=1, y0=1, y1=0)
@@ -322,21 +362,70 @@ class Computer(object):
         return fig
 
     def keras_acc_plot(self):
+        """Line plot of training and test accuracy scores per epoch
+
+        Returns
+        -------
+        plotly.graph_obj Figure
+            Keras history training and test set accuracy scores for each epoch
+        """
         keys = list(self.history.keys())
-        acc_train = self.history[keys[0]]
-        acc_test = self.history[keys[2]]
+        acc_train = self.history[keys[1]]
+        acc_test = self.history[keys[3]]
         n_epochs = list(range(len(acc_train)))
         data = [
             go.Scatter(
                 x=n_epochs,
                 y=acc_train,
-                name=f"Training {keys[0].title()}",
+                name=f"Training {keys[1].title()}",
                 marker=dict(color="#119dff"),
             ),
             go.Scatter(
                 x=n_epochs,
                 y=acc_test,
-                name=f"Test {keys[0].title()}",
+                name=f"Test {keys[3].title()}",
+                marker=dict(color="#66c2a5"),
+            ),
+        ]
+        layout = go.Layout(
+            title=f"{keys[1].title()}",
+            xaxis={"title": "n_epochs"},
+            yaxis={"title": "score"},
+            width=800,
+            height=500,
+            paper_bgcolor="#242a44",
+            plot_bgcolor="#242a44",
+            font={"color": "#ffffff"},
+        )
+        fig = go.Figure(data=data, layout=layout)
+        if self.show:
+            fig.show()
+        return fig
+
+    def keras_loss_plot(self):
+        """Line plot of training and test loss scores per epoch
+
+        Returns
+        -------
+        plotly.graph_obj Figure
+            Keras history training and test set loss scores for each epoch
+        """
+        keys = list(self.history.keys())
+        loss_train = self.history[keys[0]]
+        loss_test = self.history[keys[2]]
+        n_epochs = list(range(len(loss_train)))
+
+        data = [
+            go.Scatter(
+                x=n_epochs,
+                y=loss_train,
+                name=f"Training {keys[0].title()}",
+                marker=dict(color="#119dff"),
+            ),
+            go.Scatter(
+                x=n_epochs,
+                y=loss_test,
+                name=f"Test {keys[2].title()}",
                 marker=dict(color="#66c2a5"),
             ),
         ]
@@ -355,46 +444,13 @@ class Computer(object):
             fig.show()
         return fig
 
-    def keras_loss_plot(self):
-        keys = list(self.history.keys())
-        loss_train = self.history[keys[1]]
-        loss_test = self.history[keys[3]]
-        n_epochs = list(range(len(loss_train)))
-
-        data = [
-            go.Scatter(
-                x=n_epochs,
-                y=loss_train,
-                name=f"Training {keys[0].title()}",
-                marker=dict(color="#119dff"),
-            ),
-            go.Scatter(
-                x=n_epochs,
-                y=loss_test,
-                name=f"Test {keys[0].title()}",
-                marker=dict(color="#66c2a5"),
-            ),
-        ]
-        layout = go.Layout(
-            title="Loss",
-            xaxis={"title": "n_epochs"},
-            yaxis={"title": "score"},
-            width=800,
-            height=500,
-            paper_bgcolor="#242a44",
-            plot_bgcolor="#242a44",
-            font={"color": "#ffffff"},
-        )
-        fig = go.Figure(data=data, layout=layout)
-        if self.show:
-            fig.show()
-        return fig
-
     def resid_plot(self):
         """Plot the residual error for a regression model.
 
-        Returns:
-            Plotly figure object: interactive plotly scatter fig
+        Returns
+        -------
+        plotly.graph_obj Figure
+            interactive scatter plot figure of residuals in the test set
         """
         if self.predictions is not None:
             y = self.predictions[:, 1]
@@ -430,9 +486,24 @@ class Computer(object):
 
     # Matplotlib "static" alternative to interactive plotly version
     def fusion_matrix(self, cm, classes, normalize=True, cmap="Blues"):
-        """
-        Confusion Matrix. Can pass in matrix or a tuple (ytrue,ypred) to create on the fly
+        """Confusion Matrix. Can pass in matrix or a tuple (ytrue,ypred) to create on the fly
         classes: class names for target variables
+
+        Parameters
+        ----------
+        cm : tuple or sklearn confusion_matrix object
+            (y_test, y_pred) tuple or a confusion matrix of true and false positives and negatives.
+        classes : list
+            class labels (strings) to show on the axes
+        normalize : bool, optional
+            Show percentages instead of raw values, by default True
+        cmap : str, optional
+            Colormap, by default "Blues"
+
+        Returns
+        -------
+        matplotlib.pyplot Figure
+            confusion matrix figure with colorscale
         """
         # make matrix if tuple passed to matrix:
         if isinstance(cm, tuple):
@@ -495,6 +566,14 @@ class Computer(object):
 
 
 class ComputeClassifier(Computer):
+    """Computer subclass with additional methods specific to classification models.
+
+    Parameters
+    ----------
+    Computer : Class object
+        spacekit.analyzer.compute.Computer object
+    """
+
     def __init__(
         self,
         algorithm="clf",
@@ -507,6 +586,18 @@ class ComputeClassifier(Computer):
         self.classes = classes
 
     def make_outputs(self, dl=True):
+        """Store computed results into a dictionary, and optionally save to disk.
+
+        Parameters
+        ----------
+        dl : bool, optional
+            Download results (save as files on local disk), by default True
+
+        Returns
+        -------
+        dictionary
+            outputs stored in a dictionary
+        """
         outputs = {
             "y_onehot": self.y_onehot,
             "y_scores": self.y_scores,
@@ -526,6 +617,18 @@ class ComputeClassifier(Computer):
         return outputs
 
     def load_results(self, outputs):
+        """Load a previously trained model's results from local disk and store in a dictionary.
+
+        Parameters
+        ----------
+        outputs : dictionary
+            outputs stored in a dictionary
+
+        Returns
+        -------
+        self
+            spacekit.analyzer.compute.ComputeClassifier subclass object
+        """
         self.y_onehot = outputs["y_onehot"]
         self.y_scores = outputs["y_scores"]
         self.y_pred = outputs["y_pred"]
@@ -546,6 +649,13 @@ class ComputeClassifier(Computer):
         return self
 
     def track_fnfp(self):
+        """Determine index names of false negatives and false positives from the training inputs and store in a dictionary along with related prediction probabilities.
+
+        Returns
+        -------
+        dictionary
+            false-negative false-positive results
+        """
         if self.test_idx is None:
             print("Test index not found")
             return
@@ -571,19 +681,28 @@ class ComputeClassifier(Computer):
         return self.fnfp
 
     def print_summary(self):
+        """Prints an sklearn-based classification report of model evaluation metrics, along with accuracy, loss, roc_auc fnfp scores to standard out. The report is also stored as a dictionary in the Computer object's self.report attribute."""
         print(f"\n CLASSIFICATION REPORT: \n{self.report}")
         print(f"\n ACC/LOSS: {self.acc_loss}")
         print(f"\n ROC_AUC: {self.roc_auc}")
         print(f"\nFalse -/+\n{self.cmx}")
-        print(f"\nFalse Negatives Index\n{self.fnfp['fn_idx']}\n")
-        print(f"\nFalse Positives Index\n{self.fnfp['fp_idx']}\n")
+        print(f"\nFalse Negatives: {len(self.fnfp['fn_idx'])}")
+        print(f"\nFalse Positives: {len(self.fnfp['fp_idx'])}\n")
 
 
 class ComputeBinary(ComputeClassifier):
+    """ComputeClassifier subclass with additional methods specific to binary classification models.
+
+    Parameters
+    ----------
+    ComputeClassifier : Subclass object
+        spacekit.analyzer.compute.ComputeClassifier object
+    """
+
     def __init__(
         self,
         builder=None,
-        algorithm="clf",
+        algorithm="binary",
         classes=["aligned", "misaligned"],
         res_path="results/svm",
         show=False,
@@ -599,6 +718,18 @@ class ComputeBinary(ComputeClassifier):
         self.builder_inputs(builder=builder)
 
     def calculate_results(self, show_summary=True):
+        """Calculate metrics relevant to binary classification model training and assign to the appropriate subclass attributes.
+
+        Parameters
+        ----------
+        show_summary : bool, optional
+            print the classification report and other summarized metrics to standard out, by default True
+
+        Returns
+        -------
+        self
+            spacekit.analyzer.compute.ComputeBinary subclass object
+        """
         self.y_onehot = self.onehot_y()
         self.y_scores = self.score_y()
         self.y_pred = self.y_scores[:, 1]
@@ -619,10 +750,18 @@ class ComputeBinary(ComputeClassifier):
 
 
 class ComputeMulti(ComputeClassifier):
+    """ComputeClassifier subclass with additional methods specific to multi-classification models.
+
+    Parameters
+    ----------
+    ComputeClassifier : Subclass object
+        spacekit.analyzer.compute.ComputeClassifier object
+    """
+
     def __init__(
         self,
         builder=None,
-        algorithm="clf",
+        algorithm="multiclass",
         classes=["2g", "8g", "16g", "64g"],
         res_path="results/mem_bin",
         show=False,
@@ -647,6 +786,18 @@ class ComputeMulti(ComputeClassifier):
             )
 
     def calculate_multi(self, show_summary=True):
+        """Calculate metrics relevant to multi-classification model training and assign to the appropriate subclass attributes.
+
+        Parameters
+        ----------
+        show_summary : bool, optional
+            print the classification report and other summarized metrics to standard out, by default True
+
+        Returns
+        -------
+        self
+            spacekit.analyzer.compute.ComputeMulti subclass object
+        """
         self.y_onehot = self.onehot_multi()
         self.y_scores = self.model.predict(self.X_test)
         self.y_pred = np.round(self.y_scores)
@@ -669,6 +820,13 @@ class ComputeMulti(ComputeClassifier):
         return self
 
     def roc_auc_multi(self):
+        """Calculate the ROC-AUC scores for each label of a multiclass model.
+
+        Returns
+        -------
+        list
+            roc-auc scores for each class label
+        """
         self.roc_auc = []
         for i in range(self.y_scores.shape[1]):
             y_true = self.y_onehot.iloc[:, i]
@@ -677,11 +835,30 @@ class ComputeMulti(ComputeClassifier):
         return self.roc_auc
 
     def onehot_multi(self, prefix="bin"):
+        """Generates onehot-encoded dataframe of categorical target class values (for multiclassification models).
+
+        Parameters
+        ----------
+        prefix : str, optional
+            abbreviated string prefix for target class name, by default "bin"
+
+        Returns
+        -------
+        dataframe
+            one-hot encoded target class labels (dummies)
+        """
         self.y_onehot = pd.get_dummies(np.argmax(self.y_test, axis=-1), prefix=prefix)
         self.y_onehot.set_index(self.test_idx.index)
         return self.y_onehot
 
     def fnfp_multi(self):
+        """Determine index names of false negatives and false positives from the training inputs and store in a dictionary along with related prediction probabilities.
+
+        Returns
+        -------
+        dictionary
+            false-negative false-positive results
+        """
         if self.test_idx is None:
             print("Test index not found")
             return
@@ -726,10 +903,18 @@ class ComputeMulti(ComputeClassifier):
 
 
 class ComputeRegressor(Computer):
+    """Computer subclass with additional methods specific to regression models.
+
+    Parameters
+    ----------
+    Computer : parent class
+        spacekit.analyzer.compute.Computer object
+    """
+
     def __init__(
         self,
         builder=None,
-        algorithm="reg",
+        algorithm="linreg",
         res_path="results/memory",
         show=False,
         validation=False,
@@ -753,10 +938,12 @@ class ComputeRegressor(Computer):
         self.loss = None
 
     def calculate_results(self):
-        """Main calling function to compute regression model scores, including residuals, root mean squared error and L2 cost function. Uses parent class method to save and/or load results to/from disk. Once calculated or loaded, other parent class methods can be used to generate various plots.
+        """Main calling function to compute regression model scores, including residuals, root mean squared error and L2 cost function. Uses parent class method to save and/or load results to/from disk. Once calculated or loaded, other parent class methods can be used to generate various plots (e.g. `resid_plot`).
 
-        Returns:
-            Compute object (self): ComputeRegressor object with calculated model evaluation metrics attributes.
+        Returns
+        -------
+        self
+            ComputeRegressor object with calculated model evaluation metrics attributes.
         """
         if self.X_test is None:
             print("No training data - please instantiate the inputs.")
@@ -770,8 +957,10 @@ class ComputeRegressor(Computer):
     def compute_preds(self):
         """Get predictions (`y_pred`) based on regression model test inputs (`X_test`).
 
-        Returns:
-            numpy.ndarray: predicted values for y (target)
+        Returns
+        -------
+        ndarray
+            predicted values for y (target)
         """
         if self.X_test is not None:
             self.y_pred = self.model.predict(self.X_test)
@@ -780,8 +969,10 @@ class ComputeRegressor(Computer):
     def yhat_matrix(self):
         """Compare ground-truth and prediction values of a regression model side-by-side. Used for calculating residuals (see `get_resid` method below).
 
-        Returns:
-            2d-array: Concatenation of ground truth (`y_test`) and prediction (`y_pred`) arrays.
+        Returns
+        -------
+        ndarray
+            Concatenation of ground truth (`y_test`) and prediction (`y_pred`) arrays.
         """
         if self.y_pred is not None:
             np_config.enable_numpy_behavior()
@@ -799,8 +990,10 @@ class ComputeRegressor(Computer):
         """Calculate residual error between ground truth (`y_test`) and prediction values of a regression model.
         Residuals are a measure of how far from the regression line the data points are.
 
-        Returns:
-            List: residual error values for a given test set
+        Returns
+        -------
+        list
+            residual error values for a given test set
         """
         if self.predictions is not None:
             self.residuals = []
@@ -811,12 +1004,12 @@ class ComputeRegressor(Computer):
             return self.residuals
 
     def calculate_L2(self, subset=None):
-        """Calculate the L2 Normalization score of a regression model.
-        L2 norm is the square root of the sum of the squared vector values (also known as the Euclidean norm or Euclidean distance from the origin).
-        This metric is often used when fitting ML algorithms as a regularization method to keep the coefficients of the model small, i.e. to make the model less complex.
+        """Calculate the L2 Normalization score of a regression model. L2 norm is the square root of the sum of the squared vector values (also known as the Euclidean norm or Euclidean distance from the origin). This metric is often used when fitting ML algorithms as a regularization method to keep the coefficients of the model small, i.e. to make the model less complex.
 
-        Returns:
-            Int: L2 norm
+        Returns
+        -------
+        int
+            L2 norm
         """
         if subset is not None:
             return np.linalg.norm(np.asarray(subset))
@@ -824,14 +1017,17 @@ class ComputeRegressor(Computer):
             return np.linalg.norm(self.residuals)
 
     def compute_scores(self, error_stats=True):
-        """Calculate overall loss metrics of training and test sets. Default for regression is MSE (mean squared error) and RMSE (root MSE).
-        RMSE is a measure of how spread out the residuals are (i.e. how concentrated the data is around the line of best fit). Note: RMSE is better in terms of reflecting performance when dealing with large error values (penalizes large errors) while MSE tends to be biased for high values.
+        """Calculate overall loss metrics of training and test sets. Default for regression is MSE (mean squared error) and RMSE (root MSE). RMSE is a measure of how spread out the residuals are (i.e. how concentrated the data is around the line of best fit). Note: RMSE is better in terms of reflecting performance when dealing with large error values (penalizes large errors) while MSE tends to be biased for high values.
 
-        Args:
-            error_stats (bool, optional): include RMSE and L2 norm for positive and negative groups of residuals in the test set (here "positive" means above the regression line (>0), "negative" means below (<0)). This can be useful when consequences might be more severe for underestimating vs. overestimating.
+        Parameters
+        ----------
+        error_stats : bool, optional
+            Include RMSE and L2 norm for positive and negative groups of residuals in the test set (here "positive" means above the regression line (>0), "negative" means below (<0)). This can be useful when consequences might be more severe for underestimating vs. overestimating.
 
-        Returns:
-            Dictionary: model training loss scores (MSE and RMSE)
+        Returns
+        -------
+        dictionary
+            model training loss scores (MSE and RMSE)
         """
         if self.X_test is None:
             return None
@@ -857,37 +1053,18 @@ class ComputeRegressor(Computer):
             self.loss["l2_neg"] = self.calculate_L2(subset=neg)
         return self.loss
 
-    # def resid_plot(self):
-    #     """Plot the residual error for a regression model.
-
-    #     Returns:
-    #         Plotly figure object: interactive plotly scatter fig
-    #     """
-    #     if self.predictions is not None:
-    #         y = self.predictions[:,1]
-    #         p = self.predictions[:,0]
-    #     else:
-    #         np_config.enable_numpy_behavior()
-    #         y = self.y_test.reshape(1,-1)
-    #         p = self.y_pred
-    #     fig = px.scatter(x=y, y=p, labels={'x': 'ground truth', 'y': 'prediction'})
-    #     fig.add_shape(
-    #         type="line", line=dict(dash='dash'),
-    #         x0=self.y_test.min(), y0=self.y_test.min(),
-    #         x1=self.y_test.max(), y1=self.y_test.max()
-    #     )
-    #     if self.show is True:
-    #         fig.show()
-    #     return fig
-
     def make_outputs(self, dl=True):
         """Create a dictionary of results calculated for a regression model. Used for saving results to disk.
 
-        Args:
-            dl (bool, optional): download (save) to disk. Defaults to True.
+        Parameters
+        ----------
+        dl : bool, optional
+            download (save) to files on local disk, by default True
 
-        Returns:
-            Dictionary: outputs stored in a single dictionary for convenience.
+        Returns
+        -------
+        dictionary
+            outputs stored in a single dictionary for convenience
         """
         outputs = {
             "predictions": self.predictions,
@@ -904,11 +1081,15 @@ class ComputeRegressor(Computer):
     def load_results(self, outputs):
         """Load previously calculated results/scores into Compute object (for comparing to other models and/or drawing plots).
 
-        Args:
-            outputs (dict): dictionary of results (generated via `make_outputs` method above)
+        Parameters
+        ----------
+        outputs : dict
+            dictionary of results (generated via `make_outputs` method above)
 
-        Returns:
-            ComputeRegressor object with results attributes
+        Returns
+        -------
+        self
+            spacekit.analyzer.compute.ComputeRegressor subclass object updated with results attributes
         """
         self.predictions = outputs["predictions"]
         self.loss = outputs["loss"]

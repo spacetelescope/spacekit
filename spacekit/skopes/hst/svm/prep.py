@@ -1,18 +1,20 @@
 """
 Spacekit HST Single Visit Mosaic Data/Image Preprocessing
 
-Ex 1:
-input_path = "path/to/datasets"
-data_file = run_preprocessing(input_path, fname="svm_data")
+Step 1: SCRAPE JSON FILES and make dataframe
+Step 2: Scrape Fits Headers and SCRUB DATAFRAME
+Step 3: DRAW Mosaic images
 
-Ex 2: synthetic (artificially corrupted) data:
-data_file = run_preprocessing(input_path, fname=fname, json_pattern="*_total*_svm_*.json", crpt=1, draw_images=0)
+Examples:
+df = run_preprocessing("home/singlevisits")
+
+df = run_preprocessing("home/syntheticdata", fname="synth2", crpt=1, draw=0)
+
 """
-
 import argparse
 import os
 from spacekit.extractor.scrape import JsonScraper
-from spacekit.preprocessor.scrub import ScrubSvm
+from spacekit.preprocessor.scrub import SvmScrubber
 from spacekit.generator.draw import DrawMosaics
 
 
@@ -22,31 +24,47 @@ def run_preprocessing(
     fname="svm_data",
     output_path=None,
     json_pattern="*_total*_svm_*.json",
+    visit=None,
     crpt=0,
-    draw_images=True,
+    draw=1,
 ):
-    """
-    Scrapes SVM data from raw files, preprocesses dataframe for MLP classifier and generates png images for image classifier.
-    Parameters:
-        input_path ([type]): [description]
-        h5 ([type], optional): [description]. Defaults to None.
-        fname (str, optional): [description]. Defaults to "svm_data".
-        output_path ([type], optional): [description]. Defaults to None.
-        json_pattern (str, optional): [description]. Defaults to "*_total*_svm_*.json".
-        crpt (int, optional): [description]. Defaults to 0.
+    """Scrapes SVM data from raw files, preprocesses dataframe for MLP classifier and generates png images for image CNN.
+    #TODO: if no JSON files found, look for results_*.csv file instead and preprocess via alternative method
+
+    Parameters
+    ----------
+    input_path : str
+        path to SVM dataset directory
+    h5 : str, optional
+        load from existing hdf5 file, by default None
+    fname : str, optional
+        base filename to give the output files, by default "svm_data"
+    output_path : str, optional
+        where to save output files. Defaults to current working directory., by default None
+    json_pattern : str, optional
+        glob-based search pattern, by default "*_total*_svm_*.json"
+    visit: str, optional
+        single visit name (e.g. "id8f34") matching subdirectory of input_path; will search and preprocess this visit only (rather than all visits contained in the input_path), by default None
+    crpt : int, optional
+        set to 1 if using synthetic corruption data, by default 0
+    draw : int, optional
+        generate png images from dataset, by default 1
 
     Returns
     -------
-    str: path to csv file of preprocessed Pandas dataframe
+    dataframe
+        preprocessed Pandas dataframe
     """
     if output_path is None:
         output_path = os.getcwd()
     os.makedirs(output_path, exist_ok=True)
     fname = os.path.basename(fname).split(".")[0]
+    # 1: SCRAPE JSON FILES and make dataframe
     if h5 is None:
+        search_path = os.path.join(input_path, visit) if visit else input_path
         patterns = json_pattern.split(",")
         jsc = JsonScraper(
-            search_path=input_path,
+            search_path=search_path,
             search_patterns=patterns,
             file_basename=fname,
             crpt=crpt,
@@ -56,24 +74,25 @@ def run_preprocessing(
         jsc.h5store()
     else:
         jsc = JsonScraper(h5_file=h5).load_h5_file()
-    # TODO: append label=1 if crpt=1
-    if crpt == 1:
-        jsc.data["label"] = 1
-    scrub = ScrubSvm(jsc.data, input_path, output_path, fname)
+    # 2: Scrape Fits Files and SCRUB DATAFRAME
+    scrub = SvmScrubber(
+        input_path, data=jsc.data, output_path=output_path, output_file=fname, crpt=crpt
+    )
     scrub.preprocess_data()
-    fname = scrub.data_path
-    if draw_images is True:
+    # 3:  DRAW IMAGES
+    if draw:
         img_outputs = os.path.join(output_path, "img")
-        draw = DrawMosaics(
+        mos = DrawMosaics(
             input_path,
             output_path=img_outputs,
-            fname=fname,
+            fname=scrub.data_path,
+            pattern="",
             gen=3,
             size=(24, 24),
             crpt=crpt,
         )
-        draw.generate_total_images()
-    return fname
+        mos.generate_total_images()
+    return scrub.df, scrub.data_path
 
 
 if __name__ == "__main__":
@@ -90,19 +109,25 @@ if __name__ == "__main__":
         help="where to save output files. Defaults to current working directory.",
     )
     parser.add_argument(
-        "--hdf5",
+        "--h5",
         type=str,
         default=None,
-        help="hdf5 file to load if already exists",
+        help="load from existing hdf5 file",
     )
     parser.add_argument(
         "-f",
         "--fname",
         type=str,
         default="svm_data",
-        help="csv output filename to create",
+        help="output filename to create",
     )
-    parser.add_argument("-j", "--json_pattern", type=str, default="*_total*_svm_*.json")
+    parser.add_argument(
+        "-j",
+        "--json_pattern",
+        type=str,
+        default="*_total*_svm_*.json",
+        help="glob-based search pattern",
+    )
     parser.add_argument(
         "-c",
         "--crpt",
@@ -112,14 +137,20 @@ if __name__ == "__main__":
         help="set to 1 if using synthetic corruption data",
     )
     parser.add_argument(
-        "-d", "--draw", type=int, default=1, help="bool: draw png images"
+        "-d",
+        "--draw",
+        type=int,
+        default=1,
+        choices=[0, 1],
+        help="1 (default): generate png images from dataset, 0: turn images off",
     )
     args = parser.parse_args()
-    run_preprocessing(
+    _, _ = run_preprocessing(
         args.input_path,
         h5=args.h5,
         fname=args.fname,
+        output_path=args.output_path,
         json_pattern=args.json_pattern,
         crpt=args.crpt,
-        draw_images=args.draw,
+        draw=args.draw,
     )

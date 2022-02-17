@@ -3,25 +3,10 @@ spacekit documentation
 **********************
 
 This is the documentation for ``spacekit``,
-Astronomical Data Science and Machine Learning Toolkit 
+the Astronomical Data Science and Machine Learning Toolkit 
 
 Reference/API
 =============
-
-
-Contents:
-
-.. toctree::
-   :maxdepth: 2
-
-   analyzer
-   builder
-   dashboard
-   datasets
-   extractor
-   generator
-   preprocessor
-   skopes
 
 
 Analyzer
@@ -42,7 +27,7 @@ Builder
 .. toctree::
    :maxdepth: 1
 
-   networks <builder/networks.rst>
+   architect <builder/architect.rst>
 
 
 Dashboard
@@ -98,15 +83,16 @@ Preprocessor
    transform <preprocessor/transform.rst>
 
 
-Skøpes: Machine Learning Applications
--------------------------------------
+Skøpes: Space Telescope Machine Learning Applications
+-----------------------------------------------------
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    Hubble Space Telescope <skopes/hst.rst>
       Single Visit Mosaic Alignment Modeling <skopes/hst/svm.rst>
       Calcloud Data Pipeline Modeling <skopes/hst/cal.rst>
+
    K2/Kepler Exoplanets <skopes/kepler/light-curves.rst>
 
 
