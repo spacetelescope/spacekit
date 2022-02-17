@@ -131,7 +131,7 @@ def load_prep(date_key=None, fpath=None):
 
 def build_fit(BuildClass, data, y_train, y_test, test_idx, model_path=None):
     builder = BuildClass(data.X_train, y_train, data.X_test, y_test, test_idx=test_idx)
-    builder.build_mlp()
+    builder.build()
     builder.fit()
     if model_path:
         builder.save_model(output_path=model_path)

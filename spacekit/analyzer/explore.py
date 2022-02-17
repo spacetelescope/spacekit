@@ -394,7 +394,7 @@ class DataPlots:
                 z=group[z],
                 name=targ,
                 mode="markers",
-                marker=dict(size=10, color=targ, colorscale="Plasma", opacity=0.8),
+                marker=dict(size=7, color=targ, colorscale="Plasma", opacity=0.8),
             )
             traces.append(trace)
         layout = go.Layout(
