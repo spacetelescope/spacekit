@@ -50,6 +50,27 @@ class SVMPreviews(ImagePreviews):
         super().__init__(X, y)
         self.X_prime = X_prime
         self.y_prime = y_prime
+    
+    def preview_pair(self):
+        """Plots an original image with its augmented versions."""
+        A = self.X
+        B = self.X_prime
+
+        plt.figure(figsize=(10, 10))
+        for n in range(3):
+            x = image.array_to_img(A[n][0])
+            ax = plt.subplot(3, 3, n + 1)
+            ax.imshow(x)
+            plt.axis("off")
+        plt.show()
+
+        plt.figure(figsize=(10, 10))
+        for n in range(3):
+            x = image.array_to_img(B[n][0])
+            ax = plt.subplot(3, 3, n + 1)
+            ax.imshow(x)
+            plt.axis("off")
+        plt.show()
 
     def preview_augmented(self):
         """Finds the matching positive class images from both image sets and displays them in a grid."""
@@ -590,6 +611,7 @@ class HstCalPlots(DataPlots):
         ]
         self.feature_list = self.continuous + self.categorical
         self.cmap = ["#119dff", "salmon", "#66c2a5", "fuchsia"]
+        self.data_map = None
         self.scatter = None
         self.box = None
         self.scatter3 = None

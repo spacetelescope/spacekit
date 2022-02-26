@@ -3,8 +3,10 @@ from dash import dcc
 from dash.dependencies import Input, Output
 from app import app
 from spacekit.dashboard.svm import eda, eval, pred
-from spacekit.dashboard.svm.config import svm, hst
-
+from spacekit.dashboard.svm.config import svm, hst, images
+from spacekit.analyzer.explore import SVMPreviews
+from spacekit.generator.augment import augment_image
+import numpy as np
 
 url_bar_and_content_div = html.Div(
     [dcc.Location(id="url", refresh=False), html.Div(id="page-content")]
@@ -134,6 +136,17 @@ def update_kde(selected_kde):
         hst.kde["rms"],
     ]
 
+@app.callback(
+    Output("image-graph", "figure"),
+    Input("selected-image", "value")
+)
+def update_image_previews(selected_image):
+    (idx, X, y) = images
+    img_num = np.where(idx == selected_image)
+    x = X[img_num].reshape(3, 128, 128, 3)
+    label = y[img_num]
+    x_prime = augment_image(x)
+    previews = SVMPreviews(X, y, x_prime, y)
 
 # 3D Scatter
 # @app.callback(
