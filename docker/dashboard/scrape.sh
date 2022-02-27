@@ -26,6 +26,8 @@ else
 		done
 fi
 
+mv ${HOME}/data/ ./spacekit_data/
+
 # KFOLD=${KFOLD:-""}
 
 # if [ -z "${KFOLD}" ]

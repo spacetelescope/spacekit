@@ -50,6 +50,7 @@ distribute-*.tar.gz
 .settings
 crds_cache
 *k2_lightcurve_cnn.py
+docker/dashboard/spacekit_data/*
 svm-data/
 docker/dev/
 cal-data/
