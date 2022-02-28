@@ -35,21 +35,25 @@ from spacekit.extractor.scrape import WebScraper, S3Scraper, FileScraper
 DATA = "spacekit.datasets.data"
 
 
-def download(scrape="file:data", datasets=None, dest="."):
+def download(scrape="file:data", datasets="2022-02-14,2021-11-04,2021-10-28", dest="."):
     src, archive = scrape.split(":")
+    datasets = datasets.split(",")
     if src == "git":
         print("Scraping Github Archive")
         cc = spacekit_collections[archive]  # "calcloud", "svm"
-        scraper = WebScraper(cc["uri"], cc["data"], cache_dir=dest)
+        dd = {}
+        for d in datasets:
+            dd[d] = cc["data"][d]
+        scraper = WebScraper(cc["uri"], dd, cache_dir=dest)
     elif src == "s3":
         print("Scraping S3")
         scraper = S3Scraper(archive, pfx="archive", cache_dir=dest)
-        fnames = datasets.split(",")
-        scraper.make_s3_keys(fnames=fnames)
+        scraper.make_s3_keys(fnames=datasets)
     elif src == "file":  # args.src == "file"
         print("Scraping local directory")
         p = [f"{archive}/*.zip", f"{archive}/*"]
         scraper = FileScraper(patterns=p, clean=False, cache_dir=dest)
+    # TODO: custom web source via json
     elif src == "web":
         with open(archive, "r") as j:
             collection = json.load(j)
@@ -71,7 +75,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-d",
         "--datasets",
-        default="2021-11-04-1636048291,2021-10-28-1635457222,2021-08-22-1629663047",
+        default="2022-02-14,2021-11-04,2021-10-28",
     )
     parser.add_argument("-o", "--out", default=None)
     args = parser.parse_args()

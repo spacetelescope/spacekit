@@ -22,7 +22,7 @@ client = boto3.client("s3", config=retry_config)
 dynamodb = boto3.resource("dynamodb", config=retry_config, region_name="us-east-1")
 
 
-def home_data_base(data_home=None) -> str:
+def home_data_base(data_home=None):
     """Borrowed from ``sklearn.datasets._base.get_data_home`` function: Return the path of the spacekit data dir, and create one if not existing. Folder path can be set explicitly using ``data_home`` kwarg, otherwise it looks for the 'SPACEKIT_DATA' environment variable, or defaults to 'spacekit_data' in the user home directory (the '~' symbol is expanded to the user's home folder).
 
     Parameters
@@ -40,7 +40,10 @@ def home_data_base(data_home=None) -> str:
         data_home = os.path.expanduser(data_home)
     else:
         data_home = os.path.abspath(data_home)
-    os.makedirs(data_home, exist_ok=True)
+    try:
+        os.makedirs(data_home, exist_ok=True)
+    except Exception as e:
+        print(e)
     return data_home
 
 
@@ -107,10 +110,12 @@ class Scraper:
     def check_cache(self, cache):
         if cache == "~":
             return os.path.expanduser(cache)
-        elif cache is None or ".":
-            cache = home_data_base(data_home=cache)
+        elif cache == ".":
+            return os.path.abspath(".") 
+        elif cache is None:
+            return home_data_base()
         else:
-            return cache
+            return os.path.abspath(cache)
 
     def extract_archives(self):
         """Extract the contents of the compreseed archive file(s).

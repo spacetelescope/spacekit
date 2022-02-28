@@ -254,6 +254,8 @@ def run_svm(visit, outputs):
             if len(drz_file) > 0:
                 try:
                     runsinglehap.perform(drz_file[0], log_level="info")
+                    with open("success.txt", "w") as f:
+                        f.write("success")
                 except Exception as e:  # FileNotFoundError
                     with open("error.txt", "w") as f:
                         f.write(str(e))

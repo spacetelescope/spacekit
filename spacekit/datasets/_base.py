@@ -31,7 +31,7 @@ def scrape_archives(archives, data_home=DD):
     Returns
     -------
     list
-        list of paths to retrueved and extracted dataset collection
+        list of paths to retrieved and extracted dataset collection
     """
     # data_home = home_data_base(data_home=data_home)
     fpaths = WebScraper(archives["uri"], archives["data"], cache_dir=data_home).scrape()

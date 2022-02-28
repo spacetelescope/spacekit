@@ -22,7 +22,8 @@ libreadline-dev \
 libsqlite3-dev \
 libssl-dev \
 unzip \
-zlib1g-dev
+zlib1g-dev \
+git
 
 RUN DEBIAN_FRONTEND=noninteractive \
 && curl -o Python-3.9.5.tgz https://www.python.org/ftp/python/3.9.5/Python-3.9.5.tgz \
@@ -39,13 +40,14 @@ RUN DEBIAN_FRONTEND=noninteractive \
 
 RUN useradd --create-home --shell /bin/bash developer
 USER developer
-COPY scrape.sh /home/developer/
-COPY requirements.txt ./home/developer/
+COPY scripts/scrape-web.sh /home/developer/
+COPY requirements.txt /home/developer/
 WORKDIR /home/developer/
 RUN python -m pip install --upgrade pip && python -m pip install -r requirements.txt
 RUN mkdir /home/developer/data
-ADD spacekit_data /home/developer/data
+ADD ./data /home/developer/data
 ENV SPACEKIT_DATA=/home/developer/data
+RUN chmod +x /home/developer/scrape-web.sh && sh /home/developer/scrape-web.sh
 ENV TF_CPP_MIN_LOG_LEVEL=2
 ENTRYPOINT ["python","-m","spacekit.dashboard.cal.index"]
 # ["python","-m","spacekit.dashboard.svm.app"]

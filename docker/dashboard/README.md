@@ -1,43 +1,34 @@
 # A - pull from dockerhub using latest datasets
 
 ```bash
-docker pull alphasentaurii/spacekit:dashboard
+export DOCKER_IMAGE=alphasentaurii/spacekit:dash
+docker pull $DOCKER_IMAGE
 docker run -d -p 8050:8050 $DOCKER_IMAGE
 ```
 
 ---
 
-# B - Get your own datasets then Build and run image locally
+# B - Get latest datasets from github or s3
 
-1. download/copy datasets into the `spacekit_data` folder in this directory
+1. download/copy datasets into the `data` folder in this directory
 2. build the image locally
 3. run dash app from local image
 
+The default entrypoint for running the app in a web browser is: 
+`python -m spacekit.dashboard.cal.index`
+
 ```bash
-# scrape data from web or s3
-python -m spacekit.datasets.beam -s=git:calcloud
+sh scripts/scrape-web.sh # OR: sh scripts/scrape-s3.sh $BUCKET $DATES
+sh scripts/build_image.sh
+sh run-dashboard.sh
 ```
 
-*Alternatively, use the shell script in this directory to access s3 via awscli:*
+---
+
+# C - Run dashboard interactively from source
 
 ```bash
-export DATES=('2021-11-04-1636048291' '2022-02-14-1644848448' '2021-10-28-1635457222')
-sh scrape.sh $BUCKET $DATES
-```
-
-2A) Build image locally
-
-```bash
-cd spacekit/docker/dashboard
-export DOCKER_IMAGE=alphasentaurii/spacekit:dash
-export CAL_BASE_IMAGE="stsci/hst-pipeline:latest"
-docker build -f Dockerfile -t ${DOCKER_IMAGE} --build-arg CAL_BASE_IMAGE="${CAL_BASE_IMAGE}" .
-```
-
-# 3 - Run container (mount local data source folder)
-
-The default entrypoint for running the app in a web browser is: `python -m spacekit.dashboard.cal.index`
-
-```bash
-docker run -d -p 8050:8050 $DOCKER_IMAGE
+sh scripts/scrape-web.sh # OR: sh scripts/scrape-s3.sh $BUCKET $DATES
+sh scripts/build_image.sh
+sh scripts/run-interactive.sh
 ```
