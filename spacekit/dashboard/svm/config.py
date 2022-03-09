@@ -18,14 +18,11 @@ hst.draw_plots()
 
 selection = svm.datapaths[svm.primary]
 model_path = f"{selection}/models"
-global ens
+
 ens = Builder(blueprint="ensemble", model_path=model_path + "/ensembleSVM")
 ens.load_saved_model()
 
-global tx_file
-tx_file = f"{model_path}/tx_data"
-
-global NN
+tx_file = f"{model_path}/tx_data.json"
 NN = {"ens": ens.model}
 
 images = ImageIO("data/test_images.npz").load_npz()

@@ -2,10 +2,11 @@ from dash import html
 from dash import dcc
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
-from app import app
+from argparse import ArgumentParser
+from spacekit.dashboard.cal.app import app
 from spacekit.dashboard.cal import eda, eval, pred, nodegraph
-from spacekit.dashboard.cal.config import cal, hst, NN, tx_file
-from spacekit.preprocessor.transform import CalX
+from spacekit.dashboard.cal.config import cal, hst, tx_file
+from spacekit.preprocessor.transform import PowerX
 
 
 url_bar_and_content_div = html.Div(
@@ -114,15 +115,20 @@ def update_scatter(xaxis_name, yaxis_name):
 
 # Box Plots
 @app.callback(
-    [Output("n_files", "figure"), Output("total_mb", "figure")],
-    Input("continuous-vars", "value"),
+    [
+        Output("boxplot00", "figure"),
+        Output("boxplot10", "figure"),
+        Output("boxplot01", "figure"),
+        Output("boxplot11", "figure")
+    ],
+    Input("box-vars", "value"),
 )
-def update_box(raw_norm):
-    if raw_norm == "raw":
-        vars = ["n_files", "total_mb"]
-    elif raw_norm == "norm":
-        vars = ["x_files", "x_size"]
-    box_figs = hst.make_box_figs(vars)
+def update_box(box_vars):
+    if box_vars == "features":
+        boxes = ["n_files", "x_files", "total_mb", "x_size"]
+    else:
+        boxes = ["memory", "mem_fence", "wallclock", "wall_fence"]
+    box_figs = [hst.box[b] for b in boxes]
     return box_figs
 
 
@@ -167,9 +173,7 @@ def update_xi_predictions(
     x_features = nodegraph.read_inputs(
         n_files, total_mb, drizcorr, pctecorr, crsplit, subarray, detector, dtype, instr
     )
-    m_preds = nodegraph.make_preds(
-        x_features, tx_file, NN=NN
-    )  # [membin, memval, clocktime, p0, p1, p2, p3]
+    m_preds = nodegraph.make_preds(x_features, tx_file)  # [membin, memval, clocktime, p0, p1, p2, p3]
     n_clicks = 0
     m_preds.append(0)  # reset `activate` toggle switch = off
     return m_preds
@@ -191,21 +195,18 @@ def update_xi_predictions(
 )
 def update_ipst(selected_ipst):
     if selected_ipst:
-        inputs = {
-            "n_files": 0,
-            "total_mb": 0,
-            "drizcorr": 0,
-            "pctecorr": 0,
-            "crsplit": 0,
-            "subarray": 0,
-            "detector": 0,
-            "dtype": 0,
-            "instr": 0,
-        }
-        data = cal.df.loc[selected_ipst]
-        for key in list(inputs.keys()):
-            inputs[key] = data[key]
-        return list(inputs.values())
+        x_cols = [
+            "n_files",
+            "total_mb",
+            "drizcorr",
+            "pctecorr",
+            "crsplit",
+            "subarray",
+            "detector",
+            "dtype",
+            "instr",
+        ]
+        return list(cal.df.loc[selected_ipst][x_cols].values)
 
 
 @app.callback(
@@ -236,11 +237,12 @@ def activate_network(
             dtype,
             instr,
         )
-        modX = CalX(x_features, tx_file)
-        neurons = nodegraph.calculate_neurons(modX.X)
-        edges, nodes = nodegraph.make_neural_graph(model=NN["mem_clf"], neurons=neurons)
+        Px = PowerX(x_features, cols=["n_files", "total_mb"], ncols=[0,1], tx_file=tx_file, rename=None)
+        X = Px.Xt
+        neurons = nodegraph.calculate_neurons(X)
+        edges, nodes = nodegraph.make_neural_graph(neurons=neurons)
     else:
-        edges, nodes = nodegraph.make_neural_graph(model=NN["mem_clf"], neurons=None)
+        edges, nodes = nodegraph.make_neural_graph(neurons=None)
     return edges + nodes
 
 
@@ -297,5 +299,13 @@ def displayMouseEdgeData(data):
 
 
 if __name__ == "__main__":
-    app.run_server(host="0.0.0.0", port=8050, debug=True, dev_tools_prune_errors=False)
-    # app.run_server(debug=True)
+    parser = ArgumentParser()
+    parser.add_argument("--host", type=str, default="0.0.0.0")
+    parser.add_argument("--port", type=int, default=8050)
+    parser.add_argument("--env", type=str, choices=["prod", "dev"], default="prod")
+    args = parser.parse_args()
+    host, port = args.host, args.port
+    if args.env == "dev":
+        app.run_server(host=host, port=port, debug=True, dev_tools_prune_errors=False)
+    else:
+        app.run_server(host="0.0.0.0", port=8050)

@@ -1,9 +1,10 @@
 #! /bin/bash -eu
-export DOCKER_IMAGE=alphasentaurii/spacekit:dash
-src_data=${1:-"$(pwd)"/data}
+cfg=${1:-"cal"}
+src_data=${2:-"$(pwd)"/data}
+source ./docker/dashboard/scripts/envs/${cfg}.env
 
 docker run \
 -it \
---name spacekitdash \
+--name dashboard \
 --mount type=bind,source=${src_data},target=/home/developer/data \
-$DOCKER_IMAGE
+$DOCKER_IMAGE /bin/bash

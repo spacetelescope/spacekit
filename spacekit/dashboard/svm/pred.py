@@ -1,4 +1,4 @@
-# TODO: pick a random visit - show the three image frames, make prediction
+# TODO: pick a random visit - show the three image frames+data, augmented images+data, make prediction
 from dash import dcc
 from dash import html
 

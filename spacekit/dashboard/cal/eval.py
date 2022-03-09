@@ -201,29 +201,3 @@ layout = html.Div(
         "float": "center",
     },
 )
-
-
-# Moved to Index page
-# # Page 1 EVAL callbacks
-# # KERAS CALLBACK
-# @app.callback(
-#     [Output("keras-acc", "figure"), Output("keras-loss", "figure")],
-#     Input("keras-picker", "value"),
-# )
-# def update_keras(selected_version):
-#     return cal.keras[selected_version]
-
-
-# # ROC AUC CALLBACK
-# @app.callback(
-#     [Output("roc-auc", "figure"), Output("precision-recall-fig", "figure")],
-#     Input("rocauc-picker", "value"),
-# )
-# def update_roc_auc(selected_version):
-#     return cal.roc[selected_version]
-
-
-# @app.callback(Output("confusion-matrix", "figure"), Input("cmx-type", "value"))
-# def update_cmx(cmx_type):
-#     v = list(cal.mega.keys())[-1]
-#     return cal.triple_cmx(cal.cmx["counts"], cmx_type, classes=["2GB", "8GB", "16GB", "64GB"])

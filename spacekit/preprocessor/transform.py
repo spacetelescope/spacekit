@@ -399,6 +399,7 @@ def normalize_training_data(
 
 # planned deprecation
 class CalX(PowerX):
+    """***CalX will be deprecated in v0.3.2 - use PowerX instead***"""
     def __init__(self, data, tx_file=None, tx_data=None, rename=False):
         super().__init__(
             data,
@@ -412,6 +413,7 @@ class CalX(PowerX):
         self.X = self.powerX()
 
     def transform(self):
+        """***CalX will be deprecated in v0.3.2 - use PowerX instead***"""
         if self.tx_data is not None:
             self.inputs = self.scrub_keys()
             # self.lambdas = np.array(
@@ -425,6 +427,7 @@ class CalX(PowerX):
             return self
 
     def scrub_keys(self):
+        """***CalX will be deprecated in v0.3.2 - use PowerX instead***"""
         x = self.data
         self.inputs = np.array(
             [
@@ -442,7 +445,7 @@ class CalX(PowerX):
         return self.inputs
 
     def powerX(self):
-        """applies yeo-johnson power transform to first two indices of array (n_files, total_mb) using lambdas, mean and standard deviation pre-calculated for each variable (loads dict from json file).
+        """***CalX will be deprecated in v0.3.2 - use PowerX instead*** Applies yeo-johnson power transform to first two indices of array (n_files, total_mb) using lambdas, mean and standard deviation pre-calculated for each variable (loads dict from json file).
 
         Returns: X inputs as 2D-array for generating predictions
         """

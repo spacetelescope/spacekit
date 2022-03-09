@@ -29,8 +29,7 @@ import sys
 import json
 from spacekit.datasets.meta import spacekit_collections
 from spacekit.extractor.scrape import WebScraper, S3Scraper, FileScraper
-
-# from spacekit.datasets import scrape_archives, import_collection
+from spacekit.datasets import import_collection
 
 DATA = "spacekit.datasets.data"
 
@@ -38,7 +37,10 @@ DATA = "spacekit.datasets.data"
 def download(scrape="file:data", datasets="2022-02-14,2021-11-04,2021-10-28", dest="."):
     src, archive = scrape.split(":")
     datasets = datasets.split(",")
-    if src == "git":
+    if src == "pkg":
+        fpaths = import_collection(archive, date_key=datasets, data_home=dest)
+        return fpaths
+    elif src == "git":
         print("Scraping Github Archive")
         cc = spacekit_collections[archive]  # "calcloud", "svm"
         dd = {}

@@ -22,6 +22,8 @@ client = boto3.client("s3", config=retry_config)
 dynamodb = boto3.resource("dynamodb", config=retry_config, region_name="us-east-1")
 
 
+SPACEKIT_DATA = os.environ.get("SPACEKIT_DATA", "~/spacekit_data")
+
 def home_data_base(data_home=None):
     """Borrowed from ``sklearn.datasets._base.get_data_home`` function: Return the path of the spacekit data dir, and create one if not existing. Folder path can be set explicitly using ``data_home`` kwarg, otherwise it looks for the 'SPACEKIT_DATA' environment variable, or defaults to 'spacekit_data' in the user home directory (the '~' symbol is expanded to the user's home folder).
 
@@ -35,9 +37,11 @@ def home_data_base(data_home=None):
     data_home: str
         The path to spacekit data directory, defaults to `~/spacekit_data`
     """
+    SPACEKIT_DATA = os.environ.get("SPACEKIT_DATA", "~/spacekit_data")
+    if SPACEKIT_DATA == "":
+        SPACEKIT_DATA = "~/spacekit_data"
     if data_home is None:
-        data_home = os.environ.get("SPACEKIT_DATA", os.path.join("~", "data"))
-        data_home = os.path.expanduser(data_home)
+        data_home = os.environ.get(SPACEKIT_DATA, os.path.expanduser("~/spacekit_data"))
     else:
         data_home = os.path.abspath(data_home)
     try:
@@ -130,7 +134,7 @@ class Scraper:
         extracted_fpaths = []
         if not self.fpaths:
             return
-        elif self.fpaths[0].split(".")[-1] != "zip":
+        elif str(self.fpaths[0]).split(".")[-1] != "zip":
             return self.fpaths
         os.makedirs(self.outpath, exist_ok=True)
         for z in self.fpaths:
@@ -674,6 +678,11 @@ class MastScraper:
             bar.update(x + 1)
         bar.finish()
         return self.target_categories
+    
+    def backup_search(self, targ):
+        self.targ_any[targ] = self.df.loc[self.df[self.trg_col] == targ][
+            [self.ra_col, self.dec_col]
+        ]
 
     def scrape_other_targets(self):
         """Scrapes MAST for remaining target classifications that could not be identified using target name. This method instead uses a broader set of query parameters: the ``ra_targ`` and ``dec_targ`` coordinates along with the dataset's proposal ID. If multiple datasets are found to match, the first of these containing a target_classification value will be used.
@@ -727,6 +736,39 @@ class MastScraper:
         print(cat["category"].value_counts())
         self.df = self.df.join(cat, how="left")
         return self.df
+    
+    def search_by_obs_id(self, index):
+        # obs_id = 'hst_10403_29_acs_sbc_total_j96029'
+        obs_id = "_".join(index.split("_")[:6])
+        prop_id = index.split("_")[1]
+        obs = Observations.query_criteria(proposal_id=prop_id, obs_id=obs_id)
+        s_ra = obs[np.where(obs['obs_id'] == obs_id)]['s_ra']
+        s_dec = obs[np.where(obs['obs_id'] == obs_id)]['s_dec']
+        if len(s_ra) > 0:
+            ra = s_ra[0]
+        elif len(obs) > 0:
+            ra = obs[0]['s_ra'][0]
+        else:
+            ra = 0
+        if len(s_dec) > 0:
+            dec = s_dec[0]
+        elif len(obs) > 0:
+            dec = obs[0]['s_dec'][0]
+        else:
+            dec = 0
+        if ra != 0:
+            obs = Observations.query_criteria(proposal_id=prop_id, s_ra=[ra, ra+0.1], s_dec=[dec, dec+0.1])
+            targname = obs[np.where(obs['target_name'])]['target_name']
+            if len(targname) > 0:
+                targ = targname[0]
+            else:
+                targ = "ANY"
+            category = obs[np.where(obs['target_classification'])]['target_classification']
+            if len(category) > 0:
+                cat = category[0]
+            else:
+                cat = "None"
+        return ra, dec, targ, cat
 
 
 class JsonScraper:

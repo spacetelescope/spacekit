@@ -56,12 +56,18 @@ class Scrubber:
         self.df.rename(hc, axis="columns", inplace=True)
         print("New column names: ", self.df.columns)
 
-    def drop_nans(self):
+    def drop_nans(self, save_backup=True):
         if self.dropnans is True:
+            df_nan = self.df.copy()
             print("Searching for NaNs...")
             print(self.df.isna().sum())
-            print("Dropping NaNs")
-            self.df.dropna(axis=0, inplace=True)
+            n = len(np.where(self.df.isna().sum().values>0)[0]) > 0
+            print("Columns with NaNs: ", n)
+            if n > 0:
+                print("Dropping NaNs")
+                self.df.dropna(axis=0, inplace=True)
+                if save_backup is True:
+                    self.save_csv_file(df=df_nan, pfx="nan_")
 
     def drop_and_set_cols(self, label_cols=["label"]):
         if self.col_order is None:
@@ -75,7 +81,7 @@ class Scrubber:
         self.df = self.df.drop(drops, axis=1)
         self.df = self.df[self.col_order]
 
-    def save_csv_file(self, pfx="", index_col="index"):
+    def save_csv_file(self, df=None, pfx="", index_col="index"):
         """Saves dataframe to csv file on local disk.
 
         Parameters
@@ -88,11 +94,13 @@ class Scrubber:
         str
             self.data_path where file is saved on disk.
         """
+        if df is None:
+            df = self.df
         self.data_path = f"{self.output_path}/{pfx}{self.output_file}.csv"
-        self.df[index_col] = self.df.index
-        self.df.to_csv(self.data_path, index=False)
+        df[index_col] = df.index
+        df.to_csv(self.data_path, index=False)
         print("Data saved to: ", self.data_path)
-        self.df.drop(index_col, axis=1, inplace=True)
+        df.drop(index_col, axis=1, inplace=True)
 
 
 class SvmScrubber(Scrubber):
@@ -136,7 +144,9 @@ class SvmScrubber(Scrubber):
         if self.save_raw is True:
             super().save_csv_file(pfx="raw_")
         # STAGE 3 final encoding
-        self.df = SvmEncoder(self.df).encode_features()
+        enc = SvmEncoder(self.df)
+        self.df = enc.encode_features()
+        enc.display_encoding()
         super().drop_and_set_cols()
         # STAGE 4 target labels
         self.make_pos_label_list()
