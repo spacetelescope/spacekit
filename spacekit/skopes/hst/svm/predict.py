@@ -29,7 +29,8 @@ SHAPE = (DIM, SIZE, SIZE, CH)
 
 TF_CPP_MIN_LOG_LEVEL = 2
 
-DETECTOR_KEY = {"hrc":0, "ir":1, "sbc":2, "uvis":3, "wfc":4}
+DETECTOR_KEY = {"hrc": 0, "ir": 1, "sbc": 2, "uvis": 3, "wfc": 4}
+
 
 def load_mixed_inputs(data_file, img_path, tx=None, size=128, norm=0):
     """Load the regression test data and image input data, then stacks the arrays into a single combined input (list) for the ensemble model.
@@ -114,7 +115,10 @@ def classification_report(df, output_path, group=None):
         print("Alignment Evaluation")
         print("0.0=aligned, 1.0=suspicious")
         cnt_pct = pd.concat(
-            [P.value_counts(), P.value_counts(normalize=True), ],
+            [
+                P.value_counts(),
+                P.value_counts(normalize=True),
+            ],
             axis=1,
             keys=["cnt", "pct"],
         )
@@ -177,7 +181,13 @@ def classify_alignments(X, model, output_path=None, group=None):
 
 
 def predict_alignment(
-    data_file, img_path, model_path=None, output_path=None, size=128, norm=0, group=None,
+    data_file,
+    img_path,
+    model_path=None,
+    output_path=None,
+    size=128,
+    norm=0,
+    group=None,
 ):
     """Main calling function to load the data and model, generate predictions, and save results to disk.
 
@@ -251,7 +261,7 @@ if __name__ == "__main__":
         "--group",
         type=str,
         default=None,
-        help="Name for this group of data (to be included in classification report)"
+        help="Name for this group of data (to be included in classification report)",
     )
     args = parser.parse_args()
     _ = predict_alignment(
@@ -261,5 +271,5 @@ if __name__ == "__main__":
         output_path=args.output_path,
         size=args.size,
         norm=args.normalization,
-        group=args.group
+        group=args.group,
     )

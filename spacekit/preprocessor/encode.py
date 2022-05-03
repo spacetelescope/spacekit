@@ -3,6 +3,7 @@ from sklearn.preprocessing import LabelEncoder
 from tensorflow.keras.utils import to_categorical
 import numpy as np
 
+
 def encode_target_data(y_train, y_test):
     """Label encodes target class training and test data for multi-classification models.
 
@@ -47,17 +48,17 @@ class PairEncoder:
             self.inverse_pairs()
             I = lambda i: self.invpairs[i]
             return [I(b) for b in self.transformed]
-    
+
     def inverse_pairs(self):
         self.invpairs = {}
         for key, value in self.keypairs.items():
             self.invpairs[value] = key
         return self.invpairs
-    
+
     def warn_unknowns(self):
         unknowns = np.where([a not in self.classes_ for a in self.arr])
         print(f"WARNING: Found unknown values:\n {self.arr[unknowns]}")
-    
+
     def handle_unknowns(self):
         unknowns = np.where([a not in self.classes_ for a in self.arr])
         add_encoding = max(list(self.keypairs.values())) + 1
@@ -73,7 +74,9 @@ class PairEncoder:
     def fit(self, data, keypairs, axiscol=None, handle_unknowns=True):
         if isinstance(data, pd.DataFrame):
             if axiscol is None:
-                print("Error: Must indicate which column to fit if `data` is a `dataframe`.")
+                print(
+                    "Error: Must indicate which column to fit if `data` is a `dataframe`."
+                )
                 return
             try:
                 self.arr = np.asarray(data[axiscol], dtype=object)
@@ -95,7 +98,7 @@ class PairEncoder:
         self.keypairs = keypairs
         self.classes_ = list(self.keypairs.keys())
         if self.arr.any() not in self.classes_:
-        #if self.arr.any() not in self.classes_:
+            # if self.arr.any() not in self.classes_:
             self.warn_unknowns()
             if handle_unknowns is True:
                 self.handle_unknowns()
@@ -106,14 +109,14 @@ class PairEncoder:
         except Exception as e:
             print(e)
         return self
-    
+
     def transform(self):
         if self.arr is None:
             print("Error - Must fit the data first.")
             return
         self.transformed = self.lambda_func()
         return self.transformed
-    
+
     def inverse_transform(self):
         inverse_pairs = {}
         for key, value in self.keypairs.items():
@@ -121,7 +124,7 @@ class PairEncoder:
         # TODO handle unknowns/nans inversely
         self.inversed = self.lambda_func(inverse=True)
         return self.inversed
-    
+
     def fit_transform(self, data, keypairs, axiscol=None):
         self.fit(data, keypairs, axiscol=axiscol)
         self.transform()
@@ -130,17 +133,22 @@ class PairEncoder:
 class SvmEncoder:
     """Categorical encoding class for HST Single Visit Mosiac regression test data inputs."""
 
-    def __init__(self, data, fkeys=['category', 'detector', 'wcstype'], names=['cat','det','wcs']):
+    def __init__(
+        self,
+        data,
+        fkeys=["category", "detector", "wcstype"],
+        names=["cat", "det", "wcs"],
+    ):
         """Instantiates an SvmEncoder class object.
 
         Parameters
         ----------
         data : dataframe
             input data containing features (columns) to be encoded
-        
+
         fkeys: list
             categorical-type column names (str) to be encoded
-        
+
         names: list
             new names to assign columns of the encoded versions of categorical data
 
@@ -150,9 +158,12 @@ class SvmEncoder:
         self.names = names
         self.df = self.categorical_data()
         self.make_keypairs()
-    
+
     def __repr__(self):
-        return 'encodings: %s \n category_keys: %s \n detector_keys: %s \n wcs_keys: %s' % (self.encodings, self.category_keys, self.detector_keys, self.wcs_keys)
+        return (
+            "encodings: %s \n category_keys: %s \n detector_keys: %s \n wcs_keys: %s"
+            % (self.encodings, self.category_keys, self.detector_keys, self.wcs_keys)
+        )
 
     def categorical_data(self):
         """Makes a copy of input dataframe and extracts only the categorical features based on the column names in `fkeys`.
@@ -163,10 +174,9 @@ class SvmEncoder:
             dataframe with only the categorical feature columns
         """
         return self.data.copy()[self.fkeys]
-    
+
     def make_keypairs(self):
-        """Instantiates key-pair dictionaries for each of the categorical features.
-        """
+        """Instantiates key-pair dictionaries for each of the categorical features."""
         self.encodings = dict(zip(self.fkeys, self.names))
         self.category_keys = self.set_category_keys()
         self.detector_keys = self.set_detector_keys()
@@ -192,7 +202,7 @@ class SvmEncoder:
             "EXT-STAR": "S",
             "CLUSTER OF GALAXIES": "GC",
             "GALAXY": "G",
-            "None": "U"
+            "None": "U",
         }
 
     def set_category_keys(self):
@@ -205,16 +215,16 @@ class SvmEncoder:
         """
         self.category_keys = {
             "C": 0,
-            "SS":1,
-            "I":2,
-            "U":3,
-            "SC":4,
-            "S":5,
-            "GC":6,
-            "G":7,
+            "SS": 1,
+            "I": 2,
+            "U": 3,
+            "SC": 4,
+            "S": 5,
+            "GC": 6,
+            "G": 7,
         }
         return self.category_keys
-    
+
     def set_detector_keys(self):
         """Assigns a hardcoded integer to each 'detector' key in alphabetical and increasing value.
 
@@ -223,15 +233,9 @@ class SvmEncoder:
         dict
             detector names and their associated integer encoding
         """
-        self.detector_keys = {
-            "hrc": 0,
-            "ir": 1,
-            "sbc": 2,
-            "uvis": 3,
-            "wfc": 4
-        }
+        self.detector_keys = {"hrc": 0, "ir": 1, "sbc": 2, "uvis": 3, "wfc": 4}
         return self.detector_keys
-    
+
     def set_wcs_keys(self):
         """Assigns a hardcoded integer to each 'wcs' key in alphabetical and increasing value.
 
@@ -244,10 +248,10 @@ class SvmEncoder:
             "a posteriori": 0,
             "a priori": 1,
             "default a": 2,
-            "not aligned": 3
+            "not aligned": 3,
         }
         return self.wcs_keys
-    
+
     def svm_keypairs(self, column):
         keypairs = {
             "category": self.category_keys,
@@ -256,7 +260,7 @@ class SvmEncoder:
         }
         return keypairs[column]
 
-    def encode_categories(self, cname='category', sep=';'):
+    def encode_categories(self, cname="category", sep=";"):
         """Transforms the raw string inputs from MAST target category naming conventions into an abbreviated form. For example, `CLUSTER OF GALAXIES;GRAVITATIONA` becomes `GC` for galaxy cluster; and `STELLAR CLUSTER;GLOBULAR CLUSTER` becomes `SC` for stellar cluster. This serves to group similar but differently named objects into a discrete set of 8 possible categorizations. The 8 categories will then be encoded into integer values in the final encoding step (machine learning inputs must be numeric).
 
         Returns
@@ -274,7 +278,7 @@ class SvmEncoder:
         self.df.drop("category", axis=1, inplace=True)
         self.df = self.df.join(df_cat, how="left")
         return self.df
-    
+
     def rejoin_original(self):
         originals = list(self.encodings.keys())
         self.df.drop(originals, axis=1, inplace=True)
@@ -296,6 +300,8 @@ class SvmEncoder:
             enc.fit_transform(self.df, keypairs, axiscol=col)
             self.df[name] = enc.transformed
             print(f"\n*** {col} --> {name} ***")
-            print(f"ORIGINAL:\n{self.df[col].value_counts()}\n\nENCODED:\n{self.df[name].value_counts()}\n")
+            print(
+                f"ORIGINAL:\n{self.df[col].value_counts()}\n\nENCODED:\n{self.df[name].value_counts()}\n"
+            )
         self.rejoin_original()
         return self.df

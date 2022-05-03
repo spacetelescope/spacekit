@@ -16,7 +16,7 @@ you will need to run:
 
 """
 
-if 'test' in sys.argv:
+if "test" in sys.argv:
     print(TEST_HELP)
     sys.exit(1)
 
@@ -29,10 +29,10 @@ Note: building the documentation is no longer done using
 
 """
 
-if 'build_docs' in sys.argv or 'build_sphinx' in sys.argv:
+if "build_docs" in sys.argv or "build_sphinx" in sys.argv:
     print(DOCS_HELP)
     sys.exit(1)
 
 
-#setup(use_scm_version={'write_to': 'spacekit/_version.py'})
-setup(version='0.3.0')
+# setup(use_scm_version={'write_to': 'spacekit/_version.py'})
+setup(version="0.3.0")
