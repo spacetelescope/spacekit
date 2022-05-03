@@ -19,6 +19,7 @@ class Scrubber:
         save_raw=True,
     ):
         self.df = self.cache_data(cache=data)
+        self.col_order = col_order
         self.output_path = output_path
         self.output_file = output_file
         self.dropnans = dropnans
@@ -60,7 +61,8 @@ class Scrubber:
         if self.dropnans is True:
             print("Searching for NaNs...")
             print(self.df.isna().sum())
-            print("Dropping NaNs")
+            if self.df.isna().sum().values.any() > 0:
+                print("Dropping NaNs")
             self.df.dropna(axis=0, inplace=True)
 
     def drop_and_set_cols(self, label_cols=["label"]):
@@ -96,7 +98,29 @@ class Scrubber:
 
 
 class SvmScrubber(Scrubber):
-    """Class for invocating standard preprocessing steps of Single Visit Mosaic regression test data. This class quietly relies on other classes in the module to instantiate other scrubbing objects, although they are distinct and non-hierarchical (no inheritance between them)."""
+    """Class for invocating standard preprocessing steps of Single Visit Mosaic regression test data.
+
+    Parameters
+    ----------
+    input_path : str or Path
+        path to directory containing data input files
+    data : dataframe, optional
+        dataframe containing raw inputs scraped from json (QA) files, by default None
+    output_path : str or Path, optional
+        location to save preprocessed output files, by default None
+    output_file : str, optional
+        file basename to assign preprocessed dataset, by default "svm_data"
+    dropnans : bool, optional
+        find and remove any NaNs, by default True
+    save_raw : bool, optional
+        save data as csv before any encoding is performed, by default True
+    make_pos_list : bool, optional
+        create a text file listing misaligned (label=1) datasets, by default True
+    crpt : int, optional
+        dataset contains synthetically corrupted data, by default 0
+    make_subsamples : bool, optional
+        save a random selection of aligned (label=0) datasets to text file, by default False
+    """
 
     def __init__(
         self,
@@ -133,10 +157,10 @@ class SvmScrubber(Scrubber):
         # STAGE 2 initial encoding
         self.df = FitsScraper(self.df, self.input_path).scrape_fits()
         self.df = MastScraper(self.df).scrape_mast()
-        if self.save_raw is True:
-            super().save_csv_file(pfx="raw_")
         # STAGE 3 final encoding
         self.df = SvmEncoder(self.df).encode_features()
+        if self.save_raw is True:
+            super().save_csv_file(pfx="raw_")
         super().drop_and_set_cols()
         # STAGE 4 target labels
         self.make_pos_label_list()

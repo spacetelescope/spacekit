@@ -734,16 +734,15 @@ class JsonScraper:
         specified, the current working directory will be used.
     search_patterns : list, optional
         list of glob patterns to use for search
-    log_level : int, optional
-        The desired level of verboseness in the log statements displayed on the screen and written to the
-        .log file. Default value is 'INFO'.
     file_basename : str, optional
-        Name of the output file basename (filename without the extension) for the Hierarchical Data Format
-        version 5 (HDF5) .h5 file that the Pandas DataFrame will be written to. If not explicitly specified,
-        the default filename basename that will be used is "svm_qa_dataframe". The default location that the
+        Name of the output file basename (filename without the extension) for the Hierarchical Data Format version 5 (HDF5) .h5 file that the Pandas DataFrame will be written to. If not explicitly specified, the default filename basename that will be used is "svm_qa_dataframe". The default location that the
         output file will be written to is the current working directory
     crpt: bool, optional
-        Uses extended dataframe index name to differentiate from normal svm data
+        Uses extended dataframe index name to differentiate from normal svm data, by default 0 (False)
+    save_csv: bool, optional
+        store h5 data into a CSV file, by default False
+    h5_file: str, optional
+        load from a saved hdf5 file on local disk, by default None
     data : Pandas DataFrame
             Pandas DataFrame
     """
@@ -756,6 +755,7 @@ class JsonScraper:
         crpt=0,
         save_csv=False,
         store_h5=True,
+        h5_file=None,
         output_path=None,
     ):
         self.search_path = search_path
@@ -764,6 +764,7 @@ class JsonScraper:
         self.crpt = crpt
         self.save_csv = save_csv
         self.store_h5 = store_h5
+        self.h5_file = h5_file
         self.output_path = output_path
         self.__name__ = "diagnostic_json_harvester"
         self.msg_datefmt = "%Y%j%H%M%S"

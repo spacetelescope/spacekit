@@ -40,7 +40,7 @@ def run_preprocessing(
     fname : str, optional
         base filename to give the output files, by default "svm_data"
     output_path : str, optional
-        where to save output files. Defaults to current working directory., by default None
+        where to save output files. Defaults to current working directory, by default None
     json_pattern : str, optional
         glob-based search pattern, by default "*_total*_svm_*.json"
     visit: str, optional
