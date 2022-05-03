@@ -42,6 +42,7 @@ def test_svm_encoder(scraped_mast_file):
     assert enc.df.det[0] == 1
     assert enc.df.wcs[0] == 0
 
+
 @mark.svm
 @mark.preprocessor
 @mark.encode
@@ -55,6 +56,7 @@ def test_pair_encoder_unknown_val(scraped_mast_file):
         enc.transform()
     except KeyError:
         assert True
+
 
 @mark.svm
 @mark.preprocessor
@@ -83,6 +85,7 @@ def test_pair_encoder_unspecified_column(scraped_mast_file):
     except AttributeError:
         assert True
 
+
 @mark.svm
 @mark.preprocessor
 @mark.encode
@@ -93,6 +96,7 @@ def test_pair_encoder_array_1d():
     enc.fit(arr1d, keypairs)
     enc.transform()
     assert enc.transformed[0] == 1
+
 
 @mark.svm
 @mark.preprocessor
@@ -124,6 +128,7 @@ def test_pair_encoder_array_2d():
     enc.fit(arr2d, keypairs, axiscol=13)
     enc.transform()
     assert enc.transformed[0] == 2
+
 
 @mark.svm
 @mark.preprocessor
@@ -157,6 +162,7 @@ def test_pair_encoder_array_2d_unspecified_axis():
         enc.classes_
     except AttributeError:
         assert True
+
 
 @mark.svm
 @mark.preprocessor
