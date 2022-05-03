@@ -5,6 +5,7 @@ from zipfile import ZipFile
 from spacekit.analyzer.explore import HstCalPlots, HstSvmPlots
 from spacekit.analyzer.scan import SvmScanner, CalScanner, import_dataset
 from spacekit.extractor.load import load_datasets
+
 # try:
 #     from pytest_astropy_header.display import (PYTEST_HEADER_MODULES,
 #                                                TESTED_VERSIONS)
@@ -50,7 +51,9 @@ class Config:
             "cal": os.path.join(f"tests/data/{env}/data.zip"),
         }[env]
 
-        self.kwargs = {"svm": dict(index_col="index"), "cal": dict(index_col="ipst")}[env]
+        self.kwargs = {"svm": dict(index_col="index"), "cal": dict(index_col="ipst")}[
+            env
+        ]
 
         self.decoder = {
             "svm": {"det": {0: "hrc", 1: "ir", 2: "sbc", 3: "uvis", 4: "wfc"}},
@@ -68,17 +71,30 @@ class Config:
         }[env]
 
         self.norm_cols = {
-            "svm": ["numexp", "rms_ra", "rms_dec", "nmatches", "point", "segment", "gaia"],
+            "svm": [
+                "numexp",
+                "rms_ra",
+                "rms_dec",
+                "nmatches",
+                "point",
+                "segment",
+                "gaia",
+            ],
             "cal": ["n_files", "total_mb"],
         }[env]
-        self.rename_cols = {
-            "svm": "_scl",
-            "cal": ["x_files", "x_size"]
-        }[env]
+        self.rename_cols = {"svm": "_scl", "cal": ["x_files", "x_size"]}[env]
 
         self.enc_cols = {
             "svm": ["det", "wcs", "cat"],
-            "cal": ["drizcorr", "pctecorr", "crsplit", "subarray", "detector", "dtype", "instr"]
+            "cal": [
+                "drizcorr",
+                "pctecorr",
+                "crsplit",
+                "subarray",
+                "detector",
+                "dtype",
+                "instr",
+            ],
         }[env]
 
         self.tx_file = {
@@ -112,8 +128,8 @@ def res_data_path(cfg, tmp_path_factory):
         data_path = os.path.join(basepath, dname)
     return data_path
 
-    
-@fixture(scope='session')
+
+@fixture(scope="session")
 def df_ncols(cfg):
     fname = cfg.labeled
     X_cols = cfg.norm_cols + cfg.enc_cols
@@ -135,9 +151,7 @@ def scanner(cfg, res_data_path):
 @fixture(scope="session")
 def explorer(cfg, res_data_path):
     fname = res_data_path
-    df = import_dataset(
-        filename=fname, kwargs=cfg.kwargs, decoder=cfg.decoder
-    )
+    df = import_dataset(filename=fname, kwargs=cfg.kwargs, decoder=cfg.decoder)
     if cfg.env == "svm":
         hst = HstSvmPlots(df)
     elif cfg.env == "cal":

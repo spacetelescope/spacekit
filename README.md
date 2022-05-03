@@ -26,6 +26,19 @@ $ cd spacekit
 $ pip install -e .
 ```
 
+*Testing*
+
+See `tox.ini` for a list of test suite markers.
+
+```bash
+# run all tests
+$ pytest
+
+# some tests, like the `scan` module rely on the test `env` option 
+$ pytest --env svm -m scan
+$ pytest --env cal -m scan
+```
+
 
 ### Pre-Trained Neural Nets
 

@@ -29,6 +29,8 @@ SHAPE = (DIM, SIZE, SIZE, CH)
 
 TF_CPP_MIN_LOG_LEVEL = 2
 
+DETECTOR_KEY = {"hrc": 0, "ir": 1, "sbc": 2, "uvis": 3, "wfc": 4}
+
 
 def load_mixed_inputs(data_file, img_path, tx=None, size=128, norm=0):
     """Load the regression test data and image input data, then stacks the arrays into a single combined input (list) for the ensemble model.
@@ -80,7 +82,7 @@ def load_mixed_inputs(data_file, img_path, tx=None, size=128, norm=0):
     return [X_data, X_img]
 
 
-def classification_report(df, output_path):
+def classification_report(df, output_path, group=None):
     """Generates a scikit learn classification report with model evaluation metrics and saves to disk.
 
     Parameters
@@ -89,36 +91,50 @@ def classification_report(df, output_path):
         Feature inputs for which the model will generate predictions.
     output_path : str
         location to store prediction output files
+    group: str, optional
+        Name for this group of data (for classification report), e.g. SVM-2021-11-02
     """
     P, T = df["y_pred"], df["det"].value_counts()
     C = df.loc[P == 1.0]
     cmp = C["det"].value_counts()
-    dets = ["HRC", "IR", "SBC", "UVIS", "WFC"]
-    separator = "---" * 5
+    separator = "---" * 7
+    date, time = dt.datetime.now().isoformat().split(".")[0].split("T")
+    if group is None:
+        group = "SVM-DATA"
     out = sys.stdout
     with open(f"{output_path}/clf_report.txt", "w") as f:
         sys.stdout = f
-        print("CLASSIFICATION REPORT - ", dt.datetime.now())
+        print("CLASSIFICATION REPORT")
+        print("date: ", date)
+        print("time: ", time)
+        print("data: ", group)
         print(separator)
-        print("Mean Probability Score: ", df["y_proba"].mean())
-        print("Standard Deviation: ", df["y_proba"].std())
+        print("Mean Probability Score: ", np.round(df["y_proba"].mean(), 4))
+        print("Standard Deviation: ", np.round(df["y_proba"].std(), 4))
         print(separator)
-        print("Aligned ('0.0') vs Misaligned ('1.0')")
+        print("Alignment Evaluation")
+        print("0.0=aligned, 1.0=suspicious")
         cnt_pct = pd.concat(
-            [P.value_counts(), P.value_counts(normalize=True)],
+            [
+                P.value_counts(),
+                P.value_counts(normalize=True),
+            ],
             axis=1,
             keys=["cnt", "pct"],
         )
         print(cnt_pct)
         print(separator)
         print("Misalignment counts by Detector")
-        for i, d in enumerate(dets):
+        for d, i in DETECTOR_KEY.items():
             if i in cmp:
+                # some alignments from this detector were suspicious
                 print(f"{d}\t{cmp[i]} \t ({T[i]}) \t {np.round((cmp[i]/T[i])*100, 1)}%")
             elif i in T:
+                # no alignments from this detector were suspicious
                 print(f"{d}\t0 \t ({T[i]}) \t 0%")
             else:
-                print(f"{d}\t0 \t (0) \t 0%")
+                # no samples from this detector in dataset
+                print(f"{d}\t0 \t (0) \t -")
         sys.stdout = out
     print(f"\nClassification Report created: {output_path}/clf_report.txt")
     with open(f"{output_path}/compromised.txt", "w") as file:
@@ -127,7 +143,7 @@ def classification_report(df, output_path):
     print(f"\nSuspicious/Compromised List created: {output_path}/compromised.txt")
 
 
-def classify_alignments(X, model, output_path=None):
+def classify_alignments(X, model, output_path=None, group=None):
     """Returns classifier predictions and probability scores
 
     Parameters
@@ -138,6 +154,8 @@ def classify_alignments(X, model, output_path=None):
         saved model directory path, by default None
     output_path : str
         location to store prediction output files
+    group: str, optional
+        Name for this group of data (for classification report), e.g. SVM-2021-11-02
 
     Returns
     -------
@@ -158,12 +176,18 @@ def classify_alignments(X, model, output_path=None):
     output_file = f"{output_path}/predictions.csv"
     preds.to_csv(output_file, index=False)
     print("Y_PRED + Probabilities added. Dataframe saved to: ", output_file)
-    classification_report(preds, output_path)
+    classification_report(preds, output_path, group=group)
     return preds
 
 
 def predict_alignment(
-    data_file, img_path, model_path=None, output_path=None, size=128, norm=0
+    data_file,
+    img_path,
+    model_path=None,
+    output_path=None,
+    size=128,
+    norm=0,
+    group=None,
 ):
     """Main calling function to load the data and model, generate predictions, and save results to disk.
 
@@ -179,12 +203,14 @@ def predict_alignment(
         location to store prediction output files, by default None
     size : int, optional
         image size (width and height), by default None (128)
+    group: str, optional
+        Name for this group of data (for classification report), e.g. SVM-2021-11-02
     """
     builder = Builder(model_path=model_path)
     model = builder.load_saved_model()
     tx_file = builder.find_tx_file()
     X = load_mixed_inputs(data_file, img_path, tx=tx_file, size=size, norm=norm)
-    preds = classify_alignments(X, model, output_path=output_path)
+    preds = classify_alignments(X, model, output_path=output_path, group=group)
     return preds
 
 
@@ -230,6 +256,13 @@ if __name__ == "__main__":
         default=0,
         help="apply normalization and scaling",
     )
+    parser.add_argument(
+        "-g",
+        "--group",
+        type=str,
+        default=None,
+        help="Name for this group of data (to be included in classification report)",
+    )
     args = parser.parse_args()
     _ = predict_alignment(
         args.data_file,
@@ -238,4 +271,5 @@ if __name__ == "__main__":
         output_path=args.output_path,
         size=args.size,
         norm=args.normalization,
+        group=args.group,
     )
