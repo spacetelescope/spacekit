@@ -3,7 +3,6 @@ from sklearn.preprocessing import LabelEncoder
 from tensorflow.keras.utils import to_categorical
 import numpy as np
 
-
 def encode_target_data(y_train, y_test):
     """Label encodes target class training and test data for multi-classification models.
 
@@ -48,7 +47,6 @@ class PairEncoder:
             self.inverse_pairs()
             I = lambda i: self.invpairs[i]
             return [I(b) for b in self.transformed]
-
     def inverse_pairs(self):
         self.invpairs = {}
         for key, value in self.keypairs.items():
@@ -224,6 +222,47 @@ class SvmEncoder:
             "G": 7,
         }
         return self.category_keys
+    
+    def set_detector_keys(self):
+        """Assigns a hardcoded integer to each 'detector' key in alphabetical and increasing value.
+
+        Returns
+        -------
+        dict
+            detector names and their associated integer encoding
+        """
+        self.detector_keys = {
+            "hrc": 0,
+            "ir": 1,
+            "sbc": 2,
+            "uvis": 3,
+            "wfc": 4
+        }
+        return self.detector_keys
+    
+    def set_wcs_keys(self):
+        """Assigns a hardcoded integer to each 'wcs' key in alphabetical and increasing value.
+
+        Returns
+        -------
+        _type_
+            _description_
+        """
+        self.wcs_keys = {
+            "a posteriori": 0,
+            "a priori": 1,
+            "default a": 2,
+            "not aligned": 3
+        }
+        return self.wcs_keys
+    
+    def svm_keypairs(self, column):
+        keypairs = {
+            "category": self.category_keys,
+            "detector": self.detector_keys,
+            "wcstype": self.wcs_keys,
+        }
+        return keypairs[column]
 
     def set_detector_keys(self):
         """Assigns a hardcoded integer to each 'detector' key in alphabetical and increasing value.
@@ -278,6 +317,11 @@ class SvmEncoder:
         self.df.drop("category", axis=1, inplace=True)
         self.df = self.df.join(df_cat, how="left")
         return self.df
+    
+    def rejoin_original(self):
+        originals = list(self.encodings.keys())
+        self.df.drop(originals, axis=1, inplace=True)
+        self.df = self.data.join(self.df, how="left")
 
     def rejoin_original(self):
         originals = list(self.encodings.keys())
