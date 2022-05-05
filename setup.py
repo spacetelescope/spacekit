@@ -35,4 +35,4 @@ if "build_docs" in sys.argv or "build_sphinx" in sys.argv:
 
 
 # setup(use_scm_version={'write_to': 'spacekit/_version.py'})
-setup(version="0.3.0")
+setup(version="0.3.1")
