@@ -1,4 +1,4 @@
-0.3.1 (unreleased)
+0.3.1 (2022-05-04)
 ==================
 
 - Bug fix relating to the SVM predict.py Classification Report which mistakenly assumed all categorical types are represented in the data (not necessarily the case for prediction inputs). Fixing the encoder resolves the issue (see below)
