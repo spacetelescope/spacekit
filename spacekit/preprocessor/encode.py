@@ -260,6 +260,7 @@ class SvmEncoder:
         }
         return keypairs[column]
 
+<<<<<<< HEAD
     def set_detector_keys(self):
         """Assigns a hardcoded integer to each 'detector' key in alphabetical and increasing value.
 
@@ -295,6 +296,8 @@ class SvmEncoder:
         }
         return keypairs[column]
 
+=======
+>>>>>>> b279027c99cd4668916b2d09346032394984e905
     def encode_categories(self, cname="category", sep=";"):
         """Transforms the raw string inputs from MAST target category naming conventions into an abbreviated form. For example, `CLUSTER OF GALAXIES;GRAVITATIONA` becomes `GC` for galaxy cluster; and `STELLAR CLUSTER;GLOBULAR CLUSTER` becomes `SC` for stellar cluster. This serves to group similar but differently named objects into a discrete set of 8 possible categorizations. The 8 categories will then be encoded into integer values in the final encoding step (machine learning inputs must be numeric).
 
@@ -313,11 +316,6 @@ class SvmEncoder:
         self.df.drop("category", axis=1, inplace=True)
         self.df = self.df.join(df_cat, how="left")
         return self.df
-
-    def rejoin_original(self):
-        originals = list(self.encodings.keys())
-        self.df.drop(originals, axis=1, inplace=True)
-        self.df = self.data.join(self.df, how="left")
 
     def rejoin_original(self):
         originals = list(self.encodings.keys())
