@@ -260,6 +260,44 @@ class SvmEncoder:
         }
         return keypairs[column]
 
+<<<<<<< HEAD
+    def set_detector_keys(self):
+        """Assigns a hardcoded integer to each 'detector' key in alphabetical and increasing value.
+
+        Returns
+        -------
+        dict
+            detector names and their associated integer encoding
+        """
+        self.detector_keys = {"hrc": 0, "ir": 1, "sbc": 2, "uvis": 3, "wfc": 4}
+        return self.detector_keys
+
+    def set_wcs_keys(self):
+        """Assigns a hardcoded integer to each 'wcs' key in alphabetical and increasing value.
+
+        Returns
+        -------
+        _type_
+            _description_
+        """
+        self.wcs_keys = {
+            "a posteriori": 0,
+            "a priori": 1,
+            "default a": 2,
+            "not aligned": 3,
+        }
+        return self.wcs_keys
+
+    def svm_keypairs(self, column):
+        keypairs = {
+            "category": self.category_keys,
+            "detector": self.detector_keys,
+            "wcstype": self.wcs_keys,
+        }
+        return keypairs[column]
+
+=======
+>>>>>>> b279027c99cd4668916b2d09346032394984e905
     def encode_categories(self, cname="category", sep=";"):
         """Transforms the raw string inputs from MAST target category naming conventions into an abbreviated form. For example, `CLUSTER OF GALAXIES;GRAVITATIONA` becomes `GC` for galaxy cluster; and `STELLAR CLUSTER;GLOBULAR CLUSTER` becomes `SC` for stellar cluster. This serves to group similar but differently named objects into a discrete set of 8 possible categorizations. The 8 categories will then be encoded into integer values in the final encoding step (machine learning inputs must be numeric).
 
