@@ -4,6 +4,7 @@
 ![GitHub repo size](https://img.shields.io/github/repo-size/alphasentaurii/spacekit)
 ![GitHub license](https://img.shields.io/github/license/alphasentaurii/spacekit?color=black)
 
+[![CodeFactor](https://www.codefactor.io/repository/github/alphasentaurii/spacekit/badge)](https://www.codefactor.io/repository/github/alphasentaurii/spacekit)
 
 Astronomical Data Science and Machine Learning Toolkit
 
