@@ -57,8 +57,9 @@ class Scrubber:
         self.df.rename(hc, axis="columns", inplace=True)
         print("New column names: ", self.df.columns)
 
-    def drop_nans(self):
+    def drop_nans(self, save_backup=True):
         if self.dropnans is True:
+            df_nan = self.df.copy()
             print("Searching for NaNs...")
             print(self.df.isna().sum())
             if self.df.isna().sum().values.any() > 0:
@@ -77,7 +78,7 @@ class Scrubber:
         self.df = self.df.drop(drops, axis=1)
         self.df = self.df[self.col_order]
 
-    def save_csv_file(self, pfx="", index_col="index"):
+    def save_csv_file(self, df=None, pfx="", index_col="index"):
         """Saves dataframe to csv file on local disk.
 
         Parameters
@@ -90,11 +91,13 @@ class Scrubber:
         str
             self.data_path where file is saved on disk.
         """
+        if df is None:
+            df = self.df
         self.data_path = f"{self.output_path}/{pfx}{self.output_file}.csv"
-        self.df[index_col] = self.df.index
-        self.df.to_csv(self.data_path, index=False)
+        df[index_col] = df.index
+        df.to_csv(self.data_path, index=False)
         print("Data saved to: ", self.data_path)
-        self.df.drop(index_col, axis=1, inplace=True)
+        df.drop(index_col, axis=1, inplace=True)
 
 
 class SvmScrubber(Scrubber):
@@ -158,7 +161,9 @@ class SvmScrubber(Scrubber):
         self.df = FitsScraper(self.df, self.input_path).scrape_fits()
         self.df = MastScraper(self.df).scrape_mast()
         # STAGE 3 final encoding
-        self.df = SvmEncoder(self.df).encode_features()
+        enc = SvmEncoder(self.df)
+        self.df = enc.encode_features()
+        enc.display_encoding()
         if self.save_raw is True:
             super().save_csv_file(pfx="raw_")
         super().drop_and_set_cols()

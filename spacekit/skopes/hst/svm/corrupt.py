@@ -21,7 +21,7 @@ from spacekit.generator.draw import DrawMosaics
 from spacekit.analyzer.track import stopwatch
 
 SVM_QUALITY_TESTING = "on"
-
+os.environ["SVM_QUALITY_TESTING"] = "on"
 
 def pick_random_exposures(dataset):
     hapfiles = glob.glob(f"{dataset}/*.fits")
@@ -254,6 +254,8 @@ def run_svm(visit, outputs):
             if len(drz_file) > 0:
                 try:
                     runsinglehap.perform(drz_file[0], log_level="info")
+                    with open("success.txt", "w") as f:
+                        f.write("success")
                 except Exception as e:  # FileNotFoundError
                     with open("error.txt", "w") as f:
                         f.write(str(e))
@@ -303,12 +305,18 @@ def get_datasets(srcpath, search_pattern="*", outputs="synthetic", prc=4):
     search_src = f"{srcpath.rstrip('/')}/{pattern}"
     search_out = f"{outputs.rstrip('/')}/{pattern}"
     datasets = glob.glob(search_src)
+    err = 0
     # all other processes can run if matching datasets are found in outputs path
-    if len(datasets) < 1 or prc < 4:
-        datasets = glob.glob(search_out)
-    elif len(datasets) < 1 or prc >= 4:
-        # if nothing is found in srcpath CRPT cannot run
-        print(f"No source data found matching {search_src}")
+    if len(datasets) < 1:
+        if prc < 4:
+            datasets = glob.glob(search_out)
+            if len(datasets) < 1:
+                err += 1
+        elif prc >= 4:
+            # if nothing is found in srcpath CRPT cannot run
+            err += 1
+    if err:
+        print(f"Error: No source data found matching {search_src}")
         sys.exit(1)
     return datasets
 

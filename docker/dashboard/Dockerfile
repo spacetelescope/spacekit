@@ -1,4 +1,7 @@
-FROM library/ubuntu:20.04
+ARG BASE_IMAGE=library/ubuntu:20.04
+FROM ${BASE_IMAGE}
+ARG CFG="cal"
+ENV CFG=$CFG
 #SSL/TLS cert setup for STScI AWS firewalling
 USER root
 ENV REQUESTS_CA_BUNDLE=/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
@@ -32,19 +35,36 @@ RUN DEBIAN_FRONTEND=noninteractive \
 && make altinstall \
 && update-alternatives --install /usr/local/bin/python python /usr/local/bin/python3.9 10 
 
-RUN DEBIAN_FRONTEND=noninteractive \
-&& cd ../ && curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
-&& unzip awscliv2.zip \
-&& ./aws/install
+# RUN DEBIAN_FRONTEND=noninteractive \
+# && cd ../ && curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
+# && unzip awscliv2.zip \
+# && ./aws/install
 
 RUN useradd --create-home --shell /bin/bash developer
 USER developer
-COPY scrape.sh /home/developer/
-COPY requirements.txt ./home/developer/
 WORKDIR /home/developer/
-RUN python -m pip install --upgrade pip && python -m pip install -r requirements.txt
+RUN python -m pip install --upgrade pip && python -m pip install virtualenv
+RUN python -m virtualenv /home/developer/venv
+ENV PATH=/home/developer/venv/bin:${PATH}
+ENV LD_LIBRARY_PATH=/home/developer/venv/lib
 RUN mkdir /home/developer/data
-ENV SPACEKIT_DATA=/home/developer/data
+ARG SOURCEDATA=./data
+ADD $SOURCEDATA /home/developer/data
+# TEMP
+ARG SPACEKIT_REPO=alphasentaurii/spacekit
+ARG SPACEKIT_REF=main
+# RUN git clone --branch $SPACEKIT_REF https://github.com/${SPACEKIT_REPO}.git
+# WORKDIR /home/developer/spacekit
+# RUN pip install -e .
+WORKDIR /home/developer
+RUN pip install spacekit
+# Get datasets
+
+ARG SRC
+ARG COLLECTION
+ARG DATASETS
+ENV SPACEKIT_DATA=/home/developer
 ENV TF_CPP_MIN_LOG_LEVEL=2
+RUN python -m spacekit.datasets.beam -s="${SRC}:${COLLECTION}" -d=$DATASETS -o=/home/developer
+EXPOSE 8050
 ENTRYPOINT ["python","-m","spacekit.dashboard.cal.index"]
-# ["python","-m","spacekit.dashboard.svm.app"]

@@ -50,6 +50,10 @@ distribute-*.tar.gz
 .settings
 crds_cache
 *k2_lightcurve_cnn.py
+docker/dashboard/data/*
+Dockerfile
+docker/dashboard/scripts/build-dev-image.sh
+.dockerignore
 svm-data/
 docker/dev/
 cal-data/

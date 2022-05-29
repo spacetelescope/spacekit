@@ -1,5 +1,5 @@
 import pandas as pd
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, OrdinalEncoder
 from tensorflow.keras.utils import to_categorical
 import numpy as np
 
@@ -195,6 +195,9 @@ class SvmEncoder:
             "SOLAR SYSTEM": "SS",
             "ISM": "I",
             "EXT-MEDIUM": "I",
+            "STAR": "S",
+            "EXT-STAR": "S",
+            "CALIBRATION": "C",
             "UNIDENTIFIED": "U",
             "STELLAR CLUSTER": "SC",
             "EXT-CLUSTER": "SC",
@@ -260,7 +263,6 @@ class SvmEncoder:
         }
         return keypairs[column]
 
-<<<<<<< HEAD
     def set_detector_keys(self):
         """Assigns a hardcoded integer to each 'detector' key in alphabetical and increasing value.
 
@@ -296,8 +298,6 @@ class SvmEncoder:
         }
         return keypairs[column]
 
-=======
->>>>>>> b279027c99cd4668916b2d09346032394984e905
     def encode_categories(self, cname="category", sep=";"):
         """Transforms the raw string inputs from MAST target category naming conventions into an abbreviated form. For example, `CLUSTER OF GALAXIES;GRAVITATIONA` becomes `GC` for galaxy cluster; and `STELLAR CLUSTER;GLOBULAR CLUSTER` becomes `SC` for stellar cluster. This serves to group similar but differently named objects into a discrete set of 8 possible categorizations. The 8 categories will then be encoded into integer values in the final encoding step (machine learning inputs must be numeric).
 
@@ -323,7 +323,7 @@ class SvmEncoder:
         self.df = self.data.join(self.df, how="left")
 
     def encode_features(self):
-        """Encodes input features matching column names assigned to the object's ``encodings`` attribute.
+        """Encodes input features matching column names assigned to the object's ``encodings`` keys.
 
         Returns
         -------
@@ -343,3 +343,15 @@ class SvmEncoder:
             )
         self.rejoin_original()
         return self.df
+    
+    def display_encoding(self):
+        print("---"*7)
+        for k, v in self.encodings.items():
+            res = list(zip(self.df[v].value_counts(), self.df[v].unique(), self.df[k].value_counts(), self.df[k].unique()))
+            print(f"\n{k}<--->{v}\n")
+            print(f"#VAL\t\tENC\t\t#VAL\t\tORDINAL")
+            for r in res:
+                string = f'\t\t'.join(str(i) for i in r)
+                print(string)
+            print("\n")
+        print("---"*7)

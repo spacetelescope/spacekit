@@ -1,7 +1,7 @@
 # STANDARD libraries
 import os
-import pandas as pd
 import numpy as np
+import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import plotly.graph_objs as go
@@ -9,6 +9,7 @@ from plotly import subplots
 import plotly.offline as pyo
 import plotly.figure_factory as ff
 from keras.preprocessing import image
+from scipy.stats import iqr
 from spacekit.preprocessor.transform import PowerX
 
 plt.style.use("seaborn-bright")
@@ -50,6 +51,27 @@ class SVMPreviews(ImagePreviews):
         super().__init__(X, y)
         self.X_prime = X_prime
         self.y_prime = y_prime
+    
+    def preview_pair(self):
+        """Plots an original image with its augmented versions."""
+        A = self.X
+        B = self.X_prime
+
+        plt.figure(figsize=(10, 10))
+        for n in range(3):
+            x = image.array_to_img(A[n][0])
+            ax = plt.subplot(3, 3, n + 1)
+            ax.imshow(x)
+            plt.axis("off")
+        plt.show()
+
+        plt.figure(figsize=(10, 10))
+        for n in range(3):
+            x = image.array_to_img(B[n][0])
+            ax = plt.subplot(3, 3, n + 1)
+            ax.imshow(x)
+            plt.axis("off")
+        plt.show()
 
     def preview_augmented(self):
         """Finds the matching positive class images from both image sets and displays them in a grid."""
@@ -89,7 +111,7 @@ class DataPlots:
         self.group = None  # e.g. "detector" or "instr"
         self.gkeys = None
         self.categories = None
-        self.cmap = None
+        self.cmap = ["dodgerblue", "gold", "fuchsia", "lime"]
         self.continuous = None
         self.categorical = None
         self.feature_list = None
@@ -412,25 +434,42 @@ class DataPlots:
             fig.show()
         else:
             return fig
+    
+    def remove_outliers(self, y_data):
+        q = y_data.quantile([0.25, 0.75]).values
+        q1, q3 = q[0], q[1]
+        lower_fence = q1 - 1.5 * iqr(y_data)
+        upper_fence = q3 + 1.5 * iqr(y_data)
+        y = y_data.loc[(y_data > lower_fence) & (y_data < upper_fence)]
+        return y
 
-    def make_box_figs2(self, targets=[]):
-        self.box = {}
-        features = self.continuous + targets
+    def box_plots(self, cols=None, outliers=True):
+        box = {}
+        title_sfx = ""
+        if cols is None:
+            features = self.continuous
+        else:
+            features = cols
         for f in features:
             traces = []
-            for _, name in self.gkeys.items():
-                trace = go.Box(y=self.categories[name][f], name=name)
+            for i, name in enumerate(self.gkeys.values()):
+                y_data = self.categories[name][f]
+                if outliers is False:
+                    y_data = self.remove_outliers(y_data)
+                    title_sfx = "- no outliers"
+                trace = go.Box(y=y_data, name=name, marker=dict(color=self.cmap[i]))
                 traces.append(trace)
 
             layout = go.Layout(
-                title=f"{f} by {self.group}",
+                title=f"{f} by {self.group}{title_sfx}",
                 hovermode="closest",
                 paper_bgcolor="#242a44",
                 plot_bgcolor="#242a44",
                 font={"color": "#ffffff"},
             )
             fig = go.Figure(data=traces, layout=layout)
-            self.box[f] = fig
+            box[f] = fig
+        return box
 
     def grouped_barplot(self, target="label", cmap=None, save=False):
         df = self.df
@@ -488,16 +527,14 @@ class HstSvmPlots(DataPlots):
         self.bar = self.alignment_bars()
         self.scatter = self.alignment_scatters()
         self.kde = self.alignment_kde()
-        # return self
+
 
     def alignment_bars(self):
         self.bar = {}
-        # bars = []
         X = sorted(list(self.gkeys.keys()))
         for f in self.continuous:
             means, errs = self.feature_stats_by_target(f)
             bar = self.bar_plots(X, means, f, y_err=errs)
-            # bars.append(bar)
             self.bar[f] = bar
         return self.bar
 
@@ -589,7 +626,8 @@ class HstCalPlots(DataPlots):
             "instr",
         ]
         self.feature_list = self.continuous + self.categorical
-        self.cmap = ["#119dff", "salmon", "#66c2a5", "fuchsia"]
+        self.cmap = ["dodgerblue", "gold", "fuchsia", "lime"]
+        self.data_map = None
         self.scatter = None
         self.box = None
         self.scatter3 = None
@@ -609,8 +647,14 @@ class HstCalPlots(DataPlots):
 
     def draw_plots(self):
         self.scatter = self.make_cal_scatterplots()
-        self.box = self.make_box_figs2(targets=["memory", "wallclock"])
-        self.scatter3 = self.make_cal_scatter3d()
+        self.box = self.box_plots()
+        box_target = self.box_plots(cols=["memory", "wallclock"])
+        box_fenced = self.box_plots(cols=["memory", "wallclock"], outliers=False)
+        self.box["memory"] = box_target["memory"]
+        self.box["wallclock"] = box_target["wallclock"]
+        self.box["mem_fence"] = box_fenced["memory"]
+        self.box["wall_fence"] = box_fenced["wallclock"]
+        #self.scatter3 = self.make_cal_scatter3d()
         # self.bar
         # self.kde
 

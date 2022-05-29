@@ -283,7 +283,7 @@ class MegaScanner:
                 hovertext=xvals,
                 y=acc_train,
                 name="Training Accuracy",
-                marker=dict(color="#119dff"),
+                marker=dict(color="dodgerblue"),
             ),
             go.Bar(
                 x=list(range(len(acc_test))),

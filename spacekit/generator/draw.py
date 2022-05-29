@@ -472,7 +472,7 @@ class DrawMosaics:
             imgpath = self.create_image_name(name, dataset, fgroup=outpath)
             plt.savefig(imgpath, bbox_inches="tight")
             plt.close(fig)
-            print(f"\t{imgpath}.png")
+            print(f"\n\t{imgpath}.png")
 
 
 if __name__ == "__main__":
