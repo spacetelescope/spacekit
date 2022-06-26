@@ -400,6 +400,7 @@ def normalize_training_data(
 # planned deprecation
 class CalX(PowerX):
     """***CalX will be deprecated in v0.3.2 - use PowerX instead***"""
+
     def __init__(self, data, tx_file=None, tx_data=None, rename=False):
         super().__init__(
             data,

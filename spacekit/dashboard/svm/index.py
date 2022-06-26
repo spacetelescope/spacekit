@@ -136,10 +136,8 @@ def update_kde(selected_kde):
         hst.kde["rms"],
     ]
 
-@app.callback(
-    Output("image-graph", "figure"),
-    Input("selected-image", "value")
-)
+
+@app.callback(Output("image-graph", "figure"), Input("selected-image", "value"))
 def update_image_previews(selected_image):
     (idx, X, y) = images
     img_num = np.where(idx == selected_image)
@@ -147,6 +145,7 @@ def update_image_previews(selected_image):
     label = y[img_num]
     x_prime = augment_image(x)
     previews = SVMPreviews(X, y, x_prime, y)
+
 
 # 3D Scatter
 # @app.callback(

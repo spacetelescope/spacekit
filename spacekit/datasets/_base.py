@@ -53,7 +53,9 @@ def download_single_archive(archives, date_key=None, data_home=None):
     return fpath
 
 
-def load_from_archive(archives, fpath=None, date_key=None, scanner=None, data_home=None):
+def load_from_archive(
+    archives, fpath=None, date_key=None, scanner=None, data_home=None
+):
     if fpath is None:
         fpath = download_single_archive(
             archives, date_key=date_key, data_home=data_home

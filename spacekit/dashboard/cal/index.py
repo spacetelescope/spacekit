@@ -119,7 +119,7 @@ def update_scatter(xaxis_name, yaxis_name):
         Output("boxplot00", "figure"),
         Output("boxplot10", "figure"),
         Output("boxplot01", "figure"),
-        Output("boxplot11", "figure")
+        Output("boxplot11", "figure"),
     ],
     Input("box-vars", "value"),
 )
@@ -173,7 +173,9 @@ def update_xi_predictions(
     x_features = nodegraph.read_inputs(
         n_files, total_mb, drizcorr, pctecorr, crsplit, subarray, detector, dtype, instr
     )
-    m_preds = nodegraph.make_preds(x_features, tx_file)  # [membin, memval, clocktime, p0, p1, p2, p3]
+    m_preds = nodegraph.make_preds(
+        x_features, tx_file
+    )  # [membin, memval, clocktime, p0, p1, p2, p3]
     n_clicks = 0
     m_preds.append(0)  # reset `activate` toggle switch = off
     return m_preds
@@ -237,7 +239,13 @@ def activate_network(
             dtype,
             instr,
         )
-        Px = PowerX(x_features, cols=["n_files", "total_mb"], ncols=[0,1], tx_file=tx_file, rename=None)
+        Px = PowerX(
+            x_features,
+            cols=["n_files", "total_mb"],
+            ncols=[0, 1],
+            tx_file=tx_file,
+            rename=None,
+        )
         X = Px.Xt
         neurons = nodegraph.calculate_neurons(X)
         edges, nodes = nodegraph.make_neural_graph(neurons=neurons)

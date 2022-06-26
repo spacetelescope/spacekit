@@ -11,9 +11,19 @@ wall_reg = NN["wall_reg"]
 def read_inputs(
     n_files, total_mb, drizcorr, pctecorr, crsplit, subarray, detector, dtype, instr
 ):
-    x_features = np.asarray([
-        n_files, total_mb, drizcorr, pctecorr, crsplit, subarray, detector, dtype, instr
-        ])
+    x_features = np.asarray(
+        [
+            n_files,
+            total_mb,
+            drizcorr,
+            pctecorr,
+            crsplit,
+            subarray,
+            detector,
+            dtype,
+            instr,
+        ]
+    )
     print(x_features)
     return x_features
 
@@ -32,7 +42,13 @@ def regressor(model, data):
 
 
 def make_preds(x_features, tx_file):
-    Px = PowerX(x_features, cols=["n_files", "total_mb"], ncols=[0, 1], tx_file=tx_file, rename=None)
+    Px = PowerX(
+        x_features,
+        cols=["n_files", "total_mb"],
+        ncols=[0, 1],
+        tx_file=tx_file,
+        rename=None,
+    )
     X = Px.Xt
     # Predict Memory Allocation (bin and value preds)
     membin, pred_proba = classifier(clf, X)

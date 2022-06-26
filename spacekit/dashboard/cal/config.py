@@ -6,8 +6,8 @@ from spacekit.builder.architect import Builder
 cal = CalScanner(perimeter="data/20??-*-*-*", primary=-1)
 cal.scan_results()
 # Initialize EVAL
-cal.make_barplots() # scores, acc_fig, loss_fig, acc_loss_fig
-cal.make_clf_plots(target="mem_bin") # keras, roc, pr, cmx
+cal.make_barplots()  # scores, acc_fig, loss_fig, acc_loss_fig
+cal.make_clf_plots(target="mem_bin")  # keras, roc, pr, cmx
 
 # Initialize EDA
 cal.load_dataframe()

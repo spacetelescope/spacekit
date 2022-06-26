@@ -100,8 +100,7 @@ layout = html.Div(
                                         dcc.Dropdown(
                                             id="select-ipst",
                                             options=[
-                                                {"label": i, "value": i}
-                                                for i in ipsts
+                                                {"label": i, "value": i} for i in ipsts
                                             ],
                                             value="idio03010",
                                             style={

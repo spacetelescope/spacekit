@@ -23,6 +23,7 @@ from spacekit.analyzer.track import stopwatch
 SVM_QUALITY_TESTING = "on"
 os.environ["SVM_QUALITY_TESTING"] = "on"
 
+
 def pick_random_exposures(dataset):
     hapfiles = glob.glob(f"{dataset}/*.fits")
     n_corruptions = np.random.randint(2, 4)

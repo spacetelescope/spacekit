@@ -24,6 +24,7 @@ dynamodb = boto3.resource("dynamodb", config=retry_config, region_name="us-east-
 
 SPACEKIT_DATA = os.environ.get("SPACEKIT_DATA", "~/spacekit_data")
 
+
 def home_data_base(data_home=None):
     """Borrowed from ``sklearn.datasets._base.get_data_home`` function: Return the path of the spacekit data dir, and create one if not existing. Folder path can be set explicitly using ``data_home`` kwarg, otherwise it looks for the 'SPACEKIT_DATA' environment variable, or defaults to 'spacekit_data' in the user home directory (the '~' symbol is expanded to the user's home folder).
 
@@ -115,7 +116,7 @@ class Scraper:
         if cache == "~":
             return os.path.expanduser(cache)
         elif cache == ".":
-            return os.path.abspath(".") 
+            return os.path.abspath(".")
         elif cache is None:
             return home_data_base()
         else:
@@ -678,7 +679,7 @@ class MastScraper:
             bar.update(x + 1)
         bar.finish()
         return self.target_categories
-    
+
     def backup_search(self, targ):
         self.targ_any[targ] = self.df.loc[self.df[self.trg_col] == targ][
             [self.ra_col, self.dec_col]
@@ -736,34 +737,38 @@ class MastScraper:
         print(cat["category"].value_counts())
         self.df = self.df.join(cat, how="left")
         return self.df
-    
+
     def search_by_obs_id(self, index):
         # obs_id = 'hst_10403_29_acs_sbc_total_j96029'
         obs_id = "_".join(index.split("_")[:6])
         prop_id = index.split("_")[1]
         obs = Observations.query_criteria(proposal_id=prop_id, obs_id=obs_id)
-        s_ra = obs[np.where(obs['obs_id'] == obs_id)]['s_ra']
-        s_dec = obs[np.where(obs['obs_id'] == obs_id)]['s_dec']
+        s_ra = obs[np.where(obs["obs_id"] == obs_id)]["s_ra"]
+        s_dec = obs[np.where(obs["obs_id"] == obs_id)]["s_dec"]
         if len(s_ra) > 0:
             ra = s_ra[0]
         elif len(obs) > 0:
-            ra = obs[0]['s_ra'][0]
+            ra = obs[0]["s_ra"][0]
         else:
             ra = 0
         if len(s_dec) > 0:
             dec = s_dec[0]
         elif len(obs) > 0:
-            dec = obs[0]['s_dec'][0]
+            dec = obs[0]["s_dec"][0]
         else:
             dec = 0
         if ra != 0:
-            obs = Observations.query_criteria(proposal_id=prop_id, s_ra=[ra, ra+0.1], s_dec=[dec, dec+0.1])
-            targname = obs[np.where(obs['target_name'])]['target_name']
+            obs = Observations.query_criteria(
+                proposal_id=prop_id, s_ra=[ra, ra + 0.1], s_dec=[dec, dec + 0.1]
+            )
+            targname = obs[np.where(obs["target_name"])]["target_name"]
             if len(targname) > 0:
                 targ = targname[0]
             else:
                 targ = "ANY"
-            category = obs[np.where(obs['target_classification'])]['target_classification']
+            category = obs[np.where(obs["target_classification"])][
+                "target_classification"
+            ]
             if len(category) > 0:
                 cat = category[0]
             else:

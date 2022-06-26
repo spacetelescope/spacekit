@@ -1,5 +1,5 @@
 import pandas as pd
-from sklearn.preprocessing import LabelEncoder, OrdinalEncoder
+from sklearn.preprocessing import LabelEncoder
 from tensorflow.keras.utils import to_categorical
 import numpy as np
 
@@ -343,15 +343,22 @@ class SvmEncoder:
             )
         self.rejoin_original()
         return self.df
-    
+
     def display_encoding(self):
-        print("---"*7)
+        print("---" * 7)
         for k, v in self.encodings.items():
-            res = list(zip(self.df[v].value_counts(), self.df[v].unique(), self.df[k].value_counts(), self.df[k].unique()))
+            res = list(
+                zip(
+                    self.df[v].value_counts(),
+                    self.df[v].unique(),
+                    self.df[k].value_counts(),
+                    self.df[k].unique(),
+                )
+            )
             print(f"\n{k}<--->{v}\n")
             print(f"#VAL\t\tENC\t\t#VAL\t\tORDINAL")
             for r in res:
-                string = f'\t\t'.join(str(i) for i in r)
+                string = f"\t\t".join(str(i) for i in r)
                 print(string)
             print("\n")
-        print("---"*7)
+        print("---" * 7)

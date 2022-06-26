@@ -51,7 +51,7 @@ class SVMPreviews(ImagePreviews):
         super().__init__(X, y)
         self.X_prime = X_prime
         self.y_prime = y_prime
-    
+
     def preview_pair(self):
         """Plots an original image with its augmented versions."""
         A = self.X
@@ -434,7 +434,7 @@ class DataPlots:
             fig.show()
         else:
             return fig
-    
+
     def remove_outliers(self, y_data):
         q = y_data.quantile([0.25, 0.75]).values
         q1, q3 = q[0], q[1]
@@ -527,7 +527,6 @@ class HstSvmPlots(DataPlots):
         self.bar = self.alignment_bars()
         self.scatter = self.alignment_scatters()
         self.kde = self.alignment_kde()
-
 
     def alignment_bars(self):
         self.bar = {}
@@ -654,7 +653,7 @@ class HstCalPlots(DataPlots):
         self.box["wallclock"] = box_target["wallclock"]
         self.box["mem_fence"] = box_fenced["memory"]
         self.box["wall_fence"] = box_fenced["wallclock"]
-        #self.scatter3 = self.make_cal_scatter3d()
+        # self.scatter3 = self.make_cal_scatter3d()
         # self.bar
         # self.kde
 
