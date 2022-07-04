@@ -1,12 +1,13 @@
 #!/bin/bash -xu
-cfg=${1:-"cal"}
-src_data=${2:-"$(pwd)"/data}
-mounts=${3:-""}
-source ./scripts/envs/${cfg}.env
+src_data=${1:-"$(pwd)"/docker/dashboard/data}
+mounts=${2:-""}
 
-if [ -ne $3]; then
+envfile="./docker/dashboard/.env"
+source $envfile
+
+if [ -ne $2]; then
     docker run -d -p 8050:8050 $DOCKER_IMAGE $EPCOMMAND
 else
     docker run -d -p 8050:8050 $DOCKER_IMAGE $EPCOMMAND
-    --mount type=bind,source=${src_data},target=/home/developer/data \
+    --mount type=bind,source=${src_data},target=/home/developer/data
 fi

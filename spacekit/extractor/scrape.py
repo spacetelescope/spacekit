@@ -330,9 +330,9 @@ class S3Scraper(Scraper):
     def make_s3_keys(
         self,
         fnames=[
+            "2022-02-14-1644848448.zip",
             "2021-11-04-1636048291.zip",
             "2021-10-28-1635457222.zip",
-            "2021-08-22-1629663047.zip",
         ],
     ):
         """Generates a `dataset` dictionary attribute containing the filename-uriprefix key-value pairs.
@@ -340,7 +340,7 @@ class S3Scraper(Scraper):
         Parameters
         ----------
         fnames : list, optional
-            dataset archive file names typically consisting of a hyphenated date and timestamp string when the data was generated (automatically the case for saved spacekit.analyzer.compute.Computer objects), by default [ "2021-11-04-1636048291.zip", "2021-10-28-1635457222.zip", "2021-08-22-1629663047.zip", ]
+            dataset archive file names typically consisting of a hyphenated date and timestamp string when the data was generated (automatically the case for saved spacekit.analyzer.compute.Computer objects), by default [ "2021-10-28-1635457222.zip""2021-11-04-1636048291.zip", "2021-10-28-1635457222.zip" ]
 
         Returns
         -------

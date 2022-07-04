@@ -29,6 +29,8 @@ DATASETS={comma separate string of each dataset name, usually a date "2021-02-14
 
 2. build the image locally
 
+Any environment variables listed in your .env file will override the default ARGs in the Dockerfile.
+
 ```bash
 sh scripts/build_image.sh
 ```

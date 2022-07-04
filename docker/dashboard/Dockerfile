@@ -47,19 +47,23 @@ RUN python -m pip install --upgrade pip && python -m pip install virtualenv
 RUN python -m virtualenv /home/developer/venv
 ENV PATH=/home/developer/venv/bin:${PATH}
 ENV LD_LIBRARY_PATH=/home/developer/venv/lib
+
 RUN mkdir /home/developer/data
 ARG SOURCEDATA=./data
 ADD $SOURCEDATA /home/developer/data
-# TEMP
+
+## Install dev branch (editable)
 ARG SPACEKIT_REPO=alphasentaurii/spacekit
 ARG SPACEKIT_REF=main
-# RUN git clone --branch $SPACEKIT_REF https://github.com/${SPACEKIT_REPO}.git
-# WORKDIR /home/developer/spacekit
-# RUN pip install -e .
-WORKDIR /home/developer
-RUN pip install spacekit
-# Get datasets
+RUN git clone --branch $SPACEKIT_REF https://github.com/${SPACEKIT_REPO}.git
+WORKDIR /home/developer/spacekit
+RUN pip install -e .
 
+## Install latest release
+# WORKDIR /home/developer
+# RUN pip install spacekit
+
+# Get datasets
 ARG SRC
 ARG COLLECTION
 ARG DATASETS

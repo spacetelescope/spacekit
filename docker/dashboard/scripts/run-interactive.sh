@@ -1,7 +1,9 @@
 #! /bin/bash -eu
 cfg=${1:-"cal"}
 src_data=${2:-"$(pwd)"/data}
-source ./docker/dashboard/scripts/envs/${cfg}.env
+# source ./docker/dashboard/scripts/envs/${cfg}.env
+envfile="./docker/dashboard/.env"
+source $envfile
 
 docker run \
 -it \

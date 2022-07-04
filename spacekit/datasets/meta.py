@@ -1,6 +1,6 @@
 calcloud = {
-    "uri": "https://raw.githubusercontent.com/alphasentaurii/spacekit/rev-0.3.1/spacekit/datasets/data/calcloud",
-    # "uri": "https://raw.githubusercontent.com/alphasentaurii/spacekit/main/spacekit/datasets/data/calcloud",
+    # "uri": "https://raw.githubusercontent.com/alphasentaurii/spacekit/rev-0.3.1/spacekit/datasets/data/calcloud",
+    "uri": "https://raw.githubusercontent.com/alphasentaurii/spacekit/main/spacekit/datasets/data/calcloud",
     "data": {
         "2022-02-14": {
             "fname": "2022-02-14-1644848448.zip",
