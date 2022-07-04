@@ -1,12 +1,6 @@
 ARG BASE_IMAGE=alphasentaurii/spacekit:base
 FROM ${BASE_IMAGE}
 
-# Set env vars
-ENV $DEV_HOME=/home/developer
-COPY .env $DEV_HOME/.
-USER developer
-RUN source $DEV_HOME/.env
-
 ## Install dev branch (editable)
 USER developer
 WORKDIR /home/developer
