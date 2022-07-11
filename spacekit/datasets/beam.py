@@ -40,7 +40,6 @@ def download(scrape="file:data", datasets="2022-02-14,2021-11-04,2021-10-28", de
     datasets = datasets.split(",")
     if src == "pkg":
         fpaths = import_collection(archive, date_key=datasets, data_home=dest)
-        return fpaths
     elif src == "git":
         print("Scraping Github Archive")
         cc = spacekit_collections[archive]  # "calcloud", "svm"
@@ -62,10 +61,13 @@ def download(scrape="file:data", datasets="2022-02-14,2021-11-04,2021-10-28", de
             collection = json.load(j)
         scraper = WebScraper(collection["uri"], collection["data"], cache_dir=dest)
     try:
-        scraper.scrape()
-        if scraper.fpaths:
-            print("Datasets: ", scraper.fpaths)
-            return scraper.fpaths
+        if fpaths:
+            return fpaths
+        else:
+            scraper.scrape()
+            if scraper.fpaths:
+                print("Datasets: ", scraper.fpaths)
+                return scraper.fpaths
     except Exception as e:
         print("Could not locate datasets.")
         print(e)

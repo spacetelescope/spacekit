@@ -1,9 +1,12 @@
 ARG BASE_IMAGE=alphasentaurii/spacekit:base
 FROM ${BASE_IMAGE}
 
-## Install dev branch (editable)
 USER developer
 WORKDIR /home/developer
+# temp fix for problematic dash dep (downgrade werzeug)
+RUN pip uninstall werkzeug -y && pip install werkzeug==2.0.3
+
+## Install dev branch (editable)
 ARG SPACEKIT_REPO=alphasentaurii/spacekit
 ARG SPACEKIT_BRANCH=main
 RUN git clone --branch $SPACEKIT_BRANCH https://github.com/${SPACEKIT_REPO}.git
@@ -19,4 +22,4 @@ ARG COLLECTION
 ARG DATASETS
 RUN python -m spacekit.datasets.beam -s="${SRC}:${COLLECTION}" -d=$DATASETS -o=$SPACEKIT_DATA
 EXPOSE 8050
-ENTRYPOINT ["python","-m","spacekit.dashboard.cal.index"]
+CMD /bin/bash
