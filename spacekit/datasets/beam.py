@@ -39,6 +39,7 @@ def download(scrape="file:data", datasets="2022-02-14,2021-11-04,2021-10-28", de
     src, archive = scrape.split(":")
     datasets = datasets.split(",")
     if src == "pkg":
+        scraper = None
         fpaths = import_collection(archive, date_key=datasets, data_home=dest)
     elif src == "git":
         print("Scraping Github Archive")
@@ -60,18 +61,18 @@ def download(scrape="file:data", datasets="2022-02-14,2021-11-04,2021-10-28", de
         with open(archive, "r") as j:
             collection = json.load(j)
         scraper = WebScraper(collection["uri"], collection["data"], cache_dir=dest)
-    try:
-        if fpaths:
-            return fpaths
-        else:
+    if scraper:
+        try:
             scraper.scrape()
             if scraper.fpaths:
                 print("Datasets: ", scraper.fpaths)
                 return scraper.fpaths
-    except Exception as e:
-        print("Could not locate datasets.")
-        print(e)
-        sys.exit(1)
+        except Exception as e:
+            print("Could not locate datasets.")
+            print(e)
+            sys.exit(1)
+    elif fpaths:
+        return fpaths
 
 
 if __name__ == "__main__":
