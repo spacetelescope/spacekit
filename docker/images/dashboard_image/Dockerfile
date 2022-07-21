@@ -6,14 +6,12 @@ WORKDIR /home/developer
 ## temp fix for problematic dash dep (downgrade werzeug)
 RUN pip uninstall werkzeug -y && pip install werkzeug==2.0.3
 
-## Install latest release
+## Install spacekit
 WORKDIR /home/developer
-COPY ./scripts/installer.sh /home/developer/installer.sh
-ARG ENVIRONMENT=dashboard
-ENV ENVIRONMENT=$ENVIRONMENT
-ENV ENVFILE="${ENVIRONMENT}.env"
-COPY ./images/dashboard_image/envs/$ENVFILE /home/developer/.
-RUN sh /home/developer/installer.sh /home/developer/$ENVFILE
+COPY ./images/dashboard_image/.env /home/developer/.env
+# COPY ./scripts/installer.sh /home/developer/installer.sh
+# RUN /home/developer/installer.sh
+RUN pip install spacekit
 
 # Import data
 USER developer

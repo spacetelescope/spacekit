@@ -1,15 +1,13 @@
 # Spacekit Dashboard
 
-Before launching the dashboard, you'll need to set some configuration options for the project/datasets you want to load. The simplest route is to use the default configuration, which loads the 3 latest datasets from the spacekit package. There are some templates in `spacekit/docker/images/dashboard_image/envs`. Feel free to add a new folder in "envs" directory and create custom settings.
+Before launching the dashboard, you'll need to set some configuration options for the project/datasets you want to load. Copy variables into the empty `.env` file located in `docker/images/dashboard_image` - use one of the templates (`spacekit/docker/images/dashboard_image/templates`) and customize further as desired.
 
 
 ## Configuration options
 
-1. "APP"
+"APP": There are currently only two options for "APP": "cal" for CALCLOUD and "svm" for Single Visit Mosaics.
 
-There are currently only two options for "APP": "cal" for CALCLOUD and "svm" for Single Visit Mosaics.
-
-2. "SRC","COLLECTION", and "PFX"
+"SRC","COLLECTION", and "PFX"
 
 The default source:collection is the spacekit package ("pkg") and the "calcloud" datasets. 
 
@@ -29,11 +27,11 @@ PFX
 
 ## Building image locally
 
-The primary environment file `dashboard.env` installs the latest spacekit release using pip, while the other env files are setup to install spacekit from a github repo branch. Use these as a template or edit them directly.
+Once you have variables set in the .env file, build the image
 
 ```bash
 # building from the dashboard.env file
-$ cd spacekit/docker
+$ cd spacekit
 $ sh scripts/build.sh
 ```
 
