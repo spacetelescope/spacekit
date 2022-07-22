@@ -50,7 +50,6 @@ distribute-*.tar.gz
 .settings
 crds_cache
 *k2_lightcurve_cnn.py
-docker/dashboard/data/*
 .dockerignore
 svm-data/
 docker/dev/
@@ -77,3 +76,5 @@ __pycache__
 .config
 clocktime.txt
 .pytest_cache
+docker/data/*.csv
+.secrets

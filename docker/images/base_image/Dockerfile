@@ -1,5 +1,3 @@
-# syntax = docker/dockerfile:1.0-experimental
-
 ARG BASE_IMAGE=debian:bullseye-slim
 FROM ${BASE_IMAGE}
 
@@ -7,24 +5,23 @@ RUN apt update && \
     apt upgrade --assume-yes && \
     ACCEPT_EULA=Y DEBIAN_FRONTEND=noninteractive && \
     apt install --assume-yes \
-        csh \
-        fitsverify \
         git \
         python3 \
         python3-pip \
         python3-venv \
-        rsync \
         sudo \
-        tcsh \
         make \
         gcc \
         htop \
         wget \
-        git \
         tar \
         curl \
         time \
         vim
+        # csh \
+        # fitsverify \
+        # tcsh \
+        # rsync \
 
 RUN useradd --create-home --shell /bin/bash developer
 ENV DEV_HOME=/home/developer
@@ -41,7 +38,8 @@ ENV LD_LIBRARY_PATH=/home/developer/venv/LD_LIBRARY_PATH
 
 ## Install latest release
 WORKDIR /home/developer
-COPY requirements.txt $DEV_HOME/.
+ARG REQ_FILE=./docker/images/base_image/requirements.txt
+COPY $REQ_FILE $DEV_HOME/requirements.txt
 RUN pip install --upgrade pip && \
   pip install -r $DEV_HOME/requirements.txt
 

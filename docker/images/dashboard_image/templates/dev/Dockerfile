@@ -3,10 +3,17 @@ FROM ${BASE_IMAGE}
 
 USER developer
 WORKDIR /home/developer
-COPY ./docker/images/dashboard_image/.env /home/developer/.env
+
+## Install editable spacekit source code
+WORKDIR /home/developer
+ARG SPACEKIT_REPO=alphasentaurii/spacekit
+RUN git clone https://github.com/${SPACEKIT_REPO}.git
+
+WORKDIR /home/developer/spacekit
+ARG SPACEKIT_BRANCH=main
+RUN git checkout $SPACEKIT_BRANCH && pip install -e .
 
 # Import data
-USER developer
 WORKDIR /home/developer
 ENV SPACEKIT_DATA=/home/developer
 ENV TF_CPP_MIN_LOG_LEVEL=2

@@ -1,0 +1,5 @@
+git+https://github.com/alphasentaurii/spacekit@rev-0.3.2
+sklearn
+dash~=2.0.0
+dash-cytoscape
+dash-daq
