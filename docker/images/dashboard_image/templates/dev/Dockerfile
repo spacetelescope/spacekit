@@ -2,21 +2,18 @@ ARG BASE_IMAGE=alphasentaurii/spacekit:base
 FROM ${BASE_IMAGE}
 
 USER developer
-WORKDIR /home/developer
-
-## Install editable spacekit source code
-WORKDIR /home/developer
-ARG SPACEKIT_REPO=alphasentaurii/spacekit
-RUN git clone https://github.com/${SPACEKIT_REPO}.git
-
+# WORKDIR /home/developer
+# RUN git clone https://github.com/alphasentaurii/spacekit.git
 WORKDIR /home/developer/spacekit
-ARG SPACEKIT_BRANCH=main
-RUN git checkout $SPACEKIT_BRANCH && pip install -e .
+ARG SPACEKIT_REF=rev-0.3.2
+RUN git checkout $SPACEKIT_REF && pip install -e .
 
 # Import data
 WORKDIR /home/developer
 ENV SPACEKIT_DATA=/home/developer
 ENV TF_CPP_MIN_LOG_LEVEL=2
+ARG PFX=archive
+ENV PFX=${PFX}
 ARG SRC
 ARG COLLECTION
 ARG DATASETS

@@ -1,15 +1,14 @@
 ARG BASE_IMAGE=alphasentaurii/spacekit:base
 FROM ${BASE_IMAGE}
 
-USER developer
-WORKDIR /home/developer
-COPY ./docker/images/dashboard_image/.env /home/developer/.env
-
 # Import data
 USER developer
 WORKDIR /home/developer
+COPY ./docker/images/dashboard_image/.env /home/developer/.env
 ENV SPACEKIT_DATA=/home/developer
 ENV TF_CPP_MIN_LOG_LEVEL=2
+ARG PFX=archive
+ENV PFX=${PFX}
 ARG SRC
 ARG COLLECTION
 ARG DATASETS

@@ -78,3 +78,5 @@ clocktime.txt
 .pytest_cache
 docker/data/*.csv
 .secrets
+# tests/data/cal/data/
+# tests/data/svm/data/
