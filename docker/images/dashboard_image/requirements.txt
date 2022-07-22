@@ -1,0 +1,4 @@
+sklearn
+dash~=2.0.0
+dash-cytoscape
+dash-daq
