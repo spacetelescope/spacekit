@@ -35,6 +35,7 @@ from spacekit.datasets import import_collection
 DATA = "spacekit.datasets.data"
 S3PREFIX = os.environ.get("PFX", "archive")
 
+
 def download(scrape="file:data", datasets="2022-02-14,2021-11-04,2021-10-28", dest="."):
     src, archive = scrape.split(":")
     datasets = datasets.split(",")
@@ -77,12 +78,17 @@ def download(scrape="file:data", datasets="2022-02-14,2021-11-04,2021-10-28", de
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--scrape", default="git:calcloud", help="Uses a key:uri format where options for the key are limited to pkg, s3, file, or git and the uri could be your own custom location if not using the default datasets.  Examples are pkg:calcloud, git:repo_uri, s3:mybucket, file:myfolder. Visit spacekit.readthedocs.io for more info.")
+    parser.add_argument(
+        "-s",
+        "--scrape",
+        default="git:calcloud",
+        help="Uses a key:uri format where options for the key are limited to pkg, s3, file, or git and the uri could be your own custom location if not using the default datasets.  Examples are pkg:calcloud, git:repo_uri, s3:mybucket, file:myfolder. Visit spacekit.readthedocs.io for more info.",
+    )
     parser.add_argument(
         "-d",
         "--datasets",
         default="2022-02-14,2021-11-04,2021-10-28",
-        help="Comma-separated string of keys identifying each dataset"
+        help="Comma-separated string of keys identifying each dataset",
     )
     parser.add_argument("-o", "--out", default=None)
     args = parser.parse_args()

@@ -35,19 +35,20 @@ ENV SPACEKIT_VERSION=${SPACEKIT_VERSION}
 #   pip install --upgrade pip && \
 #   pip install -e . && \
 #   pip install \
-#     sklearn \
 #     dash~=2.0.0 \
 #     dash-cytoscape \
 #     dash-daq
 
-# # Install and test new spacekit release from git
-# RUN git clone https://github.com/alphasentaurii/spacekit.git && \
-#   cd /home/developer/spacekit && \
-#   git fetch --all --tags && \
-#   git checkout tags/${SPACEKIT_VERSION} && \
+# # Install and test spacekit release candidate from git
+# ENV SPACEKIT_BINARY=/home/developer/spacekit-${SPACEKIT_VERSION}.tar.gz
+# ENV SPACEKIT_SRC=/home/developer/spacekit-${SPACEKIT_VERSION}
+# ENV LOCATION https://github.com/alphasentaurii/spacekit/archive/refs/tags/${SPACEKIT_VERSION}.tar.gz
+# RUN curl -L -o $SPACEKIT_BINARY $LOCATION && \
+#   tar -xzvf $SPACEKIT_BINARY && rm $SPACEKIT_BINARY && \
+#   cd $SPACEKIT_SRC && \
+#   pip install --upgrade pip && \
 #   pip install -e . && \
 #   pip install \
-#     sklearn \
 #     dash~=2.0.0 \
 #     dash-cytoscape \
 #     dash-daq
@@ -83,6 +84,6 @@ ENV PFX=${PFX}
 ARG SRC
 ARG COLLECTION
 ARG DATASETS
-RUN python -m spacekit.datasets.beam -s="${SRC}:${COLLECTION}" -d=$DATASETS -o=$SPACEKIT_DATA
+# RUN python -m spacekit.datasets.beam -s="${SRC}:${COLLECTION}" -d=$DATASETS -o=$SPACEKIT_DATA
 EXPOSE 8050
 CMD /bin/bash

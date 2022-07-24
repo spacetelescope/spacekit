@@ -59,7 +59,6 @@ class Scrubber:
 
     def drop_nans(self, save_backup=True):
         if self.dropnans is True:
-            df_nan = self.df.copy()
             print("Searching for NaNs...")
             print(self.df.isna().sum())
             if self.df.isna().sum().values.any() > 0:

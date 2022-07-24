@@ -4,19 +4,19 @@ calcloud = {
     "data": {
         "2022-02-14": {
             "fname": "2022-02-14-1644848448.zip",
-            "hash": "d39482d148736f2b2e8ad1ca19f0d6797bab6582700f174df0344fc9f91687dd"
+            "hash": "d39482d148736f2b2e8ad1ca19f0d6797bab6582700f174df0344fc9f91687dd",
         },
         "2021-11-04": {
             "fname": "2021-11-04-1636048291.zip",
-            "hash": "d0cb8c35554527d8dda96f259952b0d1436f6fda5f4d11ced73d7e88f328aff4"
+            "hash": "d0cb8c35554527d8dda96f259952b0d1436f6fda5f4d11ced73d7e88f328aff4",
         },
         "2021-10-28": {
             "fname": "2021-10-28-1635457222.zip",
-            "hash": "dce221998c366486e3412b13ad90493bad6e234d54e0849a635700cb8494acb4"
+            "hash": "dce221998c366486e3412b13ad90493bad6e234d54e0849a635700cb8494acb4",
         },
         "2021-08-22": {
             "fname": "2021-08-22-1629663047.zip",
-            "hash": "d8f17819282add50c3c27fc8eada314ffad72a60c8b0e8639d98b5f6f77602bb"
+            "hash": "d8f17819282add50c3c27fc8eada314ffad72a60c8b0e8639d98b5f6f77602bb",
         },
     },
     "model": {
@@ -32,7 +32,7 @@ svm = {
         "2022-02-14": {
             "fname": "2022-02-14-1644850390.zip",
             "hash": "7f5ad34c2265219dd62eeb9a79612e69b2b1daf36735d2f9803898cfd1944dd7",
-            "desc": "ensembleSVM training results"
+            "desc": "ensembleSVM training results",
         },
         "2022-01-30": {
             "fname": "2022-01-30-1643523529.zip",
