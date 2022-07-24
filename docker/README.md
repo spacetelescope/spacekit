@@ -1,38 +1,19 @@
 # Spacekit Dashboard
 
-Before launching the dashboard, you'll need to set some configuration options for the project/datasets you want to load. Copy variables into the empty `.env` file located in `docker/images/dashboard_image` - use one of the templates (`spacekit/docker/images/dashboard_image/templates`) and customize further as desired.
+Pull the most recent calcloud training data and model results (default):
+
+`docker pull alphasentaurii/spacekit:dash-cal-latest`
 
 
-## Configuring Environment Variables
+## Configuring Custom Datasets via Environment file `.env`
 
-- `CFG`: tells the build script which Dockerfile to use; setting it to "dev" points the builder to the one in `templates/dev` which installs a dev version of `spacekit` from a github repo branch.
-
-- `APP`: "cal" for CALCLOUD Dashboard and "svm" for Single Visit Mosaics Dashboard. Note- These may get merged into a single dashboard app that configures on the fly according to some setting, but for now they are distinct.
-
-- `VERSION`: used for meaningful image tagging / container names
-
-```bash
-# change these to your heart's content
-CFG="dev"
-APP="cal"
-VERSION="-dev"
-TAG="dashboard-${APP}${VERSION}"
-DOCKER_IMAGE="alphasentaurii/spacekit:${TAG}"
-
-# only used if building spacekit from source; must set CFG="dev")
-SPACEKIT_REPO="alphasentaurii/spacekit"
-SPACEKIT_BRANCH="rev-0.3.2"
-```
-
-Data import settings 
-
-These are used by spacekit.datasets.beam to find specific datasets. Using the below defaults will pull in up to 3 of the most recent collection of trained models and datasets iterations. Although, if you're using the defaults, what are you even doing here? Just pull the image from docker hub `docker pull alphasentaurii/spacekit:dashboard-cal-latest`.
+The variables below are used by spacekit.datasets.beam to find specific datasets. Using the defaults will pull in the 3 most recent dataset iterations and model training results. To configure the dashboard to use other datasets, you'll need to set some configuration options. Copy variables into the `.env` file located in `docker/images/dashboard_image` - feel free to use one of the templates (`spacekit/docker/images/dashboard_image/templates`) and customize further as desired.
 
 ```bash
  # pkg, s3, git, file
 SRC="pkg"
 # collection, bucketname, repo url, or local path
-COLLECTION="calcloud" # e.g. "svm" or "calcloud"
+COLLECTION="calcloud" # e.g. "svm", "calcloud", "myS3bucket"
 # used by spacekit.datasets as dictionary keys
 DATASETS="2022-02-14,2021-11-04,2021-10-28"
 # typically the names of the actual dataset directories (or .zip files)
@@ -41,7 +22,7 @@ DATES=('2022-02-14-1644848448' '2021-11-04-1636048291' '2021-10-28-1635457222')
 PFX="archive"
 ```
 
-Alternatively, you could import your own data from S3, for example:
+### Import data from S3 (aws)
 
 ```bash
 SRC=s3
@@ -49,27 +30,15 @@ COLLECTION=mybucket
 PFX=somefolder
 ```
 
-Launch settings (for starting a container)
+### Mount from local path
+
+You can also have your data in a local directory, and just bind mount the folder when you go to launch the container:
 
 ```bash
 CONTAINER_MODE="-d" # -d for detached, -it for interactive
-MOUNTS=0 # >0 will bind mount the below source and dest paths
-SOURCEDATA=$(pwd)
-DESTDATA="/home/developer/spacekit"
-```
-
-Expert settings
-
-***don't change these unless you know what you're doing***
-
-```bash
-BASE_IMG="alphasentaurii/spacekit:base"
-SPACEKIT_DATA=/home/developer
-TF_CPP_MIN_LOG_LEVEL=2
-HOSTNAME="localhost"
-IPADDRESS=0.0.0.0
-NAME="spkt-dash-${APP}${VERSION}"
-EPCOMMAND="python -m spacekit.dashboard.${APP}.index"
+MOUNTS=1 # >0 will bind mount the below source and dest paths
+SOURCEDATA="/path/to/datasets"
+DESTDATA="/home/developer/data"
 ```
 
 
