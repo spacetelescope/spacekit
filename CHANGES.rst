@@ -1,3 +1,13 @@
+0.3.2 (2022-07-24)
+==================
+
+- Docker image deployment bugfixes and cleaner organization
+
+- Updated calcloud model results formatting to conform with spacekit compute module I/O
+
+- Bugfix for dataset scrape/import
+
+
 0.3.1 (2022-05-04)
 ==================
 
