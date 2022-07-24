@@ -44,7 +44,7 @@ ENV SPACEKIT_VERSION=${SPACEKIT_VERSION}
 # RUN git clone https://github.com/alphasentaurii/spacekit.git && \
 #   cd /home/developer/spacekit && \
 #   git fetch --all --tags && \
-#   git checkout tags/${SPACEKIT_REF} && \
+#   git checkout tags/${SPACEKIT_VERSION} && \
 #   pip install -e . && \
 #   pip install \
 #     sklearn \
