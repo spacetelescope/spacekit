@@ -7,12 +7,12 @@
 import sys
 from setuptools import setup
 
-TEST_HELP = """
-Note: running tests is no longer done using 'python setup.py test'. Instead
-you will need to run:
 
-    pip install -e .
-    pytest
+TEST_HELP = """
+Note: Run cal and svn tests separately using the --env flag:
+
+    pytest --env cal
+    pytest --env svm
 
 """
 
@@ -35,4 +35,4 @@ if "build_docs" in sys.argv or "build_sphinx" in sys.argv:
 
 
 # setup(use_scm_version={'write_to': 'spacekit/_version.py'})
-setup(version="0.3.1")
+setup(version="0.3.2rc1")
