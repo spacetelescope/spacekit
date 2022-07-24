@@ -1,39 +1,29 @@
-import os
 import itertools
 import numpy as np
-import tensorflow as tf
-import importlib.resources
-from spacekit.preprocessor.transform import CalX
+from spacekit.preprocessor.transform import PowerX
+from spacekit.dashboard.cal.config import NN
 
-
-def get_model(model_name, model_path=None):
-    """Loads pretrained Keras functional model"""
-    if model_path is None:
-        with importlib.resources.path(
-            "spacekit.skopes.trained_networks.calmodels", model_name
-        ) as M:
-            model_path = M
-    else:
-        model_path = os.path.join(model_path, model_name)
-    print("Loading saved model: ", model_path)
-    model = tf.keras.models.load_model(model_path)
-    return model
+clf = NN["mem_clf"]
+mem_reg = NN["mem_reg"]
+wall_reg = NN["wall_reg"]
 
 
 def read_inputs(
     n_files, total_mb, drizcorr, pctecorr, crsplit, subarray, detector, dtype, instr
 ):
-    x_features = {
-        "n_files": n_files,
-        "total_mb": total_mb,
-        "drizcorr": drizcorr,
-        "pctecorr": pctecorr,
-        "crsplit": crsplit,
-        "subarray": subarray,
-        "detector": detector,
-        "dtype": dtype,
-        "instr": instr,
-    }
+    x_features = np.asarray(
+        [
+            n_files,
+            total_mb,
+            drizcorr,
+            pctecorr,
+            crsplit,
+            subarray,
+            detector,
+            dtype,
+            instr,
+        ]
+    )
     print(x_features)
     return x_features
 
@@ -51,24 +41,23 @@ def regressor(model, data):
     return pred
 
 
-def make_preds(x_features, tx_file, NN=None):
-    if NN is None:
-        clf = get_model("mem_clf")
-        mem_reg = get_model("mem_reg")
-        wall_reg = get_model("wall_reg")
-    else:
-        clf = NN["clf"]
-        mem_reg = NN["mem_reg"]
-        wall_reg = NN["wall_reg"]
-    cal = CalX(x_features, tx_file)
+def make_preds(x_features, tx_file):
+    Px = PowerX(
+        x_features,
+        cols=["n_files", "total_mb"],
+        ncols=[0, 1],
+        tx_file=tx_file,
+        rename=None,
+    )
+    X = Px.Xt
     # Predict Memory Allocation (bin and value preds)
-    membin, pred_proba = classifier(clf, cal.X)
+    membin, pred_proba = classifier(clf, X)
     P = pred_proba[0]
     p0, p1, p2, p3 = P[0], P[1], P[2], P[3]
-    memval = np.round(float(regressor(mem_reg, cal.X)), 2)
+    memval = np.round(float(regressor(mem_reg, X)), 2)
     print(f"\n*** BIN PRED: {membin}\n***PROBABILITIES: {P}\n***MEMORY:{memval}")
     # Predict Wallclock Allocation (execution time in seconds)
-    clocktime = int(regressor(wall_reg, cal.X))
+    clocktime = int(regressor(wall_reg, X))
     memory_predictions = [membin, memval, clocktime, p0, p1, p2, p3]
     return memory_predictions
 
@@ -177,8 +166,6 @@ def make_permutations(src, trg):
 
 def make_weights():
     x_weights = input_layer_weights()
-    # h_src = ['h2', 'h3', 'h4', 'h5', 'h6', 'y']
-    # h_trg = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']
     h1_weights = dense_layer_weights("h2", "h1")
     h2_weights = dense_layer_weights("h3", "h2")
     h3_weights = dense_layer_weights("h4", "h3")
@@ -568,12 +555,7 @@ def make_stylesheet():
     return stylesheet
 
 
-def make_neural_graph(model=None, neurons=None):
-    global clf
-    if model is None:
-        clf = get_model("mem_clf")
-    else:
-        clf = model  # NN["clf"]
+def make_neural_graph(neurons=None):
     weights = make_weights()
     edge_pairs = make_edges(weights)
     parent_nodes = make_parent_nodes()

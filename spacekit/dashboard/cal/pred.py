@@ -1,19 +1,14 @@
 from dash import dcc
 from dash import html
-from dash.dependencies import Input, Output, State
 import dash_cytoscape as cyto
 import dash_daq as daq
-from dash.exceptions import PreventUpdate
-
 from spacekit.dashboard.cal import nodegraph
-from spacekit.dashboard.cal.app import app
-from spacekit.dashboard.cal.config import NN, tx_file, cal
-from spacekit.preprocessor.transform import CalX
+from spacekit.dashboard.cal.config import ipsts
 
 
 stylesheet = nodegraph.make_stylesheet()
 styles = nodegraph.make_styles()
-edges, nodes = nodegraph.make_neural_graph(model=NN["mem_clf"])
+edges, nodes = nodegraph.make_neural_graph()
 
 layout = html.Div(
     children=[
@@ -105,8 +100,7 @@ layout = html.Div(
                                         dcc.Dropdown(
                                             id="select-ipst",
                                             options=[
-                                                {"label": i, "value": i}
-                                                for i in cal.df.index.values
+                                                {"label": i, "value": i} for i in ipsts
                                             ],
                                             value="idio03010",
                                             style={
@@ -700,175 +694,3 @@ layout = html.Div(
         "color": "white",
     },
 )
-
-
-# PAGE 3 CALLBACKS
-
-
-@app.callback(
-    [
-        Output("prediction-bin-output", "value"),
-        Output("memory-gauge-predicted", "value"),
-        Output("wallclock-gauge-predicted", "value"),
-        Output("p0", "value"),
-        Output("p1", "value"),
-        Output("p2", "value"),
-        Output("p3", "value"),
-        Output("activate-button-state", "on"),
-    ],
-    Input("submit-button-state", "n_clicks"),
-    State("nfiles-state", "value"),
-    State("totalmb-state", "value"),
-    State("drizcorr-state", "value"),
-    State("pctecorr-state", "value"),
-    State("crsplit-state", "value"),
-    State("subarray-state", "value"),
-    State("detector-state", "value"),
-    State("dtype-state", "value"),
-    State("instr-state", "value"),
-)
-def update_xi_predictions(
-    n_clicks,
-    n_files,
-    total_mb,
-    drizcorr,
-    pctecorr,
-    crsplit,
-    subarray,
-    detector,
-    dtype,
-    instr,
-):
-    if n_clicks == 0:
-        raise PreventUpdate
-    # if n_clicks > 0:
-    x_features = nodegraph.read_inputs(
-        n_files, total_mb, drizcorr, pctecorr, crsplit, subarray, detector, dtype, instr
-    )
-    m_preds = nodegraph.make_preds(
-        x_features, tx_file, NN=NN
-    )  # [membin, memval, clocktime, p0, p1, p2, p3]
-    n_clicks = 0
-    m_preds.append(0)  # reset `activate` toggle switch = off
-    return m_preds
-
-
-@app.callback(
-    [
-        Output("nfiles-state", "value"),
-        Output("totalmb-state", "value"),
-        Output("drizcorr-state", "value"),
-        Output("pctecorr-state", "value"),
-        Output("crsplit-state", "value"),
-        Output("subarray-state", "value"),
-        Output("detector-state", "value"),
-        Output("dtype-state", "value"),
-        Output("instr-state", "value"),
-    ],
-    Input("select-ipst", "value"),
-)
-def update_ipst(selected_ipst):
-    if selected_ipst:
-        inputs = {
-            "n_files": 0,
-            "total_mb": 0,
-            "drizcorr": 0,
-            "pctecorr": 0,
-            "crsplit": 0,
-            "subarray": 0,
-            "detector": 0,
-            "dtype": 0,
-            "instr": 0,
-        }
-        data = cal.df.loc[selected_ipst]
-        for key in list(inputs.keys()):
-            inputs[key] = data[key]
-        return list(inputs.values())
-
-
-@app.callback(
-    Output("cytoscape-compound", "elements"),
-    Input("activate-button-state", "on"),
-    State("nfiles-state", "value"),
-    State("totalmb-state", "value"),
-    State("drizcorr-state", "value"),
-    State("pctecorr-state", "value"),
-    State("crsplit-state", "value"),
-    State("subarray-state", "value"),
-    State("detector-state", "value"),
-    State("dtype-state", "value"),
-    State("instr-state", "value"),
-)
-def activate_network(
-    on, n_files, total_mb, drizcorr, pctecorr, crsplit, subarray, detector, dtype, instr
-):
-    if on is True:
-        x_features = nodegraph.read_inputs(
-            n_files,
-            total_mb,
-            drizcorr,
-            pctecorr,
-            crsplit,
-            subarray,
-            detector,
-            dtype,
-            instr,
-        )
-        modX = CalX(x_features, tx_file)
-        neurons = nodegraph.calculate_neurons(modX.X)
-        edges, nodes = nodegraph.make_neural_graph(model=NN["mem_clf"], neurons=neurons)
-    else:
-        edges, nodes = nodegraph.make_neural_graph(model=NN["mem_clf"], neurons=None)
-    return edges + nodes
-
-
-@app.callback(
-    Output("cytoscape-tapNodeData-output", "children"),
-    Input("cytoscape-compound", "tapNodeData"),
-)
-def displayTapNodeData(data):
-    if data:
-        node = data["id"]
-        if node[0] not in ["x", "i"]:
-            b = nodegraph.node_bias_clicks(node)
-        else:
-            b = None
-        return f"bias: {node} = {str(b)}"
-
-
-@app.callback(
-    Output("cytoscape-tapEdgeData-output", "children"),
-    Input("cytoscape-compound", "tapEdgeData"),
-)
-def displayTapEdgeData(data):
-    if data:
-        src = data["source"]  # x1
-        trg = data["target"]  # h1-1
-        w = nodegraph.edge_weight_clicks(src, trg)
-        return f"weight: {src} and {trg} = {str(w)}"
-
-
-@app.callback(
-    Output("cytoscape-mouseoverNodeData-output", "children"),
-    Input("cytoscape-compound", "mouseoverNodeData"),
-)
-def displayMouseNodeData(data):
-    if data:
-        node = data["id"]
-        if node[0] not in ["x", "i"]:
-            b = nodegraph.node_bias_clicks(node)
-        else:
-            b = None
-        return f"bias: {node} = {str(b)}"
-
-
-@app.callback(
-    Output("cytoscape-mouseoverEdgeData-output", "children"),
-    Input("cytoscape-compound", "mouseoverEdgeData"),
-)
-def displayMouseEdgeData(data):
-    if data:
-        src = data["source"]  # x1
-        trg = data["target"]  # h1-1
-        w = nodegraph.edge_weight_clicks(src, trg)
-        return f"weight: {src} and {trg} = {str(w)}"

@@ -1,7 +1,7 @@
 # TODO: eda for regression test data (MLP data)
 from dash import dcc
 from dash import html
-from config import hst
+from spacekit.dashboard.svm.config import hst
 
 layout = html.Div(
     children=[
