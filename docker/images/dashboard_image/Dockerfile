@@ -57,7 +57,6 @@ ENV SPACEKIT_VERSION=${SPACEKIT_VERSION}
 RUN pip install --upgrade pip && \
   pip install \
     spacekit \
-    sklearn \
     dash~=2.0.0 \
     dash-cytoscape \
     dash-daq
@@ -84,6 +83,6 @@ ENV PFX=${PFX}
 ARG SRC
 ARG COLLECTION
 ARG DATASETS
-# RUN python -m spacekit.datasets.beam -s="${SRC}:${COLLECTION}" -d=$DATASETS -o=$SPACEKIT_DATA
+RUN python -m spacekit.datasets.beam -s="${SRC}:${COLLECTION}" -d=$DATASETS -o=$SPACEKIT_DATA
 EXPOSE 8050
 CMD /bin/bash
