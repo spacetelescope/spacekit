@@ -11,13 +11,13 @@ The variables below are used by spacekit.datasets.beam to find specific datasets
 
 ```bash
  # pkg, s3, git, file
-SRC="pkg"
+SRC="git"
 # collection, bucketname, repo url, or local path
 COLLECTION="calcloud" # e.g. "svm", "calcloud", "myS3bucket"
 # used by spacekit.datasets as dictionary keys
 DATASETS="2022-02-14,2021-11-04,2021-10-28"
-# typically the names of the actual dataset directories (or .zip files)
-DATES=('2022-02-14-1644848448' '2021-11-04-1636048291' '2021-10-28-1635457222')
+# for s3 use the names of the .zip files 
+DATASETS="2022-02-14-1644848448,2021-11-04-1636048291,2021-10-28-1635457222"
 # for s3 this is the folder prefix
 PFX="archive"
 ```
@@ -32,7 +32,7 @@ PFX=somefolder
 
 ### Mount from local path
 
-You can also have your data in a local directory, and just bind mount the folder when you go to launch the container:
+You can also have your data in a local directory, and just bind mount the folder when you go to launch the container, or set container mode to "-it" and use spacekit.datasets to get the data before launching the dashboard. 
 
 ```bash
 CONTAINER_MODE="-d" # -d for detached, -it for interactive
