@@ -87,7 +87,7 @@ class Blueprint:
             name="mem_clf",
             algorithm="multiclass",
         )
-    
+
     def draft_cal_mem_clf(self):
         return dict(
             batch_size=32,
@@ -114,7 +114,7 @@ class Blueprint:
             name="mem_reg",
             algorithm="linreg",
         )
-    
+
     def draft_cal_mem_reg(self):
         return dict(
             batch_size=32,
@@ -124,7 +124,7 @@ class Blueprint:
             early_stopping=None,
             verbose=2,
         )
-    
+
     def cal_wall_reg(self):
         return dict(
             input_shape=9,
@@ -141,7 +141,7 @@ class Blueprint:
             name="wall_reg",
             algorithm="linreg",
         )
-    
+
     def draft_cal_wall_reg(self):
         return dict(
             batch_size=64,
@@ -151,7 +151,6 @@ class Blueprint:
             early_stopping=None,
             verbose=2,
         )
-
 
 
 # from tensorflow.keras.optimizers import Adam, schedules

@@ -20,4 +20,3 @@ inputs = []
 # do inference
 
 # write to ddb
-

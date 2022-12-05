@@ -14,7 +14,7 @@ class Prep:
         random=None,
         tsize=0.2,
         encode_targets=True,
-        norm_params=None
+        norm_params=None,
     ):
         self.data = data
         self.y_target = y_target
@@ -48,7 +48,7 @@ class Prep:
         strat = y if stratify is True else None
         train, test = train_test_split(
             self.X, test_size=self.tsize, stratify=strat, random_state=self.random
-            )
+        )
         self.train_idx, self.test_idx = train.index, test.index
         self.data["split"] = "train"
         self.data.loc[self.test_idx, "split"] = "test"
@@ -77,7 +77,7 @@ class Prep:
 
     def get_test_index(self, target_col):
         return self.data.loc[self.test_idx, target_col]
-    
+
     def set_normalization_params(self):
         if self.norm_params is None:
             self.norm_params = dict(
@@ -87,9 +87,7 @@ class Prep:
     def _prep_data(self, y_target, stratify=True):
         """main calling function"""
         if self.train_idx is None:
-            self.stratify_split(
-                y_target=y_target, stratify=stratify
-            )
+            self.stratify_split(y_target=y_target, stratify=stratify)
         self.X_train, self.y_train = self.get_X_y("train", y_target)
         self.X_test, self.y_test = self.get_X_y("test", y_target)
         # y_train encode, reshape
@@ -107,7 +105,9 @@ class Prep:
     def encode_y(self, y_train, y_test):
         return encode_target_data(y_train, y_test)
 
-    def apply_normalization(self, T=PowerX, cols=[], ncols=[], rename=None, join=1, save_tx=True):
+    def apply_normalization(
+        self, T=PowerX, cols=[], ncols=[], rename=None, join=1, save_tx=True
+    ):
         if len(cols) == 0:
             cols = self.X_cols
         if len(ncols) == 0:
@@ -115,21 +115,36 @@ class Prep:
         self.Tx = T(
             self.X, cols, ncols=ncols, save_tx=save_tx, rename=rename, join_data=join
         )
-        self.X_train = T(self.X_train, cols, ncols=ncols, tx_data=self.Tx.tx_data, rename=rename, join_data=join).Xt
-        self.X_test = T(self.X_test, cols, ncols=ncols, tx_data=self.Tx.tx_data, rename=rename, join_data=join).Xt
+        self.X_train = T(
+            self.X_train,
+            cols,
+            ncols=ncols,
+            tx_data=self.Tx.tx_data,
+            rename=rename,
+            join_data=join,
+        ).Xt
+        self.X_test = T(
+            self.X_test,
+            cols,
+            ncols=ncols,
+            tx_data=self.Tx.tx_data,
+            rename=rename,
+            join_data=join,
+        ).Xt
+
 
 class SvmPrep(Prep):
     def __init__(
         self,
         data,
-        y_target='label',
+        y_target="label",
         X_cols=[],
         tensors=True,
         normalize=False,
         random=None,
         tsize=0.2,
         encode_targets=False,
-        norm_params=None
+        norm_params=None,
     ):
         self.set_X_cols(X_cols)
 
@@ -142,7 +157,7 @@ class SvmPrep(Prep):
             random=random,
             tsize=tsize,
             encode_targets=encode_targets,
-            norm_params=norm_params
+            norm_params=norm_params,
         )
         self.norm_cols = ["", ""]
         self.label = data["label"]
@@ -163,7 +178,7 @@ class SvmPrep(Prep):
                 "gaia",
                 "det",
                 "wcs",
-                "cat"
+                "cat",
             ]
         else:
             self.X_cols = X_cols
@@ -223,9 +238,7 @@ class CalPrep(Prep):
             self.X_cols = X_cols
 
     def prep_data(self):
-        super().stratify_split(
-            y_target="mem_bin", stratify=True
-        )
+        super().stratify_split(y_target="mem_bin", stratify=True)
         self.X_train, self.X_test = super().get_X_train_test()
         super().apply_normalization(
             T=PowerX, cols=self.norm_cols, rename=["x_files", "x_size"], join=2
@@ -242,8 +255,12 @@ class CalPrep(Prep):
 
     def prep_mem_reg(self):
         y_train, y_test = super().get_y_train_test("memory")
-        self.y_mem_train, self.y_mem_test = y_tensors(y_train.values, y_test.values, reshape=True)
+        self.y_mem_train, self.y_mem_test = y_tensors(
+            y_train.values, y_test.values, reshape=True
+        )
 
     def prep_wall_reg(self):
         y_train, y_test = super().get_y_train_test("wallclock")
-        self.y_wall_train, self.y_wall_test = y_tensors(y_train.values, y_test.values, reshape=True)
+        self.y_wall_train, self.y_wall_test = y_tensors(
+            y_train.values, y_test.values, reshape=True
+        )

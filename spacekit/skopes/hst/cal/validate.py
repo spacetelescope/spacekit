@@ -1,34 +1,32 @@
-from sklearn.model_selection import StratifiedKFold
-from spacekit.builder.architect import MemoryClassifier, MemoryRegressor, WallclockRegressor
-from spacekit.analyzer.compute import ComputeMulti, ComputeRegressor
-
-
-from spacekit.preprocessor.transform import PowerX
-from spacekit.extractor.load import load_datasets
-import pandas as pd
+from spacekit.builder.architect import (
+    MemoryClassifier,
+    MemoryRegressor,
+    WallclockRegressor,
+)
+# from spacekit.analyzer.compute import ComputeMulti, ComputeRegressor
+# from spacekit.preprocessor.transform import PowerX
+# from spacekit.extractor.load import load_datasets
+# import pandas as pd
 import numpy as np
-import os
-
-
+# import os
 import time
-import numpy as np
-from tensorflow.keras.wrappers.scikit_learn import KerasClassifier, KerasRegressor
+from tensorflow.keras.wrappers.scikit_learn import KerasClassifier  # KerasRegressor
 from sklearn.model_selection import StratifiedKFold, KFold, cross_val_score
 from sklearn.preprocessing import LabelEncoder
-
 from spacekit.skopes.hst.cal.config import REPRO_COLUMN_ORDER
 
-builder = BuildClass(data.X_train, y_train, data.X_test, y_test, test_idx=test_idx)
-builder.build()
+# builder = BuildClass(data.X_train, y_train, data.X_test, y_test, test_idx=test_idx)
+# builder.build()
+
 
 def k_estimator(buildClass, n_splits=10, y=None, stratify=False):
 
     bld = buildClass()
     estimator = KerasClassifier(
-        build_fn=bld.build, 
-        epochs=bld.epochs, 
-        batch_size=bld.batch_size, 
-        verbose=bld.verbose
+        build_fn=bld.build,
+        epochs=bld.epochs,
+        batch_size=bld.batch_size,
+        verbose=bld.verbose,
     )
     if stratify is True:
         kfold = StratifiedKFold(n_splits=n_splits, shuffle=True)
@@ -41,7 +39,6 @@ def k_estimator(buildClass, n_splits=10, y=None, stratify=False):
     else:
         return estimator, kfold
 
-    
 
 def kfold_cross_val(data, target_col, s3=None, data_path=None, verbose=2, n_jobs=-2):
     # evaluate using 10-fold cross validation
@@ -57,7 +54,6 @@ def kfold_cross_val(data, target_col, s3=None, data_path=None, verbose=2, n_jobs
 
     elif target_col == "wallclock":
         estimator, kfold = k_estimator(WallclockRegressor)
-
 
     print("\nStarting KFOLD Cross-Validation...")
     start = time.time()
@@ -75,17 +71,16 @@ def kfold_cross_val(data, target_col, s3=None, data_path=None, verbose=2, n_jobs
 
     kfold_dict = {"kfold": {"results": list(results), "score": score, "time": duration}}
 
-    #TODO
+    # TODO
     # keys = io.save_to_pickle(kfold_dict, target_col=target_col)
     # io.s3_upload(keys, bucket_mod, f"{data_path}/results")
+
+    return kfold_dict
 
 
 def run_kfold(data, s3=None, data_path=None, models=[], n_jobs=-2):
     for target in models:
         kfold_cross_val(data, target, s3=s3, data_path=data_path, n_jobs=n_jobs)
-
-
-
 
 
 # HOME = os.path.abspath(os.curdir)

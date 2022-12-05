@@ -314,7 +314,9 @@ class DrawMosaics:
             else:  # original (0)
                 self.draw_total_images(dataset)
         end = time.time()
-        stopwatch("IMAGE GENERATION", t0=start, t1=end, out=base, subset_name=self.subset_name)
+        stopwatch(
+            "IMAGE GENERATION", t0=start, t1=end, out=base, subset_name=self.subset_name
+        )
 
     def draw_total_images(self, dataset, P=0, S=0, G=0):
         """Primary class method for plotting the data, drawing the catalogs (if any) and saving to local disk as png.

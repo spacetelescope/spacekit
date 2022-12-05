@@ -12,7 +12,6 @@ from spacekit.analyzer.track import timer, record_metrics
 
 
 class SvmAlignmentIngest:
-
     def __init__(self, input_path, batch_out):
         self.input_path = input_path
         self.batch_out = os.getcwd() if batch_out is None else batch_out
@@ -24,7 +23,7 @@ class SvmAlignmentIngest:
         self.crpt = 0
         self.draw = 1
         self.img_outputs = os.path.join(self.batch_out, "img")
-    
+
     def start(self, func, ps="prep", visit=None, **args):
         t0, start = timer()
         func.__call__(**args)
@@ -46,7 +45,12 @@ class SvmAlignmentIngest:
             try:
                 input_path = os.path.dirname(visit_path)
                 for det in dets:
-                    _, _ = self.run_preprocessing(input_path, fname=f"{visit}_{det.lower()}_data", output_path=self.batch_out, visit=visit)
+                    _, _ = self.run_preprocessing(
+                        input_path,
+                        fname=f"{visit}_{det.lower()}_data",
+                        output_path=self.batch_out,
+                        visit=visit,
+                    )
                 if self.clean is True:
                     shutil.rmtree(visit_path)
             except Exception as e:
@@ -90,7 +94,9 @@ class SvmAlignmentIngest:
         fname = os.path.basename(fname).split(".")[0]
         # 1: SCRAPE JSON FILES and make dataframe
         if h5 is None:
-            search_path = os.path.join(self.input_path, visit) if visit else self.input_path
+            search_path = (
+                os.path.join(self.input_path, visit) if visit else self.input_path
+            )
             patterns = self.json_pattern.split(",")
             jsc = JsonScraper(
                 search_path=search_path,
@@ -104,7 +110,11 @@ class SvmAlignmentIngest:
             jsc = JsonScraper(h5_file=h5).load_h5_file()
         # 2: Scrape Fits Files and SCRUB DATAFRAME
         scrub = SvmScrubber(
-            self.input_path, data=jsc.data, output_path=self.batch_out, output_file=fname, crpt=self.crpt
+            self.input_path,
+            data=jsc.data,
+            output_path=self.batch_out,
+            output_file=fname,
+            crpt=self.crpt,
         )
         scrub.preprocess_data()
         # 3:  DRAW IMAGES
@@ -120,7 +130,7 @@ class SvmAlignmentIngest:
                 crpt=self.crpt,
             )
             mos.generate_total_images()
-        
+
         self.visit_data.append(scrub.df)
         self.data_paths.append(scrub.data_path)
         print(f"DATA PATH: {scrub.data_path}\n")
@@ -135,8 +145,8 @@ class SvmAlignmentIngest:
                 df = df_visit
             else:
                 df = pd.concat([df, df_visit], axis=0)
-        if 'index' not in df.columns:
-            df['index'] = df.index
+        if "index" not in df.columns:
+            df["index"] = df.index
         df.to_csv(f"{dpath}/preprocessed.csv", index=False)
 
     def concat_raw(dpath):
@@ -147,8 +157,8 @@ class SvmAlignmentIngest:
                 df = df_raw
             else:
                 df = pd.concat([df, df_raw], axis=0)
-        if 'index' not in df.columns:
-            df['index'] = df.index
+        if "index" not in df.columns:
+            df["index"] = df.index
         df.to_csv(f"{dpath}/raw_combined.csv", index=False)
 
     def final_cleanup(df, dpath):
@@ -163,4 +173,6 @@ class SvmAlignmentIngest:
                     os.remove(f)
                 print(f"Cleaned up {len(grp)} files")
             else:
-                print(f"{len(df)} in DF does not match {len(grp)} in filegroup. Skipping cleanup")
+                print(
+                    f"{len(df)} in DF does not match {len(grp)} in filegroup. Skipping cleanup"
+                )

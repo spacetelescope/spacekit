@@ -1,8 +1,4 @@
-"""Configuration for HST calibration machine learning projects
-
-
-    
-"""
+"""Configuration for HST calibration machine learning projects"""
 
 REPRO_COLUMN_ORDER = [
     "n_files",
@@ -17,6 +13,4 @@ REPRO_COLUMN_ORDER = [
 ]
 
 # TODO
-SVM_REPRO_COLUMN_ORDER = [
-
-]
+SVM_REPRO_COLUMN_ORDER = []

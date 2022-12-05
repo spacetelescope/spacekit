@@ -155,7 +155,7 @@ class Scraper:
         if fname is None:
             fname = os.path.basename(target_folder) + f".{compression}"
         else:
-            fname = os.path.basename(fname).split('.')[0] + f".{compression}"
+            fname = os.path.basename(fname).split(".")[0] + f".{compression}"
         archive_path = os.path.join(self.cache_dir, fname)
         file_paths = []
         for root, _, files in os.walk(target_folder):
@@ -168,6 +168,7 @@ class Scraper:
                 zip_ref.write(file)
                 print(file)
         return
+
 
 class FileScraper(Scraper):
     """Scraper subclass used to search and extract files on local disk that match regex/glob pattern(s).
@@ -854,7 +855,7 @@ class JsonScraper:
         self.log = self.start_logging()
         self.json_dict = None
         self.data = None  # self.json_harvester()
-        #self.h5_file = None  # self.h5store()
+        # self.h5_file = None  # self.h5store()
 
     def start_logging(self):
         """Initializes a logging object which logs process info to sys.stdout
@@ -1152,7 +1153,6 @@ class JsonScraper:
                 title_suffix = ""
             json_data = self.read_json_file(json_filename)
             # add information from "header" section to ingest_dict just once
-            keyword_shortlist = ["TARGNAME", "DEC_TARG", "RA_TARG", "NUMEXP", "imgname"]
             if not header_ingested:
                 # filter out ALL header keywords not included in 'keyword_shortlist'
                 for header_item in json_data["header"].keys():

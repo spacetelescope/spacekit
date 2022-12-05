@@ -40,7 +40,17 @@ class SVMPreviews(ImagePreviews):
         spacekit.analyzer.explore.ImagePreviews parent class
     """
 
-    def __init__(self, X, labels=None, names=None, ndims=3, channels=3, w=128, h=128, figsize=(10,10)):
+    def __init__(
+        self,
+        X,
+        labels=None,
+        names=None,
+        ndims=3,
+        channels=3,
+        w=128,
+        h=128,
+        figsize=(10, 10),
+    ):
         """Instantiates an SVMPreviews class object.
 
         Parameters
@@ -66,13 +76,13 @@ class SVMPreviews(ImagePreviews):
         self.w = w
         self.h = h
         self.figsize = figsize
-    
+
     def select_image_from_array(self, i=None):
         if i is None:
             return self.X
         else:
             return self.X[i]
-    
+
     def check_dimensions(self, Xi):
         if Xi.shape != (self.ndims, self.w, self.h, self.channels):
             try:
@@ -80,7 +90,7 @@ class SVMPreviews(ImagePreviews):
                 return Xi
             except Exception as e:
                 print(e)
-    
+
     def preview_image(self, Xi, dim=3, aug=False, show=False):
         if aug is True:
             # reshape handled by augment if needed
@@ -92,15 +102,15 @@ class SVMPreviews(ImagePreviews):
 
         frames = ["orig", "pt-seg", "gaia"]
         fig = px.imshow(
-                Xi, 
-                facet_col=0, 
-                binary_string=True, 
-                labels={'facet_col':'frame'}, 
-                facet_col_wrap=3
-                )
+            Xi,
+            facet_col=0,
+            binary_string=True,
+            labels={"facet_col": "frame"},
+            facet_col_wrap=3,
+        )
 
         for i, frame in enumerate(frames):
-            fig.layout.annotations[i]['text'] = '%s' %frame
+            fig.layout.annotations[i]["text"] = "%s" % frame
 
         fig.update_layout(
             title_text=f"{title} Image Slices",
@@ -121,19 +131,18 @@ class SVMPreviews(ImagePreviews):
         else:
             return fig
 
-
     def preview_image_mpl(self, Xi, dim=3, aug=False, show=False):
         if aug is True:
             # reshape handled by augment if needed
             Xi = augment_image(Xi)
         else:
             Xi = self.check_dimensions(Xi)
-        
+
         fig = plt.figure(figsize=self.figsize)
         for n in range(dim):
             xi = array_to_img(Xi[n])
-            #xi = image.array_to_img(Xi[n])
-            ax = plt.subplot(dim, dim, n+1)
+            # xi = image.array_to_img(Xi[n])
+            ax = plt.subplot(dim, dim, n + 1)
             ax.imshow(xi)
             plt.axis("off")
         if show is True:
@@ -141,11 +150,11 @@ class SVMPreviews(ImagePreviews):
         else:
             plt.close()
             return fig
-    
+
     def get_synthetic_image(self, img_name, show=False, dim=3, aug=False):
         pairs = [i for i in self.names if img_name in i]
         if len(pairs) > 1:
-            synth_name = pairs[np.argmax([len(p.split('_')) for p in pairs])]
+            synth_name = pairs[np.argmax([len(p.split("_")) for p in pairs])]
             synth_num = np.where(self.names == synth_name)
             synth_img = self.select_image_from_array(synth_num)
             if show is True:
@@ -154,7 +163,7 @@ class SVMPreviews(ImagePreviews):
         else:
             print("Synthetic version not found for the selected image")
             return None
-    
+
     def preview_og_aug_pair(self, i=None, dim=3):
         """Plot frames of both original and augmented versions of n-dimensional images
 
@@ -169,12 +178,10 @@ class SVMPreviews(ImagePreviews):
         self.preview_image(Xi, dim=dim, aug=False)
         self.preview_image(Xi, dim=dim, aug=True)
 
-
     def preview_og_syn_pair(self, img_name):
         pairs = [i for i in self.X if img_name in i]
         self.preview_image(pairs[0])
         self.preview_image(pairs[1])
-
 
     # def preview_corrupted_pairs(self):
     #     """Finds the matching positive class images from both image sets and displays them in a grid."""

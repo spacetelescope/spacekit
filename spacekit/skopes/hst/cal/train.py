@@ -19,7 +19,6 @@ test_idx = bin_out["test_idx"]
 """
 
 from argparse import ArgumentParser
-import sys
 import os
 import datetime as dt
 import numpy as np
@@ -74,15 +73,16 @@ def scrape_dynamodb(table_name, timestamp="now", fname=None, attr={}):
     data_path = os.path.join(make_timestamp_path(timestamp), "data")
     os.makedirs(os.path.join(os.path.expanduser("~"), data_path), exist_ok=True)
 
-    ddb = DynamoDBScraper(table_name,
+    ddb = DynamoDBScraper(
+        table_name,
         attr=attr,
         fname=fname,
         cache_dir="~",
         cache_subdir=data_path,
         format="zip",
         extract=True,
-        clean=True
-        )
+        clean=True,
+    )
     ddb.ddb_download()
     ddb.write_to_csv()
     return ddb.fpath
@@ -123,9 +123,10 @@ def save_csv_file(df, index_col="ipst", save_to="."):
     # df.set_index(index_col, inplace=True)
 
 
-#TODO: SVM repro model training - can use same builder objects, just set diff hyperparams after instantiating
+# TODO: SVM repro model training - can use same builder objects, just set diff hyperparams after instantiating
 # mosaic=None, mosaic="svm", mosaic="mvm"
 # add params to builder.blueprints
+
 
 def train_models(data, res_path, mem_clf=1, mem_reg=1, wall_reg=1, model_path=None):
     model_objects = {}
@@ -164,8 +165,9 @@ def train_models(data, res_path, mem_clf=1, mem_reg=1, wall_reg=1, model_path=No
         model_objects["wall_reg"] = {"builder": wall, "results": wcom}
     return model_objects
 
+
 def xy_pred(df, model_objects, dict_preds):
-    """Generates predictions for the entire dataset. This is a fallback for cases 
+    """Generates predictions for the entire dataset. This is a fallback for cases
     where the test index from training is unknown.
 
     Parameters
@@ -183,8 +185,10 @@ def xy_pred(df, model_objects, dict_preds):
         training data with y_preds for each model type included as '{target}_pred' columns.
     """
     for m, c in dict_preds.items():
-        if c == 'bin_pred':
-            df[c] = np.argmax(model_objects[m]["builder"].model.predict(df[COLUMN_ORDER]), axis=-1)
+        if c == "bin_pred":
+            df[c] = np.argmax(
+                model_objects[m]["builder"].model.predict(df[COLUMN_ORDER]), axis=-1
+            )
         else:
             df[c] = model_objects[m]["builder"].model.predict(df[COLUMN_ORDER])
     return df
@@ -208,12 +212,14 @@ def tt_pred(df, model_objects, dict_preds):
     pandas.DataFrame
         training data with y_preds for each model type included as '{target}_pred' columns.
     """
-    test = df.loc[df['split'] == "test"]
-    train = df.loc[df['split'] == "train"]
+    test = df.loc[df["split"] == "test"]
+    train = df.loc[df["split"] == "train"]
     for m, c in dict_preds.items():
-        if c == 'bin_pred':
+        if c == "bin_pred":
             test[c] = np.argmax(model_objects[m]["results"].y_pred, axis=-1)
-            train[c] = np.argmax(model_objects[m]["builder"].model.predict(train[COLUMN_ORDER]), axis=-1)
+            train[c] = np.argmax(
+                model_objects[m]["builder"].model.predict(train[COLUMN_ORDER]), axis=-1
+            )
         else:
             test[c] = model_objects[m]["results"].y_pred
             train[c] = model_objects[m]["builder"].model.predict(train[COLUMN_ORDER])
@@ -240,11 +246,11 @@ def generate_preds(data, model_objects, save_csv=None):
     _type_
         _description_
     """
-    dict_preds = dict(mem_clf='bin_pred', mem_reg='mem_pred', wall_reg='wall_pred')
+    dict_preds = dict(mem_clf="bin_pred", mem_reg="mem_pred", wall_reg="wall_pred")
     if data.test_idx:
-        if 'split' not in data.data.columns:
-            data.data['split'] = 'train'
-        data.data.loc[data.test_idx.index, 'split'] = 'test'
+        if "split" not in data.data.columns:
+            data.data["split"] = "train"
+        data.data.loc[data.test_idx.index, "split"] = "test"
         data.data = tt_pred(data.data, model_objects, dict_preds)
     else:
         print("Warning: test_idx attribute not found.")
@@ -252,13 +258,13 @@ def generate_preds(data, model_objects, save_csv=None):
     if save_csv:
         save_csv_file(data.data, index_col="ipst", save_to=save_csv)
     return data.data
-        
+
 
 def wallclock_stats(df, save_csv=None):
     cols = ["wc_mean", "wc_std", "wc_err"]
     drop_cols = [col for col in cols if col in df.columns]
     df = df.drop(drop_cols, axis=1)
-    
+
     dfw = df[["wall_pred", "wallclock"]]
     wc_dict = {}
     wc_stats = {}
@@ -291,7 +297,7 @@ def upload_results(train_path, ddb_table=None, s3_bucket=None):
         ddb.batch_ddb_writer(dataset_path)
     if s3_bucket:
         model_path = os.path.join(train_path, "models")
-        pfx = str(os.path.basename(train_path)) # the timestamp
+        pfx = str(os.path.basename(train_path))  # the timestamp
         s3 = S3Scraper(s3_bucket, pfx=pfx)
         # zip everything in ~/data/timestamp/
         archive = s3.compress_files(train_path)
@@ -303,7 +309,7 @@ def upload_results(train_path, ddb_table=None, s3_bucket=None):
 
 def main(
     date_key=None,
-    fpath=None, # data/timestamp
+    fpath=None,  # data/timestamp
     model_path=None,
     res_path=None,
     mem_clf=1,
@@ -313,19 +319,21 @@ def main(
     njobs=-2,
     ddb_table=None,
     s3_bucket=None,
-    ):
+):
     # prep data
     data = load_prep(date_key=date_key, fpath=fpath)
 
     # TODO: kfold cross-validation
     mods = dict(mem_bin=mem_clf, memory=mem_reg, wallclock=wall_reg)
-    modelnames = [k for k,v in mods.items() if v==1]
+    modelnames = [k for k, v in mods.items() if v == 1]
     train_path = os.path.dirname(os.path.dirname(fpath))
     if cross_val == "only":
-        ## run_kfold, skip training
-        run_kfold(data, s3=s3_bucket, data_path=train_path, models=modelnames, n_jobs=njobs)
+        # run_kfold, skip training
+        run_kfold(
+            data, s3=s3_bucket, data_path=train_path, models=modelnames, n_jobs=njobs
+        )
     else:
-        ## build, train and evaluate models
+        # build, train and evaluate models
         model_objs = train_models(
             data,
             res_path,
@@ -334,9 +342,11 @@ def main(
             wall_reg=wall_reg,
             model_path=model_path,
         )
-        
+
         train_path = os.path.dirname(os.path.dirname(fpath))
-        data.data = generate_preds(data, model_objs, save_csv=f"{train_path}/data/batch.csv")
+        data.data = generate_preds(
+            data, model_objs, save_csv=f"{train_path}/data/batch.csv"
+        )
         data.data = wallclock_stats(data.data, save_csv=f"{train_path}/data/batch.csv")
 
         upload_results(train_path, ddb_table=ddb_table, s3_bucket=s3_bucket)
@@ -344,7 +354,14 @@ def main(
         if cross_val == "skip":
             print("Skipping KFOLD")
         else:
-            run_kfold(data, s3=s3_bucket, data_path=train_path, models=modelnames, n_jobs=njobs)
+            run_kfold(
+                data,
+                s3=s3_bucket,
+                data_path=train_path,
+                models=modelnames,
+                n_jobs=njobs,
+            )
+
 
 def parse_user_args(args):
     # import and preprocess data
@@ -352,19 +369,22 @@ def parse_user_args(args):
     model_path = None
     res_path = os.path.join(os.getcwd(), "results")
     date_key = args.date_key if args.src == "arch" else None
-    ddb_table= args.tablename if args.save_ddb is True else None
+    ddb_table = args.tablename if args.save_ddb is True else None
     s3_bucket = args.bucket_name if args.save_s3 is True else None
     train_path = None
 
     # TODO: if args.src == "s3":
 
     if args.src == "ddb":
-        attr=dict(
-            name=args.attrname, method=args.attrmethod, type=args.attrtype, value=args.attrvalue
-            )
+        attr = dict(
+            name=args.attrname,
+            method=args.attrmethod,
+            type=args.attrtype,
+            value=args.attrvalue,
+        )
         fpath = scrape_dynamodb(args.tablename, fname=args.fname, attr=attr)
         train_path = os.path.dirname(os.path.dirname(fpath))
-        model_path = train_path # "models" subdir will be saved here automatically
+        model_path = train_path  # "models" subdir will be saved here automatically
         res_path = os.path.join(train_path, "results")
 
     elif args.src == "file":
@@ -372,9 +392,11 @@ def parse_user_args(args):
             args.source_path, fname=args.fname, date_key=args.date_key
         )
         if args.overwrite:
-            model_path = args.source_path  # "models" subdir will be saved here automatically
+            model_path = (
+                args.source_path
+            )  # "models" subdir will be saved here automatically
             res_path = os.path.join(args.source_path, "results")
-    
+
     return dict(
         date_key=date_key,
         fpath=fpath,
@@ -386,13 +408,18 @@ def parse_user_args(args):
         cross_val=args.cross_val,
         njobs=args.njobs,
         ddb_table=ddb_table,
-        s3_bucket=s3_bucket
-        )
+        s3_bucket=s3_bucket,
+    )
 
 
 if __name__ == "__main__":
     parser = ArgumentParser(prog="spacekit hst calibration model training")
-    parser.add_argument("src", type=str, choices=["ddb", "s3", "arch", "file"], help="ddb:dynamodb, s3:aws bucket, arch:spacekit archive, file:local csv file")
+    parser.add_argument(
+        "src",
+        type=str,
+        choices=["ddb", "s3", "arch", "file"],
+        help="ddb:dynamodb, s3:aws bucket, arch:spacekit archive, file:local csv file",
+    )
 
     # ddb (Dynamo DB)
     parser.add_argument(
@@ -415,7 +442,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--bucketname", default=os.environ.get("S3MOD", "calcloud-modeling-sb")
     )
-    
+
     # arch (spacekit collection archive dataset)
     parser.add_argument(
         "--date_key",
@@ -436,24 +463,41 @@ if __name__ == "__main__":
     # Optional args for any data source
     parser.add_argument(
         "--timestamp",
-        "-t", 
+        "-t",
         type=str,
         default="now",
-        help="timestamp to record for this training iteration. Default is `now` (current timestamp at runtime)."
+        help="timestamp to record for this training iteration. Default is `now` (current timestamp at runtime).",
     )
     parser.add_argument(
         "--fname", type=str, default=None, help="name of training data csv file"
     )
     parser.add_argument(
-        "--mem_clf", type=int, default=1, choices=[0, 1], help="bool: train memory bin classifier"
+        "--mem_clf",
+        type=int,
+        default=1,
+        choices=[0, 1],
+        help="bool: train memory bin classifier",
     )
     parser.add_argument(
-        "--mem_reg", type=int, default=1, choices=[0, 1], help="bool: train memory regressor"
+        "--mem_reg",
+        type=int,
+        default=1,
+        choices=[0, 1],
+        help="bool: train memory regressor",
     )
     parser.add_argument(
-        "--wall_reg", type=int, default=1, choices=[0, 1], help="bool: train wallclock regressor"
+        "--wall_reg",
+        type=int,
+        default=1,
+        choices=[0, 1],
+        help="bool: train wallclock regressor",
     )
-    parser.add_argument("--cross_val", "-k", choices=["only", "skip", "None", None], default=os.environ.get("KFOLD", None))
+    parser.add_argument(
+        "--cross_val",
+        "-k",
+        choices=["only", "skip", "None", None],
+        default=os.environ.get("KFOLD", None),
+    )
     parser.add_argument("--njobs", "-j", default=int(os.environ.get("NJOBS", -2)))
     parser.add_argument(
         "--overwrite",
@@ -462,7 +506,9 @@ if __name__ == "__main__":
     )
     parser.add_argument("--save_ddb", action="store_true")
     parser.add_argument("--save_s3", action="store_true")
-    parser.add_argument("--verbose", type=int, choices=[0, 1, 2], default=os.environ.get("VERBOSE", 0))
+    parser.add_argument(
+        "--verbose", type=int, choices=[0, 1, 2], default=os.environ.get("VERBOSE", 0)
+    )
 
     kwargs = parse_user_args(parser.parse_args())
     main(**kwargs)

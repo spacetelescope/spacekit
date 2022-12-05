@@ -8,6 +8,7 @@ from spacekit.preprocessor.encode import SvmEncoder
 
 from spacekit.logger.log import Logger
 
+
 class Scrubber:
     """Base parent class for preprocessing data. Includes some basic column scrubbing methods for pandas dataframes. The heavy lifting is done via subclasses below."""
 
@@ -35,7 +36,6 @@ class Scrubber:
         self.dropnans = dropnans
         self.save_raw = save_raw
         self.data_path = None
-
 
     def cache_data(self, cache=None):
         return cache.copy() if cache is not None else cache
@@ -158,7 +158,7 @@ class SvmScrubber(Scrubber):
             output_file=output_file,
             dropnans=dropnans,
             save_raw=save_raw,
-            logger=self.log
+            logger=self.log,
         )
 
         self.input_path = input_path
@@ -226,7 +226,7 @@ class SvmScrubber(Scrubber):
         #     from drizzlepac.hap_utils.svm_quality_analysis import run_quality_analysis
         # except ImportError:
         #     print("Running SVM QA requires drizzlepac to be installed via pip.")
-        
+
         # with open(total_obj_file, 'rb') as pck:
         #     total_obj_list = pickle.load(pck)
 
@@ -273,14 +273,26 @@ class SvmScrubber(Scrubber):
     def scrub_columns(self):
         """Initial dataframe scrubbing to extract and rename columns, drop NaNs, and set the index."""
         split_cols = super().col_splitter()
-        check_columns = ['targname', 'ra_targ', 'dec_targ', 'numexp', 'imgname', 'number_of_gaia_sources', 'detector', 'point', 'segment']
+        check_columns = [
+            "targname",
+            "ra_targ",
+            "dec_targ",
+            "numexp",
+            "imgname",
+            "number_of_gaia_sources",
+            "detector",
+            "point",
+            "segment",
+        ]
         missing = [c for c in check_columns if c not in split_cols]
         if missing:
-            if 'number_of_gaia_sources' in missing:
+            if "number_of_gaia_sources" in missing:
                 self.log.warning("Inserting zero value for gaia sources")
                 shape = self.df.index.values.shape
-                self.df['number_of_gaia_sources.number_of_gaia_sources'] = np.zeros(shape=shape, dtype=int)
-                split_cols.append('number_of_gaia_sources')
+                self.df["number_of_gaia_sources.number_of_gaia_sources"] = np.zeros(
+                    shape=shape, dtype=int
+                )
+                split_cols.append("number_of_gaia_sources")
             else:
                 raise Exception(f"Dataframe is missing some data:\n {missing}")
 
@@ -290,7 +302,6 @@ class SvmScrubber(Scrubber):
         index_data = self.split_index()
         self.df = index_data.join(self.df, how="left")
         super().rename_cols(old=["number_of_gaia_sources"], new=["gaia"])
-
 
     def set_col_order(self):
         return [
@@ -391,6 +402,7 @@ class SvmScrubber(Scrubber):
                 for s in subsamples:
                     f.writelines(f"{s}\n")
 
+
 class CalScrubber(Scrubber):
     def __init__(
         self,
@@ -400,7 +412,7 @@ class CalScrubber(Scrubber):
         output_file="batch.csv",
         dropnans=True,
         save_raw=True,
-        loglevel="info"
+        loglevel="info",
     ):
         self.__name__ = "CalScrubber"
         self.log = Logger(self.__name__, console_log_level=loglevel).setup_logger()
@@ -412,10 +424,10 @@ class CalScrubber(Scrubber):
             output_file=output_file,
             dropnans=dropnans,
             save_raw=save_raw,
-            logger=self.log
+            logger=self.log,
         )
         self.input_path = input_path
-    
+
     def set_col_order(self):
         return [
             "n_files",
@@ -430,8 +442,5 @@ class CalScrubber(Scrubber):
         ]
 
     def set_new_cols(self):
-        self.new_cols = [
-            "x_files",
-            "x_size"
-        ]
+        self.new_cols = ["x_files", "x_size"]
         return self.new_cols.extend(self.col_order)

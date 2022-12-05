@@ -4,7 +4,7 @@ from dash.exceptions import PreventUpdate
 from argparse import ArgumentParser
 from app import app
 from spacekit.dashboard.svm import eda, eval, pred
-from spacekit.dashboard.svm.config import svm, hst, images, NN
+from spacekit.dashboard.svm.config import svm, hst, images  # NN
 import numpy as np
 
 from spacekit.analyzer.explore import SVMPreviews
@@ -142,6 +142,7 @@ def update_kde(selected_kde):
         hst.kde["rms"],
     ]
 
+
 # 3D Scatter
 # @app.callback(
 #     Output("scatter-3d", "figure"),
@@ -192,9 +193,9 @@ def select_images(selected_image):
     Xi = imps.select_image_from_array(i=img_num)
     return Xi
 
+
 @app.callback(
-    [Output("original-image", "figure"),
-    Output("augment-button-state", "disabled")],
+    [Output("original-image", "figure"), Output("augment-button-state", "disabled")],
     Input("preview-button-state", "n_clicks"),
     State("image-state", "value"),
 )
@@ -218,10 +219,6 @@ def preview_augmented_image(n_clicks, selected_image):
     Xp = select_images(selected_image)
     fig = imps.preview_image(Xp, aug=True)
     return fig
-
-
-
-
 
 
 if __name__ == "__main__":

@@ -25,7 +25,7 @@ ens.load_saved_model()
 tx_file = f"{model_path}/tx_data.json"
 NN = {"ens": ens.model}
 
-images =  ImageIO("data/test_images.npz").load_npz()
+images = ImageIO("data/test_images.npz").load_npz()
 
 
 # array(['hst_11099_04_wfc3_ir_total_ia0m04',
@@ -41,4 +41,3 @@ images =  ImageIO("data/test_images.npz").load_npz()
 #        'hst_8992_03_acs_wfc_total_j8cw03_f475w_clear2l_sub_stat',
 #        'hst_9836_33_acs_wfc_total_j8rq33_clear1s_f250w_sub_stoc'],
 #       dtype='<U55')
-

@@ -46,8 +46,8 @@ class PairEncoder:
             return [L(a) for a in self.arr]
         else:
             self.inverse_pairs()
-            I = lambda i: self.invpairs[i]
-            return [I(b) for b in self.transformed]
+            inv = lambda i: self.invpairs[i]
+            return [inv(b) for b in self.transformed]
 
     def inverse_pairs(self):
         self.invpairs = {}
@@ -364,39 +364,27 @@ class CalEncoder:
             "encodings: %s \n category_keys: %s \n detector_keys: %s \n wcs_keys: %s"
             % (self.encodings, self.category_keys, self.detector_keys, self.wcs_keys)
         )
-    
+
     def set_calibration_keys(self):
         return {
             "PERFORM": 1,
             "OTHER": 0,
         }
-    
+
     def set_detector_keys(self):
-        return {
-            "UVIS": 1,
-            "WFC": 1,
-            "OTHER": 0
-        }
-    
+        return {"UVIS": 1, "WFC": 1, "OTHER": 0}
+
     def set_subarray_keys(self):
-        return {
-            "True": 1,
-            "False": 0
-        }
-    
+        return {"True": 1, "False": 0}
+
     def set_crsplit_keys(self):
-        return {
-            "NaN": 0,
-            "1.0": 1,
-            "OTHER": 2
-        }
-    
+        return {"NaN": 0, "1.0": 1, "OTHER": 2}
+
     def set_dtype_keys(self, i):
         return {"0": 1, "OTHER": 0}
 
     def set_instr_keys(self, i):
         return dict(j=0, l=1, o=2, i=3)
-
 
     # def scrub_keys(self, ipst, input_data):
     #     n_files = 0

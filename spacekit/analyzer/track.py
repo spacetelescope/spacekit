@@ -8,7 +8,6 @@ from spacekit.logger.log import Logger
 
 
 class Stopwatch:
-
     def __init__(self, func, log=None, out="."):
         self.func = func
         self.log = log
@@ -32,12 +31,13 @@ class Stopwatch:
             result = self.func(*args, **kwargs)
             self.stop()
             return result
+
         return wrap
 
     def start(self):
         self.t0, self.p0 = time.time(), time.process_time()
         self.record(self.t0, "STARTED")
-    
+
     def stop(self):
         self.t1, self.p1 = time.time(), time.process_time()
         self.record(self.t1, "COMPLETED")
@@ -47,7 +47,7 @@ class Stopwatch:
 
     def record(self, t, info):
         timestring = dt.datetime.fromtimestamp(t).strftime("%m/%d/%Y - %H:%M:%S")
-        self.log( f"{timestring} [i] {info} [{self.ps}]")
+        self.log(f"{timestring} [i] {info} [{self.ps}]")
         if self.delta:
             self.log.info(f"\nDuration [{self.ps}] : {self.delta[0]} {self.delta[1]}\n")
             self.lap += 1
@@ -77,7 +77,7 @@ class Stopwatch:
         """
         self.walltime = np.round((self.t1 - self.t0), 2)
         self.clocktime = np.round((self.p1 - self.p0), 2)
-       
+
         s = self.walltime if wall is True else self.clocktime
         m = np.round((s / 60), 2)
         h = np.round((m / 60), 2)
@@ -131,7 +131,7 @@ def stopwatch(prcname, t0=None, t1=None, out=".", log=True, subset_name=None):
         record process clocktimes in a text file on disk, by default True
     """
     lap = 0
-    
+
     if t1 is not None:
         info = "COMPLETED"
         t = t1
@@ -143,7 +143,7 @@ def stopwatch(prcname, t0=None, t1=None, out=".", log=True, subset_name=None):
     timestring = dt.datetime.fromtimestamp(t).strftime("%m/%d/%Y - %H:%M:%S")
     message = f"{timestring} [i] {info} [{prcname}]"
     print(message)
-    
+
     fname = "clocktime.txt" if subset_name is None else f"clocktime{subset_name}.txt"
 
     if log is True:
@@ -165,6 +165,7 @@ def get_file_metrics(visit_path):
     else:
         return 0, 0
 
+
 def timer(t0=None, clock=None):
     if t0 is None:
         return time.time(), time.process_time()
@@ -173,8 +174,10 @@ def timer(t0=None, clock=None):
         clocktime = time.process_time() - clock
         return walltime, clocktime
 
+
 def clockit(func):
     ps = func.__name__
+
     def wrap(*args, **kwargs):
         start = time.time()
         start(ps, t0=start)
@@ -183,16 +186,15 @@ def clockit(func):
         stopwatch(ps, t0=start, t1=end)
         print(end - start)
         return result
+
     return wrap
 
 
-def record_metrics(log_dir, visit, wall, clock, ps="svm", n_files=None, total_size=None):
+def record_metrics(
+    log_dir, visit, wall, clock, ps="svm", n_files=None, total_size=None
+):
     log_file = os.path.join(log_dir, f"{ps}-stats.txt")
-    metrics = {
-        "visit": visit, 
-        "walltime": wall, 
-        "clocktime": clock
-        }
+    metrics = {"visit": visit, "walltime": wall, "clocktime": clock}
     if n_files:
         metrics.update({"n_files": n_files, "total_size": total_size})
 

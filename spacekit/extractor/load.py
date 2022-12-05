@@ -42,6 +42,7 @@ def find_local_dataset(source_path, fname=None, date_key=None):
         sys.exit(1)
     return fpath
 
+
 def load_datasets(filenames, index_col="index", column_order=None, verbose=1):
     """Import one or more dataframes from csv files and merge along the 0 axis (rows / horizontal). Assumes the datasets use the same index_col name and identical column names (although this is not strictly required) since this function does not handle missing data or NaNs.
 
