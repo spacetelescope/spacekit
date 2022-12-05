@@ -21,6 +21,7 @@ from tensorflow.keras.layers import (
     MaxPool3D,
     GlobalAveragePooling3D,
 )
+from tensorflow import nn
 from tensorflow.keras.metrics import RootMeanSquaredError as RMSE
 from spacekit.generator.augment import augment_data, augment_image
 from spacekit.analyzer.track import stopwatch
@@ -64,7 +65,7 @@ class Builder:
         self.name = None
         self.tx_file = None
 
-    def load_saved_model(self, arch="ensembleSVM", compile_params=None):
+    def load_saved_model(self, arch="ensembleSVM", compile_params=None, custom_obj={}):
         """Load saved keras model from local disk (located at the ``model_path`` attribute) or a pre-trained model from spacekit.skopes.trained_networks (if ``model_path`` attribute is None). Example for ``compile_params``: ``dict(loss="binary_crossentropy", metrics=["accuracy"], optimizer=Adam(learning_rate=optimizers.schedules.ExponentialDecay(lr=1e-4, decay_steps=100000, decay_rate=0.96, staircase=True)))``
 
         Parameters
@@ -79,6 +80,10 @@ class Builder:
         Keras functional Model object
             pre-trained (and/or compiled) functional Keras model.
         """
+        if arch == "ensembleSVM":
+            custom_obj = {
+                "leaky_relu": nn.leaky_relu
+            }
         if self.model_path is None:
             model_src = "spacekit.builder.trained_networks"
             archive_file = f"{arch}.zip"
@@ -86,7 +91,7 @@ class Builder:
                 self.model_path = mod
         if str(self.model_path).split(".")[-1] == "zip":
             self.model_path = self.unzip_model_files()
-        self.model = load_model(self.model_path)
+        self.model = load_model(self.model_path, custom_objects=custom_obj)
         if compile_params:
             self.model = Model(inputs=self.model.inputs, outputs=self.model.outputs)
             self.model.compile(**compile_params)
