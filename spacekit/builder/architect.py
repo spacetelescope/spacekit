@@ -430,12 +430,12 @@ class BuilderMLP(Builder):
     """
 
     def __init__(self, X_train=None, y_train=None, X_test=None, y_test=None, blueprint="mlp"):
-        train_data = (X_train, y_train) if X_train and y_train else None
-        test_data = (X_test, y_test) if X_test and y_test else None
+        train_data = (X_train, y_train) if X_train is not None and y_train is not None else None
+        test_data = (X_test, y_test) if X_test is not None and y_test is not None else None
         super().__init__(train_data=train_data, test_data=test_data)
         #super().__init__(train_data=(X_train, y_train), test_data=(X_test, y_test))
         self.blueprint = blueprint
-        self.input_shape = X_train.shape[1] if X_train else None
+        self.input_shape = X_train.shape[1] if X_train is not None else None
         self.output_shape = 1
         self.layers = [18, 32, 64, 32, 18]
         self.input_name = "mlp_inputs"
@@ -447,7 +447,7 @@ class BuilderMLP(Builder):
         self.optimizer = Adam
         self.loss = "binary_crossentropy"
         self.metrics = ["accuracy"]
-        self.step_size = X_train.shape[0]
+        self.step_size = X_train.shape[0] if X_train is not None else self.batch_size
         self.steps_per_epoch = self.step_size // self.batch_size
         self.batch_maker = self.batch
 
@@ -533,11 +533,11 @@ class BuilderCNN3D(Builder):
     """
 
     def __init__(self, X_train=None, y_train=None, X_test=None, y_test=None, blueprint="cnn3d"):
-        train_data = (X_train, y_train) if X_train and y_train else None
-        test_data = (X_test, y_test) if X_test and y_test else None
+        train_data = (X_train, y_train) if X_train is not None and y_train is not None else None
+        test_data = (X_test, y_test) if X_test is not None and y_test is not None else None
         super().__init__(train_data=train_data, test_data=test_data)
         self.blueprint = blueprint
-        self.input_shape = X_train.shape[1:] if X_train else None
+        self.input_shape = X_train.shape[1:] if X_train is not None else None
         self.output_shape = 1
         self.data_format = "channels_last"
         self.input_name = "cnn3d_inputs"
@@ -555,7 +555,7 @@ class BuilderCNN3D(Builder):
         self.pool = 1
         self.dense = 512
         self.dropout = 0.3
-        self.step_size = self.X_train.shape[0] if self.X_train else None
+        self.step_size = self.X_train.shape[0] if self.X_train is not None else self.batch_size
         self.steps_per_epoch = self.step_size // self.batch_size
         self.batch_maker = self.batch
 
@@ -679,8 +679,8 @@ class BuilderEnsemble(Builder):
         output_name="ensemble_output",
         name="ensembleSVM",
     ):
-        train_data = (X_train, y_train) if X_train and y_train else None
-        test_data = (X_test, y_test) if X_test and y_test else None
+        train_data = (X_train, y_train) if X_train is not None and y_train is not None else None
+        test_data = (X_test, y_test) if X_test is not None and y_test is not None else None
         super().__init__(train_data=train_data, test_data=test_data)
         self.input_name = input_name
         self.output_name = output_name
@@ -705,7 +705,7 @@ class BuilderEnsemble(Builder):
         self.verbose = 2
         if params is not None:
             self.fit_params(**params)
-        self.step_size = X_train[0].shape[0]
+        self.step_size = X_train[0].shape[0] if X_train is not None else self.batch_size
         self.steps_per_epoch = self.step_size // self.batch_size
         self.batch_maker = self.batch
 
@@ -859,8 +859,8 @@ class BuilderCNN2D(Builder):
     """
 
     def __init__(self, X_train=None, y_train=None, X_test=None, y_test=None, blueprint="cnn2d"):
-        train_data = (X_train, y_train) if X_train and y_train else None
-        test_data = (X_test, y_test) if X_test and y_test else None
+        train_data = (X_train, y_train) if X_train is not None and y_train is not None else None
+        test_data = (X_test, y_test) if X_test is not None and y_test is not None else None
         super().__init__(train_data=train_data, test_data=test_data)
         self.blueprint = blueprint
         self.input_shape = self.X_train.shape[1:] if self.X_train else None
@@ -1003,8 +1003,8 @@ class MemoryClassifier(BuilderMLP):
     def __init__(
         self, X_train=None, y_train=None, X_test=None, y_test=None, blueprint="mem_clf", test_idx=None
     ):
-        train_data = (X_train, y_train) if X_train and y_train else None
-        test_data = (X_test, y_test) if X_test and y_test else None
+        train_data = (X_train, y_train) if X_train is not None and y_train is not None else None
+        test_data = (X_test, y_test) if X_test is not None and y_test is not None else None
         super().__init__(train_data=train_data, test_data=test_data, blueprint=blueprint)
         self.input_shape = self.X_train.shape[1] if self.X_train else 9
         self.output_shape = 4
@@ -1034,8 +1034,8 @@ class MemoryRegressor(BuilderMLP):
     def __init__(
         self, X_train=None, y_train=None, X_test=None, y_test=None, blueprint="mem_reg", test_idx=None
     ):
-        train_data = (X_train, y_train) if X_train and y_train else None
-        test_data = (X_test, y_test) if X_test and y_test else None
+        train_data = (X_train, y_train) if X_train is not None and y_train is not None else None
+        test_data = (X_test, y_test) if X_test is not None and y_test is not None else None
         super().__init__(train_data=train_data, test_data=test_data, blueprint=blueprint)
         self.input_shape = self.X_train.shape[1] if self.X_train else 9
         self.output_shape = 1
@@ -1065,8 +1065,8 @@ class WallclockRegressor(BuilderMLP):
     def __init__(
         self, X_train=None, y_train=None, X_test=None, y_test=None, blueprint="wall_reg", test_idx=None
     ):
-        train_data = (X_train, y_train) if X_train and y_train else None
-        test_data = (X_test, y_test) if X_test and y_test else None
+        train_data = (X_train, y_train) if X_train is not None and y_train is not None else None
+        test_data = (X_test, y_test) if X_test is not None and y_test is not None else None
         super().__init__(train_data=train_data, test_data=test_data, blueprint=blueprint)
         self.input_shape = self.X_train.shape[1] if self.X_train else 9
         self.output_shape = 1
