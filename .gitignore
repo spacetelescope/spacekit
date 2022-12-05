@@ -80,3 +80,4 @@ clocktime.txt
 .secrets
 tests/data/cal/data/
 tests/data/svm/data/
+svm-pred-testing.ipynb
