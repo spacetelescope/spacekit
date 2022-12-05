@@ -1,10 +1,12 @@
 import os
 import glob
+import time
 import pandas as pd
 import numpy as np
 from spacekit.extractor.scrape import MastScraper, FitsScraper, scrape_catalogs
 from spacekit.preprocessor.encode import SvmEncoder
 
+from spacekit.logger.log import Logger
 
 class Scrubber:
     """Base parent class for preprocessing data. Includes some basic column scrubbing methods for pandas dataframes. The heavy lifting is done via subclasses below."""
@@ -17,7 +19,15 @@ class Scrubber:
         output_file=None,
         dropnans=True,
         save_raw=True,
+        name="Scrubber",
+        loglevel="info",
+        logger=None,
     ):
+        self.__name__ = name
+        if logger is None:
+            self.log = Logger(self.__name__, console_log_level=loglevel).setup_logger()
+        else:
+            self.log = logger
         self.df = self.cache_data(cache=data)
         self.col_order = col_order
         self.output_path = output_path
@@ -25,6 +35,7 @@ class Scrubber:
         self.dropnans = dropnans
         self.save_raw = save_raw
         self.data_path = None
+
 
     def cache_data(self, cache=None):
         return cache.copy() if cache is not None else cache
@@ -36,7 +47,7 @@ class Scrubber:
         #     extracted += [col for col in self.df if c in col]
         # return extracted
         extract = [c for c in cols if c in self.df.columns]
-        print("Extract matching columns: ", extract)
+        self.log.info(f"Extract matching columns: {extract}")
         self.df = self.df[extract]
 
     def col_splitter(self, splitter=".", keep=-1, make_lowercase=True):
@@ -44,7 +55,7 @@ class Scrubber:
             cols = [col.split(splitter)[keep].lower() for col in self.df.columns]
         else:
             cols = [col.split(splitter)[keep] for col in self.df.columns]
-        print("Split columns: ", cols)
+        self.log.info(f"Split columns: {cols}")
         return cols
 
     def rename_cols(self, old=None, new=None):
@@ -55,19 +66,19 @@ class Scrubber:
             new = self.col_splitter()
         hc = dict(zip(old, new))
         self.df.rename(hc, axis="columns", inplace=True)
-        print("New column names: ", self.df.columns)
+        self.log.info(f"New column names: {self.df.columns}")
 
     def drop_nans(self, save_backup=True):
         if self.dropnans is True:
-            print("Searching for NaNs...")
-            print(self.df.isna().sum())
+            self.log.info("Searching for NaNs...")
+            self.log.info(f"{self.df.isna().sum()}")
             if self.df.isna().sum().values.any() > 0:
-                print("Dropping NaNs")
+                self.log.info("Dropping NaNs")
             self.df.dropna(axis=0, inplace=True)
 
     def drop_and_set_cols(self, label_cols=["label"]):
         if self.col_order is None:
-            print("col_order attribute not set - skipping.")
+            self.log.info("col_order attribute not set - skipping.")
             return self.df
         if label_cols:
             for lab in label_cols:
@@ -95,7 +106,7 @@ class Scrubber:
         self.data_path = f"{self.output_path}/{pfx}{self.output_file}.csv"
         df[index_col] = df.index
         df.to_csv(self.data_path, index=False)
-        print("Data saved to: ", self.data_path)
+        self.log.info(f"Data saved to: {self.data_path}")
         df.drop(index_col, axis=1, inplace=True)
 
 
@@ -135,7 +146,10 @@ class SvmScrubber(Scrubber):
         make_pos_list=True,
         crpt=0,
         make_subsamples=False,
+        loglevel="info",
     ):
+        self.__name__ = "SVMScrubber"
+        self.log = Logger(self.__name__, console_log_level=loglevel).setup_logger()
         self.col_order = self.set_col_order()
         super().__init__(
             data=data,
@@ -144,7 +158,9 @@ class SvmScrubber(Scrubber):
             output_file=output_file,
             dropnans=dropnans,
             save_raw=save_raw,
+            logger=self.log
         )
+
         self.input_path = input_path
         self.make_pos_list = make_pos_list
         self.crpt = crpt
@@ -158,7 +174,15 @@ class SvmScrubber(Scrubber):
         self.scrub_columns()
         # STAGE 2 initial encoding
         self.df = FitsScraper(self.df, self.input_path).scrape_fits()
-        self.df = MastScraper(self.df).scrape_mast()
+        n_retries = 3
+        while n_retries > 0:
+            try:
+                self.df = MastScraper(self.df).scrape_mast()
+                n_retries = 0
+            except Exception as e:
+                self.log.warning(e)
+                time.sleep(5)
+                n_retries -= 1
         # STAGE 3 final encoding
         enc = SvmEncoder(self.df)
         self.df = enc.encode_features()
@@ -173,11 +197,17 @@ class SvmScrubber(Scrubber):
         super().save_csv_file()
         return self
 
-    def scrub2(self):
+    # TODO
+    def scrub2(self, summary=None, total_obj_file=None):
         if self.df is None:
-            self.scrub_qa_summary()
-        else:
-            self.scrub_qa_data()
+            if summary:
+                self.scrub_qa_summary(fname=summary)
+            elif total_obj_file:
+                self.run_qa(pickle_file=total_obj_file)
+                self.scrub_qa_data()
+            else:
+                return
+
         if self.save_raw is True:
             super().save_csv_file(pfx="raw_")
         # STAGE 3 final encoding
@@ -189,18 +219,34 @@ class SvmScrubber(Scrubber):
         self.find_subsamples()
         super().save_csv_file()
 
+    def run_qa(self, total_obj_file="total_obj_list_full.pickle"):
+        pass
+        # import pickle
+        # try:
+        #     from drizzlepac.hap_utils.svm_quality_analysis import run_quality_analysis
+        # except ImportError:
+        #     print("Running SVM QA requires drizzlepac to be installed via pip.")
+        
+        # with open(total_obj_file, 'rb') as pck:
+        #     total_obj_list = pickle.load(pck)
+
+        # run_quality_analysis(total_obj_list, run_compare_num_sources=True, run_find_gaia_sources=True,
+        #                  run_compare_hla_sourcelists=True, run_compare_ra_dec_crossmatches=True,
+        #                  run_characterize_gaia_distribution=True, run_compare_photometry=True,
+        #                  run_compare_interfilter_crossmatches=True, run_report_wcs=True)
+
     def scrub_qa_data(self):
         self.scrub_columns()
         # STAGE 2 initial encoding
         self.df = FitsScraper(self.df, self.input_path).scrape_fits()
         self.df = MastScraper(self.df).scrape_mast()
 
-    def scrub_qa_summary(self, fname="single_visit_mosaics*.csv", idx=0):
+    def scrub_qa_summary(self, csvfile="single_visit_mosaics*.csv", idx=0):
         """Alternative if no .json files available (QA step not run during processing)"""
         # fname = 'single_visit_mosaics_2021-10-06.csv'
-        fpath = glob.glob(os.path.join(self.input_path, fname))
+        fpath = glob.glob(os.path.join(self.input_path, csvfile))
         if len(fpath) == 0:
-            return
+            return None
         data = pd.read_csv(fpath[0], index_col=idx)
         index = {}
         for i, row in data.iterrows():
@@ -227,12 +273,24 @@ class SvmScrubber(Scrubber):
     def scrub_columns(self):
         """Initial dataframe scrubbing to extract and rename columns, drop NaNs, and set the index."""
         split_cols = super().col_splitter()
+        check_columns = ['targname', 'ra_targ', 'dec_targ', 'numexp', 'imgname', 'number_of_gaia_sources', 'detector', 'point', 'segment']
+        missing = [c for c in check_columns if c not in split_cols]
+        if missing:
+            if 'number_of_gaia_sources' in missing:
+                self.log.warning("Inserting zero value for gaia sources")
+                shape = self.df.index.values.shape
+                self.df['number_of_gaia_sources.number_of_gaia_sources'] = np.zeros(shape=shape, dtype=int)
+                split_cols.append('number_of_gaia_sources')
+            else:
+                raise Exception(f"Dataframe is missing some data:\n {missing}")
+
         super().rename_cols(new=split_cols)
         super().extract_matching_columns(self.new_cols)
         super().drop_nans()
         index_data = self.split_index()
         self.df = index_data.join(self.df, how="left")
         super().rename_cols(old=["number_of_gaia_sources"], new=["gaia"])
+
 
     def set_col_order(self):
         return [
@@ -294,7 +352,7 @@ class SvmScrubber(Scrubber):
                         for i in pos:
                             f.writelines(f"{i}\n")
             else:
-                print("No labels found - skipping")
+                self.log.info("No labels found - skipping")
 
     def add_crpt_labels(self):
         """For new synthetic datasets, adds "label" target column and assigns value of 1 to all rows.
@@ -332,3 +390,48 @@ class SvmScrubber(Scrubber):
             with open(f"{output_path}/subset.txt", "w") as f:
                 for s in subsamples:
                     f.writelines(f"{s}\n")
+
+class CalScrubber(Scrubber):
+    def __init__(
+        self,
+        input_path,
+        data=None,
+        output_path=None,
+        output_file="batch.csv",
+        dropnans=True,
+        save_raw=True,
+        loglevel="info"
+    ):
+        self.__name__ = "CalScrubber"
+        self.log = Logger(self.__name__, console_log_level=loglevel).setup_logger()
+        self.col_order = self.set_col_order()
+        super().__init__(
+            data=data,
+            col_order=self.col_order,
+            output_path=output_path,
+            output_file=output_file,
+            dropnans=dropnans,
+            save_raw=save_raw,
+            logger=self.log
+        )
+        self.input_path = input_path
+    
+    def set_col_order(self):
+        return [
+            "n_files",
+            "total_mb",
+            "drizcorr",
+            "pctecorr",
+            "crsplit",
+            "subarray",
+            "detector",
+            "dtype",
+            "instr",
+        ]
+
+    def set_new_cols(self):
+        self.new_cols = [
+            "x_files",
+            "x_size"
+        ]
+        return self.new_cols.extend(self.col_order)

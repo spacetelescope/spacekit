@@ -27,6 +27,7 @@ def run_preprocessing(
     visit=None,
     crpt=0,
     draw=1,
+    subset_name=None
 ):
     """Scrapes SVM data from raw files, preprocesses dataframe for MLP classifier and generates png images for image CNN.
     #TODO: if no JSON files found, look for results_*.csv file instead and preprocess via alternative method
@@ -71,7 +72,6 @@ def run_preprocessing(
             output_path=output_path,
         )
         jsc.json_harvester()
-        jsc.h5store()
     else:
         jsc = JsonScraper(h5_file=h5).load_h5_file()
     # 2: Scrape Fits Files and SCRUB DATAFRAME
@@ -90,6 +90,7 @@ def run_preprocessing(
             gen=3,
             size=(24, 24),
             crpt=crpt,
+            subset_name=subset_name
         )
         mos.generate_total_images()
     return scrub.df, scrub.data_path

@@ -34,10 +34,10 @@ def test_ensemble_builder(svm_labeled_dataset, svm_train_npz):
         ensemble=True,
     )
     ens = BuilderEnsemble(
-        XTR,
-        YTR,
-        XTS,
-        YTS,
+        X_train=XTR,
+        y_train=YTR,
+        X_test=XTS,
+        y_test=YTS,
         params=params,
         input_name="svm_mixed_inputs",
         output_name="svm_output",

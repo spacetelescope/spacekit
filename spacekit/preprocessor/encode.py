@@ -327,3 +327,134 @@ class SvmEncoder:
                 print(string)
             print("\n")
         print("---" * 7)
+
+
+class CalEncoder:
+
+    """Categorical encoding class for HST Calibration in the Cloud Reprocessing inputs."""
+
+    def __init__(
+        self,
+        data,
+        fkeys=["DETECTOR", "SUBARRAY", "DRIZCORR", "PCTECORR"],
+        names=["detector", "subarray", "drizcorr", "pctecorr"],
+    ):
+        """Instantiates a CalEncoder class object.
+
+        Parameters
+        ----------
+        data : dataframe
+            input data containing features (columns) to be encoded
+
+        fkeys: list
+            categorical-type column names (str) to be encoded
+
+        names: list
+            new names to assign columns of the encoded versions of categorical data
+
+        """
+        self.data = data
+        self.fkeys = fkeys
+        self.names = names
+        self.df = self.categorical_data()
+        self.make_keypairs()
+
+    def __repr__(self):
+        return (
+            "encodings: %s \n category_keys: %s \n detector_keys: %s \n wcs_keys: %s"
+            % (self.encodings, self.category_keys, self.detector_keys, self.wcs_keys)
+        )
+    
+    def set_calibration_keys(self):
+        return {
+            "PERFORM": 1,
+            "OTHER": 0,
+        }
+    
+    def set_detector_keys(self):
+        return {
+            "UVIS": 1,
+            "WFC": 1,
+            "OTHER": 0
+        }
+    
+    def set_subarray_keys(self):
+        return {
+            "True": 1,
+            "False": 0
+        }
+    
+    def set_crsplit_keys(self):
+        return {
+            "NaN": 0,
+            "1.0": 1,
+            "OTHER": 2
+        }
+    
+    def set_dtype_keys(self, i):
+        return {"0": 1, "OTHER": 0}
+
+    def set_instr_keys(self, i):
+        return dict(j=0, l=1, o=2, i=3)
+
+
+    # def scrub_keys(self, ipst, input_data):
+    #     n_files = 0
+    #     total_mb = 0
+    #     detector = 0
+    #     subarray = 0
+    #     drizcorr = 0
+    #     pctecorr = 0
+    #     crsplit = 0
+
+    #     for k, v in input_data.items():
+    #         if k == "n_files":
+    #             n_files = int(v)
+    #         if k == "total_mb":
+    #             total_mb = int(np.round(float(v), 0))
+    #         if k == "DETECTOR":
+    #             if v in ["UVIS", "WFC"]:
+    #                 detector = 1
+    #             else:
+    #                 detector = 0
+    #         if k == "SUBARRAY":
+    #             if v == "True":
+    #                 subarray = 1
+    #             else:
+    #                 subarray = 0
+    #         if k == "DRIZCORR":
+    #             if v == "PERFORM":
+    #                 drizcorr = 1
+    #             else:
+    #                 drizcorr = 0
+    #         if k == "PCTECORR":
+    #             if v == "PERFORM":
+    #                 pctecorr = 1
+    #             else:
+    #                 pctecorr = 0
+    #         if k == "CRSPLIT":
+    #             if v == "NaN":
+    #                 crsplit = 0
+    #             elif v == "1.0":
+    #                 crsplit = 1
+    #             else:
+    #                 crsplit = 2
+
+    #     i = ipst
+    #     # dtype (asn or singleton)
+    #     if i[-1] == "0":
+    #         dtype = 1
+    #     else:
+    #         dtype = 0
+    #     # instr encoding cols
+    #     if i[0] == "j":
+    #         instr = 0
+    #     elif i[0] == "l":
+    #         instr = 1
+    #     elif i[0] == "o":
+    #         instr = 2
+    #     elif i[0] == "i":
+    #         instr = 3
+
+    #     inputs = np.array([n_files, total_mb, drizcorr, pctecorr, crsplit, subarray, detector, dtype, instr])
+    #     return inputs

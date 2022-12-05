@@ -80,3 +80,5 @@ clocktime.txt
 .secrets
 tests/data/cal/data/
 tests/data/svm/data/
+*.ipynb
+.env

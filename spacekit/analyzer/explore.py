@@ -8,9 +8,15 @@ import plotly.graph_objs as go
 from plotly import subplots
 import plotly.offline as pyo
 import plotly.figure_factory as ff
-from keras.preprocessing import image
+import plotly.express as px
 from scipy.stats import iqr
 from spacekit.preprocessor.transform import PowerX
+from spacekit.generator.augment import augment_image
+
+try:
+    from keras.preprocessing.image import array_to_img
+except ImportError:
+    from tensorflow.keras.utils import array_to_img
 
 plt.style.use("seaborn-bright")
 font_dict = {"family": '"Titillium Web", monospace', "size": 16}
@@ -20,9 +26,9 @@ mpl.rc("font", **font_dict)
 class ImagePreviews:
     """Base parent class for rendering and displaying images as plots"""
 
-    def __init__(self, X, y):
+    def __init__(self, X, labels):
         self.X = X
-        self.y = y
+        self.y = labels
 
 
 class SVMPreviews(ImagePreviews):
@@ -34,65 +40,162 @@ class SVMPreviews(ImagePreviews):
         spacekit.analyzer.explore.ImagePreviews parent class
     """
 
-    def __init__(self, X, y, X_prime, y_prime):
+    def __init__(self, X, labels=None, names=None, ndims=3, channels=3, w=128, h=128, figsize=(10,10)):
         """Instantiates an SVMPreviews class object.
 
         Parameters
         ----------
         X : ndarray
             ndimensional array of image pixel values
-        y : ndarray
-            target class labels
-        X_prime : ndarray
-            ndimensional array of augmented image pixel values
-        y_prime : ndarray
-            target class labels for the augmented images
+        labels : ndarray, optional
+            target class labels for each image
+        ndims : int, optional
+            number of dimensions (frames) per image, by default 3
+        channels : int, optional
+            channels per image frame (rgb color is 3, gray/bw is 1), by default 3
+        w : int, optional
+            width of images, by default 128
+        h : int, optional
+            height of images, by default 128
         """
-        super().__init__(X, y)
-        self.X_prime = X_prime
-        self.y_prime = y_prime
+        super().__init__(X, labels)
+        self.names = names
+        self.n_images = len(X)
+        self.ndims = ndims
+        self.channels = channels
+        self.w = w
+        self.h = h
+        self.figsize = figsize
+    
+    def select_image_from_array(self, i=None):
+        if i is None:
+            return self.X
+        else:
+            return self.X[i]
+    
+    def check_dimensions(self, Xi):
+        if Xi.shape != (self.ndims, self.w, self.h, self.channels):
+            try:
+                Xi = Xi.reshape(self.ndims, self.w, self.h, self.channels)
+                return Xi
+            except Exception as e:
+                print(e)
+    
+    def preview_image(self, Xi, dim=3, aug=False, show=False):
+        if aug is True:
+            # reshape handled by augment if needed
+            Xi = augment_image(Xi)
+            title = "Augmented"
+        else:
+            Xi = self.check_dimensions(Xi)
+            title = "Original"
 
-    def preview_pair(self):
-        """Plots an original image with its augmented versions."""
-        A = self.X
-        B = self.X_prime
+        frames = ["orig", "pt-seg", "gaia"]
+        fig = px.imshow(
+                Xi, 
+                facet_col=0, 
+                binary_string=True, 
+                labels={'facet_col':'frame'}, 
+                facet_col_wrap=3
+                )
 
-        plt.figure(figsize=(10, 10))
-        for n in range(3):
-            x = image.array_to_img(A[n][0])
-            ax = plt.subplot(3, 3, n + 1)
-            ax.imshow(x)
+        for i, frame in enumerate(frames):
+            fig.layout.annotations[i]['text'] = '%s' %frame
+
+        fig.update_layout(
+            title_text=f"{title} Image Slices",
+            margin=dict(t=100),
+            width=990,
+            height=500,
+            showlegend=False,
+            paper_bgcolor="#242a44",
+            plot_bgcolor="#242a44",
+            font={
+                "color": "#ffffff",
+            },
+        )
+        fig.update_xaxes(visible=False)
+        fig.update_yaxes(visible=False)
+        if show is True:
+            fig.show()
+        else:
+            return fig
+
+
+    def preview_image_mpl(self, Xi, dim=3, aug=False, show=False):
+        if aug is True:
+            # reshape handled by augment if needed
+            Xi = augment_image(Xi)
+        else:
+            Xi = self.check_dimensions(Xi)
+        
+        fig = plt.figure(figsize=self.figsize)
+        for n in range(dim):
+            xi = array_to_img(Xi[n])
+            #xi = image.array_to_img(Xi[n])
+            ax = plt.subplot(dim, dim, n+1)
+            ax.imshow(xi)
             plt.axis("off")
-        plt.show()
+        if show is True:
+            plt.show()
+        else:
+            plt.close()
+            return fig
+    
+    def get_synthetic_image(self, img_name, show=False, dim=3, aug=False):
+        pairs = [i for i in self.names if img_name in i]
+        if len(pairs) > 1:
+            synth_name = pairs[np.argmax([len(p.split('_')) for p in pairs])]
+            synth_num = np.where(self.names == synth_name)
+            synth_img = self.select_image_from_array(synth_num)
+            if show is True:
+                self.preview_image(synth_img, dim=dim, aug=aug)
+            return synth_name, synth_num, synth_img
+        else:
+            print("Synthetic version not found for the selected image")
+            return None
+    
+    def preview_og_aug_pair(self, i=None, dim=3):
+        """Plot frames of both original and augmented versions of n-dimensional images
 
-        plt.figure(figsize=(10, 10))
-        for n in range(3):
-            x = image.array_to_img(B[n][0])
-            ax = plt.subplot(3, 3, n + 1)
-            ax.imshow(x)
-            plt.axis("off")
-        plt.show()
+        Parameters
+        ----------
+        i : int, optional
+            index of image selected from array X, by default None
+        dim : int, optional
+              dimensions (number of frames per image), by default 3
+        """
+        Xi = self.select_image_from_array(i=i)
+        self.preview_image(Xi, dim=dim, aug=False)
+        self.preview_image(Xi, dim=dim, aug=True)
 
-    def preview_augmented(self):
-        """Finds the matching positive class images from both image sets and displays them in a grid."""
-        posA = self.X[-self.X_prime.shape[0] :][self.y[-self.X_prime.shape[0] :] == 1]
-        posB = self.X_prime[self.y_prime == 1]
 
-        plt.figure(figsize=(10, 10))
-        for n in range(5):
-            x = image.array_to_img(posA[n][0])
-            ax = plt.subplot(5, 5, n + 1)
-            ax.imshow(x)
-            plt.axis("off")
-        plt.show()
+    def preview_og_syn_pair(self, img_name):
+        pairs = [i for i in self.X if img_name in i]
+        self.preview_image(pairs[0])
+        self.preview_image(pairs[1])
 
-        plt.figure(figsize=(10, 10))
-        for n in range(5):
-            x = image.array_to_img(posB[n][0])
-            ax = plt.subplot(5, 5, n + 1)
-            ax.imshow(x)
-            plt.axis("off")
-        plt.show()
+
+    # def preview_corrupted_pairs(self):
+    #     """Finds the matching positive class images from both image sets and displays them in a grid."""
+    #     posA = self.X[-self.X_prime.shape[0] :][self.y[-self.X_prime.shape[0] :] == 1]
+    #     posB = self.X_prime[self.y_prime == 1]
+
+    #     plt.figure(figsize=(10, 10))
+    #     for n in range(5):
+    #         x = image.array_to_img(posA[n][0])
+    #         ax = plt.subplot(5, 5, n + 1)
+    #         ax.imshow(x)
+    #         plt.axis("off")
+    #     plt.show()
+
+    #     plt.figure(figsize=(10, 10))
+    #     for n in range(5):
+    #         x = image.array_to_img(posB[n][0])
+    #         ax = plt.subplot(5, 5, n + 1)
+    #         ax.imshow(x)
+    #         plt.axis("off")
+    #     plt.show()
 
 
 class DataPlots:
