@@ -27,6 +27,7 @@ class DrawMosaics:
         gen=3,
         size=(24, 24),
         crpt=0,
+        subset_name=None,
     ):
         """Initializes a DrawMosaics class object.
 
@@ -63,6 +64,7 @@ class DrawMosaics:
         self.datasets = self.get_datasets()
         self.clip = True
         self.manual = None
+        self.subset_name = subset_name
 
     def check_output(self):
         """check if a custom output_path is set, otherwise create a subdirectory "img" in the current working directory and set as the output_path attribute.
@@ -293,7 +295,7 @@ class DrawMosaics:
         """Batch image generation method for multiple datasets (and multiple catalog types)"""
         base = os.path.dirname(os.path.abspath(self.output_path))
         start = time.time()
-        stopwatch("DRAWING IMAGES", t0=start, out=base)
+        stopwatch("DRAWING IMAGES", t0=start, out=base, subset_name=self.subset_name)
         if self.datasets is None:
             print("No datasets available. Exiting")
             sys.exit(1)
@@ -312,7 +314,9 @@ class DrawMosaics:
             else:  # original (0)
                 self.draw_total_images(dataset)
         end = time.time()
-        stopwatch("IMAGE GENERATION", t0=start, t1=end, out=base)
+        stopwatch(
+            "IMAGE GENERATION", t0=start, t1=end, out=base, subset_name=self.subset_name
+        )
 
     def draw_total_images(self, dataset, P=0, S=0, G=0):
         """Primary class method for plotting the data, drawing the catalogs (if any) and saving to local disk as png.

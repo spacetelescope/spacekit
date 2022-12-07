@@ -93,5 +93,5 @@ def load(name="calcloud", date_key=None, fpath=None, data_home=None):
         scn = CalScanner(perimeter=fpath)
     elif name == "svm":
         scn = SvmScanner(perimeter=fpath)
-    df = scn.load_dataframe(kwargs=scn.kwargs, decoder=scn.decoder)
-    return df
+    scn.load_dataframe()
+    return scn.df

@@ -151,6 +151,24 @@ class Scraper:
         self.fpaths = extracted_fpaths
         return self.fpaths
 
+    def compress_files(self, target_folder, fname=None, compression="zip"):
+        if fname is None:
+            fname = os.path.basename(target_folder) + f".{compression}"
+        else:
+            fname = os.path.basename(fname).split(".")[0] + f".{compression}"
+        archive_path = os.path.join(self.cache_dir, fname)
+        file_paths = []
+        for root, _, files in os.walk(target_folder):
+            for filename in files:
+                filepath = os.path.join(root, filename)
+                file_paths.append(filepath)
+        print("Zipping files:")
+        with ZipFile(archive_path, "w") as zip_ref:
+            for file in file_paths:
+                zip_ref.write(file)
+                print(file)
+        return
+
 
 class FileScraper(Scraper):
     """Scraper subclass used to search and extract files on local disk that match regex/glob pattern(s).
@@ -436,9 +454,10 @@ class DynamoDBScraper(Scraper):
         )
         self.table_name = table_name
         self.attr = attr
-        self.ddb_data
         self.fname = fname
         self.formatter = formatter
+        self.ddb_data = None
+        self.fpath = None
 
     def get_keys(self, items):
         keys = set([])
@@ -526,13 +545,14 @@ class DynamoDBScraper(Scraper):
         return self.ddb_data
 
     def write_to_csv(self):
-        with open(self.fname, "w") as csvfile:
+        self.fpath = os.path.join(self.cache_dir, self.cache_subdir, self.fname)
+        with open(self.fpath, "w") as csvfile:
             writer = csv.DictWriter(
                 csvfile, delimiter=",", fieldnames=self.ddb_data["keys"], quotechar='"'
             )
             writer.writeheader()
             writer.writerows(self.ddb_data["items"])
-        print(f"DDB data saved to: {self.fname}")
+        print(f"DDB data saved to: {self.fpath}")
 
     def format_row_item(self, row):
         row = self.formatter(row)
@@ -817,7 +837,7 @@ class JsonScraper:
         self.save_csv = save_csv
         self.store_h5 = store_h5
         self.h5_file = h5_file
-        self.output_path = output_path
+        self.output_path = os.getcwd() if output_path is None else output_path
         self.__name__ = "diagnostic_json_harvester"
         self.msg_datefmt = "%Y%j%H%M%S"
         self.splunk_msg_fmt = "%(asctime)s %(levelname)s src=%(name)s- %(message)s"
@@ -832,10 +852,10 @@ class JsonScraper:
             "number_of_sources.point",
             "number_of_sources.segment",
         ]
-        self.log = None
+        self.log = self.start_logging()
         self.json_dict = None
         self.data = None  # self.json_harvester()
-        self.h5_file = None  # self.h5store()
+        # self.h5_file = None  # self.h5store()
 
     def start_logging(self):
         """Initializes a logging object which logs process info to sys.stdout
@@ -852,6 +872,7 @@ class JsonScraper:
             format=self.splunk_msg_fmt,
             datefmt=self.msg_datefmt,
         )
+        self.log.setLevel(self.log_level)
         return self.log
 
     def flatten_dict(self, dd, separator=".", prefix=""):
@@ -1007,13 +1028,15 @@ class JsonScraper:
         string
             path to stored h5 file
         """
-        if self.output_path is None:
-            self.output_path = os.getcwd()
+        if self.store_h5 is False:
+            return
         fname = self.file_basename.split(".")[0] + ".h5"
         self.h5_file = os.path.join(self.output_path, fname)
-        if os.path.exists(self.h5_file):
-            os.remove(self.h5_file)
+
         if self.data is not None:
+            if os.path.exists(self.h5_file):
+                self.log.warning("Overwriting existing h5 file.")
+                os.remove(self.h5_file)
             store = pd.HDFStore(self.h5_file)
             store.put("mydata", self.data)
             store.get_storer("mydata").attrs.metadata = kwargs
@@ -1039,18 +1062,21 @@ class JsonScraper:
             Requested file not found
         """
         if self.h5_file is None:
-            if self.output_path is None:
-                self.output_path = os.getcwd()
             self.h5_file = os.path.join(self.output_path, self.file_basename + ".h5")
         elif not self.h5_file.endswith(".h5"):
             self.h5_file += ".h5"
-        if os.path.exists(self.h5_file):
+        if not os.path.exists(self.h5_file):
+            h5_path = os.path.join(self.output_path, self.h5_file)
+            if os.path.exists(h5_path):
+                self.h5_file = h5_path
+        try:
             with pd.HDFStore(self.h5_file) as store:
                 self.data = store["mydata"]
-                print(f"Dataframe created: {self.data.shape}")
-        else:
+                self.log.info(f"Dataframe created: {self.data.shape}")
+        except Exception as e:
+            print(e)
             errmsg = "HDF5 file {} not found!".format(self.h5_file)
-            print(errmsg)
+            self.log.error(errmsg)
             raise Exception(errmsg)
         return self.data
 
@@ -1062,8 +1088,6 @@ class JsonScraper:
         dataframe
             dataset created by scraping data from json files on local disk.
         """
-        self.log = self.start_logging()
-        self.log.setLevel(self.log_level)
         # Get sorted list of json files
         self.data = None
         # extract all information from all json files related to a specific Pandas DataFrame index value into a
@@ -1083,14 +1107,18 @@ class JsonScraper:
                 else:
                     self.log.debug("CREATED DATAFRAME")
                     self.data = pd.DataFrame(ingest_dict["data"], index=[idx])
-        if self.save_csv:
-            self.write_to_csv()
+
+        self.write_to_csv()
+        self.h5store()
         return self.data
 
     def write_to_csv(self):
         """optionally write dataframe out to .csv file."""
+        if not self.save_csv:
+            return
         output_csv_filename = self.h5_filename.replace(".h5", ".csv")
         if os.path.exists(output_csv_filename):
+            self.log.warning("Overwriting existing CSV")
             os.remove(output_csv_filename)
         self.data.to_csv(output_csv_filename)
         self.log.info("Wrote dataframe to csv file {}".format(output_csv_filename))
@@ -1125,11 +1153,10 @@ class JsonScraper:
                 title_suffix = ""
             json_data = self.read_json_file(json_filename)
             # add information from "header" section to ingest_dict just once
-            keyword_shortlist = ["TARGNAME", "DEC_TARG", "RA_TARG", "NUMEXP", "imgname"]
             if not header_ingested:
                 # filter out ALL header keywords not included in 'keyword_shortlist'
                 for header_item in json_data["header"].keys():
-                    if header_item in keyword_shortlist:
+                    if header_item in self.keyword_shortlist:
                         # if header_item in header_keywords_to_keep:
                         ingest_dict["data"]["header." + header_item] = json_data[
                             "header"
@@ -1138,7 +1165,7 @@ class JsonScraper:
             # add information from "general information" section to ingest_dict just once
             if not gen_info_ingested:
                 for gi_item in json_data["general information"].keys():
-                    if gi_item in keyword_shortlist:
+                    if gi_item in self.keyword_shortlist:
                         ingest_dict["data"]["gen_info." + gi_item] = json_data[
                             "general information"
                         ][gi_item]

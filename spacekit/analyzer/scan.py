@@ -623,7 +623,7 @@ class SvmScanner(MegaScanner):
             tcom, vcom = com_objects[i]
             self.mega[v]["res"] = dict(test=tcom, val=vcom)
             del tcom, vcom
-        return self.mega
+        # return self.mega
 
     def load_svm_objects(self, dpath):
         """Load Binary classifier compute objects for a single iteration of test and validation results

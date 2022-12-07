@@ -1,12 +1,18 @@
-from dash import html
-from dash import dcc
-from dash.dependencies import Input, Output
+from dash import html, dcc
+from dash.dependencies import Input, Output, State
+from dash.exceptions import PreventUpdate
+from argparse import ArgumentParser
 from app import app
 from spacekit.dashboard.svm import eda, eval, pred
-from spacekit.dashboard.svm.config import svm, hst, images
-from spacekit.analyzer.explore import SVMPreviews
-from spacekit.generator.augment import augment_image
+from spacekit.dashboard.svm.config import svm, hst, images  # NN
 import numpy as np
+
+from spacekit.analyzer.explore import SVMPreviews
+
+
+(idx, X, y) = images
+global imps
+imps = SVMPreviews(X, labels=y, names=idx)
 
 url_bar_and_content_div = html.Div(
     [dcc.Location(id="url", refresh=False), html.Div(id="page-content")]
@@ -94,7 +100,7 @@ def update_cmx(cmx_type):
     return svm.triple_cmx(svm.cmx[cmx_type], cmx_type)
 
 
-# TODO
+# PAGE 2 EDA CALLBACKS
 # SCATTER CALLBACK
 @app.callback(
     [
@@ -135,16 +141,6 @@ def update_kde(selected_kde):
         hst.kde["norm"][selected_kde],
         hst.kde["rms"],
     ]
-
-
-@app.callback(Output("image-graph", "figure"), Input("selected-image", "value"))
-def update_image_previews(selected_image):
-    (idx, X, y) = images
-    img_num = np.where(idx == selected_image)
-    x = X[img_num].reshape(3, 128, 128, 3)
-    label = y[img_num]
-    x_prime = augment_image(x)
-    previews = SVMPreviews(X, y, x_prime, y)
 
 
 # 3D Scatter
@@ -189,7 +185,50 @@ def update_image_previews(selected_image):
 #     continuous_figs = hst.make_continuous_figs(vars)
 #     return continuous_figs
 
+# PAGE 3 PRED CALLBACKS
+
+
+def select_images(selected_image):
+    img_num = np.where(imps.names == selected_image)
+    Xi = imps.select_image_from_array(i=img_num)
+    return Xi
+
+
+@app.callback(
+    [Output("original-image", "figure"), Output("augment-button-state", "disabled")],
+    Input("preview-button-state", "n_clicks"),
+    State("image-state", "value"),
+)
+def update_image_previews(n_clicks, selected_image):
+    if n_clicks == 0:
+        raise PreventUpdate
+    Xi = select_images(selected_image)
+    fig = imps.preview_image(Xi)
+    disabled = False
+    return [fig, disabled]
+
+
+@app.callback(
+    Output("augmented-image", "figure"),
+    Input("augment-button-state", "n_clicks"),
+    State("image-state", "value"),
+)
+def preview_augmented_image(n_clicks, selected_image):
+    if n_clicks == 0:
+        raise PreventUpdate
+    Xp = select_images(selected_image)
+    fig = imps.preview_image(Xp, aug=True)
+    return fig
+
 
 if __name__ == "__main__":
-    app.run_server(host="0.0.0.0", port=8050, debug=True, dev_tools_prune_errors=False)
-    # app.run_server(debug=True)
+    parser = ArgumentParser()
+    parser.add_argument("--host", type=str, default="0.0.0.0")
+    parser.add_argument("--port", type=int, default=8050)
+    parser.add_argument("--env", type=str, choices=["prod", "dev"], default="dev")
+    args = parser.parse_args()
+    host, port = args.host, args.port
+    if args.env == "dev":
+        app.run_server(host=host, port=port, debug=True, dev_tools_prune_errors=False)
+    else:
+        app.run_server(host="0.0.0.0", port=8050)

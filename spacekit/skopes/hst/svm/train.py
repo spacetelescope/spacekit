@@ -194,10 +194,10 @@ def train_ensemble(
             ensemble=True,
         )
     ens = BuilderEnsemble(
-        XTR,
-        YTR,
-        XTS,
-        YTS,
+        X_train=XTR,
+        y_train=YTR,
+        X_test=XTS,
+        y_test=YTS,
         params=params,
         input_name="svm_mixed_inputs",
         output_name="svm_output",
