@@ -87,7 +87,7 @@ class Builder:
             self.model_path = self.unzip_model_files()
         if arch == "ensembleSVM":
             custom_obj = {
-                "leaky_relu": leakyReLU
+                "leaky_relu": LeakyReLU
             }
         elif arch == "calmodels":
             self.model_path = os.path.join(self.model_path, self.blueprint)
