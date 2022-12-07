@@ -203,16 +203,6 @@ def train_ensemble(
         output_name="svm_output",
         name=model_name,
     )
-    # ens = BuilderEnsemble(
-    #     XTR,
-    #     YTR,
-    #     XTS,
-    #     YTS,
-    #     params=params,
-    #     input_name="svm_mixed_inputs",
-    #     output_name="svm_output",
-    #     name=model_name,
-    # )
     ens.build()
     ens.batch_fit()
     if output_path is None:

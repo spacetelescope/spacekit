@@ -83,3 +83,4 @@ tests/data/svm/data/
 *.ipynb
 .env
 *.log
+*.backup
