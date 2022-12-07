@@ -10,6 +10,7 @@ from tensorflow.keras.models import Sequential, Model, load_model
 from tensorflow.keras import optimizers, callbacks
 from tensorflow.keras.layers import (
     Dense,
+    LeakyReLU,
     Input,
     concatenate,
     Conv1D,
@@ -62,7 +63,7 @@ class Builder:
         self.name = None
         self.tx_file = None
 
-    def load_saved_model(self, arch="ensembleSVM", compile_params=None):
+    def load_saved_model(self, arch="ensembleSVM", compile_params=None, custom_obj={}):
         """Load saved keras model from local disk (located at the ``model_path`` attribute) or a pre-trained model from spacekit.skopes.trained_networks (if ``model_path`` attribute is None). Example for ``compile_params``: ``dict(loss="binary_crossentropy", metrics=["accuracy"], optimizer=Adam(learning_rate=optimizers.schedules.ExponentialDecay(lr=1e-4, decay_steps=100000, decay_rate=0.96, staircase=True)))``
 
         Parameters
@@ -84,9 +85,13 @@ class Builder:
                 self.model_path = mod
         if str(self.model_path).split(".")[-1] == "zip":
             self.model_path = self.unzip_model_files()
-        if arch == "calmodels":
+        if arch == "ensembleSVM":
+            custom_obj = {
+                "leaky_relu": leakyReLU
+            }
+        elif arch == "calmodels":
             self.model_path = os.path.join(self.model_path, self.blueprint)
-        self.model = load_model(self.model_path)
+        self.model = load_model(self.model_path, custom_objects=custom_obj)
         if compile_params:
             self.model = Model(inputs=self.model.inputs, outputs=self.model.outputs)
             self.model.compile(**compile_params)
