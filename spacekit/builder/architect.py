@@ -10,7 +10,6 @@ from tensorflow.keras.models import Sequential, Model, load_model
 from tensorflow.keras import optimizers, callbacks
 from tensorflow.keras.layers import (
     Dense,
-    LeakyReLU,
     Input,
     concatenate,
     Conv1D,
@@ -63,7 +62,9 @@ class Builder:
         self.name = None
         self.tx_file = None
 
-    def load_saved_model(self, arch="ensemble", compile_params=None, custom_obj={}, extract_to="models"):
+    def load_saved_model(
+        self, arch="ensemble", compile_params=None, custom_obj={}, extract_to="models"
+    ):
         """Load saved keras model from local disk (located at the ``model_path`` attribute) or a pre-trained model from spacekit.skopes.trained_networks (if ``model_path`` attribute is None). Example for ``compile_params``: ``dict(loss="binary_crossentropy", metrics=["accuracy"], optimizer=Adam(learning_rate=optimizers.schedules.ExponentialDecay(lr=1e-4, decay_steps=100000, decay_rate=0.96, staircase=True)))``
 
         Parameters
@@ -480,7 +481,7 @@ class BuilderMLP(Builder):
         # hidden layers
         x = Dense(
             self.layers[0], activation=self.activation, name=f"1_dense{self.layers[0]}"
-            )(inputs)
+        )(inputs)
         for i, layer in enumerate(self.layers[1:]):
             i += 1
             x = Dense(layer, activation=self.activation, name=f"{i+1}_dense{layer}")(x)

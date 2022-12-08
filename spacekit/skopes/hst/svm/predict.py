@@ -188,7 +188,7 @@ def predict_alignment(
     size=128,
     norm=0,
     group=None,
-    extract_to="models"
+    extract_to="models",
 ):
     """Main calling function to load the data and model, generate predictions, and save results to disk.
 

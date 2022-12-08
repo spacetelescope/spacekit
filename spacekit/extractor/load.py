@@ -167,9 +167,7 @@ def read_channels(channels, w, h, d, exp=None, color_mode="rgb"):
         image pixel values as array
     """
     t = (w, h)
-    image_frames = [
-        load_img(c, color_mode=color_mode, target_size=t) for c in channels
-    ]
+    image_frames = [load_img(c, color_mode=color_mode, target_size=t) for c in channels]
     img = np.array([img_to_array(i) for i in image_frames])
     if exp is None:
         img = img.reshape(w, h, d)

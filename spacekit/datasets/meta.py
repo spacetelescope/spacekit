@@ -63,7 +63,7 @@ svm = {
     "model": {
         "basepath": "spacekit.builder.trained_networks",
         "fname": "ensemble.zip",
-        "hash": "9ef2b5ddd078544c98a19e2c26fcccb34ae36c742b86ee3b9434ceab6270c07d"
+        "hash": "9ef2b5ddd078544c98a19e2c26fcccb34ae36c742b86ee3b9434ceab6270c07d",
     },
 }
 
