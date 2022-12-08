@@ -63,7 +63,7 @@ class Builder:
         self.name = None
         self.tx_file = None
 
-    def load_saved_model(self, arch="ensembleSVM", compile_params=None, custom_obj={}):
+    def load_saved_model(self, arch="ensemble", compile_params=None, custom_obj={}, extract_to="models"):
         """Load saved keras model from local disk (located at the ``model_path`` attribute) or a pre-trained model from spacekit.skopes.trained_networks (if ``model_path`` attribute is None). Example for ``compile_params``: ``dict(loss="binary_crossentropy", metrics=["accuracy"], optimizer=Adam(learning_rate=optimizers.schedules.ExponentialDecay(lr=1e-4, decay_steps=100000, decay_rate=0.96, staircase=True)))``
 
         Parameters
@@ -84,11 +84,16 @@ class Builder:
             with importlib.resources.path(model_src, archive_file) as mod:
                 self.model_path = mod
         if str(self.model_path).split(".")[-1] == "zip":
-            self.model_path = self.unzip_model_files()
-        if arch == "ensembleSVM":
-            custom_obj = {"leaky_relu": LeakyReLU}
-        elif arch == "calmodels":
+            self.model_path = self.unzip_model_files(extract_to=extract_to)
+
+        model_basename = os.path.basename(self.model_path)
+        if arch == "ensemble":
+            # custom_obj = {"leaky_relu": LeakyReLU}
+            if not model_basename == "ensembleSVM":
+                self.model_path = os.path.join(self.model_path, "ensembleSVM")
+        elif arch == "calmodels" and model_basename != self.blueprint:
             self.model_path = os.path.join(self.model_path, self.blueprint)
+
         self.model = load_model(self.model_path, custom_objects=custom_obj)
         if compile_params:
             self.model = Model(inputs=self.model.inputs, outputs=self.model.outputs)
@@ -116,10 +121,15 @@ class Builder:
         return self.model_path
 
     def find_tx_file(self, name="tx_data.json"):
-        if self.model_path:
-            tx_file = os.path.join(self.model_path, name)
-        if os.path.exists(tx_file):
-            self.tx_file = tx_file
+        if not self.model_path:
+            return
+        for root, _, files in os.walk(os.path.dirname(self.model_path)):
+            for f in files:
+                if f == name:
+                    self.tx_file = os.path.join(root, f)
+                    break
+        if not os.path.exists(self.tx_file):
+            self.tx_file = os.path.join(self.model_path, name)
 
     def set_build_params(
         self,
@@ -440,7 +450,6 @@ class BuilderMLP(Builder):
             (X_test, y_test) if X_test is not None and y_test is not None else None
         )
         super().__init__(train_data=train_data, test_data=test_data)
-        # super().__init__(train_data=(X_train, y_train), test_data=(X_test, y_test))
         self.blueprint = blueprint
         self.input_shape = X_train.shape[1] if X_train is not None else None
         self.output_shape = 1
@@ -471,7 +480,7 @@ class BuilderMLP(Builder):
         # hidden layers
         x = Dense(
             self.layers[0], activation=self.activation, name=f"1_dense{self.layers[0]}"
-        )(inputs)
+            )(inputs)
         for i, layer in enumerate(self.layers[1:]):
             i += 1
             x = Dense(layer, activation=self.activation, name=f"{i+1}_dense{layer}")(x)
@@ -804,8 +813,8 @@ class BuilderEnsemble(Builder):
         self.mlp = self.ensemble_mlp()
         self.cnn = self.ensemble_cnn()
         combinedInput = concatenate([self.mlp.model.output, self.cnn.model.output])
-        x = Dense(9, activation="leaky_relu", name=self.input_name)(combinedInput)
-        x = Dense(1, activation="sigmoid", name=self.output_name)(x)
+        x = Dense(9, activation=self.activation, name=self.input_name)(combinedInput)
+        x = Dense(1, activation=self.cost_function, name=self.output_name)(x)
         self.model = Model(
             inputs=[self.mlp.model.input, self.cnn.model.input],
             outputs=x,

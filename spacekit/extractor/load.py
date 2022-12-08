@@ -5,9 +5,9 @@ import numpy as np
 import json
 import pickle
 import zipfile
-from keras.preprocessing import image
 from tqdm import tqdm
 import time
+from tensorflow.keras.preprocessing.image import load_img, img_to_array
 from sklearn.model_selection import train_test_split
 from spacekit.analyzer.track import stopwatch
 
@@ -168,9 +168,9 @@ def read_channels(channels, w, h, d, exp=None, color_mode="rgb"):
     """
     t = (w, h)
     image_frames = [
-        image.load_img(c, color_mode=color_mode, target_size=t) for c in channels
+        load_img(c, color_mode=color_mode, target_size=t) for c in channels
     ]
-    img = np.array([image.img_to_array(i) for i in image_frames])
+    img = np.array([img_to_array(i) for i in image_frames])
     if exp is None:
         img = img.reshape(w, h, d)
     else:

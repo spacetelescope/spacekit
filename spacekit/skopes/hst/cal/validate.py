@@ -4,13 +4,13 @@ from spacekit.builder.architect import (
     WallclockRegressor,
 )
 import numpy as np
-import pickle
 import time
 from tensorflow.keras.wrappers.scikit_learn import KerasClassifier, KerasRegressor
 from sklearn.model_selection import StratifiedKFold, KFold, cross_val_score
 from sklearn.preprocessing import LabelEncoder
 from spacekit.skopes.hst.cal.config import REPRO_COLUMN_ORDER
 from spacekit.extractor.scrape import S3Scraper
+from spacekit.extractor.load import save_to_pickle
 
 
 def k_estimator(buildClass, n_splits=10, y=None, stratify=False):
@@ -71,13 +71,10 @@ def kfold_cross_val(data, target_col, s3=None, data_path=None, verbose=2, n_jobs
     print(f"\nMean Score: {score}\n")
 
     kfold_dict = {"kfold": {"results": list(results), "score": score, "time": duration}}
-
-    if data_path is not None:
-        key = f"{data_path}/results/{target_col}/kfold"
-        with open(key, "w") as p:
-            pickle.dump(p)
-        if s3 is not None:
-            S3Scraper.s3_upload([key], s3, f"{data_path}/results/{target_col}")
+    keys = save_to_pickle(kfold_dict, target_col=target_col)
+    if s3 is not None:
+        prefix = "training" if data_path is None else data_path
+        S3Scraper.s3_upload(keys, s3, f"{prefix}/results/{target_col}")
 
     return kfold_dict
 
