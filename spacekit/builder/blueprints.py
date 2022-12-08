@@ -1,4 +1,5 @@
 from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.metrics import RootMeanSquaredError as RMSE
 
 
 class Blueprint:
@@ -11,13 +12,19 @@ class Blueprint:
         return {
             "svm_mlp": self.svm_mlp,
             "svm_cnn": self.svm_cnn,
+            "mem_clf": self.cal_mem_clf,
+            "mem_reg": self.cal_mem_reg,
+            "wall_reg": self.cal_wall_reg,
         }[self.architecture]
 
     def fit_params(self):
         return {
             "svm_mlp": self.draft_svm_fit,
             "svm_cnn": self.draft_svm_fit,
-        }
+            "mem_clf": self.draft_cal_mem_clf,
+            "mem_reg": self.draft_cal_mem_reg,
+            "wall_reg": self.draft_cal_wall_reg,
+        }[self.architecture]
 
     def svm_mlp(self):
         return dict(
@@ -62,6 +69,87 @@ class Blueprint:
             early_stopping=None,
             verbose=2,
             ensemble=True,
+        )
+
+    def cal_mem_clf(self):
+        return dict(
+            input_shape=9,
+            output_shape=4,
+            layers=[18, 32, 64, 32, 18, 9],
+            activation="relu",
+            cost_function="softmax",
+            lr_sched=False,
+            optimizer=Adam,
+            loss="categorical_crossentropy",
+            metrics=["accuracy"],
+            input_name="hst_jobs",
+            output_name="memory_classifier",
+            name="mem_clf",
+            algorithm="multiclass",
+        )
+
+    def draft_cal_mem_clf(self):
+        return dict(
+            batch_size=32,
+            epochs=60,
+            lr=1e-4,
+            decay=None,
+            early_stopping=None,
+            verbose=2,
+        )
+
+    def cal_mem_reg(self):
+        return dict(
+            input_shape=9,
+            output_shape=1,
+            layers=[18, 32, 64, 32, 18, 9],
+            activation="relu",
+            cost_function="linear",
+            lr_sched=False,
+            optimizer=Adam,
+            loss="mse",
+            metrics=[RMSE(name="rmse")],
+            input_name="hst_jobs",
+            output_name="memory_regressor",
+            name="mem_reg",
+            algorithm="linreg",
+        )
+
+    def draft_cal_mem_reg(self):
+        return dict(
+            batch_size=32,
+            epochs=60,
+            lr=1e-4,
+            decay=None,
+            early_stopping=None,
+            verbose=2,
+        )
+
+    def cal_wall_reg(self):
+        return dict(
+            input_shape=9,
+            output_shape=1,
+            layers=[18, 32, 64, 128, 256, 128, 64, 32, 18, 9],
+            activation="relu",
+            cost_function="linear",
+            lr_sched=False,
+            optimizer=Adam,
+            loss="mse",
+            metrics=[RMSE(name="rmse")],
+            input_name="hst_jobs",
+            output_name="wallclock_regressor",
+            name="wall_reg",
+            algorithm="linreg",
+        )
+
+    def draft_cal_wall_reg(self):
+        return dict(
+            batch_size=64,
+            epochs=300,
+            lr=1e-4,
+            decay=None,
+            early_stopping=None,
+            verbose=2,
         )
 
 

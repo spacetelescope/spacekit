@@ -561,6 +561,8 @@ class Computer(object):
         plt.colorbar()
         if self.show:
             fig.show()
+        else:
+            plt.close()
 
         return fig, fusion
 

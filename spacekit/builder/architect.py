@@ -28,8 +28,6 @@ from spacekit.builder.blueprints import Blueprint
 
 TF_CPP_MIN_LOG_LEVEL = 2
 
-# TODO: K-fold cross-val class
-
 
 class Builder:
     """Class for building and training a neural network."""
@@ -64,7 +62,9 @@ class Builder:
         self.name = None
         self.tx_file = None
 
-    def load_saved_model(self, arch="ensembleSVM", compile_params=None):
+    def load_saved_model(
+        self, arch="ensemble", compile_params=None, custom_obj={}, extract_to="models"
+    ):
         """Load saved keras model from local disk (located at the ``model_path`` attribute) or a pre-trained model from spacekit.skopes.trained_networks (if ``model_path`` attribute is None). Example for ``compile_params``: ``dict(loss="binary_crossentropy", metrics=["accuracy"], optimizer=Adam(learning_rate=optimizers.schedules.ExponentialDecay(lr=1e-4, decay_steps=100000, decay_rate=0.96, staircase=True)))``
 
         Parameters
@@ -85,8 +85,17 @@ class Builder:
             with importlib.resources.path(model_src, archive_file) as mod:
                 self.model_path = mod
         if str(self.model_path).split(".")[-1] == "zip":
-            self.model_path = self.unzip_model_files()
-        self.model = load_model(self.model_path)
+            self.model_path = self.unzip_model_files(extract_to=extract_to)
+
+        model_basename = os.path.basename(self.model_path)
+        if arch == "ensemble":
+            # custom_obj = {"leaky_relu": LeakyReLU}
+            if not model_basename == "ensembleSVM":
+                self.model_path = os.path.join(self.model_path, "ensembleSVM")
+        elif arch == "calmodels" and model_basename != self.blueprint:
+            self.model_path = os.path.join(self.model_path, self.blueprint)
+
+        self.model = load_model(self.model_path, custom_objects=custom_obj)
         if compile_params:
             self.model = Model(inputs=self.model.inputs, outputs=self.model.outputs)
             self.model.compile(**compile_params)
@@ -113,10 +122,15 @@ class Builder:
         return self.model_path
 
     def find_tx_file(self, name="tx_data.json"):
-        if self.model_path:
-            tx_file = os.path.join(self.model_path, name)
-        if os.path.exists(tx_file):
-            self.tx_file = tx_file
+        if not self.model_path:
+            return
+        for root, _, files in os.walk(os.path.dirname(self.model_path)):
+            for f in files:
+                if f == name:
+                    self.tx_file = os.path.join(root, f)
+                    break
+        if not os.path.exists(self.tx_file):
+            self.tx_file = os.path.join(self.model_path, name)
 
     def set_build_params(
         self,
@@ -134,6 +148,7 @@ class Builder:
         input_name=None,
         output_name=None,
         name=None,
+        algorithm=None,
     ):
         """Set custom build parameters for a Builder object.
 
@@ -337,6 +352,7 @@ class Builder:
     #     return wrap
 
     # @timer
+
     def batch_fit(self):
         """
         Fits cnn using a batch generator of equal positive and negative number of samples, rotating randomly.
@@ -425,10 +441,18 @@ class BuilderMLP(Builder):
         spacekit.builder.architect.Builder class object
     """
 
-    def __init__(self, X_train, y_train, X_test, y_test, blueprint="mlp"):
-        super().__init__(train_data=(X_train, y_train), test_data=(X_test, y_test))
+    def __init__(
+        self, X_train=None, y_train=None, X_test=None, y_test=None, blueprint="mlp"
+    ):
+        train_data = (
+            (X_train, y_train) if X_train is not None and y_train is not None else None
+        )
+        test_data = (
+            (X_test, y_test) if X_test is not None and y_test is not None else None
+        )
+        super().__init__(train_data=train_data, test_data=test_data)
         self.blueprint = blueprint
-        self.input_shape = X_train.shape[1]
+        self.input_shape = X_train.shape[1] if X_train is not None else None
         self.output_shape = 1
         self.layers = [18, 32, 64, 32, 18]
         self.input_name = "mlp_inputs"
@@ -440,7 +464,7 @@ class BuilderMLP(Builder):
         self.optimizer = Adam
         self.loss = "binary_crossentropy"
         self.metrics = ["accuracy"]
-        self.step_size = X_train.shape[0]
+        self.step_size = X_train.shape[0] if X_train is not None else self.batch_size
         self.steps_per_epoch = self.step_size // self.batch_size
         self.batch_maker = self.batch
 
@@ -525,10 +549,18 @@ class BuilderCNN3D(Builder):
         spacekit.builder.architect.Builder class object
     """
 
-    def __init__(self, X_train, y_train, X_test, y_test, blueprint="cnn3d"):
-        super().__init__(train_data=(X_train, y_train), test_data=(X_test, y_test))
+    def __init__(
+        self, X_train=None, y_train=None, X_test=None, y_test=None, blueprint="cnn3d"
+    ):
+        train_data = (
+            (X_train, y_train) if X_train is not None and y_train is not None else None
+        )
+        test_data = (
+            (X_test, y_test) if X_test is not None and y_test is not None else None
+        )
+        super().__init__(train_data=train_data, test_data=test_data)
         self.blueprint = blueprint
-        self.input_shape = self.X_train.shape[1:]
+        self.input_shape = X_train.shape[1:] if X_train is not None else None
         self.output_shape = 1
         self.data_format = "channels_last"
         self.input_name = "cnn3d_inputs"
@@ -546,7 +578,9 @@ class BuilderCNN3D(Builder):
         self.pool = 1
         self.dense = 512
         self.dropout = 0.3
-        self.step_size = X_train.shape[0]
+        self.step_size = (
+            self.X_train.shape[0] if self.X_train is not None else self.batch_size
+        )
         self.steps_per_epoch = self.step_size // self.batch_size
         self.batch_maker = self.batch
 
@@ -661,16 +695,22 @@ class BuilderEnsemble(Builder):
 
     def __init__(
         self,
-        X_train,
-        y_train,
-        X_test,
-        y_test,
+        X_train=None,
+        y_train=None,
+        X_test=None,
+        y_test=None,
         params=None,
         input_name="svm_mixed_inputs",
         output_name="ensemble_output",
         name="ensembleSVM",
     ):
-        super().__init__(train_data=(X_train, y_train), test_data=(X_test, y_test))
+        train_data = (
+            (X_train, y_train) if X_train is not None and y_train is not None else None
+        )
+        test_data = (
+            (X_test, y_test) if X_test is not None and y_test is not None else None
+        )
+        super().__init__(train_data=train_data, test_data=test_data)
         self.input_name = input_name
         self.output_name = output_name
         self.name = name
@@ -694,7 +734,7 @@ class BuilderEnsemble(Builder):
         self.verbose = 2
         if params is not None:
             self.fit_params(**params)
-        self.step_size = X_train[0].shape[0]
+        self.step_size = X_train[0].shape[0] if X_train is not None else self.batch_size
         self.steps_per_epoch = self.step_size // self.batch_size
         self.batch_maker = self.batch
 
@@ -707,10 +747,10 @@ class BuilderEnsemble(Builder):
             spacekit.builder.architect.Builder.BuilderEnsemble object with ``mlp`` attribute initialized
         """
         self.mlp = BuilderMLP(
-            self.X_train[0],
-            self.y_train,
-            self.X_test[0],
-            self.y_test,
+            X_train=self.X_train[0],
+            y_train=self.y_train,
+            X_test=self.X_test[0],
+            y_test=self.y_test,
             blueprint="ensemble",
         )
         # experimental (sets all attrs below)
@@ -719,7 +759,7 @@ class BuilderEnsemble(Builder):
         self.mlp.output_name = "svm_regression_output"
         self.mlp.name = "svm_mlp"
         self.mlp.ensemble = True
-        self.mlp.input_shape = self.X_train[0].shape[1]
+        self.mlp.input_shape = self.X_train[0].shape[1] if self.X_train else None
         self.mlp.output_shape = 1
         self.mlp.layers = [18, 32, 64, 32, 18]
         self.mlp.activation = "leaky_relu"
@@ -740,10 +780,10 @@ class BuilderEnsemble(Builder):
             spacekit.builder.architect.Builder.BuilderEnsemble object with ``cnn`` attribute initialized
         """
         self.cnn = BuilderCNN3D(
-            self.X_train[1],
-            self.y_train,
-            self.X_test[1],
-            self.y_test,
+            X_train=self.X_train[1],
+            y_train=self.y_train,
+            X_test=self.X_test[1],
+            y_test=self.y_test,
             blueprint="ensemble",
         )
         # self.cnn.get_blueprint("svm_cnn")
@@ -751,7 +791,7 @@ class BuilderEnsemble(Builder):
         self.cnn.output_name = "svm_image_output"
         self.cnn.name = "svm_cnn"
         self.cnn.ensemble = True
-        self.cnn.input_shape = self.X_train[1].shape[1:]
+        self.cnn.input_shape = self.X_train[1].shape[1:] if self.X_train else None
         self.cnn.output_shape = 1
         self.cnn.layers = [18, 32, 64, 32, 18]
         self.cnn.activation = "leaky_relu"
@@ -774,8 +814,8 @@ class BuilderEnsemble(Builder):
         self.mlp = self.ensemble_mlp()
         self.cnn = self.ensemble_cnn()
         combinedInput = concatenate([self.mlp.model.output, self.cnn.model.output])
-        x = Dense(9, activation="leaky_relu", name=self.input_name)(combinedInput)
-        x = Dense(1, activation="sigmoid", name=self.output_name)(x)
+        x = Dense(9, activation=self.activation, name=self.input_name)(combinedInput)
+        x = Dense(1, activation=self.cost_function, name=self.output_name)(x)
         self.model = Model(
             inputs=[self.mlp.model.input, self.cnn.model.input],
             outputs=x,
@@ -847,10 +887,18 @@ class BuilderCNN2D(Builder):
         spacekit.builder.architect.Builder.Builder object
     """
 
-    def __init__(self, X_train, y_train, X_test, y_test, blueprint="cnn2d"):
-        super().__init__(train_data=(X_train, y_train), test_data=(X_test, y_test))
+    def __init__(
+        self, X_train=None, y_train=None, X_test=None, y_test=None, blueprint="cnn2d"
+    ):
+        train_data = (
+            (X_train, y_train) if X_train is not None and y_train is not None else None
+        )
+        test_data = (
+            (X_test, y_test) if X_test is not None and y_test is not None else None
+        )
+        super().__init__(train_data=train_data, test_data=test_data)
         self.blueprint = blueprint
-        self.input_shape = self.X_train.shape[1:]
+        self.input_shape = self.X_train.shape[1:] if self.X_train else None
         self.output_shape = 1
         self.input_name = "cnn2d_inputs"
         self.output_name = "cnn2d_output"
@@ -869,7 +917,7 @@ class BuilderCNN2D(Builder):
         self.early_stopping = None
         self.batch_size = 32
         self.cost_function = "sigmoid"
-        self.step_size = X_train.shape[1]
+        self.step_size = X_train.shape[1] if X_train else None
         self.steps_per_epoch = self.step_size // self.batch_size
         self.batch_maker = self.batch
 
@@ -988,10 +1036,24 @@ class MemoryClassifier(BuilderMLP):
     """
 
     def __init__(
-        self, X_train, y_train, X_test, y_test, blueprint="mlp", test_idx=None
+        self,
+        X_train=None,
+        y_train=None,
+        X_test=None,
+        y_test=None,
+        blueprint="mem_clf",
+        test_idx=None,
     ):
-        super().__init__(X_train, y_train, X_test, y_test, blueprint=blueprint)
-        self.input_shape = X_train.shape[1]  # 9
+        train_data = (
+            (X_train, y_train) if X_train is not None and y_train is not None else None
+        )
+        test_data = (
+            (X_test, y_test) if X_test is not None and y_test is not None else None
+        )
+        super().__init__(
+            train_data=train_data, test_data=test_data, blueprint=blueprint
+        )
+        self.input_shape = self.X_train.shape[1] if self.X_train else 9
         self.output_shape = 4
         self.layers = [18, 32, 64, 32, 18, 9]
         self.input_name = "hst_jobs"
@@ -1017,10 +1079,24 @@ class MemoryRegressor(BuilderMLP):
     """
 
     def __init__(
-        self, X_train, y_train, X_test, y_test, blueprint="mlp", test_idx=None
+        self,
+        X_train=None,
+        y_train=None,
+        X_test=None,
+        y_test=None,
+        blueprint="mem_reg",
+        test_idx=None,
     ):
-        super().__init__(X_train, y_train, X_test, y_test, blueprint=blueprint)
-        self.input_shape = X_train.shape[1]  # 9
+        train_data = (
+            (X_train, y_train) if X_train is not None and y_train is not None else None
+        )
+        test_data = (
+            (X_test, y_test) if X_test is not None and y_test is not None else None
+        )
+        super().__init__(
+            train_data=train_data, test_data=test_data, blueprint=blueprint
+        )
+        self.input_shape = self.X_train.shape[1] if self.X_train else 9
         self.output_shape = 1
         self.layers = [18, 32, 64, 32, 18, 9]
         self.input_name = "hst_jobs"
@@ -1046,10 +1122,24 @@ class WallclockRegressor(BuilderMLP):
     """
 
     def __init__(
-        self, X_train, y_train, X_test, y_test, blueprint="mlp", test_idx=None
+        self,
+        X_train=None,
+        y_train=None,
+        X_test=None,
+        y_test=None,
+        blueprint="wall_reg",
+        test_idx=None,
     ):
-        super().__init__(X_train, y_train, X_test, y_test, blueprint=blueprint)
-        self.input_shape = X_train.shape[1]  # 9
+        train_data = (
+            (X_train, y_train) if X_train is not None and y_train is not None else None
+        )
+        test_data = (
+            (X_test, y_test) if X_test is not None and y_test is not None else None
+        )
+        super().__init__(
+            train_data=train_data, test_data=test_data, blueprint=blueprint
+        )
+        self.input_shape = self.X_train.shape[1] if self.X_train else 9
         self.output_shape = 1
         self.layers = [18, 32, 64, 128, 256, 128, 64, 32, 18, 9]
         self.input_name = "hst_jobs"

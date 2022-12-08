@@ -1,3 +1,19 @@
+0.4.0 (2022-12-08)
+==================
+
+- bugfix scikit-learn replaces deprecated sklearn dependency
+
+- temporarily pinned `pandas` dependency to 1.4.x and below due to column setting bug in v1.5
+
+- bugfix keras `load_img` method imported from tf.keras.preprocessing.image instead of tf.keras.utils
+
+- new feature skopes.hst.cal model training, inference, cross-validation scripts added
+
+- new feature svm dashboard predict view
+
+- svm ensemble model archive file `ensembleSVM.zip` renamed as `ensemble.zip`. This extracts to `models/ensemble/` with `tx_data.json` (transform data) and `ensembleSVM` (keras model binaries) inside of the `ensemble/` parent directory. Previously, the json file was inside ensembleSVM alongside the binaries.
+
+
 0.3.2 (2022-07-24)
 ==================
 

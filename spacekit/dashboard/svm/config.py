@@ -28,15 +28,16 @@ NN = {"ens": ens.model}
 images = ImageIO("data/test_images.npz").load_npz()
 
 
-# ['hst_9454_11_acs_hrc_total_j8ff11',
-#  'hst_8992_53_acs_hrc_total_j8cw53',
-# 'hst_11099_04_wfc3_ir_total_ia0m04',
-#  'hst_11099_04_wfc3_ir_total_ia0m04_f160w_all_stoc',
-#  'hst_10183_03_acs_sbc_total_j8y503',
-#  'hst_13483_21_acs_sbc_total_jcdb21',
-#  'hst_12062_eh_wfc3_uvis_total_ibeveh',
-#  'hst_12109_01_wfc3_uvis_total_ibfn01',
-#  'hst_8992_03_acs_wfc_total_j8cw03',
-#  'hst_9836_33_acs_wfc_total_j8rq33',
-#  'hst_8992_03_acs_wfc_total_j8cw03_f475w_clear2l_sub_stat',
-#  'hst_9836_33_acs_wfc_total_j8rq33_clear1s_f250w_sub_stoc']
+# array(['hst_11099_04_wfc3_ir_total_ia0m04',
+#        'hst_12062_eh_wfc3_uvis_total_ibeveh',
+#        'hst_12109_01_wfc3_uvis_total_ibfn01',
+#        'hst_8992_03_acs_wfc_total_j8cw03',
+#        'hst_9454_11_acs_hrc_total_j8ff11',
+#        'hst_9836_33_acs_wfc_total_j8rq33',
+#        'hst_10183_03_acs_sbc_total_j8y503',
+#        'hst_13483_21_acs_sbc_total_jcdb21',
+#        'hst_8992_53_acs_hrc_total_j8cw53',
+#        'hst_11099_04_wfc3_ir_total_ia0m04_f160w_all_stoc',
+#        'hst_8992_03_acs_wfc_total_j8cw03_f475w_clear2l_sub_stat',
+#        'hst_9836_33_acs_wfc_total_j8rq33_clear1s_f250w_sub_stoc'],
+#       dtype='<U55')

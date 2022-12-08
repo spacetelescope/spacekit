@@ -1,14 +1,46 @@
 import os
+import sys
 import pandas as pd
 import numpy as np
 import json
 import pickle
 import zipfile
-from keras.preprocessing import image
 from tqdm import tqdm
 import time
+from tensorflow.keras.preprocessing.image import load_img, img_to_array
 from sklearn.model_selection import train_test_split
 from spacekit.analyzer.track import stopwatch
+
+
+def find_local_dataset(source_path, fname=None, date_key=None):
+    fpath = []
+    for root, _, files in os.walk(source_path):
+        if fname is not None:
+            name = os.path.join(root, fname)
+            if os.path.exists(name):
+                # print(f"Found dataset: {name}")
+                fpath.append(name)
+        else:
+            for f in files:
+                if f.split(".")[-1] == "csv":
+                    name = os.path.join(root, f)
+                    fpath.append(name)
+    if len(fpath) > 0:
+        if date_key is None:
+            print(f"Found datasets: \n {fpath}")
+            print(f"Defaulting to most recent: {fpath[-1]}")
+        else:
+            for f in fpath:
+                if date_key in f:
+                    fpath = [f]
+                    print(f"Found matching dataset: {f}")
+        fpath = fpath[-1]
+    else:
+        print(
+            "No datasets found :( \n Check the source_path exists and there's a .csv file in one of its subdirectories."
+        )
+        sys.exit(1)
+    return fpath
 
 
 def load_datasets(filenames, index_col="index", column_order=None, verbose=1):
@@ -135,10 +167,8 @@ def read_channels(channels, w, h, d, exp=None, color_mode="rgb"):
         image pixel values as array
     """
     t = (w, h)
-    image_frames = [
-        image.load_img(c, color_mode=color_mode, target_size=t) for c in channels
-    ]
-    img = np.array([image.img_to_array(i) for i in image_frames])
+    image_frames = [load_img(c, color_mode=color_mode, target_size=t) for c in channels]
+    img = np.array([img_to_array(i) for i in image_frames])
     if exp is None:
         img = img.reshape(w, h, d)
     else:

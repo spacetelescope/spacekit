@@ -17,7 +17,7 @@ import sys
 import datetime as dt
 from spacekit.extractor.load import load_datasets, SVMImageIO
 from spacekit.preprocessor.transform import PowerX
-from spacekit.builder.architect import Builder
+from spacekit.builder.architect import BuilderEnsemble
 
 # from spacekit.builder.blueprints import Blueprint
 
@@ -188,6 +188,7 @@ def predict_alignment(
     size=128,
     norm=0,
     group=None,
+    extract_to="models",
 ):
     """Main calling function to load the data and model, generate predictions, and save results to disk.
 
@@ -206,11 +207,12 @@ def predict_alignment(
     group: str, optional
         Name for this group of data (for classification report), e.g. SVM-2021-11-02
     """
-    builder = Builder(model_path=model_path)
-    model = builder.load_saved_model()
-    tx_file = builder.find_tx_file()
-    X = load_mixed_inputs(data_file, img_path, tx=tx_file, size=size, norm=norm)
-    preds = classify_alignments(X, model, output_path=output_path, group=group)
+    builder = BuilderEnsemble()
+    builder.model_path = model_path
+    builder.load_saved_model(extract_to=extract_to)
+    builder.find_tx_file()
+    X = load_mixed_inputs(data_file, img_path, tx=builder.tx_file, size=size, norm=norm)
+    preds = classify_alignments(X, builder.model, output_path=output_path, group=group)
     return preds
 
 
