@@ -1,4 +1,4 @@
-0.4.0 (2022-12-06)
+0.4.0 (2022-12-08)
 ==================
 
 - bugfix scikit-learn replaces deprecated sklearn dependency
