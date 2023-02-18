@@ -406,7 +406,6 @@ class SvmScrubber(Scrubber):
 class CalScrubber(Scrubber):
     def __init__(
         self,
-        input_path,
         data=None,
         output_path=None,
         output_file="batch.csv",
@@ -416,7 +415,9 @@ class CalScrubber(Scrubber):
     ):
         self.__name__ = "CalScrubber"
         self.log = Logger(self.__name__, console_log_level=loglevel).setup_logger()
+        self.convert_to_dataframe(data)
         self.col_order = self.set_col_order()
+        
         super().__init__(
             data=data,
             col_order=self.col_order,
@@ -426,12 +427,19 @@ class CalScrubber(Scrubber):
             save_raw=save_raw,
             logger=self.log,
         )
-        self.input_path = input_path
+
+    def convert_to_dataframe(self, data):
+        if data is None or type(data) == pd.DataFrame:
+            self.data = data
+        elif type(data) == dict:
+            self.data = pd.DataFrame.from_dict(self.data, orient="index")
+        else:
+            self.log.error("data must be dict, dataframe or None")
 
     def set_col_order(self):
         return [
-            "n_files",
-            "total_mb",
+            "x_files",
+            "x_size",
             "drizcorr",
             "pctecorr",
             "crsplit",
@@ -444,3 +452,28 @@ class CalScrubber(Scrubber):
     def set_new_cols(self):
         self.new_cols = ["x_files", "x_size"]
         return self.new_cols.extend(self.col_order)
+
+    def scrub_inputs(self):
+        n_files = int(self.data['n_files'][0])
+        total_mb = int(np.round(float(self.data['total_mb']), 0))
+        detector = 1 if self.data["DETECTOR"][0].upper() in ["UVIS","WFC"] else 0
+        subarray = 1 if self.data["SUBARRAY"][0].title() == "True" else 0
+        drizcorr = 1 if self.data["DRIZCORR"][0].upper() == "PERFORM" else 0
+        pctecorr = 1 if self.data["PCTECORR"][0].upper() == "PERFORM" else 0
+        cr = self.data["CRSPLIT"][0]
+        if cr == "NaN":
+            crsplit = 0
+        elif cr in ["1", "1.0"]:
+            crsplit = 1
+        else:
+            crsplit = 2
+
+        i = self.data.index[0]
+        # dtype (asn or singleton)
+        dtype = 1 if i[-1] == "0" else 0
+        # instr encoding cols
+        instr_key = dict(j=0, l=1, o=2, i=3)
+        for k, v in instr_key.items():
+            if i[0] == k:
+                instr = v
+        return np.array([n_files, total_mb, drizcorr, pctecorr, crsplit, subarray, detector, dtype, instr])

@@ -8,7 +8,7 @@ import time
 from tensorflow.keras.wrappers.scikit_learn import KerasClassifier, KerasRegressor
 from sklearn.model_selection import StratifiedKFold, KFold, cross_val_score
 from sklearn.preprocessing import LabelEncoder
-from spacekit.skopes.hst.cal.config import REPRO_COLUMN_ORDER
+from spacekit.skopes.hst.cal.config import COLUMN_ORDER
 from spacekit.extractor.scrape import S3Scraper
 from spacekit.extractor.load import save_to_pickle
 
@@ -43,7 +43,7 @@ def k_estimator(buildClass, n_splits=10, y=None, stratify=False):
 
 def kfold_cross_val(data, target_col, s3=None, data_path=None, verbose=2, n_jobs=-2):
     # evaluate using 10-fold cross validation
-    X = data.data[REPRO_COLUMN_ORDER]
+    X = data.data[COLUMN_ORDER["asn"]]
     y = data.data[target_col]
 
     # run estimator

@@ -17,7 +17,9 @@ from botocore.config import Config
 from decimal import Decimal
 from boto3.dynamodb.conditions import Attr
 
-retry_config = Config(retries={"max_attempts": 3})
+# mitigation of potential API rate restrictions (esp for Batch API)
+retry_config = Config(retries={"max_attempts": 5, "mode": "standard"})
+s3 = boto3.resource("s3", config=retry_config)
 client = boto3.client("s3", config=retry_config)
 dynamodb = boto3.resource("dynamodb", config=retry_config, region_name="us-east-1")
 
@@ -430,6 +432,17 @@ class S3Scraper(Scraper):
                 continue
         if err is not None:
             print(err)
+
+    def import_dataset(self):
+        """import job metadata file from s3 bucket"""
+        bucket = s3.Bucket(self.bucket)
+        obj = bucket.Object(self.pfx)
+        input_data = {}
+        body = obj.get()["Body"].read().splitlines()
+        for line in body:
+            k, v = str(line).strip("b'").split("=")
+            input_data[k] = v
+        return input_data
 
 
 class DynamoDBScraper(Scraper):
