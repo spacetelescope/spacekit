@@ -68,7 +68,7 @@ class Predict:
         ):
         self.dataset = dataset
         self.bucket_name = bucket_name
-        self.key = key
+        self.key = "control" if key is None else key
         self.model_path = MODEL_PATH if model_path is None else model_path
         self.tx_file = TX_FILE if tx_file is None else tx_file
         self.norm = norm
@@ -86,6 +86,8 @@ class Predict:
         self.probabilities = None
 
     def scrape_s3_inputs(self):
+        if self.key == "control":
+            self.key = f"control/{self.dataset}/{self.dataset}_MemModelFeatures.txt"
         self.input_data = S3Scraper(bucket=self.bucket_name, pfx=self.key).import_dataset()
 
     def preprocess(self):
