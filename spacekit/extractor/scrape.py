@@ -337,7 +337,8 @@ class S3Scraper(Scraper):
         cache_subdir="data",
         format="zip",
         extract=True,
-        name="S3Scraper"
+        name="S3Scraper",
+        aws_kwargs=dict(),
     ):
         """Instantiates a spacekit.extractor.scrape.S3Scraper object
 
@@ -362,6 +363,8 @@ class S3Scraper(Scraper):
         self.dataset = dataset
         self.fpaths = []
         self.source = "s3"
+        self.s3 = boto3.resource("s3", config=retry_config, region_name="us-east-1", **aws_kwargs)
+        self.client = boto3.client("s3", config=retry_config, region_name="us-east-1")
 
     def make_s3_keys(
         self,
@@ -451,9 +454,7 @@ class S3Scraper(Scraper):
 
     def import_dataset(self):
         """import job metadata file from s3 bucket"""
-        if aws_kwargs["aws_access_key_id"]:
-            s3 = boto3.resource("s3", config=retry_config, region_name="us-east-1", **aws_kwargs)
-        bucket = s3.Bucket(self.bucket)
+        bucket = self.s3.Bucket(self.bucket)
         obj = bucket.Object(self.pfx)
         input_data = {}
         body = None
