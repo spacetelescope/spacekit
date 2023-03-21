@@ -16,11 +16,18 @@ from progressbar import ProgressBar
 from botocore.config import Config
 from decimal import Decimal
 from boto3.dynamodb.conditions import Attr
+from spacekit.logger.log import Logger
+
+aws_kwargs = dict(
+    aws_access_key_id = os.environ["AWS_ACCESS_KEY_ID"],
+    aws_secret_access_key = os.environ["AWS_SECRET_ACCESS_KEY"],
+    aws_session_token = os.environ["AWS_SESSION_TOKEN"]
+)
 
 # mitigation of potential API rate restrictions (esp for Batch API)
 retry_config = Config(retries={"max_attempts": 5, "mode": "standard"})
-s3 = boto3.resource("s3", config=retry_config)
-client = boto3.client("s3", config=retry_config)
+s3 = boto3.resource("s3", config=retry_config, region_name="us-east-1", **aws_kwargs)
+client = boto3.client("s3", config=retry_config, region_name="us-east-1")
 dynamodb = boto3.resource("dynamodb", config=retry_config, region_name="us-east-1")
 
 
@@ -90,7 +97,7 @@ class Scraper:
     """Parent Class for various data scraping subclasses. Instantiating the appropriate subclass is preferred."""
 
     def __init__(
-        self, cache_dir="~", cache_subdir="data", format="zip", extract=True, clean=True
+        self, cache_dir="~", cache_subdir="data", format="zip", extract=True, clean=True, name="Scraper"
     ):
         """Instantiates a spacekit.extractor.scrape.Scraper object.
 
@@ -113,6 +120,9 @@ class Scraper:
         self.clean = clean  # delete archive if extract successful
         self.source = None
         self.fpaths = []
+        self.__name__ = name
+        self.loglevel = "info"
+        self.log = Logger(self.__name__, console_log_level=self.loglevel).setup_logger()
 
     def check_cache(self, cache):
         if cache == "~":
@@ -189,6 +199,7 @@ class FileScraper(Scraper):
         format="zip",
         extract=True,
         clean=False,
+        name="FileScraper"
     ):
         """Instantiates a spacekit.extractor.scrape.FileScraper object.
 
@@ -203,6 +214,7 @@ class FileScraper(Scraper):
             format=format,
             extract=extract,
             clean=clean,
+            name=name,
         )
         self.patterns = patterns
         self.fpaths = []
@@ -249,6 +261,7 @@ class WebScraper(Scraper):
         format="zip",
         extract=True,
         clean=True,
+        name="WebScraper"
     ):
         """Uses dictionary of uri, filename and hash key-value pairs to download data securely from a website such as Github.
 
@@ -267,6 +280,7 @@ class WebScraper(Scraper):
             format=format,
             extract=extract,
             clean=clean,
+            name=name
         )
         self.uri = uri
         self.dataset = dataset
@@ -323,6 +337,7 @@ class S3Scraper(Scraper):
         cache_subdir="data",
         format="zip",
         extract=True,
+        name="S3Scraper"
     ):
         """Instantiates a spacekit.extractor.scrape.S3Scraper object
 
@@ -340,6 +355,7 @@ class S3Scraper(Scraper):
             cache_subdir=cache_subdir,
             format=format,
             extract=extract,
+            name=name
         )
         self.bucket = bucket
         self.pfx = pfx
@@ -386,9 +402,9 @@ class S3Scraper(Scraper):
         for _, d in self.dataset.items():
             fname = d["fname"]
             obj = f"{self.pfx}/{fname}"
-            print(f"s3://{self.bucket}/{obj}")
+            self.log.info(f"s3://{self.bucket}/{obj}")
             fpath = f"{self.cache_dir}/{self.cache_subdir}/{fname}"
-            print(fpath)
+            self.log.info(fpath)
             try:
                 with open(fpath, "wb") as f:
                     client.download_fileobj(self.bucket, obj, f)
@@ -397,7 +413,7 @@ class S3Scraper(Scraper):
                 err = e
                 continue
         if err is not None:
-            print(err)
+            self.log.error(err)
         elif self.extract is True:
             if self.format == "zip":
                 self.fpaths = super().extract_archives()
@@ -435,14 +451,22 @@ class S3Scraper(Scraper):
 
     def import_dataset(self):
         """import job metadata file from s3 bucket"""
+        if aws_kwargs["aws_access_key_id"]:
+            s3 = boto3.resource("s3", config=retry_config, region_name="us-east-1", **aws_kwargs)
         bucket = s3.Bucket(self.bucket)
         obj = bucket.Object(self.pfx)
         input_data = {}
-        body = obj.get()["Body"].read().splitlines()
-        for line in body:
-            k, v = str(line).strip("b'").split("=")
-            input_data[k] = v
+        body = None
+        try:
+            body = obj.get()["Body"].read().splitlines()
+            for line in body:
+                k, v = str(line).strip("b'").split("=")
+                input_data[k] = v
+        except Exception as e:
+            self.log.error("Unable to download inputs: ", e)
+            sys.exit(3)
         return input_data
+   
 
 
 class DynamoDBScraper(Scraper):
@@ -457,6 +481,7 @@ class DynamoDBScraper(Scraper):
         format="zip",
         extract=True,
         clean=True,
+        name="DynamoDBScraper"
     ):
         super().__init__(
             cache_dir=cache_dir,
@@ -464,6 +489,7 @@ class DynamoDBScraper(Scraper):
             format=format,
             extract=extract,
             clean=clean,
+            name=name
         )
         self.table_name = table_name
         self.attr = attr
@@ -627,7 +653,7 @@ class FitsScraper:
         return self.drz_paths
 
     def scrape_fits(self):
-        print("\n*** Extracting fits data ***")
+        self.log.info("\n*** Extracting fits data ***")
         fits_dct = {}
         for key, path in self.drz_paths.items():
             fits_dct[key] = {}
@@ -663,6 +689,9 @@ class MastScraper:
         dec_col : str, optional
             name of the column containing the target's right ascension values, by default "dec_targ"
         """
+        self.__name__ = "MastScraper"
+        self.loglevel = "info"
+        self.log = Logger(self.__name__, console_log_level=self.loglevel).setup_logger()
         self.df = df
         self.trg_col = trg_col
         self.ra_col = ra_col
@@ -674,6 +703,7 @@ class MastScraper:
         self.target_categories = {}
         self.other_cat = {}
         self.categories = {}
+
 
     def scrape_mast(self):
         """Main calling function to scrape MAST
@@ -696,8 +726,8 @@ class MastScraper:
         dictionary
             target name and category key-value pairs
         """
-        print("\n*** Assigning target name categories ***")
-        print(f"\nUnique Target Names: {len(self.targets)}")
+        self.log.info("\n*** Assigning target name categories ***")
+        self.log.info(f"\nUnique Target Names: {len(self.targets)}")
         bar = ProgressBar().start()
         for x, targ in zip(bar(range(len(self.targets))), self.targets):
             if targ != "ANY":
@@ -728,7 +758,7 @@ class MastScraper:
         """
         self.other_cat = {}
         if len(self.targ_any) > 0:
-            print(f"Other targets (ANY): {len(self.targ_any)}")
+            self.log.info(f"Other targets (ANY): {len(self.targ_any)}")
             bar = ProgressBar().start()
             for x, (idx, row) in zip(
                 bar(range(len(self.targ_any))), self.targ_any.iterrows()
@@ -766,8 +796,8 @@ class MastScraper:
         cat = pd.DataFrame.from_dict(
             self.categories, orient="index", columns={"category"}
         )
-        print("\nTarget Categories Assigned.")
-        print(cat["category"].value_counts())
+        self.log.info("\nTarget Categories Assigned.")
+        self.log.info(cat["category"].value_counts())
         self.df = self.df.join(cat, how="left")
         return self.df
 
@@ -851,10 +881,9 @@ class JsonScraper:
         self.store_h5 = store_h5
         self.h5_file = h5_file
         self.output_path = os.getcwd() if output_path is None else output_path
-        self.__name__ = "diagnostic_json_harvester"
-        self.msg_datefmt = "%Y%j%H%M%S"
-        self.splunk_msg_fmt = "%(asctime)s %(levelname)s src=%(name)s- %(message)s"
-        self.log_level = logutil.logging.INFO
+        self.__name__ = "JsonScraper"
+        self.loglevel = "info"
+        self.log = Logger(self.__name__, console_log_level=self.loglevel).setup_logger()
         self.keyword_shortlist = [
             "TARGNAME",
             "DEC_TARG",
@@ -865,28 +894,9 @@ class JsonScraper:
             "number_of_sources.point",
             "number_of_sources.segment",
         ]
-        self.log = self.start_logging()
         self.json_dict = None
         self.data = None  # self.json_harvester()
         # self.h5_file = None  # self.h5store()
-
-    def start_logging(self):
-        """Initializes a logging object which logs process info to sys.stdout
-
-        Returns
-        -------
-        logutil.log object
-            logs process info to sys.stdout
-        """
-        self.log = logutil.create_logger(
-            self.__name__,
-            level=self.log_level,
-            stream=sys.stdout,
-            format=self.splunk_msg_fmt,
-            datefmt=self.msg_datefmt,
-        )
-        self.log.setLevel(self.log_level)
-        return self.log
 
     def flatten_dict(self, dd, separator=".", prefix=""):
         """Recursive subroutine to flatten nested dictionaries down into a single-layer dictionary.

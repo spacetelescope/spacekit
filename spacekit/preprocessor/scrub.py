@@ -432,7 +432,7 @@ class CalScrubber(Scrubber):
         if data is None or type(data) == pd.DataFrame:
             self.data = data
         elif type(data) == dict:
-            self.data = pd.DataFrame.from_dict(self.data, orient="index")
+            self.data = pd.DataFrame.from_dict(data, orient="index")
         else:
             self.log.error("data must be dict, dataframe or None")
 

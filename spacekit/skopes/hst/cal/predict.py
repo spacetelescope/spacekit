@@ -32,18 +32,11 @@ MEMORY REGRESSION: A third regression model is used to estimate the actual value
 import os
 import argparse
 import numpy as np
-import boto3
-from botocore.config import Config
 from spacekit.extractor.scrape import S3Scraper
 from spacekit.preprocessor.scrub import CalScrubber
 from spacekit.preprocessor.transform import PowerX
 from spacekit.builder.architect import Builder
 from spacekit.logger.log import Logger
-
-# mitigation of potential API rate restrictions (esp for Batch API)
-retry_config = Config(retries={"max_attempts": 5, "mode": "standard"})
-s3 = boto3.resource("s3", config=retry_config)
-client = boto3.client("s3", config=retry_config)
 
 
 # build from local filepath
