@@ -57,7 +57,7 @@ def load_pretrained_model(mpath=None, name="wall_reg"):
 class Predict:
 
     def __init__(
-        self, dataset, bucket_name=None, key=None, model_path=None, tx_file=None, norm=1, norm_cols=[0,1],
+        self, dataset, bucket_name=None, key=None, model_path=None, tx_file=None, norm=1, norm_cols=[0,1], aws_kwargs=None
         ):
         self.dataset = dataset
         self.bucket_name = bucket_name
@@ -66,6 +66,7 @@ class Predict:
         self.tx_file = TX_FILE if tx_file is None else tx_file
         self.norm = norm
         self.norm_cols = norm_cols
+        self.aws_kwargs = aws_kwargs
         self.input_data = None
         self.inputs = None
         self.X = None
@@ -81,7 +82,7 @@ class Predict:
     def scrape_s3_inputs(self):
         if self.key == "control":
             self.key = f"control/{self.dataset}/{self.dataset}_MemModelFeatures.txt"
-        self.input_data = S3Scraper(bucket=self.bucket_name, pfx=self.key).import_dataset()
+        self.input_data = S3Scraper(bucket=self.bucket_name, pfx=self.key, aws_kwargs=self.aws_kwargs).import_dataset()
 
     def preprocess(self):
         if self.input_data is None:

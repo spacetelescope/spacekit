@@ -8,7 +8,6 @@ import glob
 import sys
 import json
 import csv
-from stsci.tools import logutil
 from zipfile import ZipFile
 from astropy.io import fits, ascii
 from astroquery.mast import Observations
@@ -18,17 +17,14 @@ from decimal import Decimal
 from boto3.dynamodb.conditions import Attr
 from spacekit.logger.log import Logger
 
-aws_kwargs = dict(
-    aws_access_key_id = os.environ["AWS_ACCESS_KEY_ID"],
-    aws_secret_access_key = os.environ["AWS_SECRET_ACCESS_KEY"],
-    aws_session_token = os.environ["AWS_SESSION_TOKEN"]
-)
 
 # mitigation of potential API rate restrictions (esp for Batch API)
-retry_config = Config(retries={"max_attempts": 5, "mode": "standard"})
-s3 = boto3.resource("s3", config=retry_config, region_name="us-east-1", **aws_kwargs)
-client = boto3.client("s3", config=retry_config, region_name="us-east-1")
+retry_config = Config(retries={"max_attempts": 5, "mode": "standard"}, region_name="us-east-1")
 dynamodb = boto3.resource("dynamodb", config=retry_config, region_name="us-east-1")
+# below are maintained for backwards compatibility with static methods
+s3 = boto3.resource("s3", config=retry_config)
+client = boto3.client("s3", config=retry_config)
+
 
 
 SPACEKIT_DATA = os.environ.get("SPACEKIT_DATA", "~/spacekit_data")
@@ -338,7 +334,6 @@ class S3Scraper(Scraper):
         format="zip",
         extract=True,
         name="S3Scraper",
-        aws_kwargs=dict(),
     ):
         """Instantiates a spacekit.extractor.scrape.S3Scraper object
 
@@ -350,6 +345,11 @@ class S3Scraper(Scraper):
             aws bucket prefix (subfolder uri path), by default "archive"
         dataset : dictionary, optional
             key-value pairs of dataset filenames and prefixes, by default None
+        aws_kwargs: dictionary, optional
+            key-value pairs of AWS credentials with s3 read-access permissions retrieved
+            from environment variables, by default None. This is a fallback method in cases
+            where the aws.ini configuration file does not exist. See boto3/aws API documentation
+            for examples.
         """
         super().__init__(
             cache_dir=cache_dir,
@@ -363,8 +363,20 @@ class S3Scraper(Scraper):
         self.dataset = dataset
         self.fpaths = []
         self.source = "s3"
-        self.s3 = boto3.resource("s3", config=retry_config, region_name="us-east-1", **aws_kwargs)
-        self.client = boto3.client("s3", config=retry_config, region_name="us-east-1")
+        self.s3 = boto3.resource("s3", config=retry_config)
+        self.client = boto3.client("s3", config=retry_config)
+        self.aws_kwargs = self.authorize_aws()
+    
+    def authorize_aws(self):
+        self.aws_kwargs = dict(
+            region_name = os.environ.get("AWS_REGION_NAME", "us-east-1"),
+            aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID", ""),
+            aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY", ""),
+            aws_session_token = os.environ.get("AWS_SESSION_TOKEN", "")
+            )
+        self.s3 = boto3.resource("s3", config=retry_config, **self.aws_kwargs)
+        self.client = boto3.client("s3", config=retry_config, **self.aws_kwargs)
+
 
     def make_s3_keys(
         self,
@@ -392,6 +404,11 @@ class S3Scraper(Scraper):
             fname = key + ".zip"
             self.dataset[key] = {"fname": fname, "pfx": self.pfx}
         return self.dataset
+    
+    def scrape_s3_file(self, fpath, obj):
+        with open(fpath, "wb") as f:
+            self.client.download_fileobj(self.bucket, obj, f)
+            self.fpaths.append(fpath)
 
     def scrape(self):
         """Downloads files from s3 using the configured boto3 client. Calls the `extract_archive` method for automatic extraction of file contents if object's `extract` attribute is set to True.
@@ -409,9 +426,7 @@ class S3Scraper(Scraper):
             fpath = f"{self.cache_dir}/{self.cache_subdir}/{fname}"
             self.log.info(fpath)
             try:
-                with open(fpath, "wb") as f:
-                    client.download_fileobj(self.bucket, obj, f)
-                self.fpaths.append(fpath)
+                self.scrape_s3_file(fpath, obj)
             except Exception as e:
                 err = e
                 continue
