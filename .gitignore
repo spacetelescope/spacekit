@@ -54,6 +54,7 @@ crds_cache
 svm-data/
 docker/dev/
 docker/data/
+docker/images/svm_image/
 cal-data/
 */dashboard/cal/data/*
 # 2021-11-04-1636048291/
