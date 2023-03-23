@@ -44,31 +44,27 @@ MODEL_PATH = os.environ.get("MODEL_PATH", "./models") #"data/2022-02-14-16448484
 TX_FILE = os.path.join(MODEL_PATH, "tx_data.json")
 
 
-def load_pretrained_model(mpath=None, name="wall_reg"):
-    # build from spacekit package trained_networks
-    if mpath is None:
-        builder = Builder(blueprint=name)
-        builder.load_saved_model(arch="calmodels")
-    else:
-        builder = Builder(blueprint=name, model_path=os.path.join(mpath, name))
-        builder.load_saved_model()
+def load_pretrained_model(**builder_kwargs):
+    builder = Builder(**builder_kwargs)
+    builder.load_saved_model(arch="calmodels")
     return builder
 
 class Predict:
 
     def __init__(
-        self, dataset, bucket_name=None, key=None, model_path=None, tx_file=None, norm=1, norm_cols=[0,1], aws_kwargs=None
+        self, dataset, bucket_name=None, key=None, model_path=MODEL_PATH, models={}, tx_file=TX_FILE, norm=1, norm_cols=[0,1]
         ):
         self.dataset = dataset
         self.bucket_name = bucket_name
         self.key = "control" if key is None else key
-        self.model_path = MODEL_PATH if model_path is None else model_path
-        self.tx_file = TX_FILE if tx_file is None else tx_file
+        self.model_path = model_path
+        self.models = models
+        self.tx_file = tx_file
         self.norm = norm
         self.norm_cols = norm_cols
-        self.aws_kwargs = aws_kwargs
         self.input_data = None
         self.inputs = None
+        self.tx_data = None
         self.X = None
         self.mem_clf = None
         self.wall_reg = None
@@ -78,30 +74,45 @@ class Predict:
         self.log = Logger(self.__name__, console_log_level=self.loglevel).setup_logger()
         self.predictions = None
         self.probabilities = None
+        self.initialize_models()
+    
+    def initialize_models(self):
+        if self.models is None and not os.path.exists(self.model_path):
+            self.log.warning(f"models path not found: {self.model_path} - defaulting to latest in spacekit-collection")
+            self.model_path = None
+        self.load_models(models=self.models)
+        self.tx_file = self.mem_clf.find_tx_file()
 
     def scrape_s3_inputs(self):
         if self.key == "control":
             self.key = f"control/{self.dataset}/{self.dataset}_MemModelFeatures.txt"
-        self.input_data = S3Scraper(bucket=self.bucket_name, pfx=self.key, aws_kwargs=self.aws_kwargs).import_dataset()
+        try:
+            self.input_data = S3Scraper(bucket=self.bucket_name, pfx=self.key).import_dataset()
+        except Exception as e:
+            self.log.error(e)
+    
+    def normalize_inputs(self):
+        if self.norm:
+            Px = PowerX(self.inputs, cols=self.norm_cols, tx_file=self.tx_file)
+            self.X = Px.Xt
+            self.tx_data = Px.tx_data
+            self.log.info(f"tx_data: {self.tx_data}")
+            self.log.info(f"dataset: {self.dataset} normalized inputs (X): {self.X}")
+        else:
+            self.X = self.inputs
 
     def preprocess(self):
         if self.input_data is None:
-            try:
-                self.scrape_s3_inputs()
-            except Exception as e:
-                self.log.error(e)
-        self.inputs = CalScrubber(data={self.dataset:self.input_data}).scrub_inputs()
-        Px = PowerX(self.inputs, cols=self.norm_cols, tx_file=self.tx_file)
-        self.X = Px.Xt
-        self.log.info(f"tx_data: {Px.tx_data}")
+            self.scrape_s3_inputs()
         self.log.info(f"dataset: {self.dataset} keys: {self.input_data}")
+        self.inputs = CalScrubber(data={self.dataset:self.input_data}).scrub_inputs()
         self.log.info(f"dataset: {self.dataset} features: {self.inputs}")
-        self.log.info(f"dataset: {self.dataset} normalized inputs (X): {self.X}")
+        self.normalize_inputs()
 
     def load_models(self, models={}):
-        self.mem_clf = models.get('mem_clf', load_pretrained_model(mpath=self.model_path, name="mem_clf"))
-        self.wall_reg = models.get('wall_reg', load_pretrained_model(mpath=self.model_path, name="wall_reg"))
-        self.mem_reg = models.get('mem_reg', load_pretrained_model(mpath=self.model_path, name="mem_reg"))
+        self.mem_clf = models.get('mem_clf', load_pretrained_model(model_path=self.model_path, name="mem_clf"))
+        self.wall_reg = models.get('wall_reg', load_pretrained_model(model_path=self.model_path, name="wall_reg"))
+        self.mem_reg = models.get('mem_reg', load_pretrained_model(model_path=self.model_path, name="mem_reg"))
 
     def classifier(self, model, data):
         """Returns class prediction"""
@@ -115,14 +126,11 @@ class Predict:
         return pred
 
     def run_inference(self, models={}):
-        self.load_models(models=models)
-        if not os.path.exists(self.tx_file):
-            self.tx_file = self.mem_clf.find_tx_file()
         if self.X is None:
             self.preprocess()
-        membin, pred_proba = self.classifier(self.mem_clf, self.X)
-        memval = np.round(float(self.regressor(self.mem_reg, self.X)), 2)
-        clocktime = int(self.regressor(self.wall_reg, self.X))
+        membin, pred_proba = self.classifier(self.mem_clf.model, self.X)
+        memval = np.round(float(self.regressor(self.mem_reg.model, self.X)), 2)
+        clocktime = int(self.regressor(self.wall_reg.model, self.X))
         self.predictions = {"memBin": membin, "memVal": memval, "clockTime": clocktime}
         self.log.info(dict(dataset=self.dataset).update(self.predictions))
         self.probabilities = {"dataset": self.dataset, "probabilities": pred_proba}
@@ -131,10 +139,7 @@ class Predict:
 
 def local_handler(dataset, **kwargs):
     """handles non-lambda invocations"""
-    pred = Predict(dataset, **kwargs)
-    pred.preprocess()
-    pred.run_inference()
-    # TODO: write to ddb (ingest) or save to csv
+    pred = Predict(dataset, **kwargs).run_inference()
     return pred
 
 
@@ -142,18 +147,13 @@ def lambda_handler(event, context):
     """Predict Resource Allocation requirements for memory (GB) and max execution `kill time` / `wallclock` (seconds) using three pre-trained neural networks. This lambda is invoked from the Job Submit lambda which json.dumps the s3 bucket and key to the file containing job input parameters. The path to the text file in s3 assumes the following format: `control/ipppssoot/ipppssoot_MemModelFeatures.txt`.
     """
     # load models here for warm starts in aws lambda
-    mem_clf = load_pretrained_model(model_path=MODEL_PATH, model_name="mem_clf/")
-    wall_reg = load_pretrained_model(model_path=MODEL_PATH, model_name="wall_reg/")
-    mem_reg = load_pretrained_model(model_path=MODEL_PATH, model_name="mem_reg/")
-    bucket_name = event["Bucket"]
-    key = event["Key"]
-    dataset = event["Dataset"]
-    if not os.path.exists(TX_FILE):
-        tx_file = mem_clf.find_tx_file()
+    mem_clf = load_pretrained_model(model_path=MODEL_PATH, name="mem_clf")
+    wall_reg = load_pretrained_model(model_path=MODEL_PATH, name="wall_reg")
+    mem_reg = load_pretrained_model(model_path=MODEL_PATH, name="mem_reg")
+    models=dict(mem_clf=mem_clf, wall_reg=wall_reg, mem_reg=mem_reg)
     # import and prep data: control/dataset/dataset_MemModelFeatures.txt
-    pred = Predict(dataset, bucket_name=bucket_name, key=key, tx_file=TX_FILE)
-    pred.preprocess()
-    pred.run_inference(models=dict(mem_clf=mem_clf, wall_reg=wall_reg, mem_reg=mem_reg))
+    pred = Predict(event["Dataset"], bucket_name=event["Bucket"], key=event["Key"], models=models)
+    pred.run_inference()
     return pred.predictions
 
 

@@ -1,4 +1,5 @@
 import os
+import sys
 import importlib.resources
 from zipfile import ZipFile
 import numpy as np
@@ -25,6 +26,7 @@ from tensorflow.keras.metrics import RootMeanSquaredError as RMSE
 from spacekit.generator.augment import augment_data, augment_image
 from spacekit.analyzer.track import stopwatch
 from spacekit.builder.blueprints import Blueprint
+from spacekit.logger.log import Logger
 
 TF_CPP_MIN_LOG_LEVEL = 2
 
@@ -33,7 +35,7 @@ class Builder:
     """Class for building and training a neural network."""
 
     def __init__(
-        self, train_data=None, test_data=None, blueprint=None, model_path=None
+        self, train_data=None, test_data=None, blueprint=None, model_path=None, name=None, logname="Builder", loglevel="info"
     ):
         if train_data is not None:
             self.X_train = train_data[0]
@@ -43,6 +45,7 @@ class Builder:
             self.y_test = test_data[1]
         self.blueprint = blueprint
         self.model_path = model_path
+        self.name = name
         self.batch_size = 32
         self.epochs = 60
         self.lr = 1e-4
@@ -59,18 +62,21 @@ class Builder:
         self.steps_per_epoch = None
         self.batch_maker = None
         self.history = None
-        self.name = None
         self.tx_file = None
+        self.__name__ = logname
+        self.loglevel = loglevel
+        self.log = Logger(self.__name__, console_log_level=self.loglevel).setup_logger()
+
 
     def load_saved_model(
-        self, arch="ensemble", compile_params=None, custom_obj={}, extract_to="models"
+        self, arch=None, compile_params=None, custom_obj={}, extract_to="models"
     ):
         """Load saved keras model from local disk (located at the ``model_path`` attribute) or a pre-trained model from spacekit.skopes.trained_networks (if ``model_path`` attribute is None). Example for ``compile_params``: ``dict(loss="binary_crossentropy", metrics=["accuracy"], optimizer=Adam(learning_rate=optimizers.schedules.ExponentialDecay(lr=1e-4, decay_steps=100000, decay_rate=0.96, staircase=True)))``
 
         Parameters
         ----------
         arch : str, optional
-            select a pre-trained model included from the spacekit library of trained networks ("ensembleSVM" or "calmodels"), by default "ensembleSVM"
+            select a pre-trained model included from the spacekit library of trained networks ("ensembleSVM" or "calmodels"), by default None
         compile_params : dict, optional
             Compile the model using kwarg parameters, by default None
 
@@ -80,26 +86,39 @@ class Builder:
             pre-trained (and/or compiled) functional Keras model.
         """
         if self.model_path is None:
-            model_src = "spacekit.builder.trained_networks"
-            archive_file = f"{arch}.zip"
-            with importlib.resources.path(model_src, archive_file) as mod:
-                self.model_path = mod
+            self.load_pretrained_network(arch=arch)
         if str(self.model_path).split(".")[-1] == "zip":
-            self.model_path = self.unzip_model_files(extract_to=extract_to)
-
-        model_basename = os.path.basename(self.model_path)
-        if arch == "ensemble":
-            # custom_obj = {"leaky_relu": LeakyReLU}
-            if not model_basename == "ensembleSVM":
-                self.model_path = os.path.join(self.model_path, "ensembleSVM")
-        elif arch == "calmodels" and model_basename != self.blueprint:
-            self.model_path = os.path.join(self.model_path, self.blueprint)
-
-        self.model = load_model(self.model_path, custom_objects=custom_obj)
-        if compile_params:
-            self.model = Model(inputs=self.model.inputs, outputs=self.model.outputs)
-            self.model.compile(**compile_params)
+            self.unzip_model_files(extract_to=extract_to) # ./models | ./models/ensemble
+        model_basename = os.path.basename(self.model_path.rstrip('/'))
+        if model_basename != self.name:
+            # look through subdirectories for saved model folder matching "self.name"
+            for root, dirs, _ in os.walk(self.model_path):
+                for d in dirs:
+                    if d == self.name:
+                        self.model_path = os.path.join(root, d)
+        try:
+            self.model = load_model(self.model_path, custom_objects=custom_obj)
+            if compile_params:
+                self.model = Model(inputs=self.model.inputs, outputs=self.model.outputs)
+                self.model.compile(**compile_params)
+        except Exception as e:
+            self.log.error(e)
         return self.model
+    
+    def load_pretrained_network(self, arch=None):
+        err = None
+        if arch is None:
+            err = "Must specify spacekit pretrained NN using `arch` when model_path attribute is not set."
+        elif arch not in ["calmodels", "ensemble"]:
+            err = f"The spacekit pretrained NN archive named {arch} does not exist."
+        if err:
+            self.log.error(err)
+            sys.exit(1)
+        model_src = "spacekit.builder.trained_networks"
+        archive_file = f"{arch}.zip" # calmodels.zip | ensemble.zip
+        with importlib.resources.path(model_src, archive_file) as mod:
+            self.model_path = mod
+
 
     def unzip_model_files(self, extract_to="models"):
         """Extracts a keras model object from a zip archive
@@ -119,7 +138,6 @@ class Builder:
         with ZipFile(self.model_path, "r") as zip_ref:
             zip_ref.extractall(extract_to)
         self.model_path = os.path.join(extract_to, model_base)
-        return self.model_path
 
     def find_tx_file(self, name="tx_data.json"):
         if not self.model_path:
@@ -442,7 +460,7 @@ class BuilderMLP(Builder):
     """
 
     def __init__(
-        self, X_train=None, y_train=None, X_test=None, y_test=None, blueprint="mlp"
+        self, X_train=None, y_train=None, X_test=None, y_test=None, blueprint="mlp", **builder_kwargs
     ):
         train_data = (
             (X_train, y_train) if X_train is not None and y_train is not None else None
@@ -450,14 +468,14 @@ class BuilderMLP(Builder):
         test_data = (
             (X_test, y_test) if X_test is not None and y_test is not None else None
         )
-        super().__init__(train_data=train_data, test_data=test_data)
+        super().__init__(train_data=train_data, test_data=test_data, **builder_kwargs)
         self.blueprint = blueprint
+        self.name = "sequential_mlp"
         self.input_shape = X_train.shape[1] if X_train is not None else None
         self.output_shape = 1
         self.layers = [18, 32, 64, 32, 18]
         self.input_name = "mlp_inputs"
         self.output_name = "mlp_output"
-        self.name = "sequential_mlp"
         self.activation = "leaky_relu"
         self.cost_function = "sigmoid"
         self.lr_sched = True
@@ -550,7 +568,7 @@ class BuilderCNN3D(Builder):
     """
 
     def __init__(
-        self, X_train=None, y_train=None, X_test=None, y_test=None, blueprint="cnn3d"
+        self, X_train=None, y_train=None, X_test=None, y_test=None, blueprint="cnn3d", **builder_kwargs
     ):
         train_data = (
             (X_train, y_train) if X_train is not None and y_train is not None else None
@@ -558,7 +576,7 @@ class BuilderCNN3D(Builder):
         test_data = (
             (X_test, y_test) if X_test is not None and y_test is not None else None
         )
-        super().__init__(train_data=train_data, test_data=test_data)
+        super().__init__(train_data=train_data, test_data=test_data, **builder_kwargs)
         self.blueprint = blueprint
         self.input_shape = X_train.shape[1:] if X_train is not None else None
         self.output_shape = 1
@@ -702,7 +720,7 @@ class BuilderEnsemble(Builder):
         params=None,
         input_name="svm_mixed_inputs",
         output_name="ensemble_output",
-        name="ensembleSVM",
+        **builder_kwargs,
     ):
         train_data = (
             (X_train, y_train) if X_train is not None and y_train is not None else None
@@ -710,10 +728,10 @@ class BuilderEnsemble(Builder):
         test_data = (
             (X_test, y_test) if X_test is not None and y_test is not None else None
         )
-        super().__init__(train_data=train_data, test_data=test_data)
+        super().__init__(train_data=train_data, test_data=test_data, **builder_kwargs)
+        self.name = "ensembleSVM"
         self.input_name = input_name
         self.output_name = output_name
-        self.name = name
         self.blueprint = "ensemble"
         self.ensemble = True
         self.lr_sched = True
@@ -888,7 +906,7 @@ class BuilderCNN2D(Builder):
     """
 
     def __init__(
-        self, X_train=None, y_train=None, X_test=None, y_test=None, blueprint="cnn2d"
+        self, X_train=None, y_train=None, X_test=None, y_test=None, blueprint="cnn2d", **builder_kwargs,
     ):
         train_data = (
             (X_train, y_train) if X_train is not None and y_train is not None else None
@@ -896,7 +914,7 @@ class BuilderCNN2D(Builder):
         test_data = (
             (X_test, y_test) if X_test is not None and y_test is not None else None
         )
-        super().__init__(train_data=train_data, test_data=test_data)
+        super().__init__(train_data=train_data, test_data=test_data, **builder_kwargs)
         self.blueprint = blueprint
         self.input_shape = self.X_train.shape[1:] if self.X_train else None
         self.output_shape = 1
@@ -1043,6 +1061,7 @@ class MemoryClassifier(BuilderMLP):
         y_test=None,
         blueprint="mem_clf",
         test_idx=None,
+        **builder_kwargs
     ):
         train_data = (
             (X_train, y_train) if X_train is not None and y_train is not None else None
@@ -1051,7 +1070,7 @@ class MemoryClassifier(BuilderMLP):
             (X_test, y_test) if X_test is not None and y_test is not None else None
         )
         super().__init__(
-            train_data=train_data, test_data=test_data, blueprint=blueprint
+            train_data=train_data, test_data=test_data, blueprint=blueprint, **builder_kwargs
         )
         self.input_shape = self.X_train.shape[1] if self.X_train else 9
         self.output_shape = 4
@@ -1086,6 +1105,7 @@ class MemoryRegressor(BuilderMLP):
         y_test=None,
         blueprint="mem_reg",
         test_idx=None,
+        **builder_kwargs
     ):
         train_data = (
             (X_train, y_train) if X_train is not None and y_train is not None else None
@@ -1094,7 +1114,7 @@ class MemoryRegressor(BuilderMLP):
             (X_test, y_test) if X_test is not None and y_test is not None else None
         )
         super().__init__(
-            train_data=train_data, test_data=test_data, blueprint=blueprint
+            train_data=train_data, test_data=test_data, blueprint=blueprint, **builder_kwargs,
         )
         self.input_shape = self.X_train.shape[1] if self.X_train else 9
         self.output_shape = 1
@@ -1129,6 +1149,7 @@ class WallclockRegressor(BuilderMLP):
         y_test=None,
         blueprint="wall_reg",
         test_idx=None,
+        **builder_kwargs
     ):
         train_data = (
             (X_train, y_train) if X_train is not None and y_train is not None else None
@@ -1137,7 +1158,7 @@ class WallclockRegressor(BuilderMLP):
             (X_test, y_test) if X_test is not None and y_test is not None else None
         )
         super().__init__(
-            train_data=train_data, test_data=test_data, blueprint=blueprint
+            train_data=train_data, test_data=test_data, blueprint=blueprint, **builder_kwargs,
         )
         self.input_shape = self.X_train.shape[1] if self.X_train else 9
         self.output_shape = 1

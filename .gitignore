@@ -85,5 +85,4 @@ tests/data/svm/data/
 .env
 *.log
 *.backup
-svm-pred-testing.ipynb
 .tmp

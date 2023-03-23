@@ -19,7 +19,7 @@ hst.draw_plots()
 selection = svm.datapaths[svm.primary]
 model_path = f"{selection}/models"
 
-ens = Builder(blueprint="ensemble", model_path=model_path + "/ensembleSVM")
+ens = Builder(blueprint="ensemble", model_path=model_path, name="ensembleSVM")
 ens.load_saved_model()
 
 tx_file = f"{model_path}/tx_data.json"
