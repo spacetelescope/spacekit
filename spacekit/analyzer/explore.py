@@ -19,7 +19,7 @@ except ImportError:
     from tensorflow.keras.utils import array_to_img
 
 plt.style.use("seaborn-bright")
-font_dict = {"family": '"Titillium Web", monospace', "size": 16}
+font_dict = {"family": "monospace", "size": 16}
 mpl.rc("font", **font_dict)
 
 

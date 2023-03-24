@@ -21,14 +21,10 @@ class Scrubber:
         dropnans=True,
         save_raw=True,
         name="Scrubber",
-        loglevel="info",
-        logger=None,
+        **log_kwargs,
     ):
         self.__name__ = name
-        if logger is None:
-            self.log = Logger(self.__name__, console_log_level=loglevel).setup_logger()
-        else:
-            self.log = logger
+        self.log = Logger(self.__name__, **log_kwargs).setup_logger()
         self.df = self.cache_data(cache=data)
         self.col_order = col_order
         self.output_path = output_path
@@ -39,6 +35,17 @@ class Scrubber:
 
     def cache_data(self, cache=None):
         return cache.copy() if cache is not None else cache
+
+    def convert_to_dataframe(self, data=None, cache_df=False):
+        if data is None or isinstance(data, pd.DataFrame):
+            return data
+        elif isinstance(data, dict):
+            data = pd.DataFrame.from_dict(data, orient="index")
+            if cache_df is True:
+                self.cache_data(cache=data)
+            return data
+        else:
+            self.log.error("data must be dict, dataframe or None")
 
     def extract_matching_columns(self, cols):
         # print("\n*** Extracting FITS header prefix columns ***")
@@ -146,10 +153,8 @@ class SvmScrubber(Scrubber):
         make_pos_list=True,
         crpt=0,
         make_subsamples=False,
-        loglevel="info",
+        **log_kwargs
     ):
-        self.__name__ = "SVMScrubber"
-        self.log = Logger(self.__name__, console_log_level=loglevel).setup_logger()
         self.col_order = self.set_col_order()
         super().__init__(
             data=data,
@@ -158,7 +163,8 @@ class SvmScrubber(Scrubber):
             output_file=output_file,
             dropnans=dropnans,
             save_raw=save_raw,
-            logger=self.log,
+            name="SVMScrubber",
+            **log_kwargs
         )
 
         self.input_path = input_path
@@ -411,30 +417,19 @@ class CalScrubber(Scrubber):
         output_file="batch.csv",
         dropnans=True,
         save_raw=True,
-        loglevel="info",
+        **log_kwargs
     ):
-        self.__name__ = "CalScrubber"
-        self.log = Logger(self.__name__, console_log_level=loglevel).setup_logger()
-        self.convert_to_dataframe(data)
-        self.col_order = self.set_col_order()
-        
         super().__init__(
             data=data,
-            col_order=self.col_order,
+            col_order=self.set_col_order(),
             output_path=output_path,
             output_file=output_file,
             dropnans=dropnans,
             save_raw=save_raw,
-            logger=self.log,
+            name="CalScrubber",
+            **log_kwargs,
         )
-
-    def convert_to_dataframe(self, data):
-        if data is None or type(data) == pd.DataFrame:
-            self.data = data
-        elif type(data) == dict:
-            self.data = pd.DataFrame.from_dict(data, orient="index")
-        else:
-            self.log.error("data must be dict, dataframe or None")
+        self.data = super().convert_to_dataframe(data=data)
 
     def set_col_order(self):
         return [
@@ -454,6 +449,7 @@ class CalScrubber(Scrubber):
         return self.new_cols.extend(self.col_order)
 
     def scrub_inputs(self):
+        self.log.info(f"Scrubbing inputs for {self.data.index[0]}")
         n_files = int(self.data['n_files'][0])
         total_mb = int(np.round(float(self.data['total_mb']), 0))
         detector = 1 if self.data["DETECTOR"][0].upper() in ["UVIS","WFC"] else 0

@@ -93,7 +93,7 @@ class Scraper:
     """Parent Class for various data scraping subclasses. Instantiating the appropriate subclass is preferred."""
 
     def __init__(
-        self, cache_dir="~", cache_subdir="data", format="zip", extract=True, clean=True, name="Scraper"
+        self, cache_dir="~", cache_subdir="data", format="zip", extract=True, clean=True, name="Scraper", **log_kwargs
     ):
         """Instantiates a spacekit.extractor.scrape.Scraper object.
 
@@ -117,8 +117,7 @@ class Scraper:
         self.source = None
         self.fpaths = []
         self.__name__ = name
-        self.loglevel = "info"
-        self.log = Logger(self.__name__, console_log_level=self.loglevel).setup_logger()
+        self.log = Logger(self.__name__, **log_kwargs).setup_logger()
 
     def check_cache(self, cache):
         if cache == "~":
@@ -174,7 +173,7 @@ class Scraper:
         with ZipFile(archive_path, "w") as zip_ref:
             for file in file_paths:
                 zip_ref.write(file)
-                print(file)
+                self.log.info(file)
         return
 
 
@@ -189,13 +188,15 @@ class FileScraper(Scraper):
 
     def __init__(
         self,
-        patterns=["*.zip"],
+        search_path="",
+        search_patterns=["*.zip"],
         cache_dir="~",
         cache_subdir="data",
         format="zip",
         extract=True,
         clean=False,
-        name="FileScraper"
+        name="FileScraper",
+        **log_kwargs
     ):
         """Instantiates a spacekit.extractor.scrape.FileScraper object.
 
@@ -211,8 +212,10 @@ class FileScraper(Scraper):
             extract=extract,
             clean=clean,
             name=name,
+            **log_kwargs,
         )
-        self.patterns = patterns
+        self.search_path = search_path
+        self.search_patterns = search_patterns
         self.fpaths = []
         self.source = "file"
 
@@ -228,8 +231,8 @@ class FileScraper(Scraper):
         list
             paths to dataset files found in glob pattern search
         """
-        for p in self.patterns:
-            results = glob.glob(p)
+        for p in self.search_patterns:
+            results = glob.glob(os.path.join(self.search_path), p)
             if len(results) > 0:
                 for r in results:
                     self.fpaths.append(r)
@@ -257,7 +260,7 @@ class WebScraper(Scraper):
         format="zip",
         extract=True,
         clean=True,
-        name="WebScraper"
+        **log_kwargs
     ):
         """Uses dictionary of uri, filename and hash key-value pairs to download data securely from a website such as Github.
 
@@ -276,7 +279,8 @@ class WebScraper(Scraper):
             format=format,
             extract=extract,
             clean=clean,
-            name=name
+            name="WebScraper",
+            **log_kwargs,
         )
         self.uri = uri
         self.dataset = dataset
@@ -333,7 +337,7 @@ class S3Scraper(Scraper):
         cache_subdir="data",
         format="zip",
         extract=True,
-        name="S3Scraper",
+        **log_kwargs,
     ):
         """Instantiates a spacekit.extractor.scrape.S3Scraper object
 
@@ -356,7 +360,8 @@ class S3Scraper(Scraper):
             cache_subdir=cache_subdir,
             format=format,
             extract=extract,
-            name=name
+            name="S3Scraper",
+            **log_kwargs
         )
         self.bucket = bucket
         self.pfx = pfx
@@ -473,6 +478,7 @@ class S3Scraper(Scraper):
         obj = bucket.Object(self.pfx)
         input_data = {}
         body = None
+        self.log.info(f"Streaming from s3://{self.bucket}/{self.pfx}")
         try:
             body = obj.get()["Body"].read().splitlines()
             for line in body:
@@ -483,7 +489,6 @@ class S3Scraper(Scraper):
             sys.exit(3)
         return input_data
    
-
 
 class DynamoDBScraper(Scraper):
     def __init__(
@@ -497,7 +502,7 @@ class DynamoDBScraper(Scraper):
         format="zip",
         extract=True,
         clean=True,
-        name="DynamoDBScraper"
+        **log_kwargs
     ):
         super().__init__(
             cache_dir=cache_dir,
@@ -505,7 +510,8 @@ class DynamoDBScraper(Scraper):
             format=format,
             extract=extract,
             clean=clean,
-            name=name
+            name="DynamoDBScraper",
+            **log_kwargs,
         )
         self.table_name = table_name
         self.attr = attr
@@ -650,8 +656,9 @@ class DynamoDBScraper(Scraper):
         return {"statusCode": 200, "body": json.dumps("Uploaded to DynamoDB Table")}
 
 
-class FitsScraper:
-    def __init__(self, data, input_path):
+class FitsScraper(FileScraper):
+    def __init__(self, data, input_path, **log_kwargs):
+        super().__init__(name="FitsScraper", **log_kwargs)
         self.df = data.copy()
         self.input_path = input_path
         self.fits_keys = ["rms_ra", "rms_dec", "nmatches", "wcstype"]
@@ -691,7 +698,7 @@ class FitsScraper:
 class MastScraper:
     """Class for scraping metadata from MAST (Mikulsky Archive for Space Telescopes) via ``astroquery``. Current functionality for this class is limited to extracting the `target_classification` values of HAP targets from the archive. An example of a target classification is "GALAXY" - an alphanumeric categorization of an image product/.fits file. Note - the files themselves are not downloaded, just this specific metadata listed in the online archive database. For downloading MAST science files, use the ``spacekit.extractor.radio`` module. The search parameter values needed for locating a HAP product on MAST can be extracted from the fits science extension headers using the ``astropy`` library. See the ``spacekit.preprocessor.scrub`` api for an example (or the astropy documentation)."""
 
-    def __init__(self, df, trg_col="targname", ra_col="ra_targ", dec_col="dec_targ"):
+    def __init__(self, df, trg_col="targname", ra_col="ra_targ", dec_col="dec_targ", **log_kwargs):
         """Instantiates a spacekit.extractor.scrape.MastScraper object.
 
         Parameters
@@ -706,8 +713,7 @@ class MastScraper:
             name of the column containing the target's right ascension values, by default "dec_targ"
         """
         self.__name__ = "MastScraper"
-        self.loglevel = "info"
-        self.log = Logger(self.__name__, console_log_level=self.loglevel).setup_logger()
+        self.log = Logger(self.__name__, **log_kwargs).setup_logger()
         self.df = df
         self.trg_col = trg_col
         self.ra_col = ra_col
@@ -855,7 +861,7 @@ class MastScraper:
         return ra, dec, targ, cat
 
 
-class JsonScraper:
+class JsonScraper(FileScraper):
     """Searches local files using glob pattern(s) to scrape JSON file data. Optionally can store data in h5 file (default) and/or CSV file; The JSON harvester method returns a Pandas dataframe. This class can also be used to load an h5 file. CREDIT: Majority of the code here was repurposed into a class object from ``Drizzlepac.hap_utils.json_harvester`` - multiple customizations were needed for specific machine learning preprocessing that would be outside the scope of Drizzlepac's primary intended use-cases, hence why the code is now here in a stripped down version instead of submitted as a PR to the original repo. That, and the need to avoid including Drizzlepac as a dependency for spacekit, since spacekit is meant to be used for testing Drizzlepac's SVM processing...
 
     Parameters
@@ -888,18 +894,17 @@ class JsonScraper:
         store_h5=True,
         h5_file=None,
         output_path=None,
+        **log_kwargs
     ):
-        self.search_path = search_path
-        self.search_patterns = search_patterns
+        super().__init__(
+            search_path=search_path, search_patterns=search_patterns, name="JsonScraper", **log_kwargs
+        )
         self.file_basename = file_basename
         self.crpt = crpt
         self.save_csv = save_csv
         self.store_h5 = store_h5
         self.h5_file = h5_file
         self.output_path = os.getcwd() if output_path is None else output_path
-        self.__name__ = "JsonScraper"
-        self.loglevel = "info"
-        self.log = Logger(self.__name__, console_log_level=self.loglevel).setup_logger()
         self.keyword_shortlist = [
             "TARGNAME",
             "DEC_TARG",
@@ -1176,7 +1181,7 @@ class JsonScraper:
             ordered dictionary containing all information extracted from json files specified by the input list
             *json_filename_list*.
         """
-        self.log.setLevel(self.log_level)
+        # self.log.setLevel(self.log_level)
         header_ingested = False
         gen_info_ingested = False
         ingest_dict = collections.OrderedDict()
@@ -1236,7 +1241,7 @@ class JsonScraper:
 # TODO
 class ImageScraper(Scraper):
     def __init__(self):
-        super().__init__(self)
+        super().__init__()
 
 
 # def extract_archives(zipfiles, extract_to="data", delete_archive=False):

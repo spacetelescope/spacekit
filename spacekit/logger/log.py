@@ -51,22 +51,29 @@ class Logger:
     def __init__(
         self,
         script_name,
+        console=True,
+        logfile=True,
         console_log_output="stdout",
         console_log_level="warning",
         console_log_color=True,
         logfile_log_level="debug",
         logfile_log_color=False,
+        logdir=".",
         asctime=True,
         threadname=False,
         splunk=False,
     ):
-        self.__name__ = script_name  # "diagnostic_json_harvester"
+        self.__name__ = script_name
+        self.console = console
+        self.logfile = logfile
         self.log_level = logging.DEBUG
         self.console_log_output = console_log_output.lower()
         self.console_log_level = console_log_level.upper()
         self.console_log_color = console_log_color
         self.console_formatter = None
-        self.logfile_file = self.__name__ + ".log"
+        self.logdir = logdir
+        # self.logfile_file = os.path.join(self.logdir, self.__name__ + ".log")
+        self.logfile_file = os.path.join(self.logdir, "spacekit" + ".log")
         self.logfile_log_level = logfile_log_level.upper()
         self.logfile_log_color = logfile_log_color
         self.logfile_formatter = None
@@ -143,7 +150,7 @@ class Logger:
         # Create and set formatter, add log file handler to logger
         self.logfile_handler.setFormatter(self.logfile_formatter)
 
-    def setup_logger(self, console=True, logfile=True):
+    def setup_logger(self):
         # console_log_color, logfile_file, logfile_log_level, logfile_log_color, log_line_template
         # Create logger
         # For simplicity, we use the root logger, i.e. call 'logging.getLogger()'
@@ -156,12 +163,13 @@ class Logger:
         logger.setLevel(self.log_level)
 
         # add console handler
-        if console is True:
+        if self.console is True:
             self.add_console_handler()
             logger.addHandler(self.console_handler)
 
         # Create log file handler
-        if logfile is True:
+        if self.logfile is True:
+            os.makedirs(self.logdir, exist_ok=True)
             self.add_file_handler()
             logger.addHandler(self.logfile_handler)
 

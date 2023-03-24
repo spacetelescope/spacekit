@@ -35,7 +35,7 @@ class Builder:
     """Class for building and training a neural network."""
 
     def __init__(
-        self, train_data=None, test_data=None, blueprint=None, model_path=None, name=None, logname="Builder", loglevel="info"
+        self, train_data=None, test_data=None, blueprint=None, model_path=None, name=None, logname="Builder", **log_kwargs
     ):
         if train_data is not None:
             self.X_train = train_data[0]
@@ -64,8 +64,7 @@ class Builder:
         self.history = None
         self.tx_file = None
         self.__name__ = logname
-        self.loglevel = loglevel
-        self.log = Logger(self.__name__, console_log_level=self.loglevel).setup_logger()
+        self.log = Logger(self.__name__, **log_kwargs).setup_logger()
 
 
     def load_saved_model(
@@ -356,7 +355,7 @@ class Builder:
             )
         # TODO error handling
         except Exception as e:
-            print(e)
+            self.log.error(e)
 
     # TODO
     # def timer(self, func, model_name):
@@ -381,7 +380,7 @@ class Builder:
             Keras training history
         """
         model_name = str(self.model.name_scope().rstrip("/").upper())
-        print("FITTING MODEL...")
+        self.log.info("FITTING MODEL...")
         validation_data = (
             (self.X_test, self.y_test) if self.X_test is not None else None
         )
@@ -424,7 +423,7 @@ class Builder:
         if params is not None:
             self.fit_params(**params)
         model_name = str(self.model.name_scope().rstrip("/").upper())
-        print("FITTING MODEL...")
+        self.log.info("FITTING MODEL...")
         validation_data = (
             (self.X_test, self.y_test) if self.X_test is not None else None
         )
@@ -468,7 +467,9 @@ class BuilderMLP(Builder):
         test_data = (
             (X_test, y_test) if X_test is not None and y_test is not None else None
         )
-        super().__init__(train_data=train_data, test_data=test_data, **builder_kwargs)
+        super().__init__(
+            train_data=train_data, test_data=test_data, logname="BuilderMLP", **builder_kwargs
+        )
         self.blueprint = blueprint
         self.name = "sequential_mlp"
         self.input_shape = X_train.shape[1] if X_train is not None else None
@@ -576,7 +577,9 @@ class BuilderCNN3D(Builder):
         test_data = (
             (X_test, y_test) if X_test is not None and y_test is not None else None
         )
-        super().__init__(train_data=train_data, test_data=test_data, **builder_kwargs)
+        super().__init__(
+            train_data=train_data, test_data=test_data, logname="BuilderCNN3D", **builder_kwargs
+        )
         self.blueprint = blueprint
         self.input_shape = X_train.shape[1:] if X_train is not None else None
         self.output_shape = 1
@@ -728,7 +731,9 @@ class BuilderEnsemble(Builder):
         test_data = (
             (X_test, y_test) if X_test is not None and y_test is not None else None
         )
-        super().__init__(train_data=train_data, test_data=test_data, **builder_kwargs)
+        super().__init__(
+            train_data=train_data, test_data=test_data, logname="BuilderEnsemble", **builder_kwargs
+        )
         self.name = "ensembleSVM"
         self.input_name = input_name
         self.output_name = output_name
@@ -914,7 +919,9 @@ class BuilderCNN2D(Builder):
         test_data = (
             (X_test, y_test) if X_test is not None and y_test is not None else None
         )
-        super().__init__(train_data=train_data, test_data=test_data, **builder_kwargs)
+        super().__init__(
+            train_data=train_data, test_data=test_data, logname="BuilderCNN2D", **builder_kwargs
+        )
         self.blueprint = blueprint
         self.input_shape = self.X_train.shape[1:] if self.X_train else None
         self.output_shape = 1
@@ -943,7 +950,7 @@ class BuilderCNN2D(Builder):
         """
         Builds and compiles a 2-dimensional Keras Functional CNN
         """
-        print("BUILDING MODEL...")
+        self.log.info("BUILDING MODEL...")
         inputs = Input(self.input_shape, name=self.input_name)
         print("INPUT LAYER")
         x = Conv1D(
@@ -967,7 +974,7 @@ class BuilderCNN2D(Builder):
                 count += 1
             else:
                 x = Flatten()(x)
-        print("DROPOUT")
+        self.log.info("DROPOUT")
         for drop, dense in list(zip(self.dropout, self.dense)):
             x = Dropout(drop)(x)
             x = Dense(dense, activation=self.activation)(x)
@@ -975,7 +982,7 @@ class BuilderCNN2D(Builder):
             self.cnn = Model(inputs, x, name="cnn2d_ensemble")
             return self.cnn
         else:
-            print("FULL CONNECTION")
+            self.log.info("FULL CONNECTION")
             outputs = Dense(
                 units=self.output_shape,
                 activation=self.cost_function,
@@ -991,7 +998,7 @@ class BuilderCNN2D(Builder):
                 optimizer=self.optimizer(learning_rate=lr_schedule),
                 metrics=self.metrics,
             )
-            print("COMPILED")
+            self.log.info("COMPILED")
             return self.model
 
     def batch(self):
@@ -1070,7 +1077,7 @@ class MemoryClassifier(BuilderMLP):
             (X_test, y_test) if X_test is not None and y_test is not None else None
         )
         super().__init__(
-            train_data=train_data, test_data=test_data, blueprint=blueprint, **builder_kwargs
+            train_data=train_data, test_data=test_data, blueprint=blueprint, logname="MemoryClassifier", **builder_kwargs
         )
         self.input_shape = self.X_train.shape[1] if self.X_train else 9
         self.output_shape = 4
@@ -1114,7 +1121,7 @@ class MemoryRegressor(BuilderMLP):
             (X_test, y_test) if X_test is not None and y_test is not None else None
         )
         super().__init__(
-            train_data=train_data, test_data=test_data, blueprint=blueprint, **builder_kwargs,
+            train_data=train_data, test_data=test_data, blueprint=blueprint, logname="MemoryRegressor", **builder_kwargs,
         )
         self.input_shape = self.X_train.shape[1] if self.X_train else 9
         self.output_shape = 1
@@ -1158,7 +1165,7 @@ class WallclockRegressor(BuilderMLP):
             (X_test, y_test) if X_test is not None and y_test is not None else None
         )
         super().__init__(
-            train_data=train_data, test_data=test_data, blueprint=blueprint, **builder_kwargs,
+            train_data=train_data, test_data=test_data, blueprint=blueprint, logname="WallclockRegressor", **builder_kwargs,
         )
         self.input_shape = self.X_train.shape[1] if self.X_train else 9
         self.output_shape = 1

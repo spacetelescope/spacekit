@@ -1,5 +1,7 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap');
+
 body {
-    font-family: monospace, sans-serif;
+    font-family: "JetBrains Mono", monospace, sans-serif;
     font-size: 18px;
 }
 h1, h2, h3, h4, h5, h6 {

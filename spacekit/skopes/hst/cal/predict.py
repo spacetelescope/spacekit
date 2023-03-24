@@ -43,7 +43,6 @@ from spacekit.logger.log import Logger
 MODEL_PATH = os.environ.get("MODEL_PATH", "./models") #"data/2022-02-14-1644848448/models"
 TX_FILE = os.path.join(MODEL_PATH, "tx_data.json")
 
-
 def load_pretrained_model(**builder_kwargs):
     builder = Builder(**builder_kwargs)
     builder.load_saved_model(arch="calmodels")
@@ -52,7 +51,7 @@ def load_pretrained_model(**builder_kwargs):
 class Predict:
 
     def __init__(
-        self, dataset, bucket_name=None, key=None, model_path=MODEL_PATH, models={}, tx_file=TX_FILE, norm=1, norm_cols=[0,1]
+        self, dataset, bucket_name=None, key=None, model_path=MODEL_PATH, models={}, tx_file=TX_FILE, norm=1, norm_cols=[0,1], **log_kwargs
         ):
         self.dataset = dataset
         self.bucket_name = bucket_name
@@ -70,8 +69,7 @@ class Predict:
         self.wall_reg = None
         self.mem_reg = None
         self.__name__ = "Predict"
-        self.loglevel = "info"
-        self.log = Logger(self.__name__, console_log_level=self.loglevel).setup_logger()
+        self.log = Logger(self.__name__, **log_kwargs).setup_logger()
         self.predictions = None
         self.probabilities = None
         self.initialize_models()
@@ -81,7 +79,6 @@ class Predict:
             self.log.warning(f"models path not found: {self.model_path} - defaulting to latest in spacekit-collection")
             self.model_path = None
         self.load_models(models=self.models)
-        self.tx_file = self.mem_clf.find_tx_file()
 
     def scrape_s3_inputs(self):
         if self.key == "control":
@@ -113,6 +110,11 @@ class Predict:
         self.mem_clf = models.get('mem_clf', load_pretrained_model(model_path=self.model_path, name="mem_clf"))
         self.wall_reg = models.get('wall_reg', load_pretrained_model(model_path=self.model_path, name="wall_reg"))
         self.mem_reg = models.get('mem_reg', load_pretrained_model(model_path=self.model_path, name="mem_reg"))
+        if self.model_path is None:
+            self.model_path = os.path.dirname(self.mem_clf.model_path)
+        if self.tx_file is None or not os.path.exists(self.tx_file):
+            self.mem_clf.find_tx_file()
+            self.tx_file = self.mem_clf.tx_file
 
     def classifier(self, model, data):
         """Returns class prediction"""
@@ -132,14 +134,15 @@ class Predict:
         memval = np.round(float(self.regressor(self.mem_reg.model, self.X)), 2)
         clocktime = int(self.regressor(self.wall_reg.model, self.X))
         self.predictions = {"memBin": membin, "memVal": memval, "clockTime": clocktime}
-        self.log.info(dict(dataset=self.dataset).update(self.predictions))
+        self.log.info(f"dataset: {self.dataset} predictions: {self.predictions}")
         self.probabilities = {"dataset": self.dataset, "probabilities": pred_proba}
         self.log.info(self.probabilities)
 
 
 def local_handler(dataset, **kwargs):
     """handles non-lambda invocations"""
-    pred = Predict(dataset, **kwargs).run_inference()
+    pred = Predict(dataset, **kwargs)
+    pred.run_inference()
     return pred
 
 
@@ -171,8 +174,8 @@ if __name__ == "__main__":
         "-b",
         "--bucket_name",
         type=str,
-        default=None,
-        help="s3 bucket name",
+        default=os.environ.get("BUCKET", None),
+        help="name of s3 bucket containing input metadata",
     )
     parser.add_argument(
         "-k",
@@ -186,29 +189,47 @@ if __name__ == "__main__":
         "--norm",
         type=int,
         default=1,
-        help="apply normalization and scaling",
+        help="apply normalization and scaling (bool)",
     )
     parser.add_argument(
         "-c",
         "--norm_cols",
         type=str,
         default="0,1",
-        help=""
+        help="comma-separated index of input columns to apply normalization"
     )
     parser.add_argument(
         "-m",
         "--model_path",
         type=str,
-        default=None,
+        default=os.environ.get("MODEL_PATH", "./models"),
         help="path to saved model directory"
     )
     parser.add_argument(
         "-t",
         "--tx_file",
         type=str,
-        default="",
-        help=""
+        default=None,
+        help="path to transformer metadata json file"
+    )
+    parser.add_argument(
+        "--console_log_level",
+        type=str,
+        choices=["info", "debug", "error", "warning"],
+        default="info"
+    )
+    parser.add_argument(
+        "--logfile",
+        type=bool,
+        default=True
+    )
+    parser.add_argument(
+        "--logdir",
+        type=str,
+        default="."
     )
     args = parser.parse_args()
     args.norm_cols = [int(i) for i in args.norm_cols.split(",")]
-    local_handler(args.dataset, **args)
+    #user_kwargs = dict(map(lambda x: args.x = vars(args)))
+    #log_kwargs = dict(console_log_level=args.loglevel, logfile=args.logfile, logdir=args.logdir)
+    local_handler(**vars(args))

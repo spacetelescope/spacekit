@@ -56,7 +56,7 @@ def download(scrape="file:data", datasets="2022-02-14,2021-11-04,2021-10-28", de
     elif src == "file":
         print("Scraping local directory")
         p = [f"{archive}/*.zip", f"{archive}/*"]
-        scraper = FileScraper(patterns=p, clean=False, cache_dir=dest)
+        scraper = FileScraper(search_patterns=p, clean=False, cache_dir=dest)
     # TODO: custom web source via json
     elif src == "web":
         with open(archive, "r") as j:
