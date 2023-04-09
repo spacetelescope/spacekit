@@ -21,10 +21,10 @@ class Scrubber:
         dropnans=True,
         save_raw=True,
         name="Scrubber",
-        **log_kwargs,
+        **log_kws,
     ):
         self.__name__ = name
-        self.log = Logger(self.__name__, **log_kwargs).setup_logger()
+        self.log = Logger(self.__name__, **log_kws).spacekit_logger()
         self.df = self.cache_data(cache=data)
         self.col_order = col_order
         self.output_path = output_path
@@ -153,7 +153,7 @@ class SvmScrubber(Scrubber):
         make_pos_list=True,
         crpt=0,
         make_subsamples=False,
-        **log_kwargs
+        **log_kws
     ):
         self.col_order = self.set_col_order()
         super().__init__(
@@ -164,7 +164,7 @@ class SvmScrubber(Scrubber):
             dropnans=dropnans,
             save_raw=save_raw,
             name="SVMScrubber",
-            **log_kwargs
+            **log_kws
         )
 
         self.input_path = input_path
@@ -417,7 +417,7 @@ class CalScrubber(Scrubber):
         output_file="batch.csv",
         dropnans=True,
         save_raw=True,
-        **log_kwargs
+        **log_kws
     ):
         super().__init__(
             data=data,
@@ -427,7 +427,7 @@ class CalScrubber(Scrubber):
             dropnans=dropnans,
             save_raw=save_raw,
             name="CalScrubber",
-            **log_kwargs,
+            **log_kws,
         )
         self.data = super().convert_to_dataframe(data=data)
 

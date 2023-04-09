@@ -36,7 +36,7 @@ from spacekit.extractor.scrape import S3Scraper
 from spacekit.preprocessor.scrub import CalScrubber
 from spacekit.preprocessor.transform import PowerX
 from spacekit.builder.architect import Builder
-from spacekit.logger.log import Logger
+from spacekit.logger.log import SPACEKIT_LOG, Logger
 
 
 # build from local filepath
@@ -51,7 +51,7 @@ def load_pretrained_model(**builder_kwargs):
 class Predict:
 
     def __init__(
-        self, dataset, bucket_name=None, key=None, model_path=MODEL_PATH, models={}, tx_file=TX_FILE, norm=1, norm_cols=[0,1], **log_kwargs
+        self, dataset, bucket_name=None, key=None, model_path=MODEL_PATH, models={}, tx_file=TX_FILE, norm=1, norm_cols=[0,1], **log_kws
         ):
         self.dataset = dataset
         self.bucket_name = bucket_name
@@ -68,26 +68,26 @@ class Predict:
         self.mem_clf = None
         self.wall_reg = None
         self.mem_reg = None
-        self.__name__ = "Predict"
-        self.log = Logger(self.__name__, **log_kwargs).setup_logger()
+        self.__name__ = "predict"
+        self.log = Logger(self.__name__, **log_kws).setup_logger(logger=SPACEKIT_LOG)
+        self.log_kws = dict(log=self.log, **log_kws)
         self.predictions = None
         self.probabilities = None
         self.initialize_models()
     
     def initialize_models(self):
+        self.log.info("Initializing prediction models")
         if self.models is None and not os.path.exists(self.model_path):
             self.log.warning(f"models path not found: {self.model_path} - defaulting to latest in spacekit-collection")
             self.model_path = None
         self.load_models(models=self.models)
 
     def scrape_s3_inputs(self):
+        self.log.info("Scraping s3")
         if self.key == "control":
             self.key = f"control/{self.dataset}/{self.dataset}_MemModelFeatures.txt"
-        try:
-            self.input_data = S3Scraper(bucket=self.bucket_name, pfx=self.key).import_dataset()
-        except Exception as e:
-            self.log.error(e)
-    
+        self.input_data = S3Scraper(bucket=self.bucket_name, pfx=self.key, **self.log_kws).import_dataset()
+
     def normalize_inputs(self):
         if self.norm:
             Px = PowerX(self.inputs, cols=self.norm_cols, tx_file=self.tx_file)
@@ -99,10 +99,11 @@ class Predict:
             self.X = self.inputs
 
     def preprocess(self):
+        self.log.debug("Preprocessing input features")
         if self.input_data is None:
             self.scrape_s3_inputs()
         self.log.info(f"dataset: {self.dataset} keys: {self.input_data}")
-        self.inputs = CalScrubber(data={self.dataset:self.input_data}).scrub_inputs()
+        self.inputs = CalScrubber(data={self.dataset:self.input_data}, **self.log_kws).scrub_inputs()
         self.log.info(f"dataset: {self.dataset} features: {self.inputs}")
         self.normalize_inputs()
 
@@ -219,17 +220,26 @@ if __name__ == "__main__":
         default="info"
     )
     parser.add_argument(
+        "--logfile_log_level",
+        type=str,
+        choices=["info", "debug", "error", "warning"],
+        default="debug"
+    )
+    parser.add_argument(
         "--logfile",
         type=bool,
-        default=True
+        default=True,
     )
     parser.add_argument(
         "--logdir",
         type=str,
         default="."
     )
+    parser.add_argument(
+        "--verbose",
+        "-v",
+        action="store_true",
+    )
     args = parser.parse_args()
     args.norm_cols = [int(i) for i in args.norm_cols.split(",")]
-    #user_kwargs = dict(map(lambda x: args.x = vars(args)))
-    #log_kwargs = dict(console_log_level=args.loglevel, logfile=args.logfile, logdir=args.logdir)
     local_handler(**vars(args))
