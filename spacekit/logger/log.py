@@ -66,7 +66,6 @@ class Logger:
         log=None,
     ):
         self.__name__ = f"spacekit.{script_name}" if script_name != "spacekit" else script_name
-        #self.__name__ = script_name
         self.short_name = script_name
         self.console = console
         self.logfile = logfile

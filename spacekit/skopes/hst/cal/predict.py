@@ -83,34 +83,35 @@ class Predict:
         self.load_models(models=self.models)
 
     def scrape_s3_inputs(self):
-        self.log.info("Scraping s3")
         if self.key == "control":
             self.key = f"control/{self.dataset}/{self.dataset}_MemModelFeatures.txt"
         self.input_data = S3Scraper(bucket=self.bucket_name, pfx=self.key, **self.log_kws).import_dataset()
 
     def normalize_inputs(self):
         if self.norm:
+            self.log.info("Applying normalization")
             Px = PowerX(self.inputs, cols=self.norm_cols, tx_file=self.tx_file)
             self.X = Px.Xt
             self.tx_data = Px.tx_data
-            self.log.info(f"tx_data: {self.tx_data}")
+            self.log.debug(f"tx_data: {self.tx_data}")
             self.log.info(f"dataset: {self.dataset} normalized inputs (X): {self.X}")
         else:
             self.X = self.inputs
 
     def preprocess(self):
-        self.log.debug("Preprocessing input features")
+        self.log.info("Acquiring input data")
         if self.input_data is None:
             self.scrape_s3_inputs()
         self.log.info(f"dataset: {self.dataset} keys: {self.input_data}")
+        self.log.info("Preprocessing features")
         self.inputs = CalScrubber(data={self.dataset:self.input_data}, **self.log_kws).scrub_inputs()
         self.log.info(f"dataset: {self.dataset} features: {self.inputs}")
         self.normalize_inputs()
 
     def load_models(self, models={}):
-        self.mem_clf = models.get('mem_clf', load_pretrained_model(model_path=self.model_path, name="mem_clf"))
-        self.wall_reg = models.get('wall_reg', load_pretrained_model(model_path=self.model_path, name="wall_reg"))
-        self.mem_reg = models.get('mem_reg', load_pretrained_model(model_path=self.model_path, name="mem_reg"))
+        self.mem_clf = models.get('mem_clf', load_pretrained_model(model_path=self.model_path, name="mem_clf", **self.log_kws))
+        self.wall_reg = models.get('wall_reg', load_pretrained_model(model_path=self.model_path, name="wall_reg", **self.log_kws))
+        self.mem_reg = models.get('mem_reg', load_pretrained_model(model_path=self.model_path, name="mem_reg", **self.log_kws))
         if self.model_path is None:
             self.model_path = os.path.dirname(self.mem_clf.model_path)
         if self.tx_file is None or not os.path.exists(self.tx_file):

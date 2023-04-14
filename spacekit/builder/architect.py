@@ -35,7 +35,7 @@ class Builder:
     """Class for building and training a neural network."""
 
     def __init__(
-        self, train_data=None, test_data=None, blueprint=None, model_path=None, name=None, logname="Builder", **log_kwargs
+        self, train_data=None, test_data=None, blueprint=None, model_path=None, name=None, logname="Builder", **log_kws
     ):
         if train_data is not None:
             self.X_train = train_data[0]
@@ -64,7 +64,7 @@ class Builder:
         self.history = None
         self.tx_file = None
         self.__name__ = logname
-        self.log = Logger(self.__name__, **log_kwargs).setup_logger()
+        self.log = Logger(self.__name__, **log_kws).spacekit_logger()
 
 
     def load_saved_model(
@@ -95,6 +95,7 @@ class Builder:
                 for d in dirs:
                     if d == self.name:
                         self.model_path = os.path.join(root, d)
+        self.log.debug(f"Loading saved model from {str(self.model_path)}")
         try:
             self.model = load_model(self.model_path, custom_objects=custom_obj)
             if compile_params:

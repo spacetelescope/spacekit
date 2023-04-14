@@ -477,7 +477,7 @@ class S3Scraper(Scraper):
         obj = bucket.Object(self.pfx)
         input_data = {}
         body = None
-        self.log.info(f"Streaming from s3://{self.bucket}/{self.pfx}")
+        self.log.debug(f"Streaming from s3://{self.bucket}/{self.pfx}")
         try:
             body = obj.get()["Body"].read().splitlines()
             for line in body:
