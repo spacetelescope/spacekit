@@ -21,15 +21,15 @@ ipsts = cal.df.index.values
 
 
 clf = Builder(
-    blueprint="memory_classifier", model_path=model_path + "/mem_clf"
+    blueprint="memory_classifier", model_path=model_path, name="mem_clf"
 ).load_saved_model()
 
 mem_reg = Builder(
-    blueprint="memory_regression", model_path=model_path + "/mem_reg"
+    blueprint="memory_regression", model_path=model_path, name="mem_reg"
 ).load_saved_model()
 
 wall_reg = Builder(
-    blueprint="wallclock_regression", model_path=model_path + "/wall_reg"
+    blueprint="wallclock_regression", model_path=model_path, name="wall_reg"
 ).load_saved_model()
 
 

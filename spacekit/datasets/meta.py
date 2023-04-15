@@ -22,7 +22,7 @@ calcloud = {
     "model": {
         "basepath": "spacekit.builder.trained_networks",
         "fname": "calmodels.zip",
-        "hash": "b36e310874f7cd2c50d4e5c04438118af7751c69",
+        "hash": "2922697db0adb13a3b54a24219ae6f5302c008aaeac53ef7ec4f684005b5c338",
     },
 }
 
@@ -87,11 +87,11 @@ networks = {
     "calcloud": {
         "basepath": "spacekit.builder.trained_networks",
         "fname": "calmodels.zip",
-        "hash": "b36e310874f7cd2c50d4e5c04438118af7751c69",
+        "hash": "2922697db0adb13a3b54a24219ae6f5302c008aaeac53ef7ec4f684005b5c338",
     },
     "svm": {
         "basepath": "spacekit.builder.trained_networks",
-        "fname": "ensembleSVM.zip",
-        "hash": "602b9d9129940820e57ed3db87cb70eb15aec503",
+        "fname": "ensemble.zip",
+        "hash": "9ef2b5ddd078544c98a19e2c26fcccb34ae36c742b86ee3b9434ceab6270c07d",
     },
 }

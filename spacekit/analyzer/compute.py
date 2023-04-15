@@ -19,7 +19,7 @@ from sklearn.metrics import (
 from tensorflow.python.ops.numpy_ops import np_config
 
 plt.style.use("seaborn-bright")
-font_dict = {"family": '"Titillium Web", monospace', "size": 16}
+font_dict = {"family": "monospace", "size": 16} # Titillium Web
 mpl.rc("font", **font_dict)
 
 

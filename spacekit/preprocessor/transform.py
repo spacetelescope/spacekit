@@ -6,6 +6,8 @@ from scipy.ndimage.filters import uniform_filter1d
 from sklearn.preprocessing import PowerTransformer
 import tensorflow as tf
 
+from spacekit.logger.log import Logger
+
 
 class Transformer:
     def __init__(
@@ -19,6 +21,8 @@ class Transformer:
         join_data=1,
         rename="_scl",
         output_path=None,
+        name="Transformer",
+        **log_kws
     ):
         """Instantiates a Transformer class object. Unless the `cols` attribute is empty, it will automatically instantiate some of the other attributes needed to transform the data. Using the Transformer subclasses instead is recommended (this class is mainly used as an object with general methods to load or save the transform data as well as instantiate some of the initial attributes).
 
@@ -41,6 +45,8 @@ class Transformer:
         output_path : string, optional
             where to save the transformer metadata, by default None (current working directory)
         """
+        self.__name__ = name
+        self.log = Logger(self.__name__, **log_kws).spacekit_logger()
         self.data = self.check_shape(data)
         self.cols = cols
         self.ncols = self.check_columns(ncols=ncols)
@@ -55,9 +61,9 @@ class Transformer:
 
     def check_shape(self, data):
         if len(data.shape) == 1:
-            if type(data) == np.ndarray:
+            if isinstance(data, np.ndarray):
                 data = data.reshape(1, -1)
-            elif type(data) == pd.Series:
+            elif isinstance(data, pd.Series):
                 name = data.name
                 data = pd.DataFrame(
                     data.values.reshape(1, -1), columns=list(data.index)
@@ -67,7 +73,7 @@ class Transformer:
         return data
 
     def check_columns(self, ncols=None):
-        if ncols is not None and type(self.data) == np.ndarray:
+        if ncols is not None and isinstance(self.data, np.ndarray):
             self.cols = ncols
         self.ncols = ncols
 
@@ -111,7 +117,7 @@ class Transformer:
                 json.dump(self.tx_data, j)
             else:
                 json.dump(tx, j)
-        print("TX data saved as json file: ", self.tx_file)
+        self.log.info(f"TX data saved as json file: {self.tx_file}")
         return self.tx_file
 
     def continuous_data(self):
@@ -123,11 +129,11 @@ class Transformer:
             continuous feature vectors (as determined by `cols` attribute)
         """
         if self.cols is None:
-            print("`cols` attribute not instantiated.")
+            self.log.debug("`cols` attribute not instantiated.")
             return None
-        if type(self.data) == pd.DataFrame:
+        if isinstance(self.data, pd.DataFrame):
             return self.data[self.cols]
-        elif type(self.data) == np.ndarray:
+        elif isinstance(self.data, np.ndarray):
             return self.data[:, self.cols]
 
     def categorical_data(self):
@@ -139,11 +145,10 @@ class Transformer:
             "categorical" i.e. non-continuous feature vectors (as determined by `cols` attribute)
         """
         if self.cols is None:
-            # print("`cols` attribute not instantiated.")
             return None
-        if type(self.data) == pd.DataFrame:
+        if isinstance(self.data, pd.DataFrame):
             return self.data.drop(self.cols, axis=1, inplace=False)
-        elif type(self.data) == np.ndarray:
+        elif isinstance(self.data, np.ndarray):
             allcols = list(range(self.data.shape[1]))
             cat_cols = [c for c in allcols if c not in self.cols]
             return self.data[:, cat_cols]
@@ -168,13 +173,13 @@ class Transformer:
         try:
             idx = self.data.index
         except AttributeError:
-            print("Cannot index a numpy array; use `normalized_matrix` instead.")
-            return None
+            self.log.error("Non-dataframe type detected - Trying `normalized_matrix` instead.")
+            return self.normalized_matrix(normalized)
         if self.rename is None:
             newcols = self.cols
-        elif type(self.rename) == str:
+        elif isinstance(self.rename, str):
             newcols = [c + self.rename for c in self.cols]
-        elif type(self.rename) == list:
+        elif isinstance(self.rename, list):
             newcols = self.rename
         try:
             data_norm = pd.DataFrame(normalized, index=idx, columns=newcols)
@@ -184,7 +189,7 @@ class Transformer:
                 data_norm = data_norm.join(self.data, how="left")
             return data_norm
         except Exception as e:
-            print(e)
+            self.log.error(e)
             return None
 
     def normalized_matrix(self, normalized):
@@ -200,7 +205,7 @@ class Transformer:
         numpy.ndarray
             array of same shape as input data, with continuous vectors normalized
         """
-        if type(self.categorical) == pd.DataFrame:
+        if isinstance(self.categorical, pd.DataFrame):
             cat = self.categorical.values
         else:
             cat = self.categorical
@@ -223,11 +228,12 @@ class Transformer:
         ndarray or dataframe
             array or dataframe of same shape and datatype as inputs, with continuous vectors/features normalized
         """
-        if type(self.data) == pd.DataFrame:
+        if isinstance(self.data, pd.DataFrame):
             return self.normalized_dataframe(normalized)
-        elif type(self.data) == np.ndarray:
+        elif isinstance(self.data, np.ndarray):
             return self.normalized_matrix(normalized)
         else:
+            self.log.error("Input data type not recognized - must be a dataframe or array")
             return None
 
 
@@ -256,6 +262,7 @@ class PowerX(Transformer):
         output_path=None,
         join_data=1,
         rename="_scl",
+        **log_kws
     ):
         super().__init__(
             data,
@@ -267,6 +274,8 @@ class PowerX(Transformer):
             join_data=join_data,
             rename=rename,
             output_path=output_path,
+            name="PowerX",
+            **log_kws
         )
         self.calculate_power()
         self.normalized = self.apply_power_matrix()
@@ -395,80 +404,6 @@ def normalize_training_data(
         return X_train, X_test, X_val
     else:
         return X_train, X_test
-
-
-# planned deprecation
-class CalX(PowerX):
-    """***CalX will be deprecated in v0.3.2 - use PowerX instead***"""
-
-    def __init__(self, data, tx_file=None, tx_data=None, rename=False):
-        super().__init__(
-            data,
-            cols=["n_files", "total_mb"],
-            ncols=[0, 1],
-            tx_file=tx_file,
-            tx_data=tx_data,
-            rename=rename,
-        )
-        self.tx_data = self.load_transformer_data()
-        self.X = self.powerX()
-
-    def transform(self):
-        """***CalX will be deprecated in v0.3.2 - use PowerX instead***"""
-        if self.tx_data is not None:
-            self.inputs = self.scrub_keys()
-            # self.lambdas = np.array(
-            #    [self.tx_data["f_lambda"], self.tx_data["s_lambda"]]
-            # )
-            self.lambdas = self.tx_data["lambdas"]
-            self.f_mean = self.tx_data["f_mean"]
-            self.f_sigma = self.tx_data["f_sigma"]
-            self.s_mean = self.tx_data["s_mean"]
-            self.s_sigma = self.tx_data["s_sigma"]
-            return self
-
-    def scrub_keys(self):
-        """***CalX will be deprecated in v0.3.2 - use PowerX instead***"""
-        x = self.data
-        self.inputs = np.array(
-            [
-                x["n_files"],
-                x["total_mb"],
-                x["drizcorr"],
-                x["pctecorr"],
-                x["crsplit"],
-                x["subarray"],
-                x["detector"],
-                x["dtype"],
-                x["instr"],
-            ]
-        )
-        return self.inputs
-
-    def powerX(self):
-        """***CalX will be deprecated in v0.3.2 - use PowerX instead*** Applies yeo-johnson power transform to first two indices of array (n_files, total_mb) using lambdas, mean and standard deviation pre-calculated for each variable (loads dict from json file).
-
-        Returns: X inputs as 2D-array for generating predictions
-        """
-        if self.inputs is None:
-            return None
-        else:
-            X = self.inputs
-            # n_files = X[0]
-            # total_mb = X[1]
-            # apply power transformer normalization to continuous vars
-            x = np.array([X[c] for c in self.ncols]).reshape(1, -1)
-            # x = np.array([[n_files], [total_mb]]).reshape(1, -1)
-            self.transformer.lambdas_ = self.lambdas
-            xt = self.transformer.transform(x)
-            # normalization (zero mean, unit variance)
-            x_files = np.round(((xt[0, 0] - self.f_mean) / self.f_sigma), 5)
-            x_size = np.round(((xt[0, 1] - self.s_mean) / self.s_sigma), 5)
-            self.X = np.array(
-                [x_files, x_size, X[2], X[3], X[4], X[5], X[6], X[7], X[8]]
-            ).reshape(1, -1)
-            print(self.X)
-            return self.X
 
 
 def normalize_training_images(X_tr, X_ts, X_vl=None):

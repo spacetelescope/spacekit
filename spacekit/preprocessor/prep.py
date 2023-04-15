@@ -133,66 +133,14 @@ class Prep:
         ).Xt
 
 
-class SvmPrep(Prep):
-    def __init__(
-        self,
-        data,
-        y_target="label",
-        X_cols=[],
-        tensors=True,
-        normalize=False,
-        random=None,
-        tsize=0.2,
-        encode_targets=False,
-        norm_params=None,
-    ):
-        self.set_X_cols(X_cols)
-
-        super().__init(
-            data,
-            y_target,
-            X_cols=self.X_cols,
-            tensors=tensors,
-            normalize=normalize,
-            random=random,
-            tsize=tsize,
-            encode_targets=encode_targets,
-            norm_params=norm_params,
-        )
-        self.norm_cols = ["", ""]
-        self.label = data["label"]
-        self.memory = data["memory"]
-        self.wallclock = data["wallclock"]
-        self.y_train_labels = None
-        self.y_test_labels = None
-
-    def set_X_cols(self, X_cols):
-        if len(X_cols) == 0:
-            self.X_cols = [
-                "numexp",
-                "rms_ra",
-                "rms_dec",
-                "nmatches",
-                "point",
-                "segment",
-                "gaia",
-                "det",
-                "wcs",
-                "cat",
-            ]
-        else:
-            self.X_cols = X_cols
-
-    def prep_data(self):
-        super()._prep_data(self.y_target, stratify=True)
-
-
 class CalPrep(Prep):
     def __init__(
         self,
         data,
         y_target,
         X_cols=[],
+        norm_cols=["n_files", "total_mb"],
+        rename_cols=["x_files", "x_size"],
         tensors=True,
         normalize=True,
         random=None,
@@ -210,7 +158,8 @@ class CalPrep(Prep):
             tsize=tsize,
             encode_targets=encode_targets,
         )
-        self.norm_cols = ["n_files", "total_mb"]
+        self.norm_cols = norm_cols
+        self.rename_cols = rename_cols
         self.mem_bin = data["mem_bin"]
         self.memory = data["memory"]
         self.wallclock = data["wallclock"]
@@ -241,7 +190,7 @@ class CalPrep(Prep):
         super().stratify_split(y_target="mem_bin", stratify=True)
         self.X_train, self.X_test = super().get_X_train_test()
         super().apply_normalization(
-            T=PowerX, cols=self.norm_cols, rename=["x_files", "x_size"], join=2
+            T=PowerX, cols=self.norm_cols, rename=self.rename_cols, join=2
         )
         self.prep_mem_bin()
         self.prep_mem_reg()
@@ -264,3 +213,56 @@ class CalPrep(Prep):
         self.y_wall_train, self.y_wall_test = y_tensors(
             y_train.values, y_test.values, reshape=True
         )
+
+
+# TODO
+class SvmPrep(Prep):
+    def __init__(
+        self,
+        data,
+        y_target="label",
+        X_cols=[],
+        tensors=True,
+        normalize=False,
+        random=None,
+        tsize=0.2,
+        encode_targets=False,
+        norm_params=None,
+    ):
+        self.set_X_cols(X_cols)
+
+        super().__init(
+            data,
+            y_target,
+            X_cols=self.X_cols,
+            tensors=tensors,
+            normalize=normalize,
+            random=random,
+            tsize=tsize,
+            encode_targets=encode_targets,
+            norm_params=norm_params,
+        )
+        self.norm_cols = ["", ""]
+        self.label = data["label"]
+        self.y_train_labels = None
+        self.y_test_labels = None
+
+    def set_X_cols(self, X_cols):
+        if len(X_cols) == 0:
+            self.X_cols = [
+                "numexp",
+                "rms_ra",
+                "rms_dec",
+                "nmatches",
+                "point",
+                "segment",
+                "gaia",
+                "det",
+                "wcs",
+                "cat",
+            ]
+        else:
+            self.X_cols = X_cols
+
+    def prep_data(self):
+        super()._prep_data(self.y_target, stratify=True)

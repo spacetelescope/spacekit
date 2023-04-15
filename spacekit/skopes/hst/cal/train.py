@@ -34,26 +34,15 @@ from spacekit.builder.architect import (
 )
 from spacekit.analyzer.compute import ComputeMulti, ComputeRegressor
 from spacekit.skopes.hst.cal.validate import run_kfold
+from spacekit.skopes.hst.cal.config import COLUMN_ORDER, NORM_COLS, RENAME_COLS, X_NORM
 
 __name__ = "HST CAL MODEL TRAINING"
-
-COLUMN_ORDER = [
-    "n_files",
-    "total_mb",
-    "drizcorr",
-    "pctecorr",
-    "crsplit",
-    "subarray",
-    "detector",
-    "dtype",
-    "instr",
-]
 
 
 class Train:
     def __init__(
         self,
-        project="standard",
+        cfg="asn",
         date_key=None,
         fpath=None,
         train_path=None,
@@ -67,7 +56,10 @@ class Train:
         ddb_table=None,
         s3_bucket=None,
     ):
-        self.project = project
+        self.X_cols = COLUMN_ORDER[cfg]
+        self.norm_cols = NORM_COLS[cfg]
+        self.rename_cols = RENAME_COLS[cfg]
+        self.X_norm = X_NORM[cfg]
         self.date_key = date_key
         self.fpath = fpath  # data/timestamp
         self.train_path = train_path
@@ -131,7 +123,9 @@ class Train:
 
     def load_prep(self):
         df = load(name="calcloud", date_key=self.date_key, fpath=self.fpath)
-        self.data = CalPrep(df, "mem_bin")
+        self.data = CalPrep(
+            df, "mem_bin", X_cols=self.X_cols, norm_cols=self.norm_cols, rename_cols=self.rename_cols
+        )
         self.data.prep_data()
 
     # TODO: SVM repro model training - can use same builder objects, just set diff hyperparams after instantiating (add params to builder.blueprints)
@@ -242,13 +236,13 @@ class Train:
             if c == "bin_pred":
                 self.data.data[c] = np.argmax(
                     self.model_objects[m]["builder"].model.predict(
-                        self.data.data[COLUMN_ORDER]
+                        self.data.data[self.X_norm]
                     ),
                     axis=-1,
                 )
             else:
                 self.data.data[c] = self.model_objects[m]["builder"].model.predict(
-                    self.data.data[COLUMN_ORDER]
+                    self.data.data[self.X_norm]
                 )
 
     def tt_pred(self):
@@ -275,13 +269,13 @@ class Train:
             if c == "bin_pred":
                 test[c] = np.argmax(self.model_objects[m]["results"].y_pred, axis=-1)
                 train[c] = np.argmax(
-                    self.model_objects[m]["builder"].model.predict(train[COLUMN_ORDER]),
+                    self.model_objects[m]["builder"].model.predict(train[self.X_norm]),
                     axis=-1,
                 )
             else:
                 test[c] = self.model_objects[m]["results"].y_pred
                 train[c] = self.model_objects[m]["builder"].model.predict(
-                    train[COLUMN_ORDER]
+                    train[self.X_norm]
                 )
         for c in self.dict_preds.values():
             self.data.data.loc[self.data.data[test.index], c] = test[c]
@@ -558,11 +552,11 @@ if __name__ == "__main__":
         "--verbose", type=int, choices=[0, 1, 2], default=os.environ.get("VERBOSE", 0)
     )
     parser.add_argument(
-        "--project",
-        "-p",
+        "--config",
+        "-c",
         type=int,
-        choices=["cal", "svm", "mvm"],
-        default=os.environ.get("PROJECT", "cal"),
+        choices=["asn", "svm", "mvm"],
+        default=os.environ.get("CONFIG", "asn"),
     )
 
     kwargs = parse_user_args(parser.parse_args())

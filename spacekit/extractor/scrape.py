@@ -8,7 +8,6 @@ import glob
 import sys
 import json
 import csv
-from stsci.tools import logutil
 from zipfile import ZipFile
 from astropy.io import fits, ascii
 from astroquery.mast import Observations
@@ -16,10 +15,15 @@ from progressbar import ProgressBar
 from botocore.config import Config
 from decimal import Decimal
 from boto3.dynamodb.conditions import Attr
+from spacekit.logger.log import Logger
 
-retry_config = Config(retries={"max_attempts": 3})
-client = boto3.client("s3", config=retry_config)
+
+# mitigation of potential API rate restrictions (esp for Batch API)
+retry_config = Config(retries={"max_attempts": 5, "mode": "standard"}, region_name="us-east-1")
 dynamodb = boto3.resource("dynamodb", config=retry_config, region_name="us-east-1")
+# below are maintained for backwards compatibility with static methods
+s3 = boto3.resource("s3", config=retry_config)
+client = boto3.client("s3", config=retry_config)
 
 
 SPACEKIT_DATA = os.environ.get("SPACEKIT_DATA", "~/spacekit_data")
@@ -88,7 +92,7 @@ class Scraper:
     """Parent Class for various data scraping subclasses. Instantiating the appropriate subclass is preferred."""
 
     def __init__(
-        self, cache_dir="~", cache_subdir="data", format="zip", extract=True, clean=True
+        self, cache_dir="~", cache_subdir="data", format="zip", extract=True, clean=True, name="Scraper", **log_kws
     ):
         """Instantiates a spacekit.extractor.scrape.Scraper object.
 
@@ -111,6 +115,8 @@ class Scraper:
         self.clean = clean  # delete archive if extract successful
         self.source = None
         self.fpaths = []
+        self.__name__ = name
+        self.log = Logger(self.__name__, **log_kws).spacekit_logger()
 
     def check_cache(self, cache):
         if cache == "~":
@@ -166,7 +172,7 @@ class Scraper:
         with ZipFile(archive_path, "w") as zip_ref:
             for file in file_paths:
                 zip_ref.write(file)
-                print(file)
+                self.log.info(file)
         return
 
 
@@ -181,12 +187,15 @@ class FileScraper(Scraper):
 
     def __init__(
         self,
-        patterns=["*.zip"],
+        search_path="",
+        search_patterns=["*.zip"],
         cache_dir="~",
         cache_subdir="data",
         format="zip",
         extract=True,
         clean=False,
+        name="FileScraper",
+        **log_kws
     ):
         """Instantiates a spacekit.extractor.scrape.FileScraper object.
 
@@ -201,8 +210,11 @@ class FileScraper(Scraper):
             format=format,
             extract=extract,
             clean=clean,
+            name=name,
+            **log_kws,
         )
-        self.patterns = patterns
+        self.search_path = search_path
+        self.search_patterns = search_patterns
         self.fpaths = []
         self.source = "file"
 
@@ -218,8 +230,8 @@ class FileScraper(Scraper):
         list
             paths to dataset files found in glob pattern search
         """
-        for p in self.patterns:
-            results = glob.glob(p)
+        for p in self.search_patterns:
+            results = glob.glob(os.path.join(self.search_path), p)
             if len(results) > 0:
                 for r in results:
                     self.fpaths.append(r)
@@ -247,6 +259,7 @@ class WebScraper(Scraper):
         format="zip",
         extract=True,
         clean=True,
+        **log_kws
     ):
         """Uses dictionary of uri, filename and hash key-value pairs to download data securely from a website such as Github.
 
@@ -265,6 +278,8 @@ class WebScraper(Scraper):
             format=format,
             extract=extract,
             clean=clean,
+            name="WebScraper",
+            **log_kws,
         )
         self.uri = uri
         self.dataset = dataset
@@ -321,6 +336,7 @@ class S3Scraper(Scraper):
         cache_subdir="data",
         format="zip",
         extract=True,
+        **log_kws,
     ):
         """Instantiates a spacekit.extractor.scrape.S3Scraper object
 
@@ -332,18 +348,39 @@ class S3Scraper(Scraper):
             aws bucket prefix (subfolder uri path), by default "archive"
         dataset : dictionary, optional
             key-value pairs of dataset filenames and prefixes, by default None
+        aws_kwargs: dictionary, optional
+            key-value pairs of AWS credentials with s3 read-access permissions retrieved
+            from environment variables, by default None. This is a fallback method in cases
+            where the aws.ini configuration file does not exist. See boto3/aws API documentation
+            for examples.
         """
         super().__init__(
             cache_dir=cache_dir,
             cache_subdir=cache_subdir,
             format=format,
             extract=extract,
+            name="S3Scraper",
+            **log_kws
         )
         self.bucket = bucket
         self.pfx = pfx
         self.dataset = dataset
         self.fpaths = []
         self.source = "s3"
+        self.s3 = boto3.resource("s3", config=retry_config)
+        self.client = boto3.client("s3", config=retry_config)
+        self.aws_kwargs = self.authorize_aws()
+    
+    def authorize_aws(self):
+        self.aws_kwargs = dict(
+            region_name = os.environ.get("AWS_REGION_NAME", "us-east-1"),
+            aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID", ""),
+            aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY", ""),
+            aws_session_token = os.environ.get("AWS_SESSION_TOKEN", "")
+            )
+        self.s3 = boto3.resource("s3", config=retry_config, **self.aws_kwargs)
+        self.client = boto3.client("s3", config=retry_config, **self.aws_kwargs)
+
 
     def make_s3_keys(
         self,
@@ -371,6 +408,11 @@ class S3Scraper(Scraper):
             fname = key + ".zip"
             self.dataset[key] = {"fname": fname, "pfx": self.pfx}
         return self.dataset
+    
+    def scrape_s3_file(self, fpath, obj):
+        with open(fpath, "wb") as f:
+            self.client.download_fileobj(self.bucket, obj, f)
+            self.fpaths.append(fpath)
 
     def scrape(self):
         """Downloads files from s3 using the configured boto3 client. Calls the `extract_archive` method for automatic extraction of file contents if object's `extract` attribute is set to True.
@@ -384,18 +426,16 @@ class S3Scraper(Scraper):
         for _, d in self.dataset.items():
             fname = d["fname"]
             obj = f"{self.pfx}/{fname}"
-            print(f"s3://{self.bucket}/{obj}")
+            self.log.info(f"s3://{self.bucket}/{obj}")
             fpath = f"{self.cache_dir}/{self.cache_subdir}/{fname}"
-            print(fpath)
+            self.log.info(fpath)
             try:
-                with open(fpath, "wb") as f:
-                    client.download_fileobj(self.bucket, obj, f)
-                self.fpaths.append(fpath)
+                self.scrape_s3_file(fpath, obj)
             except Exception as e:
                 err = e
                 continue
         if err is not None:
-            print(err)
+            self.log.error(err)
         elif self.extract is True:
             if self.format == "zip":
                 self.fpaths = super().extract_archives()
@@ -431,6 +471,24 @@ class S3Scraper(Scraper):
         if err is not None:
             print(err)
 
+    def import_dataset(self):
+        """import job metadata file from s3 bucket"""
+        bucket = self.s3.Bucket(self.bucket)
+        obj = bucket.Object(self.pfx)
+        input_data = {}
+        body = None
+        self.log.debug(f"Streaming from s3://{self.bucket}/{self.pfx}")
+        try:
+            body = obj.get()["Body"].read().splitlines()
+            for line in body:
+                k, v = str(line).strip("b'").split("=")
+                input_data[k] = v
+        except Exception as e:
+            self.log.error(e)
+            sys.exit(3)
+        self.log.debug(f"Input data scraped successfully.")
+        return input_data
+   
 
 class DynamoDBScraper(Scraper):
     def __init__(
@@ -444,6 +502,7 @@ class DynamoDBScraper(Scraper):
         format="zip",
         extract=True,
         clean=True,
+        **log_kws
     ):
         super().__init__(
             cache_dir=cache_dir,
@@ -451,6 +510,8 @@ class DynamoDBScraper(Scraper):
             format=format,
             extract=extract,
             clean=clean,
+            name="DynamoDBScraper",
+            **log_kws,
         )
         self.table_name = table_name
         self.attr = attr
@@ -595,8 +656,10 @@ class DynamoDBScraper(Scraper):
         return {"statusCode": 200, "body": json.dumps("Uploaded to DynamoDB Table")}
 
 
-class FitsScraper:
-    def __init__(self, data, input_path):
+class FitsScraper(FileScraper):
+
+    def __init__(self, data, input_path, **log_kws):
+        super().__init__(name="FitsScraper", **log_kws)
         self.df = data.copy()
         self.input_path = input_path
         self.fits_keys = ["rms_ra", "rms_dec", "nmatches", "wcstype"]
@@ -614,7 +677,7 @@ class FitsScraper:
         return self.drz_paths
 
     def scrape_fits(self):
-        print("\n*** Extracting fits data ***")
+        self.log.info("\n*** Extracting fits data ***")
         fits_dct = {}
         for key, path in self.drz_paths.items():
             fits_dct[key] = {}
@@ -636,7 +699,7 @@ class FitsScraper:
 class MastScraper:
     """Class for scraping metadata from MAST (Mikulsky Archive for Space Telescopes) via ``astroquery``. Current functionality for this class is limited to extracting the `target_classification` values of HAP targets from the archive. An example of a target classification is "GALAXY" - an alphanumeric categorization of an image product/.fits file. Note - the files themselves are not downloaded, just this specific metadata listed in the online archive database. For downloading MAST science files, use the ``spacekit.extractor.radio`` module. The search parameter values needed for locating a HAP product on MAST can be extracted from the fits science extension headers using the ``astropy`` library. See the ``spacekit.preprocessor.scrub`` api for an example (or the astropy documentation)."""
 
-    def __init__(self, df, trg_col="targname", ra_col="ra_targ", dec_col="dec_targ"):
+    def __init__(self, df, trg_col="targname", ra_col="ra_targ", dec_col="dec_targ", **log_kws):
         """Instantiates a spacekit.extractor.scrape.MastScraper object.
 
         Parameters
@@ -650,6 +713,8 @@ class MastScraper:
         dec_col : str, optional
             name of the column containing the target's right ascension values, by default "dec_targ"
         """
+        self.__name__ = "MastScraper"
+        self.log = Logger(self.__name__, **log_kws).setup_logger()
         self.df = df
         self.trg_col = trg_col
         self.ra_col = ra_col
@@ -661,6 +726,7 @@ class MastScraper:
         self.target_categories = {}
         self.other_cat = {}
         self.categories = {}
+
 
     def scrape_mast(self):
         """Main calling function to scrape MAST
@@ -683,8 +749,8 @@ class MastScraper:
         dictionary
             target name and category key-value pairs
         """
-        print("\n*** Assigning target name categories ***")
-        print(f"\nUnique Target Names: {len(self.targets)}")
+        self.log.info("\n*** Assigning target name categories ***")
+        self.log.info(f"\nUnique Target Names: {len(self.targets)}")
         bar = ProgressBar().start()
         for x, targ in zip(bar(range(len(self.targets))), self.targets):
             if targ != "ANY":
@@ -715,7 +781,7 @@ class MastScraper:
         """
         self.other_cat = {}
         if len(self.targ_any) > 0:
-            print(f"Other targets (ANY): {len(self.targ_any)}")
+            self.log.info(f"Other targets (ANY): {len(self.targ_any)}")
             bar = ProgressBar().start()
             for x, (idx, row) in zip(
                 bar(range(len(self.targ_any))), self.targ_any.iterrows()
@@ -753,8 +819,8 @@ class MastScraper:
         cat = pd.DataFrame.from_dict(
             self.categories, orient="index", columns={"category"}
         )
-        print("\nTarget Categories Assigned.")
-        print(cat["category"].value_counts())
+        self.log.info("\nTarget Categories Assigned.")
+        self.log.info(cat["category"].value_counts())
         self.df = self.df.join(cat, how="left")
         return self.df
 
@@ -796,7 +862,7 @@ class MastScraper:
         return ra, dec, targ, cat
 
 
-class JsonScraper:
+class JsonScraper(FileScraper):
     """Searches local files using glob pattern(s) to scrape JSON file data. Optionally can store data in h5 file (default) and/or CSV file; The JSON harvester method returns a Pandas dataframe. This class can also be used to load an h5 file. CREDIT: Majority of the code here was repurposed into a class object from ``Drizzlepac.hap_utils.json_harvester`` - multiple customizations were needed for specific machine learning preprocessing that would be outside the scope of Drizzlepac's primary intended use-cases, hence why the code is now here in a stripped down version instead of submitted as a PR to the original repo. That, and the need to avoid including Drizzlepac as a dependency for spacekit, since spacekit is meant to be used for testing Drizzlepac's SVM processing...
 
     Parameters
@@ -829,19 +895,17 @@ class JsonScraper:
         store_h5=True,
         h5_file=None,
         output_path=None,
+        **log_kws
     ):
-        self.search_path = search_path
-        self.search_patterns = search_patterns
+        super().__init__(
+            search_path=search_path, search_patterns=search_patterns, name="JsonScraper", **log_kws
+        )
         self.file_basename = file_basename
         self.crpt = crpt
         self.save_csv = save_csv
         self.store_h5 = store_h5
         self.h5_file = h5_file
         self.output_path = os.getcwd() if output_path is None else output_path
-        self.__name__ = "diagnostic_json_harvester"
-        self.msg_datefmt = "%Y%j%H%M%S"
-        self.splunk_msg_fmt = "%(asctime)s %(levelname)s src=%(name)s- %(message)s"
-        self.log_level = logutil.logging.INFO
         self.keyword_shortlist = [
             "TARGNAME",
             "DEC_TARG",
@@ -852,28 +916,9 @@ class JsonScraper:
             "number_of_sources.point",
             "number_of_sources.segment",
         ]
-        self.log = self.start_logging()
         self.json_dict = None
         self.data = None  # self.json_harvester()
         # self.h5_file = None  # self.h5store()
-
-    def start_logging(self):
-        """Initializes a logging object which logs process info to sys.stdout
-
-        Returns
-        -------
-        logutil.log object
-            logs process info to sys.stdout
-        """
-        self.log = logutil.create_logger(
-            self.__name__,
-            level=self.log_level,
-            stream=sys.stdout,
-            format=self.splunk_msg_fmt,
-            datefmt=self.msg_datefmt,
-        )
-        self.log.setLevel(self.log_level)
-        return self.log
 
     def flatten_dict(self, dd, separator=".", prefix=""):
         """Recursive subroutine to flatten nested dictionaries down into a single-layer dictionary.
@@ -1137,7 +1182,7 @@ class JsonScraper:
             ordered dictionary containing all information extracted from json files specified by the input list
             *json_filename_list*.
         """
-        self.log.setLevel(self.log_level)
+        # self.log.setLevel(self.log_level)
         header_ingested = False
         gen_info_ingested = False
         ingest_dict = collections.OrderedDict()
@@ -1197,7 +1242,7 @@ class JsonScraper:
 # TODO
 class ImageScraper(Scraper):
     def __init__(self):
-        super().__init__(self)
+        super().__init__()
 
 
 # def extract_archives(zipfiles, extract_to="data", delete_archive=False):

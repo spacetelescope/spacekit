@@ -26,7 +26,7 @@ def test_predict_alignment(svm_unlabeled_dataset, svm_pred_img, tmp_path):
 @mark.predict
 def test_load_predict(svm_unlabeled_dataset, svm_pred_img, tmp_path):
     ens = BuilderEnsemble()
-    ens.load_saved_model()
+    ens.load_saved_model(arch="ensemble")
     ens.find_tx_file()
     X = load_mixed_inputs(
         svm_unlabeled_dataset, svm_pred_img, size=128, tx=ens.tx_file, norm=0

@@ -44,7 +44,7 @@ def test_ensemble_builder_without_data():
     ens = BuilderEnsemble()
     assert ens.blueprint == "ensemble"
     assert ens.steps_per_epoch > 0
-    ens.load_saved_model()
+    ens.load_saved_model(arch="ensemble")
     assert ens.model is not None
     assert len(ens.model.layers) == 28
     assert ens.model_path == 'models/ensemble/ensembleSVM'

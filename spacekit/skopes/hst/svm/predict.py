@@ -207,9 +207,8 @@ def predict_alignment(
     group: str, optional
         Name for this group of data (for classification report), e.g. SVM-2021-11-02
     """
-    builder = BuilderEnsemble()
-    builder.model_path = model_path
-    builder.load_saved_model(extract_to=extract_to)
+    builder = BuilderEnsemble(model_path=model_path)
+    builder.load_saved_model(arch="ensemble", extract_to=extract_to)
     builder.find_tx_file()
     X = load_mixed_inputs(data_file, img_path, tx=builder.tx_file, size=size, norm=norm)
     preds = classify_alignments(X, builder.model, output_path=output_path, group=group)
