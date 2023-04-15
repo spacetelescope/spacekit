@@ -18,8 +18,8 @@ from boto3.dynamodb.conditions import Attr
 from spacekit.logger.log import Logger
 
 
-# mitigation of potential API rate restrictions (esp for Batch API)
-retry_config = Config(retries={"max_attempts": 5, "mode": "standard"}, region_name="us-east-1")
+retry_config = Config(retries={"max_attempts": 3})
+client = boto3.client("s3", config=retry_config)
 dynamodb = boto3.resource("dynamodb", config=retry_config, region_name="us-east-1")
 # below are maintained for backwards compatibility with static methods
 s3 = boto3.resource("s3", config=retry_config)
@@ -129,7 +129,7 @@ class Scraper:
             return os.path.abspath(cache)
 
     def extract_archives(self):
-        """Extract the contents of the compreseed archive file(s).
+        """Extract the contents of the compressed archive file(s).
 
         TODO: extract other archive types (.tar, .tgz)
 
@@ -253,7 +253,7 @@ class WebScraper(Scraper):
         self,
         uri,
         dataset,
-        hash_algorithm="sha256",
+        hash_algorithm="md5",
         cache_dir="~",
         cache_subdir="data",
         format="zip",
@@ -314,7 +314,6 @@ class WebScraper(Scraper):
                 extracted
             ):  # deletes archive if extraction was successful
                 os.remove(fpath)
-                # os.remove(f"{os.path.join(self.outpath, fname)}")
         return self.fpaths
 
 
