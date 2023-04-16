@@ -1,5 +1,5 @@
 calcloud = {
-    "uri": "https://zenodo.org/record/7830049/files",
+    "uri": "https://zenodo.org/record/7833961/files",
     "data": {
         "2022-02-14": {
             "fname": "hst_cal_std_2022-02-14.zip?download=1",
@@ -35,12 +35,12 @@ calcloud = {
         "hash": "101e86c6fbacd0480c8bd307685c2730",
         "desc": "hst calcloud resource prediction models",
         "key": "calmodels",
-        "size": "2MB"
+        "size": "2.1MB"
     },
 }
 
 svm = {
-    "uri": "https://zenodo.org/record/7830049/files",
+    "uri": "https://zenodo.org/record/7833961/files",
     "data": {
         "2022-02-14": {
             "fname": "hst_drz_svm_2022-02-14.zip?download=1",
@@ -88,7 +88,7 @@ svm = {
 }
 
 k2 = {
-    "uri": "https://zenodo.org/record/7830049/files",
+    "uri": "https://zenodo.org/record/7833961/files",
     "data": {
         "test": {
             "fname": "k2-exo-flux-ts-test.csv.zip?download=1",
@@ -115,7 +115,7 @@ networks = {
         "basepath": "spacekit.builder.trained_networks",
         "fname": "calmodels.zip",
         "hash": "000378942a1dcb662590ac6d911b8ba1e59d54248254d23e03427bb048597298",
-        "size": "2MB"
+        "size": "2.1MB"
     },
     "svm": {
         "basepath": "spacekit.builder.trained_networks",
