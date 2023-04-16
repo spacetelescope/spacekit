@@ -1,0 +1,12 @@
+{
+    "uri": "https://zenodo.org/record/7830049/files",
+    "data": {
+        "2022-02-14": {
+            "fname": "hst_drz_svm_2022-02-14.zip?download=1",
+            "hash": "c0590ee3277aa1f2607a0d9ad827db27",
+            "desc": "latest model, data and training results",
+            "key": "2022-02-14-1644850390",
+            "size": "18MB"
+        }
+    }
+}
