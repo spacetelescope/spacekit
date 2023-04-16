@@ -6,13 +6,7 @@ from spacekit.analyzer.explore import HstCalPlots, HstSvmPlots
 from spacekit.analyzer.scan import SvmScanner, CalScanner, import_dataset
 from spacekit.extractor.load import load_datasets
 
-# try:
-#     from pytest_astropy_header.display import (PYTEST_HEADER_MODULES,
-#                                                TESTED_VERSIONS)
-# except ImportError:
-#     PYTEST_HEADER_MODULES = {}
-#     TESTED_VERSIONS = {}
-PYTEST_HEADER_MODULES = {}
+
 TESTED_VERSIONS = {}
 
 try:
@@ -20,20 +14,21 @@ try:
 except ImportError:
     version = "unknown"
 
-# The following line treats all DeprecationWarnings as exceptions.
-from astropy.tests.helper import enable_deprecations_as_exceptions
 
-enable_deprecations_as_exceptions()
-
+TESTED_VERSIONS["spacekit"] = version
 # Uncomment and customize the following lines to add/remove entries
 # from the list of packages for which version numbers are displayed
 # when running the tests.
+# PYTEST_HEADER_MODULES = {}
 # PYTEST_HEADER_MODULES['astropy'] = 'astropy'
 # PYTEST_HEADER_MODULES.pop('Matplotlib')
 # PYTEST_HEADER_MODULES.pop('Pandas')
 # PYTEST_HEADER_MODULES.pop('h5py')
 
-TESTED_VERSIONS["spacekit"] = version
+
+pytest_plugins = [
+    'tests.data_plugin'
+]
 
 
 class Config:

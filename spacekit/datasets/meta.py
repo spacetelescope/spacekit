@@ -1,97 +1,126 @@
 calcloud = {
-    # "uri": "https://raw.githubusercontent.com/alphasentaurii/spacekit/rev-0.3.2/spacekit/datasets/data/calcloud",
-    "uri": "https://raw.githubusercontent.com/alphasentaurii/spacekit/main/spacekit/datasets/data/calcloud",
+    "uri": "https://zenodo.org/record/7833961/files",
     "data": {
         "2022-02-14": {
-            "fname": "2022-02-14-1644848448.zip",
-            "hash": "d39482d148736f2b2e8ad1ca19f0d6797bab6582700f174df0344fc9f91687dd",
+            "fname": "hst_cal_std_2022-02-14.zip?download=1",
+            "hash": "7522ec6bdaffaa06827e9ec9781b5182",
+            "desc": "data, model and training results",
+            "key": "2022-02-14-1644848448",
+            "size": "12.9MB"
         },
         "2021-11-04": {
-            "fname": "2021-11-04-1636048291.zip",
-            "hash": "d0cb8c35554527d8dda96f259952b0d1436f6fda5f4d11ced73d7e88f328aff4",
+            "fname": "hst_cal_std_2021-11-04.zip?download=1",
+            "hash": "d1ba4329ee18219e1a562d7a72c96368",
+            "desc": "data, model and training results",
+            "key": "2021-11-04-1636048291",
+            "size": "11.6MB"
         },
         "2021-10-28": {
-            "fname": "2021-10-28-1635457222.zip",
-            "hash": "dce221998c366486e3412b13ad90493bad6e234d54e0849a635700cb8494acb4",
+            "fname": "hst_cal_std_2021-10-28.zip?download=1",
+            "hash": "09fe043a61165def660ca0209a4c562e",
+            "desc": "data, model and training results",
+            "key": "2021-10-28-1635457222",
+            "size": "8.6MB"
         },
         "2021-08-22": {
-            "fname": "2021-08-22-1629663047.zip",
-            "hash": "d8f17819282add50c3c27fc8eada314ffad72a60c8b0e8639d98b5f6f77602bb",
+            "fname": "hst_cal_std_2021-08-22.zip?download=1",
+            "hash": "2ac4857954ddcd384c43a9a0dd8d7cff",
+            "desc": "data, model and training results",
+            "key": "2021-08-22-1629663047",
+            "size": "6MB"
         },
     },
     "model": {
-        "basepath": "spacekit.builder.trained_networks",
         "fname": "calmodels.zip",
-        "hash": "2922697db0adb13a3b54a24219ae6f5302c008aaeac53ef7ec4f684005b5c338",
+        "hash": "101e86c6fbacd0480c8bd307685c2730",
+        "desc": "hst calcloud resource prediction models",
+        "key": "calmodels",
+        "size": "2.1MB"
     },
 }
 
 svm = {
-    "uri": "https://raw.githubusercontent.com/alphasentaurii/spacekit/main/spacekit/datasets/data/svm",
+    "uri": "https://zenodo.org/record/7833961/files",
     "data": {
         "2022-02-14": {
-            "fname": "2022-02-14-1644850390.zip",
-            "hash": "7f5ad34c2265219dd62eeb9a79612e69b2b1daf36735d2f9803898cfd1944dd7",
-            "desc": "ensembleSVM training results",
+            "fname": "hst_drz_svm_2022-02-14.zip?download=1",
+            "hash": "c0590ee3277aa1f2607a0d9ad827db27",
+            "desc": "latest model, data and training results",
+            "key": "2022-02-14-1644850390",
+            "size": "18MB"
         },
         "2022-01-30": {
-            "fname": "2022-01-30-1643523529.zip",
-            "hash": "5f1dde6e3177533e2c5e7b0ed81bce8daaccb68970e1f0d6614590674a0195c6",
-            "desc": "ensembleSVM training results with additional synthetic data",
+            "fname": "hst_drz_svm_2022-01-30.zip?download=1",
+            "hash": "758334cf0f4e80038e2f966ac5c044a1",
+            "desc": "retrained model, data and training results",
+            "key": "2022-01-30-1643523529",
+            "size": "18MB"
         },
         "2022-01-16": {
-            "fname": "2022-01-16-1642337739.zip",
-            "hash": "6a52e1aaf8eb4949bd906d70b45c8289e9eaa045c334d47a411434cf134a7bfd",
-            "desc": "ensembleSVM training results 1-16-2022",
+            "fname": "hst_drz_svm_2022-01-16.zip?download=1",
+            "hash": "8c0e87943afeb62404df0d2e529051d6",
+            "desc": "baseline model, data and training results",
+            "key": "2022-01-16-1642337739",
+            "size": "34.1kB"
         },
         "2021-07-28": {
-            "fname": "svm_labeled_2021-07-28.csv",
-            "hash": "b7ac1163e63ad619a74fb1c27ea2ea3b5f8dd0bc44b0071214c7210ffd95cd9e",
-            "desc": "labeled training set with synthetic data",
+            "fname": "svm_labeled_2021-07-28.csv?download=1",
+            "hash": "29fe3fde4e0f826e8c6d4b85a21a3690",
+            "desc": "labeled test set created 07-28-2021 for drizzlepac 3.3.1",
+            "key": "svm_labeled_2021-07-28.csv",
+            "size": "179.1kB"
         },
         "2021-10-06": {
-            "fname": "svm_unlabeled_2021-10-06.csv",
-            "hash": "c0bc2c6baa7e130614aa2f75cb1b71e048e117ccf2cad8b2d2cd6364b1248f2f",
-            "desc": "unlabeled test set created 10-6-2021",
-        },
-        "2021-11-02": {
-            "fname": "2021-11-02_predictions.zip",
-            "hash": "b0bf232313460692a3d00ce2b73fae7627d3c1b7c4f9762e1ff7cdc5e9d2e5d0",
-            "desc": "alignment predictions for 11-02 unlabeled data",
-        },
+            "fname": "svm_unlabeled_2021-10-06.csv?download=1",
+            "hash": "2979fd5b0e24663ce0ae8ff93ebd1ca1",
+            "desc": "unlabeled test set created 10-6-2021 for drizzlepac 3.3.1",
+            "key": "svm_unlabeled_2021-10-06.csv",
+            "size": "102kB"
+        }
     },
     "model": {
-        "basepath": "spacekit.builder.trained_networks",
         "fname": "ensemble.zip",
-        "hash": "9ef2b5ddd078544c98a19e2c26fcccb34ae36c742b86ee3b9434ceab6270c07d",
+        "hash": "a2122a76fd293c542bf25c3e4437960d",
+        "desc": "hst svm alignment prediction models",
+        "key": "ensemble",
+        "size": "17.9MB"
     },
 }
 
 k2 = {
-    "uri": "https://github.com/alphasentaurii/starskope/raw/master/data",
+    "uri": "https://zenodo.org/record/7833961/files",
     "data": {
-        "train": {
-            "fname": "exoTrain.csv.zip",
-            "hash": "7160efee11cb1eaec5f8c5fba3b41357b4e015f5",
-        },
         "test": {
-            "fname": "exoTest.csv.zip",
-            "hash": "342182de43ae2b686f2d74946700e1a42075f101",
+            "fname": "k2-exo-flux-ts-test.csv.zip?download=1",
+            "hash": "02646070957656c38c6c9dff66552684",
+            "desc": "k2 flux time series test set",
+            "key": "exoTest.csv",
+            "size": "5.8MB"
+        },
+        "train": {
+            "fname": "k2-exo-flux-ts-train.csv.zip?download=1",
+            "hash": "f26bcc2dbc30544678e0c15c1a67fe6b",
+            "desc": "k2 flux time series training set",
+            "key": "exoTrain.csv",
+            "size": "51.7MB"
         },
     },
 }
 
 spacekit_collections = {"calcloud": calcloud, "svm": svm, "k2": k2}
 
+# Package imports
 networks = {
     "calcloud": {
         "basepath": "spacekit.builder.trained_networks",
         "fname": "calmodels.zip",
-        "hash": "2922697db0adb13a3b54a24219ae6f5302c008aaeac53ef7ec4f684005b5c338",
+        "hash": "000378942a1dcb662590ac6d911b8ba1e59d54248254d23e03427bb048597298",
+        "size": "2.1MB"
     },
     "svm": {
         "basepath": "spacekit.builder.trained_networks",
         "fname": "ensemble.zip",
         "hash": "9ef2b5ddd078544c98a19e2c26fcccb34ae36c742b86ee3b9434ceab6270c07d",
+        "size": "17.9MB"
     },
 }
