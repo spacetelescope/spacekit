@@ -3,7 +3,6 @@
 [![Powered by Astropy](http://img.shields.io/badge/powered%20by-AstroPy-orange.svg?style=flat)](http://www.astropy.org)
 ![GitHub repo size](https://img.shields.io/github/repo-size/spacetelescope/spacekit)
 ![GitHub license](https://img.shields.io/github/license/spacetelescope/spacekit?color=black)
-
 [![CodeFactor](https://www.codefactor.io/repository/github/spacetelescope/spacekit/badge)](https://www.codefactor.io/repository/github/spacetelescope/spacekit)
 
 Astronomical Data Science and Machine Learning Toolkit

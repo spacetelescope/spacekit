@@ -308,8 +308,9 @@ class WebScraper(Scraper):
                 extract=self.extract,
                 archive_format=self.format,
             )
-            extracted = str(os.path.relpath(fpath)).split(".")[0]
-            self.fpaths.append(extracted)
+            extracted = os.path.join(os.path.dirname(fpath), data["key"])
+            #extracted = str(os.path.relpath(fpath)).split(".")[0]
+            self.fpaths.append(os.path.relpath(extracted))
             if self.clean is True and os.path.exists(
                 extracted
             ):  # deletes archive if extraction was successful
