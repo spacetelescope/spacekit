@@ -2,8 +2,6 @@ import os
 from pytest import fixture
 import tarfile
 from zipfile import ZipFile
-import requests
-import hashlib
 from spacekit.analyzer.explore import HstCalPlots, HstSvmPlots
 from spacekit.analyzer.scan import SvmScanner, CalScanner, import_dataset
 from spacekit.extractor.load import load_datasets
@@ -28,31 +26,9 @@ TESTED_VERSIONS["spacekit"] = version
 # PYTEST_HEADER_MODULES.pop('h5py')
 
 
-@fixture(scope="session")
-def pytest_data(tmp_path_factory):
-    data_path = os.path.abspath("tests/data")
-    # download once for recurring test run iterations
-    if os.path.exists(data_path):
-        return data_path
-    data_uri = "https://zenodo.org/record/7833961/files/pytest_data.tgz?download=1"
-    basepath = tmp_path_factory.getbasetemp()
-    target_path = os.path.join(basepath, "pytest_data.tgz")
-    
-    with open(target_path, 'wb') as f:
-        response = requests.get(data_uri, stream=True)
-        if response.status_code == 200:
-            f.write(response.raw.read())
-
-    chksum = "b670fc7c27d0071855bcca99848ada1d0c0c9ec0f23c20d2ba6460222148fc61"
-    with open(target_path, "rb") as f:
-        digest = hashlib.sha256(f.read())
-        if digest.hexdigest() == chksum:
-            with tarfile.TarFile.open(target_path) as tar:
-                tar.extractall(os.path.abspath("tests"))
-    return data_path
-
-
-TEST_DATA = pytest_data()
+pytest_plugins = [
+    'tests.data_plugin'
+]
 
 
 class Config:
