@@ -31,9 +31,10 @@ calcloud = {
         },
     },
     "model": {
-        "basepath": "spacekit.builder.trained_networks",
         "fname": "calmodels.zip",
-        "hash": "000378942a1dcb662590ac6d911b8ba1e59d54248254d23e03427bb048597298",
+        "hash": "101e86c6fbacd0480c8bd307685c2730",
+        "desc": "hst calcloud resource prediction models",
+        "key": "calmodels",
         "size": "2MB"
     },
 }
@@ -78,10 +79,11 @@ svm = {
         }
     },
     "model": {
-        "basepath": "spacekit.builder.trained_networks",
         "fname": "ensemble.zip",
-        "hash": "9ef2b5ddd078544c98a19e2c26fcccb34ae36c742b86ee3b9434ceab6270c07d",
-        "size": "17MB"
+        "hash": "a2122a76fd293c542bf25c3e4437960d",
+        "desc": "hst svm alignment prediction models",
+        "key": "ensemble",
+        "size": "17.9MB"
     },
 }
 
@@ -107,6 +109,7 @@ k2 = {
 
 spacekit_collections = {"calcloud": calcloud, "svm": svm, "k2": k2}
 
+# Package imports
 networks = {
     "calcloud": {
         "basepath": "spacekit.builder.trained_networks",
@@ -118,6 +121,6 @@ networks = {
         "basepath": "spacekit.builder.trained_networks",
         "fname": "ensemble.zip",
         "hash": "9ef2b5ddd078544c98a19e2c26fcccb34ae36c742b86ee3b9434ceab6270c07d",
-        "size": "17MB"
+        "size": "17.9MB"
     },
 }
