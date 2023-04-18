@@ -27,7 +27,7 @@ def pytest_configure(config):
     data_path = config.getoption("data_path")
     if not os.path.exists(data_path):
         tmp_path_factory = TempPathFactory(config.option.basetemp, trace=config.trace.get("tmpdir"), _ispytest=True)
-        data_uri = "https://zenodo.org/record/7833961/files/pytest_data.tgz?download=1"
+        data_uri = "https://zenodo.org/record/7839172/files/pytest_data.tgz?download=1"
         basepath = tmp_path_factory.getbasetemp()
         target_path = os.path.join(basepath, "pytest_data.tgz")
         with open(target_path, 'wb') as f:
