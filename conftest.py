@@ -2,6 +2,8 @@ import os
 from pytest import fixture
 import tarfile
 from zipfile import ZipFile
+import boto3
+from moto import mock_s3
 from spacekit.analyzer.explore import HstCalPlots, HstSvmPlots
 from spacekit.analyzer.scan import SvmScanner, CalScanner, import_dataset
 from spacekit.extractor.load import load_datasets
@@ -95,6 +97,14 @@ class Config:
         self.tx_file = {
             "svm": "tests/data/svm/tx_data.json",
             "cal": "tests/data/cal/tx_data.json",
+        }[env]
+
+        self.visits = {
+            "svm": [],
+            "cal": {
+                "asn": ["j8zs05020", "ic0k06010", "la8mffg5q", "oc3p011i0"],
+                "svm": []
+            }
         }[env]
 
 
@@ -254,3 +264,11 @@ def scraped_mast_file():
 @fixture(scope="function")
 def cal_labeled_dataset():
     return "tests/data/cal/train/training.csv"
+
+@fixture(scope="function")
+def training_data_file(cfg):
+    return cfg.labeled
+
+@fixture(scope="function")
+def cal_predict_visits(cfg, pipeline):
+    return cfg.visits[pipeline]

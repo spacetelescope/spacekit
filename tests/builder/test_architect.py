@@ -1,5 +1,5 @@
 from pytest import mark
-from spacekit.builder.architect import BuilderEnsemble
+from spacekit.builder.architect import BuilderEnsemble, Builder
 from spacekit.skopes.hst.svm.train import load_ensemble_data
 
 @mark.svm
@@ -50,3 +50,18 @@ def test_ensemble_builder_without_data():
     assert ens.model_path == 'models/ensemble/ensembleSVM'
     ens.find_tx_file()
     assert ens.tx_file == 'models/ensemble/tx_data.json'
+
+
+@mark.cal
+@mark.builder
+@mark.architect
+def test_cal_builder_without_data():
+    builder = Builder(name="mem_clf")
+    builder.load_saved_model("calmodels")
+    assert builder.model is not None
+    assert builder.blueprint == "mem_clf"
+    builder.get_blueprint(builder.blueprint)
+    assert len(builder.model.layers) == 8
+    assert builder.model_path == 'models/calmodels/mem_clf'
+    builder.find_tx_file()
+    assert builder.tx_file == 'models/calmodels/tx_data.json'

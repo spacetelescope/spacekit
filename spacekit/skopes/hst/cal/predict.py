@@ -40,8 +40,8 @@ from spacekit.logger.log import SPACEKIT_LOG, Logger
 
 
 # build from local filepath
-MODEL_PATH = os.environ.get("MODEL_PATH", "./models") #"data/2022-02-14-1644848448/models"
-TX_FILE = os.path.join(MODEL_PATH, "tx_data.json")
+# MODEL_PATH = os.environ.get("MODEL_PATH", "./models") #"data/2022-02-14-1644848448/models"
+# TX_FILE = os.path.join(MODEL_PATH, "tx_data.json")
 
 def load_pretrained_model(**builder_kwargs):
     builder = Builder(**builder_kwargs)
@@ -51,7 +51,7 @@ def load_pretrained_model(**builder_kwargs):
 class Predict:
 
     def __init__(
-        self, dataset, bucket_name=None, key=None, model_path=MODEL_PATH, models={}, tx_file=TX_FILE, norm=1, norm_cols=[0,1], **log_kws
+        self, dataset, bucket_name=None, key=None, model_path=None, models={}, tx_file=None, norm=1, norm_cols=[0,1], **log_kws
         ):
         self.dataset = dataset
         self.bucket_name = bucket_name
@@ -140,6 +140,26 @@ class Predict:
         self.probabilities = {"dataset": self.dataset, "probabilities": pred_proba}
         self.log.info(self.probabilities)
 
+    def store_results(self):
+        return dict(
+            input_data = self.input_data,
+            inputs = self.inputs,
+            X = self.X,
+            predictions = self.predictions,
+            probabilities = self.probabilities
+        )
+
+    def predict_multiple(self, datasets):
+        preds = {}
+        for dataset in datasets:
+            preds[dataset] = {}
+            self.dataset = dataset
+            self.X = None
+            self.input_data = None
+            self.run_inference()
+            preds[dataset] = self.store_results()
+        return preds
+
 
 def local_handler(dataset, **kwargs):
     """handles non-lambda invocations"""
@@ -151,13 +171,15 @@ def local_handler(dataset, **kwargs):
 def lambda_handler(event, context):
     """Predict Resource Allocation requirements for memory (GB) and max execution `kill time` / `wallclock` (seconds) using three pre-trained neural networks. This lambda is invoked from the Job Submit lambda which json.dumps the s3 bucket and key to the file containing job input parameters. The path to the text file in s3 assumes the following format: `control/ipppssoot/ipppssoot_MemModelFeatures.txt`.
     """
+    MODEL_PATH = os.environ.get("MODEL_PATH", "./models") #"data/2022-02-14-1644848448/models"
+    TX_FILE = os.path.join(MODEL_PATH, "tx_data.json")
     # load models here for warm starts in aws lambda
     mem_clf = load_pretrained_model(model_path=MODEL_PATH, name="mem_clf")
     wall_reg = load_pretrained_model(model_path=MODEL_PATH, name="wall_reg")
     mem_reg = load_pretrained_model(model_path=MODEL_PATH, name="mem_reg")
     models=dict(mem_clf=mem_clf, wall_reg=wall_reg, mem_reg=mem_reg)
     # import and prep data: control/dataset/dataset_MemModelFeatures.txt
-    pred = Predict(event["Dataset"], bucket_name=event["Bucket"], key=event["Key"], models=models)
+    pred = Predict(event["Dataset"], bucket_name=event["Bucket"], key=event["Key"], models=models, tx_file=TX_FILE)
     pred.run_inference()
     return pred.predictions
 
@@ -204,7 +226,7 @@ if __name__ == "__main__":
         "-m",
         "--model_path",
         type=str,
-        default=os.environ.get("MODEL_PATH", "./models"),
+        default=os.environ.get("MODEL_PATH", None),
         help="path to saved model directory"
     )
     parser.add_argument(

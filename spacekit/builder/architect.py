@@ -118,6 +118,8 @@ class Builder:
         archive_file = f"{arch}.zip" # calmodels.zip | ensemble.zip
         with importlib.resources.path(model_src, archive_file) as mod:
             self.model_path = mod
+        if arch == "calmodels" and self.blueprint is None:
+            self.blueprint = self.name
 
 
     def unzip_model_files(self, extract_to="models"):
