@@ -109,7 +109,7 @@ class Config:
 
 
 def pytest_addoption(parser):
-    parser.addoption("--env", action="store", help="Environment to run tests against")
+    parser.addoption("--env", action="store", default="cal", help="Environment to run tests against")
 
 
 @fixture(scope="session")
@@ -270,5 +270,10 @@ def training_data_file(cfg):
     return cfg.labeled
 
 @fixture(scope="function")
-def cal_predict_visits(cfg, pipeline):
-    return cfg.visits[pipeline]
+def cal_predict_visits(cfg):
+    if cfg.env != "cal":
+        return {
+            "asn": ["j8zs05020", "ic0k06010", "la8mffg5q", "oc3p011i0"]
+        }
+    else:
+        return cfg.visits

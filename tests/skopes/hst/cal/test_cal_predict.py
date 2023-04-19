@@ -23,43 +23,49 @@ def put_moto_s3_object(dataset, bucketname):
         client.upload_fileobj(f, bucketname, obj)
 
 
-@mark.parameterize("pipeline", [("asn")])
+@mark.hst
+@mark.cal
+@mark.predict
+@mark.parametrize("pipeline", [("asn")])
 @mock_s3
 def test_local_predict_handler(cal_predict_visits, pipeline):
     bucketname = "spacekit_bucket"
     s3 = boto3.resource("s3", region_name="us-east-1")
     s3.create_bucket(Bucket=bucketname)
-    dataset = cal_predict_visits(pipeline)[0] # ["j8zs05020", "ic0k06010", "la8mffg5q", "oc3p011i0"]
+    dataset = cal_predict_visits[pipeline][0] # "j8zs05020"
     put_moto_s3_object(dataset, bucketname)
     pred = local_handler(dataset, bucket_name=bucketname)
     for k, v in pred.predictions.items():
         assert v == EXPECTED_PREDS[pipeline][dataset][k]
 
 
-@mark.parameterize("pipeline", [("asn")])
+@mark.hst
+@mark.cal
+@mark.predict
+@mark.parametrize("pipeline", [("asn")])
 @mock_s3
-def test_predict_multiple(cal_predict_visits, pipeline):
+def test_local_handler_multiple(cal_predict_visits, pipeline):
     bucketname = "spacekit_bucket"
     s3 = boto3.resource("s3", region_name="us-east-1")
     s3.create_bucket(Bucket=bucketname)
-    datasets = cal_predict_visits(pipeline) # ["j8zs05020", "ic0k06010", "la8mffg5q", "oc3p011i0"]
-    for d in datasets:
-        put_moto_s3_object(d, bucketname)
-    predictor = Predict(datasets[0], bucket_name=bucketname)
-    preds = predictor.predict_multiple(datasets)
-    for dataset, vals in preds.items():
-        expected = EXPECTED_PREDS[pipeline][dataset]
-        for k, v in vals['predictions'].items():
-            assert v == expected[k]
+    datasets = cal_predict_visits[pipeline]# ["j8zs05020", "ic0k06010", "la8mffg5q", "oc3p011i0"]
+    for dataset in datasets:
+        put_moto_s3_object(dataset, bucketname)
+        pred = local_handler(dataset, bucket_name=bucketname)
+        for k, v in pred.predictions.items():
+            assert v == EXPECTED_PREDS[pipeline][dataset][k]
 
 
-@mark.parameterize("pipeline", [("asn")])
+@mark.hst
+@mark.cal
+@mark.predict
+@mark.parametrize("pipeline", [("asn")])
 @mock_s3
 def test_lambda_handler(cal_predict_visits, pipeline):
     bucketname = "spacekit_bucket"
     s3 = boto3.resource("s3", region_name="us-east-1")
     s3.create_bucket(Bucket=bucketname)
-    dataset = cal_predict_visits(pipeline)[0] # ["j8zs05020", "ic0k06010", "la8mffg5q", "oc3p011i0"]
+    dataset = cal_predict_visits[pipeline][0] # ["j8zs05020", "ic0k06010", "la8mffg5q", "oc3p011i0"]
     put_moto_s3_object(dataset, bucketname)
     os.environ["MODEL_PATH"] = "models/calmodels"
     key = f"control/{dataset}/{dataset}_MemModelFeatures.txt"

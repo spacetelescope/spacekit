@@ -34,7 +34,7 @@ import argparse
 import numpy as np
 from spacekit.extractor.scrape import S3Scraper
 from spacekit.preprocessor.scrub import CalScrubber
-from spacekit.preprocessor.transform import PowerX
+from spacekit.preprocessor.transform import PowerX, array_to_tensor
 from spacekit.builder.architect import Builder
 from spacekit.logger.log import SPACEKIT_LOG, Logger
 
@@ -120,13 +120,15 @@ class Predict:
 
     def classifier(self, model, data):
         """Returns class prediction"""
-        pred_proba = model.predict(data)
+        X = array_to_tensor(data)
+        pred_proba = model.predict(X)
         pred = int(np.argmax(pred_proba, axis=-1))
         return pred, pred_proba
 
     def regressor(self, model, data):
         """Returns Regression model prediction"""
-        pred = model.predict(data)
+        X = array_to_tensor(data)
+        pred = model.predict(X)
         return pred
 
     def run_inference(self, models={}):
@@ -139,26 +141,6 @@ class Predict:
         self.log.info(f"dataset: {self.dataset} predictions: {self.predictions}")
         self.probabilities = {"dataset": self.dataset, "probabilities": pred_proba}
         self.log.info(self.probabilities)
-
-    def store_results(self):
-        return dict(
-            input_data = self.input_data,
-            inputs = self.inputs,
-            X = self.X,
-            predictions = self.predictions,
-            probabilities = self.probabilities
-        )
-
-    def predict_multiple(self, datasets):
-        preds = {}
-        for dataset in datasets:
-            preds[dataset] = {}
-            self.dataset = dataset
-            self.X = None
-            self.input_data = None
-            self.run_inference()
-            preds[dataset] = self.store_results()
-        return preds
 
 
 def local_handler(dataset, **kwargs):
