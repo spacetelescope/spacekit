@@ -24,10 +24,10 @@ RENAMED_COLS = {
 @mark.hst
 @mark.preprocessor
 @mark.transform
-def test_transform_arrays_from_file(cfg, df_ncols):
+def test_transform_arrays_from_file(skope, df_ncols):
     (df, ncols) = df_ncols
     X_arr = np.asarray(df)
-    Px = PowerX(X_arr, cols=ncols, tx_file=cfg.tx_file)
+    Px = PowerX(X_arr, cols=ncols, tx_file=skope.tx_file)
     assert list(Px.tx_data.keys()) == ["lambdas", "mu", "sigma"]
     X_norm = Px.Xt
     for i in ncols:
@@ -38,21 +38,21 @@ def test_transform_arrays_from_file(cfg, df_ncols):
 @mark.hst
 @mark.preprocessor
 @mark.transform
-def test_powerx_from_df(cfg, df_ncols):
+def test_powerx_from_df(skope, df_ncols):
     (df, ncols) = df_ncols
     Px = PowerX(
         df,
-        cols=cfg.norm_cols,
+        cols=skope.norm_cols,
         ncols=ncols,
         save_tx=True,
         output_path="tmp",
-        rename=cfg.rename_cols,
+        rename=skope.rename_cols,
         join_data=1,
     )
     assert os.path.exists("tmp/tx_data.json")
     df_norm = Px.Xt
-    assert list(df_norm.columns) == RENAMED_COLS[cfg.env] + cfg.enc_cols
-    for col in RENAMED_COLS[cfg.env]:
+    assert list(df_norm.columns) == RENAMED_COLS[skope.env] + skope.enc_cols
+    for col in RENAMED_COLS[skope.env]:
         assert np.abs(np.round(np.mean(df_norm[col]))) == 0.0
         assert np.abs(np.round(np.std(df_norm[col]))) == 1.0
 
@@ -65,34 +65,34 @@ def test_powerx_from_df(cfg, df_ncols):
 @mark.hst
 @mark.preprocessor
 @mark.transform
-def test_transform_join_options(cfg, df_ncols):
+def test_transform_join_options(skope, df_ncols):
     (df, ncols) = df_ncols
-    Px0 = PowerX(df, cols=cfg.norm_cols, ncols=ncols, rename=None, join_data=0)
+    Px0 = PowerX(df, cols=skope.norm_cols, ncols=ncols, rename=None, join_data=0)
     norm0 = Px0.Xt
-    assert norm0.shape[1] == len(cfg.norm_cols)
-    assert list(norm0.columns) == cfg.norm_cols
+    assert norm0.shape[1] == len(skope.norm_cols)
+    assert list(norm0.columns) == skope.norm_cols
 
-    Px1 = PowerX(df, cols=cfg.norm_cols, ncols=ncols, rename=None, join_data=1)
+    Px1 = PowerX(df, cols=skope.norm_cols, ncols=ncols, rename=None, join_data=1)
     norm1 = Px1.Xt
-    assert norm1.shape[1] == len(cfg.norm_cols + cfg.enc_cols)
+    assert norm1.shape[1] == len(skope.norm_cols + skope.enc_cols)
     assert norm1.shape[1] == len(df.columns)
-    assert list(norm1.columns) == cfg.norm_cols + cfg.enc_cols
+    assert list(norm1.columns) == skope.norm_cols + skope.enc_cols
 
     Px2 = PowerX(
-        df, cols=cfg.norm_cols, ncols=ncols, rename=cfg.rename_cols, join_data=2
+        df, cols=skope.norm_cols, ncols=ncols, rename=skope.rename_cols, join_data=2
     )
     norm2 = Px2.Xt
-    assert norm2.shape[1] == len(df.columns) + len(cfg.norm_cols)
-    assert list(norm2.columns) == RENAMED_COLS[cfg.env] + list(df.columns)
+    assert norm2.shape[1] == len(df.columns) + len(skope.norm_cols)
+    assert list(norm2.columns) == RENAMED_COLS[skope.env] + list(df.columns)
 
 
 @mark.hst
 @mark.preprocessor
 @mark.transform
-def test_transform_1d_series(cfg, df_ncols):
+def test_transform_1d_series(skope, df_ncols):
     (df, _) = df_ncols
     x = df.iloc[0]
-    x_norm = PowerX(x, cols=cfg.norm_cols, tx_file=cfg.tx_file).Xt
+    x_norm = PowerX(x, cols=skope.norm_cols, tx_file=skope.tx_file).Xt
     assert len(x_norm.shape) == 2
     assert x_norm.shape[0] == 1
 
@@ -100,10 +100,10 @@ def test_transform_1d_series(cfg, df_ncols):
 @mark.hst
 @mark.preprocessor
 @mark.transform
-def test_transform_1d_array(cfg, df_ncols):
+def test_transform_1d_array(skope, df_ncols):
     (df, ncols) = df_ncols
     x = np.asarray(df.iloc[0])
-    x_norm = PowerX(x, cols=ncols, tx_file=cfg.tx_file).Xt
+    x_norm = PowerX(x, cols=ncols, tx_file=skope.tx_file).Xt
     assert len(x_norm.shape) == 2
     assert x_norm.shape[0] == 1
 

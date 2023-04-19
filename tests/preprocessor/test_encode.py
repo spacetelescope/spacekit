@@ -167,7 +167,7 @@ def test_pair_encoder_array_2d_unspecified_axis():
 @mark.svm
 @mark.preprocessor
 @mark.encode
-def test_pair_encoder_inverse_transform(scraped_mast_file):
+def test_pair_encoder_inverse_transform():
     data = asarray(["ir", "ir", "uvis", "wfc"], dtype=object)
     detector_keys = {"hrc": 0, "ir": 1, "sbc": 2, "uvis": 3, "wfc": 4}
     enc = PairEncoder()

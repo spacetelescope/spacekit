@@ -1,9 +1,8 @@
 import os
+import pytest
 from pytest import fixture
 import tarfile
 from zipfile import ZipFile
-import boto3
-from moto import mock_s3
 from spacekit.analyzer.explore import HstCalPlots, HstSvmPlots
 from spacekit.analyzer.scan import SvmScanner, CalScanner, import_dataset
 from spacekit.extractor.load import load_datasets
@@ -109,59 +108,83 @@ class Config:
 
 
 def pytest_addoption(parser):
-    parser.addoption("--env", action="store", default="cal", help="Environment to run tests against")
+    # parser.addoption("--env", action="store", default="cal", help="Environment to run tests against")
+    parser.addoption("--env", action="store", default=None, help="Environment to run tests against")
+
+# def pytest_configure(config):
+#     config.addinivalue_line("markers", "skopes: check env against param")
+
+# def pytest_collection_modifyitems(config, items):
+#     env_param = config.getoption("--env")
+#     if env_param:
+#         skope_param = pytest.mark.parametrize("skope", [(env_param)], indirect=True)
+#     else:
+#         skope_param = pytest.mark.parametrize("skope", [("cal", "svm")], indirect=True)
+#         # skip_param = pytest.mark.skipif(reason="skip params based on --env")
+#     for item in items:
+#         if "skopes" in item.keywords:
+#             item.add_marker(skope_param)
 
 
 @fixture(scope="session")
 def env(request):
     return request.config.getoption("--env")
 
+# @fixture(scope="session")
+# def cfg(env):
+#     cfg = Config(env)
+#     return cfg
+
+@fixture(scope="session", params=["cal", "svm"])
+def skope(request):
+    env_param = request.config.getoption("--env")
+    if env_param is not None and request.param != env_param:
+        pytest.skip(reason="skipping param based on --env")
+    else:
+        return Config(request.param)
 
 @fixture(scope="session")
-def cfg(env):
-    cfg = Config(env)
-    return cfg
+def test_data(request):
+    return request.config.getoption("data_path")
 
 
 @fixture(scope="session")
-def res_data_path(cfg, tmp_path_factory):
-    basepath = tmp_path_factory.getbasetemp()
-    data_file = cfg.data_path
-    with ZipFile(data_file, "r") as z:
-        z.extractall(basepath)
-        dname = os.path.basename(data_file.split(".")[0])
-        data_path = os.path.join(basepath, dname)
-    return data_path
+def res_data_path(test_data, skope):
+    skope_data = os.path.join(test_data, skope.env, "data")
+    if not os.path.exists(skope_data):
+        with ZipFile(skope.data_path, "r") as z:
+            z.extractall(os.path.dirname(skope_data))
+    return skope_data 
 
 
 @fixture(scope="session")
-def df_ncols(cfg):
-    fname = cfg.labeled
-    X_cols = cfg.norm_cols + cfg.enc_cols
-    df = load_datasets([fname], index_col=cfg.kwargs["index_col"], column_order=X_cols)
-    ncols = [i for i, c in enumerate(df.columns) if c in cfg.norm_cols]
+def df_ncols(skope):
+    fname = skope.labeled
+    X_cols = skope.norm_cols + skope.enc_cols
+    df = load_datasets([fname], index_col=skope.kwargs["index_col"], column_order=X_cols)
+    ncols = [i for i, c in enumerate(df.columns) if c in skope.norm_cols]
     return (df, ncols)
 
 
 @fixture(scope="session")
-def scanner(cfg, res_data_path):
-    if cfg.env == "svm":
+def scanner(skope, res_data_path):
+    if skope.env == "svm":
         scanner = SvmScanner(perimeter=f"{res_data_path}/20??-*-*-*", primary=-1)
-    elif cfg.env == "cal":
+    elif skope.env == "cal":
         scanner = CalScanner(perimeter=f"{res_data_path}/20??-*-*-*", primary=-1)
-    scanner.exp = cfg.env
+    scanner.exp = skope.env
     return scanner
 
 
 @fixture(scope="session")
-def explorer(cfg, res_data_path):
+def explorer(skope, res_data_path):
     fname = res_data_path
-    df = import_dataset(filename=fname, kwargs=cfg.kwargs, decoder=cfg.decoder)
-    if cfg.env == "svm":
+    df = import_dataset(filename=fname, kwargs=skope.kwargs, decoder=skope.decoder)
+    if skope.env == "svm":
         hst = HstSvmPlots(df)
-    elif cfg.env == "cal":
+    elif skope.env == "cal":
         hst = HstCalPlots(df)
-    hst.env = cfg.env
+    hst.env = skope.env
     return hst
 
 
@@ -265,15 +288,17 @@ def scraped_mast_file():
 def cal_labeled_dataset():
     return "tests/data/cal/train/training.csv"
 
-@fixture(scope="function")
-def training_data_file(cfg):
-    return cfg.labeled
+# @fixture(scope="function")
+# def training_data_file(skope):
+#     return skope.labeled
 
 @fixture(scope="function")
-def cal_predict_visits(cfg):
-    if cfg.env != "cal":
-        return {
+def cal_predict_visits():
+    return {
             "asn": ["j8zs05020", "ic0k06010", "la8mffg5q", "oc3p011i0"]
-        }
-    else:
-        return cfg.visits
+    }
+# def predict_visits(skope):
+    # if skope.env == "svm":
+    #     pytest.skip(reason="SVM test data not yet available")
+    # else:
+    #     return skope.visits
