@@ -33,42 +33,47 @@ python -m spacekit.skopes.hst.cal.train data/2021-11-04-1636048291
 using this script produces a specific file output structure which can optionally be compressed and uploaded to s3.
 The dataset used for training is updated with model predictions and can optionally be stored in a dynamodb table. 
 
-|- data/2021-11-04-1636048291
-    |- data
-        |- latest.csv
-    |- models
-        |- tx_data.json
-        |- mem_clf
-            |- {saved model binaries}
-        |- mem_reg
-            |- {saved model binaries}
-        |- wall_reg
-            |- {saved model binaries}
-    |- results
-        |- mem_bin {standard classifier filenames}
-            |- acc_loss
-            |- cmx
-            |- cmx_norm
-            |- fnfp
-            |- history
-            |- report
-            |- roc_auc
-            |- test_idx
-            |- y_onehot
-            |- y_pred
-            |- y_scores
-        |- memory {standard regressor filenames}
-            |- history
-            |- loss
-            |- predictions
-            |- residuals
-            |- test_idx
-        |- wallclock {standard regressor filenames}
-            |- history
-            |- loss
-            |- predictions
-            |- residuals
-            |- test_idx
+
+.. code-block:: python
+    
+    """
+    |- data/2021-11-04-1636048291
+        |- data
+            |- latest.csv
+        |- models
+            |- tx_data.json
+            |- mem_clf
+                |- {saved model binaries}
+            |- mem_reg
+                |- {saved model binaries}
+            |- wall_reg
+                |- {saved model binaries}
+        |- results
+            |- mem_bin {standard classifier filenames}
+                |- acc_loss
+                |- cmx
+                |- cmx_norm
+                |- fnfp
+                |- history
+                |- report
+                |- roc_auc
+                |- test_idx
+                |- y_onehot
+                |- y_pred
+                |- y_scores
+            |- memory {standard regressor filenames}
+                |- history
+                |- loss
+                |- predictions
+                |- residuals
+                |- test_idx
+            |- wallclock {standard regressor filenames}
+                |- history
+                |- loss
+                |- predictions
+                |- residuals
+                |- test_idx
+    """
 
 examples:
 

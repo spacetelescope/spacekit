@@ -28,6 +28,7 @@ Builder
    :maxdepth: 1
 
    architect <builder/architect.rst>
+   blueprints <builder/blueprints.rst>
 
 
 Dashboard
@@ -46,9 +47,7 @@ Datasets
 .. toctree::
    :maxdepth: 1
 
-   hst_cal <datasets/hst_cal.rst>
-   hst_svm <datasets/hst_svm.rst>
-   k2_exo <datasets/k2_exo.rst>
+   beam <datasets/beam.rst>
 
 
 Extractor
@@ -72,6 +71,15 @@ Generator
    draw <generator/draw.rst>
 
 
+Logger
+------
+
+.. toctree::
+   :maxdepth: 1
+
+   log <logger/log.rst>
+
+
 Preprocessor
 ------------
 
@@ -79,6 +87,8 @@ Preprocessor
    :maxdepth: 1
 
    encode <preprocessor/encode.rst>
+   ingest <preprocessor/ingest.rst>
+   prep <preprocessor/prep.rst>
    scrub <preprocessor/scrub.rst>
    transform <preprocessor/transform.rst>
 

@@ -1,3 +1,27 @@
+0.4.1 (2023-07-03)
+==================
+
+- bugfix set dataframe columns with bracket instead of curly bracket (resolves pandas>1.4 incompatibility)
+
+- remove pandas pinned version
+
+- improved log handling with spacekit/logger module
+
+- added predict script for hst cal skope
+
+- updated docker dashboard templates
+
+- enhancements for loading pretrained models
+
+- pytest configuration updates and new tests added
+
+- plugin for external test data
+
+- updated repo url badges
+
+- updated documentation
+
+
 0.4.0 (2022-12-08)
 ==================
 

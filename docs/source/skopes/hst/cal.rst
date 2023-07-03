@@ -6,6 +6,13 @@ Calcloud Job Predict Data Dictionary
 ------------------------------------
 
 
+.. toctree::
+   :maxdepth: 2
+
+   predict <cal/predict.rst>
+   train <cal/train.rst>
+
+
 DETECTOR
 --------
 
