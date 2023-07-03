@@ -153,7 +153,7 @@ class SvmScrubber(Scrubber):
         make_pos_list=True,
         crpt=0,
         make_subsamples=False,
-        **log_kws
+        **log_kws,
     ):
         self.col_order = self.set_col_order()
         super().__init__(
@@ -164,7 +164,7 @@ class SvmScrubber(Scrubber):
             dropnans=dropnans,
             save_raw=save_raw,
             name="SVMScrubber",
-            **log_kws
+            **log_kws,
         )
 
         self.input_path = input_path
@@ -417,7 +417,7 @@ class CalScrubber(Scrubber):
         output_file="batch.csv",
         dropnans=True,
         save_raw=True,
-        **log_kws
+        **log_kws,
     ):
         super().__init__(
             data=data,
@@ -450,9 +450,9 @@ class CalScrubber(Scrubber):
 
     def scrub_inputs(self):
         self.log.info(f"Scrubbing inputs for {self.data.index[0]}")
-        n_files = int(self.data['n_files'][0])
-        total_mb = int(np.round(float(self.data['total_mb']), 0))
-        detector = 1 if self.data["DETECTOR"][0].upper() in ["UVIS","WFC"] else 0
+        n_files = int(self.data["n_files"][0])
+        total_mb = int(np.round(float(self.data["total_mb"]), 0))
+        detector = 1 if self.data["DETECTOR"][0].upper() in ["UVIS", "WFC"] else 0
         subarray = 1 if self.data["SUBARRAY"][0].title() == "True" else 0
         drizcorr = 1 if self.data["DRIZCORR"][0].upper() == "PERFORM" else 0
         pctecorr = 1 if self.data["PCTECORR"][0].upper() == "PERFORM" else 0
@@ -472,4 +472,16 @@ class CalScrubber(Scrubber):
         for k, v in instr_key.items():
             if i[0] == k:
                 instr = v
-        return np.array([n_files, total_mb, drizcorr, pctecorr, crsplit, subarray, detector, dtype, instr])
+        return np.array(
+            [
+                n_files,
+                total_mb,
+                drizcorr,
+                pctecorr,
+                crsplit,
+                subarray,
+                detector,
+                dtype,
+                instr,
+            ]
+        )

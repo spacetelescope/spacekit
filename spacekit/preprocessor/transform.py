@@ -22,7 +22,7 @@ class Transformer:
         rename="_scl",
         output_path=None,
         name="Transformer",
-        **log_kws
+        **log_kws,
     ):
         """Instantiates a Transformer class object. Unless the `cols` attribute is empty, it will automatically instantiate some of the other attributes needed to transform the data. Using the Transformer subclasses instead is recommended (this class is mainly used as an object with general methods to load or save the transform data as well as instantiate some of the initial attributes).
 
@@ -173,7 +173,9 @@ class Transformer:
         try:
             idx = self.data.index
         except AttributeError:
-            self.log.error("Non-dataframe type detected - Trying `normalized_matrix` instead.")
+            self.log.error(
+                "Non-dataframe type detected - Trying `normalized_matrix` instead."
+            )
             return self.normalized_matrix(normalized)
         if self.rename is None:
             newcols = self.cols
@@ -233,7 +235,9 @@ class Transformer:
         elif isinstance(self.data, np.ndarray):
             return self.normalized_matrix(normalized)
         else:
-            self.log.error("Input data type not recognized - must be a dataframe or array")
+            self.log.error(
+                "Input data type not recognized - must be a dataframe or array"
+            )
             return None
 
 
@@ -262,7 +266,7 @@ class PowerX(Transformer):
         output_path=None,
         join_data=1,
         rename="_scl",
-        **log_kws
+        **log_kws,
     ):
         super().__init__(
             data,
@@ -275,7 +279,7 @@ class PowerX(Transformer):
             rename=rename,
             output_path=output_path,
             name="PowerX",
-            **log_kws
+            **log_kws,
         )
         self.calculate_power()
         self.normalized = self.apply_power_matrix()

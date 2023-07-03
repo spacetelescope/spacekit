@@ -1,7 +1,6 @@
 """
 Base IO code for all datasets (borrowing concepts from sklearn.datasets and keras.utils.load_data)
 """
-from importlib import resources
 from spacekit.extractor.scrape import WebScraper
 from spacekit.analyzer.scan import import_dataset, CalScanner, SvmScanner
 from spacekit.datasets.meta import spacekit_collections

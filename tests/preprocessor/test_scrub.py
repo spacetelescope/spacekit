@@ -65,14 +65,3 @@ def test_scrub_cols(raw_csv_file, single_visit_path):
             assert True
         else:
             assert False
-
-
-# @mark.preprocessor
-# @mark.scrub
-# def test_alt_svm_scrubber(svm_visit_data):
-#     #data_path = "tests/data/svm/prep/singlevisits/"
-#     scb = SvmScrubber(
-#         svm_visit_data, df=None, output_path="tmp", output_file="scrubbed", crpt=0
-#     )
-#     scb.scrub()
-#     assert os.path.exists(scb.fname)

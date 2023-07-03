@@ -35,7 +35,14 @@ class Builder:
     """Class for building and training a neural network."""
 
     def __init__(
-        self, train_data=None, test_data=None, blueprint=None, model_path=None, name=None, logname="Builder", **log_kws
+        self,
+        train_data=None,
+        test_data=None,
+        blueprint=None,
+        model_path=None,
+        name=None,
+        logname="Builder",
+        **log_kws,
     ):
         if train_data is not None:
             self.X_train = train_data[0]
@@ -66,7 +73,6 @@ class Builder:
         self.__name__ = logname
         self.log = Logger(self.__name__, **log_kws).spacekit_logger()
 
-
     def load_saved_model(
         self, arch=None, compile_params=None, custom_obj={}, extract_to="models"
     ):
@@ -87,8 +93,10 @@ class Builder:
         if self.model_path is None:
             self.load_pretrained_network(arch=arch)
         if str(self.model_path).split(".")[-1] == "zip":
-            self.unzip_model_files(extract_to=extract_to) # ./models | ./models/ensemble
-        model_basename = os.path.basename(self.model_path.rstrip('/'))
+            self.unzip_model_files(
+                extract_to=extract_to
+            )  # ./models | ./models/ensemble
+        model_basename = os.path.basename(self.model_path.rstrip("/"))
         if model_basename != self.name:
             # look through subdirectories for saved model folder matching "self.name"
             for root, dirs, _ in os.walk(self.model_path):
@@ -104,7 +112,7 @@ class Builder:
         except Exception as e:
             self.log.error(e)
         return self.model
-    
+
     def load_pretrained_network(self, arch=None):
         err = None
         if arch is None:
@@ -115,10 +123,11 @@ class Builder:
             self.log.error(err)
             sys.exit(1)
         model_src = "spacekit.builder.trained_networks"
-        archive_file = f"{arch}.zip" # calmodels.zip | ensemble.zip
+        archive_file = f"{arch}.zip"  # calmodels.zip | ensemble.zip
         with importlib.resources.path(model_src, archive_file) as mod:
             self.model_path = mod
-
+        if arch == "calmodels" and self.blueprint is None:
+            self.blueprint = self.name
 
     def unzip_model_files(self, extract_to="models"):
         """Extracts a keras model object from a zip archive
@@ -460,7 +469,13 @@ class BuilderMLP(Builder):
     """
 
     def __init__(
-        self, X_train=None, y_train=None, X_test=None, y_test=None, blueprint="mlp", **builder_kwargs
+        self,
+        X_train=None,
+        y_train=None,
+        X_test=None,
+        y_test=None,
+        blueprint="mlp",
+        **builder_kwargs,
     ):
         train_data = (
             (X_train, y_train) if X_train is not None and y_train is not None else None
@@ -469,7 +484,10 @@ class BuilderMLP(Builder):
             (X_test, y_test) if X_test is not None and y_test is not None else None
         )
         super().__init__(
-            train_data=train_data, test_data=test_data, logname="BuilderMLP", **builder_kwargs
+            train_data=train_data,
+            test_data=test_data,
+            logname="BuilderMLP",
+            **builder_kwargs,
         )
         self.blueprint = blueprint
         self.name = "sequential_mlp"
@@ -570,7 +588,13 @@ class BuilderCNN3D(Builder):
     """
 
     def __init__(
-        self, X_train=None, y_train=None, X_test=None, y_test=None, blueprint="cnn3d", **builder_kwargs
+        self,
+        X_train=None,
+        y_train=None,
+        X_test=None,
+        y_test=None,
+        blueprint="cnn3d",
+        **builder_kwargs,
     ):
         train_data = (
             (X_train, y_train) if X_train is not None and y_train is not None else None
@@ -579,7 +603,10 @@ class BuilderCNN3D(Builder):
             (X_test, y_test) if X_test is not None and y_test is not None else None
         )
         super().__init__(
-            train_data=train_data, test_data=test_data, logname="BuilderCNN3D", **builder_kwargs
+            train_data=train_data,
+            test_data=test_data,
+            logname="BuilderCNN3D",
+            **builder_kwargs,
         )
         self.blueprint = blueprint
         self.input_shape = X_train.shape[1:] if X_train is not None else None
@@ -733,7 +760,10 @@ class BuilderEnsemble(Builder):
             (X_test, y_test) if X_test is not None and y_test is not None else None
         )
         super().__init__(
-            train_data=train_data, test_data=test_data, logname="BuilderEnsemble", **builder_kwargs
+            train_data=train_data,
+            test_data=test_data,
+            logname="BuilderEnsemble",
+            **builder_kwargs,
         )
         self.name = "ensembleSVM"
         self.input_name = input_name
@@ -912,7 +942,13 @@ class BuilderCNN2D(Builder):
     """
 
     def __init__(
-        self, X_train=None, y_train=None, X_test=None, y_test=None, blueprint="cnn2d", **builder_kwargs,
+        self,
+        X_train=None,
+        y_train=None,
+        X_test=None,
+        y_test=None,
+        blueprint="cnn2d",
+        **builder_kwargs,
     ):
         train_data = (
             (X_train, y_train) if X_train is not None and y_train is not None else None
@@ -921,7 +957,10 @@ class BuilderCNN2D(Builder):
             (X_test, y_test) if X_test is not None and y_test is not None else None
         )
         super().__init__(
-            train_data=train_data, test_data=test_data, logname="BuilderCNN2D", **builder_kwargs
+            train_data=train_data,
+            test_data=test_data,
+            logname="BuilderCNN2D",
+            **builder_kwargs,
         )
         self.blueprint = blueprint
         self.input_shape = self.X_train.shape[1:] if self.X_train else None
@@ -1069,7 +1108,7 @@ class MemoryClassifier(BuilderMLP):
         y_test=None,
         blueprint="mem_clf",
         test_idx=None,
-        **builder_kwargs
+        **builder_kwargs,
     ):
         train_data = (
             (X_train, y_train) if X_train is not None and y_train is not None else None
@@ -1078,7 +1117,11 @@ class MemoryClassifier(BuilderMLP):
             (X_test, y_test) if X_test is not None and y_test is not None else None
         )
         super().__init__(
-            train_data=train_data, test_data=test_data, blueprint=blueprint, logname="MemoryClassifier", **builder_kwargs
+            train_data=train_data,
+            test_data=test_data,
+            blueprint=blueprint,
+            logname="MemoryClassifier",
+            **builder_kwargs,
         )
         self.input_shape = self.X_train.shape[1] if self.X_train else 9
         self.output_shape = 4
@@ -1113,7 +1156,7 @@ class MemoryRegressor(BuilderMLP):
         y_test=None,
         blueprint="mem_reg",
         test_idx=None,
-        **builder_kwargs
+        **builder_kwargs,
     ):
         train_data = (
             (X_train, y_train) if X_train is not None and y_train is not None else None
@@ -1122,7 +1165,11 @@ class MemoryRegressor(BuilderMLP):
             (X_test, y_test) if X_test is not None and y_test is not None else None
         )
         super().__init__(
-            train_data=train_data, test_data=test_data, blueprint=blueprint, logname="MemoryRegressor", **builder_kwargs,
+            train_data=train_data,
+            test_data=test_data,
+            blueprint=blueprint,
+            logname="MemoryRegressor",
+            **builder_kwargs,
         )
         self.input_shape = self.X_train.shape[1] if self.X_train else 9
         self.output_shape = 1
@@ -1157,7 +1204,7 @@ class WallclockRegressor(BuilderMLP):
         y_test=None,
         blueprint="wall_reg",
         test_idx=None,
-        **builder_kwargs
+        **builder_kwargs,
     ):
         train_data = (
             (X_train, y_train) if X_train is not None and y_train is not None else None
@@ -1166,7 +1213,11 @@ class WallclockRegressor(BuilderMLP):
             (X_test, y_test) if X_test is not None and y_test is not None else None
         )
         super().__init__(
-            train_data=train_data, test_data=test_data, blueprint=blueprint, logname="WallclockRegressor", **builder_kwargs,
+            train_data=train_data,
+            test_data=test_data,
+            blueprint=blueprint,
+            logname="WallclockRegressor",
+            **builder_kwargs,
         )
         self.input_shape = self.X_train.shape[1] if self.X_train else 9
         self.output_shape = 1

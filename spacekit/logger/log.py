@@ -65,7 +65,9 @@ class Logger:
         verbose=False,
         log=None,
     ):
-        self.__name__ = f"spacekit.{script_name}" if script_name != "spacekit" else script_name
+        self.__name__ = (
+            f"spacekit.{script_name}" if script_name != "spacekit" else script_name
+        )
         self.short_name = script_name
         self.console = console
         self.logfile = logfile
@@ -87,18 +89,22 @@ class Logger:
         self.verbose = verbose
         self.log = log
         self.log_line_template = self.set_log_line_template()
-    
+
     def set_name(self):
         if self.verbose is True:
             name = (
-                " [%(threadName)s - %(name)-16s]" if self.threadname is True else " [%(name)-16s]"
+                " [%(threadName)s - %(name)-16s]"
+                if self.threadname is True
+                else " [%(name)-16s]"
             )
         else:
-            name =  (
-                " [%(threadName)s - %(name)s]" if self.threadname is True else " [%(name)s]"
+            name = (
+                " [%(threadName)s - %(name)s]"
+                if self.threadname is True
+                else " [%(name)s]"
             )
         return name
-    
+
     def set_log_line_template(self):
         start_template = "%(color_on)s"
         timestamp = "[%(asctime)s]" if self.asctime is True else "[%(created)d]"
@@ -190,7 +196,6 @@ class Logger:
             print("Failed to modify handlers.")
         return logger
 
-
     def setup_logger(self, logger=None):
         self.set_formatters()
         # Create logger
@@ -205,8 +210,8 @@ class Logger:
             logger = self.update_handlers(logger)
         else:
             logger = self.add_handlers(logger)
-            
-        if self.verbose: # identify source module in each log statement
+
+        if self.verbose:  # identify source module in each log statement
             logger = logger.getChild(self.short_name)
             logger.name = self.__name__[:16]
 
@@ -218,7 +223,7 @@ class Logger:
         if self.log:
             logger = self.setup_logger(logger=self.log)
         else:
-        # Called by submodules (not scripts)
+            # Called by submodules (not scripts)
             logger = self.setup_logger()
         return logger
 

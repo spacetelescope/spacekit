@@ -86,3 +86,4 @@ tests/data/svm/data/
 *.log
 *.backup
 .tmp
+tests/data

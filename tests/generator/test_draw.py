@@ -3,6 +3,7 @@ from spacekit.generator.draw import DrawMosaics
 import os
 
 
+@mark.svm
 @mark.generator
 @mark.draw
 def test_draw_from_pattern(single_visit_path, img_outpath, draw_mosaic_pattern):
@@ -16,6 +17,7 @@ def test_draw_from_pattern(single_visit_path, img_outpath, draw_mosaic_pattern):
     assert len(mos.datasets) > 0
 
 
+@mark.svm
 @mark.generator
 @mark.draw
 def test_draw_from_fname(single_visit_path, img_outpath, draw_mosaic_fname):
@@ -29,6 +31,7 @@ def test_draw_from_fname(single_visit_path, img_outpath, draw_mosaic_fname):
     assert len(mos.datasets) > 0
 
 
+@mark.svm
 @mark.generator
 @mark.draw
 def test_draw_from_visit(single_visit_path, img_outpath):
@@ -40,6 +43,7 @@ def test_draw_from_visit(single_visit_path, img_outpath):
     assert mos.datasets[0] == "ibl738"
 
 
+@mark.svm
 @mark.generator
 @mark.draw
 def test_draw_from_priority(single_visit_path, img_outpath, draw_mosaic_fname):
@@ -62,6 +66,7 @@ def test_draw_from_priority(single_visit_path, img_outpath, draw_mosaic_fname):
     assert len(data_from_file) > 0
 
 
+@mark.svm
 @mark.generator
 @mark.draw
 @mark.parametrize("P, S, G", [(0, 0, 0), (1, 1, 0), (0, 0, 1)])
@@ -82,6 +87,7 @@ def test_draw_total_images(single_visit_path, img_outpath, P, S, G):
     assert os.path.exists(img_path)
 
 
+@mark.svm
 @mark.generator
 @mark.draw
 def test_draw_generator(single_visit_path, img_outpath):

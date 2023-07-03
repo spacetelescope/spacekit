@@ -124,7 +124,11 @@ class Train:
     def load_prep(self):
         df = load(name="calcloud", date_key=self.date_key, fpath=self.fpath)
         self.data = CalPrep(
-            df, "mem_bin", X_cols=self.X_cols, norm_cols=self.norm_cols, rename_cols=self.rename_cols
+            df,
+            "mem_bin",
+            X_cols=self.X_cols,
+            norm_cols=self.norm_cols,
+            rename_cols=self.rename_cols,
         )
         self.data.prep_data()
 

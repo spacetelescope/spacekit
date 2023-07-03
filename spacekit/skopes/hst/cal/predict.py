@@ -34,25 +34,35 @@ import argparse
 import numpy as np
 from spacekit.extractor.scrape import S3Scraper
 from spacekit.preprocessor.scrub import CalScrubber
-from spacekit.preprocessor.transform import PowerX
+from spacekit.preprocessor.transform import PowerX, array_to_tensor
 from spacekit.builder.architect import Builder
 from spacekit.logger.log import SPACEKIT_LOG, Logger
 
 
 # build from local filepath
-MODEL_PATH = os.environ.get("MODEL_PATH", "./models") #"data/2022-02-14-1644848448/models"
-TX_FILE = os.path.join(MODEL_PATH, "tx_data.json")
+# MODEL_PATH = os.environ.get("MODEL_PATH", "./models") #"data/2022-02-14-1644848448/models"
+# TX_FILE = os.path.join(MODEL_PATH, "tx_data.json")
+
 
 def load_pretrained_model(**builder_kwargs):
     builder = Builder(**builder_kwargs)
     builder.load_saved_model(arch="calmodels")
     return builder
 
-class Predict:
 
+class Predict:
     def __init__(
-        self, dataset, bucket_name=None, key=None, model_path=MODEL_PATH, models={}, tx_file=TX_FILE, norm=1, norm_cols=[0,1], **log_kws
-        ):
+        self,
+        dataset,
+        bucket_name=None,
+        key=None,
+        model_path=None,
+        models={},
+        tx_file=None,
+        norm=1,
+        norm_cols=[0, 1],
+        **log_kws,
+    ):
         self.dataset = dataset
         self.bucket_name = bucket_name
         self.key = "control" if key is None else key
@@ -74,18 +84,22 @@ class Predict:
         self.predictions = None
         self.probabilities = None
         self.initialize_models()
-    
+
     def initialize_models(self):
         self.log.info("Initializing prediction models")
         if self.models is None and not os.path.exists(self.model_path):
-            self.log.warning(f"models path not found: {self.model_path} - defaulting to latest in spacekit-collection")
+            self.log.warning(
+                f"models path not found: {self.model_path} - defaulting to latest in spacekit-collection"
+            )
             self.model_path = None
         self.load_models(models=self.models)
 
     def scrape_s3_inputs(self):
         if self.key == "control":
             self.key = f"control/{self.dataset}/{self.dataset}_MemModelFeatures.txt"
-        self.input_data = S3Scraper(bucket=self.bucket_name, pfx=self.key, **self.log_kws).import_dataset()
+        self.input_data = S3Scraper(
+            bucket=self.bucket_name, pfx=self.key, **self.log_kws
+        ).import_dataset()
 
     def normalize_inputs(self):
         if self.norm:
@@ -104,14 +118,31 @@ class Predict:
             self.scrape_s3_inputs()
         self.log.info(f"dataset: {self.dataset} keys: {self.input_data}")
         self.log.info("Preprocessing features")
-        self.inputs = CalScrubber(data={self.dataset:self.input_data}, **self.log_kws).scrub_inputs()
+        self.inputs = CalScrubber(
+            data={self.dataset: self.input_data}, **self.log_kws
+        ).scrub_inputs()
         self.log.info(f"dataset: {self.dataset} features: {self.inputs}")
         self.normalize_inputs()
 
     def load_models(self, models={}):
-        self.mem_clf = models.get('mem_clf', load_pretrained_model(model_path=self.model_path, name="mem_clf", **self.log_kws))
-        self.wall_reg = models.get('wall_reg', load_pretrained_model(model_path=self.model_path, name="wall_reg", **self.log_kws))
-        self.mem_reg = models.get('mem_reg', load_pretrained_model(model_path=self.model_path, name="mem_reg", **self.log_kws))
+        self.mem_clf = models.get(
+            "mem_clf",
+            load_pretrained_model(
+                model_path=self.model_path, name="mem_clf", **self.log_kws
+            ),
+        )
+        self.wall_reg = models.get(
+            "wall_reg",
+            load_pretrained_model(
+                model_path=self.model_path, name="wall_reg", **self.log_kws
+            ),
+        )
+        self.mem_reg = models.get(
+            "mem_reg",
+            load_pretrained_model(
+                model_path=self.model_path, name="mem_reg", **self.log_kws
+            ),
+        )
         if self.model_path is None:
             self.model_path = os.path.dirname(self.mem_clf.model_path)
         if self.tx_file is None or not os.path.exists(self.tx_file):
@@ -120,13 +151,15 @@ class Predict:
 
     def classifier(self, model, data):
         """Returns class prediction"""
-        pred_proba = model.predict(data)
+        X = array_to_tensor(data)
+        pred_proba = model.predict(X)
         pred = int(np.argmax(pred_proba, axis=-1))
         return pred, pred_proba
 
     def regressor(self, model, data):
         """Returns Regression model prediction"""
-        pred = model.predict(data)
+        X = array_to_tensor(data)
+        pred = model.predict(X)
         return pred
 
     def run_inference(self, models={}):
@@ -149,23 +182,31 @@ def local_handler(dataset, **kwargs):
 
 
 def lambda_handler(event, context):
-    """Predict Resource Allocation requirements for memory (GB) and max execution `kill time` / `wallclock` (seconds) using three pre-trained neural networks. This lambda is invoked from the Job Submit lambda which json.dumps the s3 bucket and key to the file containing job input parameters. The path to the text file in s3 assumes the following format: `control/ipppssoot/ipppssoot_MemModelFeatures.txt`.
-    """
+    """Predict Resource Allocation requirements for memory (GB) and max execution `kill time` / `wallclock` (seconds) using three pre-trained neural networks. This lambda is invoked from the Job Submit lambda which json.dumps the s3 bucket and key to the file containing job input parameters. The path to the text file in s3 assumes the following format: `control/ipppssoot/ipppssoot_MemModelFeatures.txt`."""
+    MODEL_PATH = os.environ.get(
+        "MODEL_PATH", "./models"
+    )  # "data/2022-02-14-1644848448/models"
+    TX_FILE = os.path.join(MODEL_PATH, "tx_data.json")
     # load models here for warm starts in aws lambda
     mem_clf = load_pretrained_model(model_path=MODEL_PATH, name="mem_clf")
     wall_reg = load_pretrained_model(model_path=MODEL_PATH, name="wall_reg")
     mem_reg = load_pretrained_model(model_path=MODEL_PATH, name="mem_reg")
-    models=dict(mem_clf=mem_clf, wall_reg=wall_reg, mem_reg=mem_reg)
+    models = dict(mem_clf=mem_clf, wall_reg=wall_reg, mem_reg=mem_reg)
     # import and prep data: control/dataset/dataset_MemModelFeatures.txt
-    pred = Predict(event["Dataset"], bucket_name=event["Bucket"], key=event["Key"], models=models)
+    pred = Predict(
+        event["Dataset"],
+        bucket_name=event["Bucket"],
+        key=event["Key"],
+        models=models,
+        tx_file=TX_FILE,
+    )
     pred.run_inference()
     return pred.predictions
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        prog="spacekit",
-        usage="spacekit.skopes.hst.cal.predict dataset"
+        prog="spacekit", usage="spacekit.skopes.hst.cal.predict dataset"
     )
     parser.add_argument(
         "dataset",
@@ -198,44 +239,40 @@ if __name__ == "__main__":
         "--norm_cols",
         type=str,
         default="0,1",
-        help="comma-separated index of input columns to apply normalization"
+        help="comma-separated index of input columns to apply normalization",
     )
     parser.add_argument(
         "-m",
         "--model_path",
         type=str,
-        default=os.environ.get("MODEL_PATH", "./models"),
-        help="path to saved model directory"
+        default=os.environ.get("MODEL_PATH", None),
+        help="path to saved model directory",
     )
     parser.add_argument(
         "-t",
         "--tx_file",
         type=str,
         default=None,
-        help="path to transformer metadata json file"
+        help="path to transformer metadata json file",
     )
     parser.add_argument(
         "--console_log_level",
         type=str,
         choices=["info", "debug", "error", "warning"],
-        default="info"
+        default="info",
     )
     parser.add_argument(
         "--logfile_log_level",
         type=str,
         choices=["info", "debug", "error", "warning"],
-        default="debug"
+        default="debug",
     )
     parser.add_argument(
         "--logfile",
         type=bool,
         default=True,
     )
-    parser.add_argument(
-        "--logdir",
-        type=str,
-        default="."
-    )
+    parser.add_argument("--logdir", type=str, default=".")
     parser.add_argument(
         "--verbose",
         "-v",
