@@ -15,20 +15,12 @@ COLUMN_ORDER = {
         "dtype",
         "instr",
     ],
-    "svm": [
-
-    ]
+    "svm": [],
 }
 
-NORM_COLS = {
-    "asn": ["n_files", "total_mb"],
-    "svm": []
-}
+NORM_COLS = {"asn": ["n_files", "total_mb"], "svm": []}
 
-RENAME_COLS = {
-    "asn": ["x_files", "x_size"],
-    "svm": []
-}
+RENAME_COLS = {"asn": ["x_files", "x_size"], "svm": []}
 
 X_NORM = {
     "asn": [

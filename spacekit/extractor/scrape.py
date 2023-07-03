@@ -92,7 +92,14 @@ class Scraper:
     """Parent Class for various data scraping subclasses. Instantiating the appropriate subclass is preferred."""
 
     def __init__(
-        self, cache_dir="~", cache_subdir="data", format="zip", extract=True, clean=True, name="Scraper", **log_kws
+        self,
+        cache_dir="~",
+        cache_subdir="data",
+        format="zip",
+        extract=True,
+        clean=True,
+        name="Scraper",
+        **log_kws,
     ):
         """Instantiates a spacekit.extractor.scrape.Scraper object.
 
@@ -195,7 +202,7 @@ class FileScraper(Scraper):
         extract=True,
         clean=False,
         name="FileScraper",
-        **log_kws
+        **log_kws,
     ):
         """Instantiates a spacekit.extractor.scrape.FileScraper object.
 
@@ -259,7 +266,7 @@ class WebScraper(Scraper):
         format="zip",
         extract=True,
         clean=True,
-        **log_kws
+        **log_kws,
     ):
         """Uses dictionary of uri, filename and hash key-value pairs to download data securely from a website such as Github.
 
@@ -309,7 +316,7 @@ class WebScraper(Scraper):
                 archive_format=self.format,
             )
             extracted = os.path.join(os.path.dirname(fpath), data["key"])
-            #extracted = str(os.path.relpath(fpath)).split(".")[0]
+            # extracted = str(os.path.relpath(fpath)).split(".")[0]
             self.fpaths.append(os.path.relpath(extracted))
             if self.clean is True and os.path.exists(
                 extracted
@@ -360,7 +367,7 @@ class S3Scraper(Scraper):
             format=format,
             extract=extract,
             name="S3Scraper",
-            **log_kws
+            **log_kws,
         )
         self.bucket = bucket
         self.pfx = pfx
@@ -370,17 +377,16 @@ class S3Scraper(Scraper):
         self.s3 = boto3.resource("s3", config=retry_config)
         self.client = boto3.client("s3", config=retry_config)
         self.aws_kwargs = self.authorize_aws()
-    
+
     def authorize_aws(self):
         self.aws_kwargs = dict(
-            region_name = os.environ.get("AWS_REGION_NAME", "us-east-1"),
-            aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID", ""),
-            aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY", ""),
-            aws_session_token = os.environ.get("AWS_SESSION_TOKEN", "")
-            )
+            region_name=os.environ.get("AWS_REGION_NAME", "us-east-1"),
+            aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID", ""),
+            aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY", ""),
+            aws_session_token=os.environ.get("AWS_SESSION_TOKEN", ""),
+        )
         self.s3 = boto3.resource("s3", config=retry_config, **self.aws_kwargs)
         self.client = boto3.client("s3", config=retry_config, **self.aws_kwargs)
-
 
     def make_s3_keys(
         self,
@@ -408,7 +414,7 @@ class S3Scraper(Scraper):
             fname = key + ".zip"
             self.dataset[key] = {"fname": fname, "pfx": self.pfx}
         return self.dataset
-    
+
     def scrape_s3_file(self, fpath, obj):
         with open(fpath, "wb") as f:
             self.client.download_fileobj(self.bucket, obj, f)
@@ -486,9 +492,9 @@ class S3Scraper(Scraper):
         except Exception as e:
             self.log.error(e)
             sys.exit(3)
-        self.log.debug(f"Input data scraped successfully.")
+        self.log.debug("Input data scraped successfully.")
         return input_data
-   
+
 
 class DynamoDBScraper(Scraper):
     def __init__(
@@ -502,7 +508,7 @@ class DynamoDBScraper(Scraper):
         format="zip",
         extract=True,
         clean=True,
-        **log_kws
+        **log_kws,
     ):
         super().__init__(
             cache_dir=cache_dir,
@@ -657,7 +663,6 @@ class DynamoDBScraper(Scraper):
 
 
 class FitsScraper(FileScraper):
-
     def __init__(self, data, input_path, **log_kws):
         super().__init__(name="FitsScraper", **log_kws)
         self.df = data.copy()
@@ -699,7 +704,9 @@ class FitsScraper(FileScraper):
 class MastScraper:
     """Class for scraping metadata from MAST (Mikulsky Archive for Space Telescopes) via ``astroquery``. Current functionality for this class is limited to extracting the `target_classification` values of HAP targets from the archive. An example of a target classification is "GALAXY" - an alphanumeric categorization of an image product/.fits file. Note - the files themselves are not downloaded, just this specific metadata listed in the online archive database. For downloading MAST science files, use the ``spacekit.extractor.radio`` module. The search parameter values needed for locating a HAP product on MAST can be extracted from the fits science extension headers using the ``astropy`` library. See the ``spacekit.preprocessor.scrub`` api for an example (or the astropy documentation)."""
 
-    def __init__(self, df, trg_col="targname", ra_col="ra_targ", dec_col="dec_targ", **log_kws):
+    def __init__(
+        self, df, trg_col="targname", ra_col="ra_targ", dec_col="dec_targ", **log_kws
+    ):
         """Instantiates a spacekit.extractor.scrape.MastScraper object.
 
         Parameters
@@ -726,7 +733,6 @@ class MastScraper:
         self.target_categories = {}
         self.other_cat = {}
         self.categories = {}
-
 
     def scrape_mast(self):
         """Main calling function to scrape MAST
@@ -895,10 +901,13 @@ class JsonScraper(FileScraper):
         store_h5=True,
         h5_file=None,
         output_path=None,
-        **log_kws
+        **log_kws,
     ):
         super().__init__(
-            search_path=search_path, search_patterns=search_patterns, name="JsonScraper", **log_kws
+            search_path=search_path,
+            search_patterns=search_patterns,
+            name="JsonScraper",
+            **log_kws,
         )
         self.file_basename = file_basename
         self.crpt = crpt

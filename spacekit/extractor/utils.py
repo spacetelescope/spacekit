@@ -9,14 +9,16 @@ def is_within_directory(directory, target):
     prefix = os.path.commonprefix([abs_directory, abs_target])
     return prefix == abs_directory
 
+
 def safe_extract(tar, expath=".", members=None, *, numeric_owner=False):
     directory = os.path.dirname(tar)
     for member in tar.getmembers():
         member_path = os.path.join(directory, member.name)
         if not is_within_directory(directory, member_path):
             raise Exception("WARNING: Attempted Path Traversal in Tar File")
-    
+
     tar.extractall(expath, members, numeric_owner=numeric_owner)
+
 
 def extract_file(fpath, dest="."):
     fp = fpath.split(".")
@@ -34,6 +36,3 @@ def extract_file(fpath, dest="."):
             safe_extract(tar, expath=dest)
     else:
         raise Exception(f"Could not extract file of type {kind}")
-
-
-    
