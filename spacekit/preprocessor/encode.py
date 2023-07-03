@@ -277,7 +277,7 @@ class SvmEncoder:
             c = cat.split(sep)[0]
             if c in ckeys:
                 CAT[idx] = ckeys[c]
-        df_cat = pd.DataFrame.from_dict(CAT, orient="index", columns={"category"})
+        df_cat = pd.DataFrame.from_dict(CAT, orient="index", columns=["category"])
         self.df.drop("category", axis=1, inplace=True)
         self.df = self.df.join(df_cat, how="left")
         return self.df

@@ -169,7 +169,7 @@ for train_idx, test_idx in kfold.split(X, y):
     df.loc[test_idx_str, f"proba_{fold_no}"] = ptest
 
     p_aug = ens.model.predict(aug)
-    aug_pred = pd.DataFrame(p_aug, index=list(range(len(p_aug))), columns={nfold})
+    aug_pred = pd.DataFrame(p_aug, index=list(range(len(p_aug))), columns=[nfold])
     if len(df_aug) == 0:
         df_aug = aug_pred
     else:

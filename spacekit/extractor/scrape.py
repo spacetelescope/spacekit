@@ -817,7 +817,7 @@ class MastScraper:
                 self.categories[i] = v
         self.categories.update(self.other_cat)
         cat = pd.DataFrame.from_dict(
-            self.categories, orient="index", columns={"category"}
+            self.categories, orient="index", columns=["category"]
         )
         self.log.info("\nTarget Categories Assigned.")
         self.log.info(cat["category"].value_counts())
