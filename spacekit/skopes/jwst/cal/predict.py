@@ -95,12 +95,6 @@ class JwstCalPredict:
                 model_path=self.model_path, name="mem_clf", **self.log_kws
             ),
         )
-        self.wall_reg = models.get(
-            "wall_reg",
-            load_pretrained_model(
-                model_path=self.model_path, name="wall_reg", **self.log_kws
-            ),
-        )
         self.mem_reg = models.get(
             "mem_reg",
             load_pretrained_model(
