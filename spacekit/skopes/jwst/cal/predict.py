@@ -81,11 +81,11 @@ class JwstCalPredict:
 
     def preprocess(self):
         self.log.info("Preprocessing input data")
-        self.input_data = JwstCalScrubber(
+        self.inputs = JwstCalScrubber(
             self.input_path, keypair=KEYPAIR_DATA, **self.log_kws
         ).scrub_inputs()
-        for product, inputs in self.input_data.iterrows():
-            self.log.info(f"product: {product} features: {inputs}")
+        for product, input_data in self.inputs.iterrows():
+            self.log.info(f"product: {product} features: {input_data}")
         self.normalize_inputs()
 
     def load_models(self, models={}):
@@ -120,15 +120,18 @@ class JwstCalPredict:
         pred = model.predict(X)
         return pred
 
-    def run_inference(self, models={}):
+    def run_inference(self):
         if self.X is None:
             self.preprocess()
-        membin, pred_proba = self.classifier(self.mem_clf.model, self.X)
-        memval = np.round(float(self.regressor(self.mem_reg.model, self.X)), 2)
-        self.predictions = {"memBin": membin, "memVal": memval}
-        self.log.info(f"dataset: {self.dataset} predictions: {self.predictions}")
-        self.probabilities = {"dataset": self.dataset, "probabilities": pred_proba}
-        self.log.info(self.probabilities)
+        self.predictions = dict()
+        self.probabilities = dict()
+        for product, X in self.X.iterrows():
+            membin, pred_proba = self.classifier(self.mem_clf.model, X)
+            memval = np.round(float(self.regressor(self.mem_reg.model, X)), 2)
+            self.predictions[product] = {"memBin": membin, "memVal": memval}
+            self.probabilities[product] = {"probabilities": pred_proba}
+        self.log.info(f"predictions: {self.predictions}")
+        self.log.info(f"probabilities: {self.probabilities}")
 
 
 def predict_handler(input_path, **kwargs):
