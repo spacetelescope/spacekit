@@ -1,5 +1,5 @@
 from pytest import mark
-from spacekit.extractor.scrape import JsonScraper, FitsScraper, MastScraper
+from spacekit.extractor.scrape import JsonScraper, SvmFitsScraper, MastScraper
 import os
 import pandas as pd
 
@@ -70,7 +70,7 @@ def test_json_scraper(raw_csv_file, single_visit_path):
 @mark.scrape
 def test_scrape_fits(scrubbed_cols_file, single_visit_path):
     data = pd.read_csv(scrubbed_cols_file, index_col="index")
-    scraper = FitsScraper(data, single_visit_path)
+    scraper = SvmFitsScraper(data, single_visit_path)
     assert scraper.drz_paths == {
         "hst_12286_38_wfc3_ir_total_ibl738": f"{single_visit_path}/ibl738/hst_12286_38_wfc3_ir_total_ibl738_drz.fits"
     }

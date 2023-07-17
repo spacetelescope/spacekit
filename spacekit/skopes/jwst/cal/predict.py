@@ -1,244 +1,211 @@
-# Program (PID) of exposures comes into pipeline
-# create list of L1B exposures
-# scrape refpix vals from scihdrs + any additional metadata
-# determine potential L3 products based on obs, filters, detectors, etc
-# calculate sky separation / reference pixel offset statistics
-# preprocessing: create dataframe of all input values, encode categoricals
-# load model
-# run inference
-
-
+"""
+Program (PID) of exposures comes into pipeline
+1. create list of L1B exposures
+2. scrape refpix vals from scihdrs + any additional metadata
+3. determine potential L3 products based on obs, filters, detectors, etc
+4. calculate sky separation / reference pixel offset statistics
+5. preprocessing: create dataframe of all input values, encode categoricals
+6. load model
+7. run inference
+"""
 import os
 import glob
+import argparse
 from astropy.io import fits
-from astropy.coordinates import SkyCoord
+
 import numpy as np
 import pandas as pd
-from spacekit.logger.log import Logger
-from spacekit.skopes.jwst.cal.config import GENKEYS, SCIKEYS, COLUMN_ORDER
-from spacekit.preprocessor.scrub import apply_nandlers
-# from spacekit.preprocessor.prep import JwstCalPrep
-from spacekit.preprocessor.transform import arrays_to_tensors
-from spacekit.builder.architect import BuilderMLP
-
-# create list of L1B exposures
-
-# fnames = [
-#     'jw01032001001_02101_00001_mirimage_uncal.fits',
-#     'jw01032002001_02101_00001_mirimage_uncal.fits',
-#     'jw01032002001_02101_00002_mirimage_uncal.fits',
-#     'jw01032002001_02101_00003_mirimage_uncal.fits',
-#     'jw01032002001_02101_00004_mirimage_uncal.fits',
-# ]
-def get_input_exposures(input_path):
-    return glob.glob(f"{input_path}/*_uncal.fits")
-
-# scrape refpix vals from scihdrs + any additional metadata
-
-def scrape_fits_headers(fpaths, gen_keys=GENKEYS, sci_keys=SCIKEYS):
-    exp_headers = {}
-    for fpath in fpaths:
-        fname = str(os.path.basename(fpath))
-        sfx = fname.split("_")[-1] # _uncal.fits
-        name = fname.replace(f"_{sfx}", "")
-        exp_headers[name] = dict()
-        genhdr = fits.getheader(fpath, ext=0)
-        scihdr = fits.getheader(fpath, ext=1)
-        for g in gen_keys:
-            exp_headers[name][g] = genhdr[g] if g in genhdr else "NaN"
-        for s in sci_keys:
-            exp_headers[name][s] = scihdr[s] if s in scihdr else "NaN"
-    return exp_headers
+from spacekit.logger.log import SPACEKIT_LOG, Logger
+from spacekit.skopes.jwst.cal.config import KEYPAIR_DATA
+from spacekit.preprocessor.scrub import JwstCalScrubber
+from spacekit.preprocessor.transform import array_to_tensor, PowerX
+from spacekit.builder.architect import Builder
 
 
-# determine potential L3 products based on obs, filters, detectors, etc
-# group by target+obs num+filter (+pupil)
+# build from local filepath
+# MODEL_PATH = os.environ.get("MODEL_PATH", "./models") #"data/2023-07-14-1644848448/models"
+# TX_FILE = os.path.join(MODEL_PATH, "tx_data.json")
 
-def get_potential_l3_products(exp_headers):
-    #exp_headers = scrape_fits_headers()
-    targetnames = list(set([v['TARGNAME'] for v in exp_headers.values()]))
-    tnums = [f"t{i+1}" for i, t in enumerate(targetnames)]
-    targs = dict(zip(targetnames, tnums))
-    products = dict()
 
-    for k, v in exp_headers.items():
-        tnum = targs.get(v['TARGNAME'])
-        if v['PUPIL'] == "CLEAR":
-            p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['PUPIL']}-{v['FILTER']}".lower()
-        elif v['PUPIL'] != "NaN":
-            p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['FILTER']}-{v['PUPIL']}".lower()
+def load_pretrained_model(**builder_kwargs):
+    builder = Builder(**builder_kwargs)
+    builder.load_saved_model(arch="jwstcal")
+    return builder
+
+
+class JwstCalPredict:
+    def __init__(
+        self,
+        input_path=None,
+        model_path=None,
+        models={},
+        tx_file=None,
+        norm=0,
+        norm_cols=[],
+        **log_kws,
+    ):
+        self.input_path = input_path
+        self.model_path = model_path
+        self.models = models
+        self.tx_file = tx_file
+        self.norm = norm
+        self.norm_cols = norm_cols
+        self.input_data = None
+        self.inputs = None
+        self.tx_data = None
+        self.X = None
+        self.mem_clf = None
+        self.mem_reg = None
+        self.__name__ = "jwstpredict"
+        self.log = Logger(self.__name__, **log_kws).setup_logger(logger=SPACEKIT_LOG)
+        self.log_kws = dict(log=self.log, **log_kws)
+        self.predictions = None
+        self.probabilities = None
+        self.initialize_models()
+
+    def initialize_models(self):
+        self.log.info("Initializing prediction models")
+        if self.models is None and not os.path.exists(self.model_path):
+            self.log.warning(
+                f"models path not found: {self.model_path} - defaulting to latest in spacekit-collection"
+            )
+            self.model_path = None
+        self.load_models(models=self.models)
+
+    def normalize_inputs(self):
+        if self.norm:
+            self.log.info("Applying normalization")
+            Px = PowerX(self.inputs, cols=self.norm_cols, tx_file=self.tx_file)
+            self.X = Px.Xt
+            self.tx_data = Px.tx_data
+            self.log.debug(f"tx_data: {self.tx_data}")
+            self.log.info(f"dataset: {self.dataset} normalized inputs (X): {self.X}")
         else:
-            p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['FILTER']}".lower()
-        if p in products:
-            products[p]
-            products[p][k] = v
-        else:
-            products[p] = {k:v}
-    return products
+            self.X = self.inputs
+
+    def preprocess(self):
+        self.log.info("Preprocessing input data")
+        self.input_data = JwstCalScrubber(self.input_path, keypair=KEYPAIR_DATA, **self.log_kws).scrub_inputs()
+        for product, inputs in self.input_data.iterrows():
+            self.log.info(f"product: {product} features: {inputs}")
+        self.normalize_inputs()
+
+    def load_models(self, models={}):
+        self.mem_clf = models.get(
+            "mem_clf",
+            load_pretrained_model(
+                model_path=self.model_path, name="mem_clf", **self.log_kws
+            ),
+        )
+        self.wall_reg = models.get(
+            "wall_reg",
+            load_pretrained_model(
+                model_path=self.model_path, name="wall_reg", **self.log_kws
+            ),
+        )
+        self.mem_reg = models.get(
+            "mem_reg",
+            load_pretrained_model(
+                model_path=self.model_path, name="mem_reg", **self.log_kws
+            ),
+        )
+        if self.model_path is None:
+            self.model_path = os.path.dirname(self.mem_clf.model_path)
+        if self.tx_file is None or not os.path.exists(self.tx_file):
+            self.mem_clf.find_tx_file()
+            self.tx_file = self.mem_clf.tx_file
+
+    def classifier(self, model, data):
+        """Returns class prediction"""
+        X = array_to_tensor(data)
+        pred_proba = model.predict(X)
+        pred = int(np.argmax(pred_proba, axis=-1))
+        return pred, pred_proba
+
+    def regressor(self, model, data):
+        """Returns Regression model prediction"""
+        X = array_to_tensor(data)
+        pred = model.predict(X)
+        return pred
+
+    def run_inference(self, models={}):
+        if self.X is None:
+            self.preprocess()
+        membin, pred_proba = self.classifier(self.mem_clf.model, self.X)
+        memval = np.round(float(self.regressor(self.mem_reg.model, self.X)), 2)
+        self.predictions = {"memBin": membin, "memVal": memval}
+        self.log.info(f"dataset: {self.dataset} predictions: {self.predictions}")
+        self.probabilities = {"dataset": self.dataset, "probabilities": pred_proba}
+        self.log.info(self.probabilities)
 
 
-# calculate sky separation / reference pixel offset statistics
-def image_pixel_scales():
-    return dict(
-        NIRCAM=dict(
-            SHORT=0.03,
-            LONG=0.06,
-        ),
-        MIRI=0.11,
-        NIRISS=0.06,
-        NIRSPEC=0.1,
+def predict_handler(input_path, **kwargs):
+    """handles non-lambda invocations"""
+    pred = JwstCalPredict(input_path, **kwargs)
+    pred.run_inference()
+    return pred
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        prog="spacekit", usage="spacekit.skopes.jwst.cal.predict input_path"
     )
-
-def get_scale(instr, channel=None):
-    p_scales = image_pixel_scales()
-    if channel not in [None, "NONE", "NaN"]:
-        return p_scales[instr][channel]
-    else:
-        return p_scales[instr]
-
-
-def pixel_sky_separation(ra, dec, p_coords, scale):
-    coords = SkyCoord(ra, dec, unit="deg")
-    skysep_angle = p_coords.separation(coords)
-    arcsec = skysep_angle.arcsecond
-    pixel = arcsec / scale
-    return pixel
-
-
-def offset_statistics(refpix, offsets, k, pfx=''):
-    offsets = np.asarray(offsets)
-    refpix[k][f'{pfx}max_offset'] = np.max(offsets)
-    refpix[k][f'{pfx}mean_offset'] = np.mean(offsets)
-    refpix[k][f'{pfx}sigma_offset'] = np.std(offsets)
-    refpix[k][f'{pfx}err_offset'] = np.std(offsets) / np.sqrt(len(offsets))
-    sigma1_idx = np.where(offsets > np.mean(offsets)+np.std(offsets))[0]
-    if len(sigma1_idx) > 0:
-        refpix[k][f'{pfx}sigma1_mean'] = np.mean(offsets[sigma1_idx])
-        refpix[k][f'{pfx}frac'] = len(offsets[sigma1_idx]) / len(offsets)
-    else:
-        refpix[k][f'{pfx}sigma1_mean'] = 0.0
-        refpix[k][f'{pfx}frac'] = 0.0
-    return refpix
-
-
-def get_pixel_offsets(products, p):
-    exp_headers = products.get(p)
-    offsets = []
-    refpix = {p:dict(nexposur=len(list(exp_headers.keys())))}
-    min_offset = None
-    detectors = []
-    for k, v in exp_headers.items():
-        scale = get_scale(v['INSTRUME'], channel=v['CHANNEL'])
-        t_coords = SkyCoord(v['TARG_RA'], v['TARG_DEC'], unit="deg")
-        pixel = pixel_sky_separation(v['CRVAL1'], v['CRVAL2'], t_coords, scale=scale)
-        exp_headers[k]['offset'] = pixel
-        offsets.append(pixel)
-        if min_offset is None:
-            min_offset = pixel
-        elif pixel < min_offset:
-            min_offset = pixel
-        else:
-            continue
-        if v['DETECTOR'] not in detectors:
-            detectors.append(v['DETECTOR'])
-    ref_exp = [k for k,v in exp_headers.items() if v['offset'] == min_offset][0]
-    refpix[p].update(exp_headers[ref_exp])
-
-    if len(detectors) > 1:
-        refpix[p]['DETECTOR'] = '|'.join([d for d in detectors])
-    else:
-        refpix[p]['DETECTOR'] = detectors[0]
-
-    refpix = offset_statistics(refpix, offsets, p)
-    return refpix
-
-# refpix = {
-#     'jw01153-o011-t1_nircam_clear-f212n': {
-#         'nexposur': 2,
-#         'PROGRAM': '01153',
-#         'OBSERVTN': '011',
-#         'BKGDTARG': False,
-#         'VISITYPE': 'PRIME_WFSC_SENSING_ONLY',
-#         'TSOVISIT': False,
-#         'TARGNAME': 'TYC 4212-1079-1',
-#         'TARG_RA': 268.9183320833334,
-#         'TARG_DEC': 65.85770833333332,
-#         'INSTRUME': 'NIRCAM',
-#         'DETECTOR': 'NRCA2',
-#         'FILTER': 'F212N',
-#         'PUPIL': 'CLEAR',
-#         'EXP_TYPE': 'NRC_IMAGE',
-#         'CHANNEL': 'SHORT',
-#         'SUBARRAY': 'FULL',
-#         'NUMDTHPT': 2,
-#         'GS_RA': 269.048483,
-#         'GS_DEC': 65.855498,
-#         'RA_REF': 268.8796579753335,
-#         'DEC_REF': 65.87927918306961,
-#         'CRVAL1': 268.8796579753335,
-#         'CRVAL2': 65.87927918306961,
-#         'offset': 3209.403065384182,
-#         'max_offset': 3213.1090393674435,
-#         'mean_offset': 3211.256052375813,
-#         'sigma_offset': 1.8529869916308144,
-#         'err_offset': 1.3102596672326092,
-#         'sigma1_mean': 0.0,
-#         'frac': 0.0,
-#     }
-# }
-
-# preprocessing
-
-def preprocess_inputs(refpix, xcols=COLUMN_ORDER['asn']):
-    df = pd.DataFrame.from_dict(refpix, orient='index')
-    cols = list(df.columns)
-    df.rename(dict(zip(cols, [c.lower() for c in cols])), axis=1, inplace=True)
-    df.rename({'instrume':'instr'}, axis=1, inplace=True)
-    df = df[xcols]
-    nandler_keys = dict(
-        continuous=[
-            'nexposur',
-            'numdthpt',
-            'offset',
-            'max_offset',
-            'mean_offset',
-            'sigma_offset',
-            'err_offset',
-            'sigma1_mean',
-            'frac',
-        ],
-        boolean=['bkgdtarg','tsovisit'],
-        categorical=[
-            'instr',
-            'detector',
-            'filter',
-            'pupil',
-            'exp_type',
-            'channel',
-            'subarray',
-            'visitype',
-        ],
+    parser.add_argument(
+        "input_path",
+        type=str,
+        help="path to input exposure fits files",
     )
-    df = apply_nandlers(df, nandler_keys)
-
-    # TODO
-    # df, enc_pairs = encode_categories(df, categorical, **encoding_kwargs)
-
-    # jp = JwstCalPrep(
-    #     df,
-    #     y_target='imagesize',
-    #     X_cols=xcols,
-    #     norm_cols=[],
-    #     rename_cols=[],
-    #     tensors=True,
-    #     normalize=False,
-    #     random=42,
-    #     tsize=0.2,
-    #     encode_targets=False,
-    # )
-
-# load model
-
-
-# run inference
-
+    parser.add_argument(
+        "-n",
+        "--norm",
+        type=int,
+        default=1,
+        help="apply normalization and scaling (bool)",
+    )
+    parser.add_argument(
+        "-c",
+        "--norm_cols",
+        type=str,
+        default="0,1",
+        help="comma-separated index of input columns to apply normalization",
+    )
+    parser.add_argument(
+        "-m",
+        "--model_path",
+        type=str,
+        default=os.environ.get("MODEL_PATH", None),
+        help="path to saved model directory",
+    )
+    parser.add_argument(
+        "-t",
+        "--tx_file",
+        type=str,
+        default=None,
+        help="path to transformer metadata json file",
+    )
+    parser.add_argument(
+        "--console_log_level",
+        type=str,
+        choices=["info", "debug", "error", "warning"],
+        default="info",
+    )
+    parser.add_argument(
+        "--logfile_log_level",
+        type=str,
+        choices=["info", "debug", "error", "warning"],
+        default="debug",
+    )
+    parser.add_argument(
+        "--logfile",
+        type=bool,
+        default=True,
+    )
+    parser.add_argument("--logdir", type=str, default=".")
+    parser.add_argument(
+        "--verbose",
+        "-v",
+        action="store_true",
+    )
+    args = parser.parse_args()
+    args.norm_cols = [int(i) for i in args.norm_cols.split(",")]
+    predict_handler(**vars(args))

@@ -3,9 +3,9 @@ import glob
 import time
 import pandas as pd
 import numpy as np
-from spacekit.extractor.scrape import MastScraper, FitsScraper, scrape_catalogs
-from spacekit.preprocessor.encode import SvmEncoder, encode_booleans
-
+from spacekit.preprocessor.transform import get_skycoord, pixel_sky_separation, offset_statistics
+from spacekit.extractor.scrape import MastScraper, SvmFitsScraper, JwstFitsScraper, scrape_catalogs
+from spacekit.preprocessor.encode import SvmEncoder, CategoricalEncoder, encode_booleans
 from spacekit.logger.log import Logger
 
 
@@ -94,6 +94,17 @@ class Scrubber:
         drops = [col for col in self.df.columns if col not in self.col_order]
         self.df = self.df.drop(drops, axis=1)
         self.df = self.df[self.col_order]
+    
+    def uppercase_vals(self, column_list, exceptions=['channel','asn_rule','exptype']):
+        # set consistent case for categorical column values with a few exceptions
+        for col in column_list:
+            if col in self.df.columns and col not in exceptions:
+                try:
+                    self.df[col] = self.df[col].apply(lambda x: x.upper())
+                except Exception as e:
+                    print(col)
+                    print(e)
+        return self.df
 
     def save_csv_file(self, df=None, pfx="", index_col="index"):
         """Saves dataframe to csv file on local disk.
@@ -179,7 +190,7 @@ class SvmScrubber(Scrubber):
         # STAGE 1 scrubbing
         self.scrub_columns()
         # STAGE 2 initial encoding
-        self.df = FitsScraper(self.df, self.input_path).scrape_fits()
+        self.df = SvmFitsScraper(self.df, self.input_path).scrape_fits()
         n_retries = 3
         while n_retries > 0:
             try:
@@ -244,7 +255,7 @@ class SvmScrubber(Scrubber):
     def scrub_qa_data(self):
         self.scrub_columns()
         # STAGE 2 initial encoding
-        self.df = FitsScraper(self.df, self.input_path).scrape_fits()
+        self.df = SvmFitsScraper(self.df, self.input_path).scrape_fits()
         self.df = MastScraper(self.df).scrape_mast()
 
     def scrub_qa_summary(self, csvfile="single_visit_mosaics*.csv", idx=0):
@@ -409,7 +420,7 @@ class SvmScrubber(Scrubber):
                     f.writelines(f"{s}\n")
 
 
-class CalScrubber(Scrubber):
+class HstCalScrubber(Scrubber):
     def __init__(
         self,
         data=None,
@@ -426,7 +437,7 @@ class CalScrubber(Scrubber):
             output_file=output_file,
             dropnans=dropnans,
             save_raw=save_raw,
-            name="CalScrubber",
+            name="HstCalScrubber",
             **log_kws,
         )
         self.data = super().convert_to_dataframe(data=data)
@@ -487,76 +498,239 @@ class CalScrubber(Scrubber):
         )
 
 
-# NaN-HANDLERS (NaNdlers)
+class JwstCalScrubber(Scrubber):
+    # TODO
+    # df, enc_pairs = encode_categories(df, categorical, **encoding_kwargs)
 
-def continuous_nandler(df, cols, verbose=False):
-    cols = [n for n in cols if n in df.columns]
-    if verbose:
-        print(f"\nNaNs to be NaNdled:\n{df[cols].isna().sum()}\n")
-    for n in cols:
-        df.loc[df[n].isna() == True, n] = 0.0
-    return df
+    def __init__(self, input_path, data=None, dropnans=False, save_raw=True, keypairs=None, **log_kws):
+        self.input_path = input_path
+        self.exp_headers = None
+        super().__init__(
+            data=data,
+            col_order=self.set_col_order(),
+            dropnans=dropnans,
+            save_raw=save_raw,
+            name="JwstCalScrubber",
+            **log_kws,
+        )
+        self.scrape_inputs()
+        self.pixel_scales = self.image_pixel_scales()
+        self.refpix = self.calculate_offsets()
+        self.xcols = self.set_col_order()
+        self.keypairs = keypairs
+
+    def set_col_order(self):
+        return [
+            'instr',
+            'detector',
+            'exp_type',
+            'visitype',
+            'filter',
+            'pupil',
+            'channel',
+            'subarray',
+            'bkgdtarg',
+            'tsovisit',
+            'nexposur',
+            'numdthpt',
+            'offset',
+            'max_offset',
+            'mean_offset',
+            'sigma_offset',
+            'err_offset',
+            'sigma1_mean',
+            'frac',
+        ]
+
+    def set_new_cols(self):
+        self.new_cols = []
+        return self.new_cols.extend(self.col_order)
+
+    def scrape_inputs(self):
+        self.scraper = JwstFitsScraper(self.df, self.input_path, sfx="_uncal.fits")
+        self.fpaths = self.scraper.fpaths
+        self.exp_headers = self.scraper.scrape_fits()
+    
+    def calculate_offsets(self):
+        self.products = self.get_potential_l3_products()
+        for p in list(self.products.keys()):
+            self.refpix[p] = self.get_pixel_offsets(self, p)[p]
+        return self.refpix
+
+    def scrub_inputs(self):
+        self.df = pd.DataFrame.from_dict(self.refpix, orient='index')
+        super().rename_cols(new=[c.lower() for c in self.df.columns])
+        super().rename_cols(old=["instrume"], new=["instr"])
+        self.df = self.df[self.xcols]
+        dtype_keys = self.get_dtype_keys()
+        nandler = NaNdler(self.df, dtype_keys, allow_neg=False, verbose=False)
+        self.df = nandler.apply_nandlers(self.df, dtype_keys)
+        enc = CategoricalEncoder(self.df, dtype_keys['categorical'])
+        enc.encoding_keypair_data = self.keypairs
+        self.df = enc.encode_from_keypairs()
+        return self.df
+
+    def get_potential_l3_products(self):
+        # determine potential L3 products based on obs, filters, detectors, etc
+        # group by target+obs num+filter (+pupil)
+        #exp_headers = scrape_fits_headers()
+        targetnames = list(set([v['TARGNAME'] for v in self.exp_headers.values()]))
+        tnums = [f"t{i+1}" for i, t in enumerate(targetnames)]
+        targs = dict(zip(targetnames, tnums))
+        products = dict()
+
+        for k, v in self.exp_headers.items():
+            tnum = targs.get(v['TARGNAME'])
+            if v['PUPIL'] == "CLEAR":
+                p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['PUPIL']}-{v['FILTER']}".lower()
+            elif v['PUPIL'] != "NaN":
+                p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['FILTER']}-{v['PUPIL']}".lower()
+            else:
+                p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['FILTER']}".lower()
+            if p in products:
+                products[p]
+                products[p][k] = v
+            else:
+                products[p] = {k:v}
+        return products
+
+    def image_pixel_scales(self):
+        # calculate sky separation / reference pixel offset statistics
+        return dict(
+            NIRCAM=dict(
+                SHORT=0.03,
+                LONG=0.06,
+            ),
+            MIRI=0.11,
+            NIRISS=0.06,
+            NIRSPEC=0.1,
+        )
+
+    def get_scale(self, instr, channel=None):
+        if channel not in [None, "NONE", "NaN"]:
+            return self.pixel_scales[instr][channel]
+        else:
+            return self.pixel_scales[instr]
+
+    def get_pixel_offsets(self, products, p):
+        exp_headers = products.get(p)
+        offsets = []
+        refpix = {p:dict(nexposur=len(list(exp_headers.keys())))}
+        min_offset = None
+        detectors = []
+        for k, v in exp_headers.items():
+            scale = self.get_scale(v['INSTRUME'], channel=v['CHANNEL'])
+            t_coords = get_skycoord(v['TARG_RA'], v['TARG_DEC'], unit="deg")
+            pixel = pixel_sky_separation(v['CRVAL1'], v['CRVAL2'], t_coords, scale=scale)
+            exp_headers[k]['offset'] = pixel
+            offsets.append(pixel)
+            if min_offset is None:
+                min_offset = pixel
+            elif pixel < min_offset:
+                min_offset = pixel
+            else:
+                continue
+            if v['DETECTOR'] not in detectors:
+                detectors.append(v['DETECTOR'])
+        ref_exp = [k for k,v in exp_headers.items() if v['offset'] == min_offset][0]
+        refpix[p].update(exp_headers[ref_exp])
+        if len(detectors) > 1:
+            refpix[p]['DETECTOR'] = '|'.join([d for d in detectors])
+        else:
+            refpix[p]['DETECTOR'] = detectors[0]
+        refpix = offset_statistics(offsets, p, refpix=refpix)
+        return refpix
+
+    def get_dtype_keys():
+        return dict(
+            continuous=[
+                'nexposur',
+                'numdthpt',
+                'offset',
+                'max_offset',
+                'mean_offset',
+                'sigma_offset',
+                'err_offset',
+                'sigma1_mean',
+                'frac',
+            ],
+            boolean=['bkgdtarg','tsovisit'],
+            categorical=[
+                'instr',
+                'detector',
+                'filter',
+                'pupil',
+                'exp_type',
+                'channel',
+                'subarray',
+                'visitype',
+            ],
+        )
 
 
-def discrete_nandler(df, cols, allow_neg=False, verbose=False):
-    nanval = 0.0
-    cols = [n for n in cols if n in df.columns]
-    if verbose:
-        print(f"\nNaNs to be NaNdled:\n{df[cols].isna().sum()}\n")
-    for n in cols:
-        if allow_neg is True and 0.0 in df[n].value_counts().index:
-            nanval = -1.0
-        df.loc[df[n].isna() == True, n] = nanval
-    return df
+class NaNdler:
+    # NaN-HANDLERS (NaNdlers)
+    def __init__(self, df, dtype_cols, allow_neg=False, verbose=False):
+        self.df = df
+        self.dtype_cols = dtype_cols
+        self.allow_neg = allow_neg
+        self.verbose = verbose
+        self.continuous = self.dtype_cols.get('continuous', None)
+        self.discrete = self.dtype_cols.get('discrete', None)
+        self.boolean = self.dtype_cols.get('boolean', None)
+        self.special_bools = self.dtype_cols.get('special_bools', None)
+        self.categorical = self.dtype_cols.get('categorical', None)
 
+    def continuous_nandler(self):
+        if self.continuous:
+            cols = [n for n in self.continuous if n in self.df.columns]
+            if self.verbose:
+                print(f"\nNaNs to be NaNdled:\n{self.df[cols].isna().sum()}\n")
+            for n in cols:
+                self.df.loc[self.df[n].isna() == True, n] = 0.0
 
-def nandle_cats(x, truevals):
-    if x in truevals:
-        return x
-    else:
-        return 'NONE'
+    def discrete_nandler(self, nanval=0.0):
+        if self.discrete:
+            cols = [n for n in self.discrete if n in self.df.columns]
+            if self.verbose:
+                print(f"\nNaNs to be NaNdled:\n{self.df[cols].isna().sum()}\n")
+            for n in cols:
+                if self.allow_neg is True and 0.0 in self.df[n].value_counts().index:
+                    nanval = -1.0
+                self.df.loc[self.df[n].isna() == True, n] = nanval
 
+    @staticmethod
+    def nandle_cats(x, truevals):
+        if x in truevals:
+            return x
+        else:
+            return 'NONE'
 
-def categorical_nandler(df, cols, verbose=False):
-    cols = [c for c in cols if c in df.columns]
-    if verbose:
-        print(f"\nNaNs to be NaNdled:\n{df[cols].isna().sum()}\n")
-    df_cat = df[cols].copy()
-    for col in cols:
-        if df_cat[col].isna().sum() > 0:
-            truevals = list(df_cat[col].value_counts().index)
-            df[col] = df_cat[col].apply(lambda x: nandle_cats(x, truevals))
-    return df
+    def categorical_nandler(self):
+        if self.categorical:
+            cols = [c for c in self.categorical if c in self.df.columns]
+            if self.verbose:
+                print(f"\nNaNs to be NaNdled:\n{self.df[cols].isna().sum()}\n")
+            df_cat = self.df[cols].copy()
+            for col in cols:
+                if df_cat[col].isna().sum() > 0:
+                    truevals = list(df_cat[col].value_counts().index)
+                    self.df[col] = df_cat[col].apply(lambda x: self.nandle_cats(x, truevals))
 
+    def boolean_nandler(self, replace=True):
+        if self.boolean:
+            self.df = encode_booleans(self.df, self.boolean, replace=replace)
+        if self.special_bools:
+            self.df = encode_booleans(self.df, self.special_bools, special=True, replace=replace)
 
-def apply_nandlers(df, keys, verbose=False):
-    if 'continuous' in keys:
-        df = continuous_nandler(df, keys['continuous'], verbose=verbose)
-    if 'discrete' in keys:
-        df = discrete_nandler(df, keys['discrete'], allow_neg=False, verbose=verbose)
-    if 'boolean' in keys:
-        df = encode_booleans(df, keys['boolean'], replace=True, verbose=verbose)
-    if 'special_bools' in keys:
-        df = encode_booleans(
-            df, keys['special_bools'], special=True, replace=True, verbose=verbose
-            )
-    if 'categorical' in keys:
-        df = categorical_nandler(df, keys['categorical'], verbose=verbose)
-    if verbose:
-        for k,v in keys.items():
-            v = [c for c in v if c in df.columns]
-            print(f"\n{k}\n"+"---"*3)
-            print(f"\nNaNs remaining:\n{df[v].isna().sum()}")
-    return df
-
-
-def uppercase_vals(df, column_list, exceptions=['channel','asn_rule','exptype']):
-    # set consistent case for categorical column values with a few exceptions
-    for col in column_list:
-        if col in df.columns and col not in exceptions:
-            try:
-                df[col] = df[col].apply(lambda x: x.upper())
-            except Exception as e:
-                print(col)
-                print(e)
-    return df
+    def apply_nandlers(self):
+        self.continuous_nandler()
+        self.discrete_nandler()
+        self.categorical_nandler()
+        self.boolean_nandler()
+        if self.verbose:
+            for k,v in self.dtype_cols.items():
+                v = [c for c in v if c in self.df.columns]
+                print(f"\n{k}\n"+"---"*3)
+                print(f"\nNaNs remaining:\n{self.df[v].isna().sum()}")
+        return self.df

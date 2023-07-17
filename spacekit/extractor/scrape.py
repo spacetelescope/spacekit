@@ -663,31 +663,87 @@ class DynamoDBScraper(Scraper):
 
 
 class FitsScraper(FileScraper):
-    def __init__(self, data, input_path, **log_kws):
-        super().__init__(name="FitsScraper", **log_kws)
+    def __init__(self, data, input_path, genkeys=[], scikeys=[], name="FitsScraper", **log_kws):
+        super().__init__(name=name, **log_kws)
         self.df = data.copy()
         self.input_path = input_path
-        self.fits_keys = ["rms_ra", "rms_dec", "nmatches", "wcstype"]
-        self.drz_paths = self.find_drz_paths()
-        # self.data = self.scrape_fits()
+        self.genkeys = genkeys
+        self.scikeys = scikeys
+    
+    def get_input_exposures(self, sfx="_uncal.fits"):
+        """create list of local paths to L1B exposure files for a given program
 
-    def find_drz_paths(self):
+        Parameters
+        ----------
+        input_path : path or str
+            directory path containing input exposure files
+        sfx : str, optional
+            file suffix to search for, by default "uncal.fits"
+
+        Returns
+        -------
+        list
+            Paths to (typically uncalibrated) input exposure .fits files in this program/visit
+        """
+        return glob.glob(f"{self.input_path}/*{sfx}")
+
+    def scrape_fits_headers(self, fpaths=None):
+        """scrape values from ext=0 general info header (genkeys) and ext=1 science header (scikeys)
+
+        Parameters
+        ----------
+        fpaths : list
+            _description_
+        genkeys : list, optional
+            _description_, by default GENKEYS
+        scikeys : list, optional
+            _description_, by default SCIKEYS
+
+        Returns
+        -------
+        _type_
+            _description_
+        """
+        self.log.info("\n*** Extracting fits data ***")
+        if fpaths is None:
+            fpaths = self.get_input_exposures()
+        exp_headers = {}
+        for fpath in fpaths:
+            fname = str(os.path.basename(fpath))
+            sfx = fname.split("_")[-1] # _uncal.fits
+            name = fname.replace(f"_{sfx}", "")
+            exp_headers[name] = dict()
+            if self.genkeys:
+                genhdr = fits.getheader(fpath, ext=0)
+                for g in self.genkeys:
+                    exp_headers[name][g] = genhdr[g] if g in genhdr else "NaN"
+            if self.scikeys:
+                scihdr = fits.getheader(fpath, ext=1)
+                for s in self.scikeys:
+                    exp_headers[name][s] = scihdr[s] if s in scihdr else "NaN"
+        return exp_headers
+
+    def find_drz_paths(self, dname_col="dataset", drzimg_col="imgname"):
         self.drz_paths = {}
-        for idx, row in self.df.iterrows():
-            self.drz_paths[idx] = ""
-            dname = row["dataset"]
-            drz = row["imgname"]
-            path = os.path.join(self.input_path, dname, drz)
-            self.drz_paths[idx] = path
+        try:
+            for idx, row in self.df.iterrows():
+                self.drz_paths[idx] = ""
+                dname = row[dname_col]
+                drz = row[drzimg_col]
+                path = os.path.join(self.input_path, dname, drz)
+                self.drz_paths[idx] = path
+        except Exception:
+            self.log.error("Unable to locate drizzle files from dataframe.")
         return self.drz_paths
 
-    def scrape_fits(self):
+    def scrape_drizzle_fits(self):
+        self.drz_paths = self.find_drz_paths()
         self.log.info("\n*** Extracting fits data ***")
         fits_dct = {}
         for key, path in self.drz_paths.items():
             fits_dct[key] = {}
             scihdr = fits.getheader(path, ext=1)
-            for k in self.fits_keys:
+            for k in self.scikeys:
                 if k in scihdr:
                     if k == "wcstype":
                         wcs = " ".join(scihdr[k].split(" ")[1:3])
@@ -699,6 +755,59 @@ class FitsScraper(FileScraper):
         fits_data = pd.DataFrame.from_dict(fits_dct, orient="index")
         self.df = self.df.join(fits_data, how="left")
         return self.df
+
+
+class JwstFitsScraper(FitsScraper):
+    def __init__(self, data, input_path, sfx="_uncal.fits", **log_kws):
+        self.genkeys = self.general_header_keys()
+        self.scikeys = self.science_header_keys()
+        super().__init__(data, input_path, genkeys=self.genkeys, scikeys=self.scikeys, name="JwstFitsScraper", **log_kws)
+        self.sfx = sfx
+        self.fpaths = super().get_input_exposures(sfx=self.sfx)
+        self.exp_headers = None
+    
+    def general_header_keys(self):
+        return [
+            "PROGRAM", # Program number
+            "OBSERVTN", # Observation number
+            "BKGDTARG", # Background target
+            "VISITYPE", #  Visit type
+            "TSOVISIT", # Time Series Observation visit indicator
+            "TARGNAME", # Standard astronomical catalog name for target
+            "TARG_RA", # Target RA at mid time of exposure
+            "TARG_DEC", # Target Dec at mid time of exposure
+            "INSTRUME", # Instrument used to acquire the data
+            "DETECTOR", # Name of detector used to acquire the data
+            "FILTER", # Name of the filter element used
+            "PUPIL", # Name of the pupil element used  
+            "EXP_TYPE", # Type of data in the exposure
+            "CHANNEL", # Instrument channel 
+            "SUBARRAY", # Subarray used
+            "NUMDTHPT", # Total number of points in pattern
+            "GS_RA",  #  guide star right ascension                     
+            "GS_DEC", # guide star declination 
+        ]
+
+    def science_header_keys(self):
+        return [
+            "RA_REF",
+            "DEC_REF",
+            "CRVAL1",
+            "CRVAL2",
+        ]
+
+    def scrape_fits(self):
+        self.exp_headers = super().scrape_fits_headers(fpaths=self.fpaths)
+        return self.exp_headers
+
+
+class SvmFitsScraper(FitsScraper):
+    def __init__(self, data, input_path, **log_kws):
+        self.scikeys = ["rms_ra", "rms_dec", "nmatches", "wcstype"]
+        super().__init__(data, input_path, scikeys=self.scikeys, name="SvmFitsScraper", **log_kws)
+
+    def scrape_fits(self):
+        self.df = super().scrape_drizzle_fits()
 
 
 class MastScraper:
