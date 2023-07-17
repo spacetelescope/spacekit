@@ -1,7 +1,7 @@
 from spacekit.preprocessor.encode import encode_target_data
 from spacekit.preprocessor.transform import arrays_to_tensors, y_tensors, PowerX
 from sklearn.model_selection import train_test_split
-
+from spacekit.logger.log import Logger
 
 class Prep:
     def __init__(
@@ -214,6 +214,107 @@ class CalPrep(Prep):
             y_train.values, y_test.values, reshape=True
         )
 
+
+class JwstCalPrep(Prep):
+    def __init__(
+        self,
+        data,
+        y_target='imagesize',
+        X_cols=[],
+        norm_cols=[],
+        rename_cols=[],
+        tensors=True,
+        normalize=False,
+        random=42,
+        tsize=0.2,
+        encode_targets=False,
+        name="JwstCalPrep",
+        **log_kws,
+    ):
+        self.set_X_cols(X_cols)
+        self.__name__ = name
+        self.log = Logger(self.__name__, **log_kws).spacekit_logger()
+        super().__init__(
+            data,
+            y_target,
+            X_cols=self.X_cols,
+            tensors=tensors,
+            normalize=normalize,
+            random=random,
+            tsize=tsize,
+            encode_targets=encode_targets,
+        )
+        self.norm_cols = norm_cols
+        self.rename_cols = rename_cols
+        self.imagesize = data["imagesize"]
+        self.y_mem_train = None
+        self.y_mem_test = None
+
+
+    def set_X_cols(self, X_cols):
+        if len(X_cols) == 0:
+            self.X_cols = [
+                'nexposur',
+                'expspcin',
+                'mostilno',
+                'numdthpt',
+                'ditherid',
+                'pattstrt',
+                'bkgdtarg',
+                'tsovisit',
+                'is_imprt',
+                'is_psf',
+                'exposerr',
+                'msametfl',
+                'target_acq',
+                'exptype',
+                'asn_type',
+                'detector',
+                'module_detector',
+                'channel',
+                'exp_type',
+                'patttype',
+                'filter',
+                'pupil',
+                'fxd_slit',
+                'subarray',
+                'pattsize',
+                'band',
+                'opmode',
+                'lamp',
+                'allowed_bkgdtarg',
+                'non_science',
+                'restricted_slitless',
+                'pupil_2',
+                'image_exp_type',
+                'msastate',
+                'instr',
+                'visitype_c'
+            ]
+        else:
+            self.X_cols = X_cols
+
+    def prep_data(self, existing_splits=False):
+        if existing_splits is True:
+            if "split" in self.data.columns:
+                self.test_idx = self.data.loc[self.data.split == "test"].index
+                self.train_idx = self.data.loc[self.data.split == "train"].index
+            else:
+                self.log.warning("'split' not found in data columns")
+                return
+        else:
+            super().stratify_split(y_target="imagesize", stratify=False)
+        self.X_train, self.X_test = super().get_X_train_test()
+        # super().apply_normalization(
+        #     T=PowerX, cols=self.norm_cols, rename=self.rename_cols, join=2
+        # )
+
+    def prep_imagesize(self):
+        """main calling function"""
+        y_train, y_test = super().get_y_train_test("imagesize")
+        self.y_mem_train, self.y_mem_test = y_tensors(
+            y_train.values, y_test.values, reshape=True
+        )
 
 # TODO
 class SvmPrep(Prep):

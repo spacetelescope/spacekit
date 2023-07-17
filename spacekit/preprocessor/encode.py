@@ -4,6 +4,46 @@ from tensorflow.keras.utils import to_categorical
 import numpy as np
 
 
+def boolean_encoder(x):
+    if x in [True, "True", "T", "t"]:
+        return 1
+    else:
+        return 0
+
+
+def nan_encoder(x, truevals):
+    if x in truevals:
+        return 1
+    else:
+        return 0
+
+
+def encode_booleans(df, cols, special=False, replace=False, rename="", verbose=False):
+    cols = [c for c in cols if c in df.columns]
+    if verbose:
+        print(f"\nNaNs to be NaNdled:\n{df[cols].isna().sum()}\n")
+    df_bool = df[cols].copy()
+    encoded_cols = []
+    sfx = "_enc" if not rename else rename
+    for col in cols:
+        enc_col = f"{col}{sfx}"
+        encoded_cols.append(enc_col)
+        if special is True:
+            truevals = list(df_bool[col].value_counts().index)
+            df_bool[enc_col] = df_bool[col].apply(lambda x: nan_encoder(x, truevals))
+        else:
+            df_bool[enc_col] = df_bool[col].apply(lambda x: boolean_encoder(x))
+    # merge back into original dataframe
+    df_bool.drop(cols, axis=1, inplace=True)
+    df = pd.concat([df, df_bool], axis=1)
+    if replace is True:
+        df.drop(cols, axis=1, inplace=True)
+        if not rename: # make encoded colnames same as the originals
+            df.rename(dict(zip(encoded_cols, cols)), axis=1, inplace=True)
+            encoded_cols = cols
+    return df
+
+
 def encode_target_data(y_train, y_test):
     """Label encodes target class training and test data for multi-classification models.
 
@@ -446,3 +486,201 @@ class CalEncoder:
 
     #     inputs = np.array([n_files, total_mb, drizcorr, pctecorr, crsplit, subarray, detector, dtype, instr])
     #     return inputs
+
+
+#TODO
+class JwstEncoder:
+
+    def __init__(self, df):
+        self.df = df
+
+    def find_unique_values(df, col="visitype"):
+        val_types = []
+        for val in list(df[col].value_counts().index):
+            if isinstance(val, list):
+                for t in val:
+                    val_types.append(t)
+            else:
+                val_types.append(val)
+        val_types = sorted(list(set(val_types)))
+        vtypes = []
+        for v in val_types:
+            if not isinstance(v, str):
+                v = str(int(v))
+            vtypes.append(v)
+
+        return list(set(vtypes)), list(set(val_types))
+
+
+    def abbreviate_names(vtypes, strips=".+"):
+        vtypes_new = []
+        for v in vtypes:
+            if strips:
+                v = v.strip(strips)
+            words = v.split("_")
+            name=""
+            for w in words:
+                name+=w[0]
+            vtypes_new.append(name)
+        return vtypes_new
+
+
+    def match_keypairs(vtypes1, vtypes2):
+        keypairs = {}
+        for v2 in vtypes2:
+            keypairs[v2] = []
+        for v1 in vtypes1:
+            if not isinstance(v1, str):
+                v = str(int(v1))
+            else:
+                v = v1
+            keypairs[v].append(v1)
+        return keypairs
+
+    def create_keypair_dict(df, col, abbr=True, keep_orig=False, inverse=True):
+        keypairs = {}
+        if keep_orig is True:
+            vtypes2, vtypes = find_unique_values(df, col=col)
+        else:
+            vtypes, _ = find_unique_values(df, col=col)
+            vtypes2 = None
+
+        if vtypes2 is not None:
+            keypairs = match_keypairs(vtypes, vtypes2)
+
+        vtypes_new = abbreviate_names(vtypes) if abbr is True else None
+        if vtypes_new is not None:
+            for a, b in list(zip(vtypes, vtypes_new)):
+                keypairs[b] = [a]
+        if inverse is True:
+            keypairs_inv = {}
+            for k,v in keypairs.items():
+                keypairs_inv[v[0]] = k
+            keypairs = keypairs_inv
+        return keypairs
+
+    def make_default_keypairs(df, col, zero_val="NONE"):
+        keys = list(df[col].unique())
+        if zero_val in keys and keys[0] != zero_val:
+            try:
+                idx = np.where([np.asarray(keys) == zero_val])[1][0]
+                print(f"Moving {zero_val} index from {idx} to 0")
+                keys.pop(idx)
+                keys.insert(0, zero_val)
+            except Exception as e:
+                print("Error locating zero_val index while making default keypairs")
+                print(e)
+        vals = list(range(len(keys)))
+        keypairs = dict(zip(keys,vals))
+        return keypairs
+
+
+    def codify_keypairs(df, col, forced_zero='NONE', **kwargs):
+        # convert long string to abbreviated string prior to numeric encoding
+        # e.g. 'PRIME_UNTARGETED': 'PU'
+        keypairs = create_keypair_dict(df, col, **kwargs)
+        forced_key = keypairs[forced_zero]
+        keylist = sorted(list(keypairs.values()))
+        if keylist[0] != forced_zero:
+            del keypairs[forced_zero]
+            keypairs_zero = {forced_zero:forced_key}
+            keypairs_zero.update(keypairs)
+            keylist = sorted(list(keypairs_zero.values()))
+            keypairs = keypairs_zero
+
+        keys = list(dict(enumerate(keylist)).values())
+        vals = list(dict(enumerate(keylist)).keys())
+        coded_keys = dict(zip(keys, vals))
+        return coded_keys, keypairs
+
+
+    def abbreviator(x, keypairs):
+        return keypairs.get(x, x)
+
+
+    def string_encoder(x, coded):
+        return coded.get(x, x)
+
+
+    def split_caster(x, splitter=".", i=0):
+        # split string on splitter, return index i of split string
+        # e.g. "13.0" becomes "13"
+        return x.split(splitter)[i]
+
+
+    def string_caster(x):
+        # convert to string
+        if not isinstance(x, str):
+            return str(x)
+        else:
+            return x
+
+
+    def recast_data(df, col, stringify=True, splitify=True, make_upper=True, **kwargs):
+        if stringify is True:
+            df[col] = df[col].apply(lambda x: string_caster(x))
+        if splitify is True:
+            df[col] = df[col].apply(lambda x: split_caster(x, **kwargs))
+        if make_upper is True:
+            df[col] = df[col].apply(lambda x: x.upper())
+        return df
+
+    def encode_categorical(df, col, forced_zero='NONE', recast=None, codify=None):
+
+        # convert values / apply datatype recasting
+        if recast:
+            df = recast_data(df, col, **recast)
+
+        keypairs = None
+        if codify:
+            # convert long string to abbreviated string prior to numeric encoding
+            coded, keypairs = codify_keypairs(df, col=col, forced_zero=forced_zero, **codify)
+            df[col+"_c"] = df[col].apply(lambda x: abbreviator(x, keypairs))
+            col += "_c"
+        else:
+            coded = make_default_keypairs(df, col, zero_val=forced_zero)
+
+        df[f"{col}_enc"] = df[col].apply(lambda x: string_encoder(x, coded))
+
+        #encoding_key = dict(zip(df[f"{col}_enc"].value_counts().index, df[col].value_counts().index))
+        encoding_key = dict(zip(coded.values(), coded.keys()))
+
+        if keypairs:
+            for i, j in encoding_key.items():
+                for k, v in keypairs.items():
+                    if j == v:
+                        encoding_key[i] = {j:k}
+
+
+        # print(df[col].value_counts())
+        # print(df[f"{col}_enc"].value_counts())
+
+        return df, encoding_key
+
+    # channel
+    recast_kwargs = dict(
+        stringify=True, splitify=True, make_upper=True, splitter=".", i=0
+        )
+    # visitype
+    codify_kwargs = dict(abbr=True, keep_orig=False, inverse=True)
+
+    # default_kwargs = dict(forced_zero='NONE', recast=None, codify=None)
+
+    encoding_kwargs = dict(
+        visitype=dict(forced_zero='NONE', recast=None, codify=codify_kwargs),
+        channel=dict(forced_zero='NONE', recast=recast_kwargs, codify=None),
+        exptype=dict(forced_zero='none', recast=None, codify=None),
+    )
+
+    def encode_categories(df, cols, **kwargs):
+        default_kwargs = dict(forced_zero='NONE', recast=None, codify=None)
+        encoding_keypair_data = {}
+        cols = [c for c in cols if c in df.columns]
+        for col in cols:
+            try:
+                enc_kwargs = kwargs.get(col, default_kwargs)
+                df, ekey = encode_categorical(df, col, **enc_kwargs)
+                encoding_keypair_data[col] = ekey
+            except KeyError:
+                print("Error: ", col)
+        return df, encoding_keypair_data

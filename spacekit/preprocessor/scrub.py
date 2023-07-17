@@ -4,7 +4,7 @@ import time
 import pandas as pd
 import numpy as np
 from spacekit.extractor.scrape import MastScraper, FitsScraper, scrape_catalogs
-from spacekit.preprocessor.encode import SvmEncoder
+from spacekit.preprocessor.encode import SvmEncoder, encode_booleans
 
 from spacekit.logger.log import Logger
 
@@ -485,3 +485,78 @@ class CalScrubber(Scrubber):
                 instr,
             ]
         )
+
+
+# NaN-HANDLERS (NaNdlers)
+
+def continuous_nandler(df, cols, verbose=False):
+    cols = [n for n in cols if n in df.columns]
+    if verbose:
+        print(f"\nNaNs to be NaNdled:\n{df[cols].isna().sum()}\n")
+    for n in cols:
+        df.loc[df[n].isna() == True, n] = 0.0
+    return df
+
+
+def discrete_nandler(df, cols, allow_neg=False, verbose=False):
+    nanval = 0.0
+    cols = [n for n in cols if n in df.columns]
+    if verbose:
+        print(f"\nNaNs to be NaNdled:\n{df[cols].isna().sum()}\n")
+    for n in cols:
+        if allow_neg is True and 0.0 in df[n].value_counts().index:
+            nanval = -1.0
+        df.loc[df[n].isna() == True, n] = nanval
+    return df
+
+
+def nandle_cats(x, truevals):
+    if x in truevals:
+        return x
+    else:
+        return 'NONE'
+
+
+def categorical_nandler(df, cols, verbose=False):
+    cols = [c for c in cols if c in df.columns]
+    if verbose:
+        print(f"\nNaNs to be NaNdled:\n{df[cols].isna().sum()}\n")
+    df_cat = df[cols].copy()
+    for col in cols:
+        if df_cat[col].isna().sum() > 0:
+            truevals = list(df_cat[col].value_counts().index)
+            df[col] = df_cat[col].apply(lambda x: nandle_cats(x, truevals))
+    return df
+
+
+def apply_nandlers(df, keys, verbose=False):
+    if 'continuous' in keys:
+        df = continuous_nandler(df, keys['continuous'], verbose=verbose)
+    if 'discrete' in keys:
+        df = discrete_nandler(df, keys['discrete'], allow_neg=False, verbose=verbose)
+    if 'boolean' in keys:
+        df = encode_booleans(df, keys['boolean'], replace=True, verbose=verbose)
+    if 'special_bools' in keys:
+        df = encode_booleans(
+            df, keys['special_bools'], special=True, replace=True, verbose=verbose
+            )
+    if 'categorical' in keys:
+        df = categorical_nandler(df, keys['categorical'], verbose=verbose)
+    if verbose:
+        for k,v in keys.items():
+            v = [c for c in v if c in df.columns]
+            print(f"\n{k}\n"+"---"*3)
+            print(f"\nNaNs remaining:\n{df[v].isna().sum()}")
+    return df
+
+
+def uppercase_vals(df, column_list, exceptions=['channel','asn_rule','exptype']):
+    # set consistent case for categorical column values with a few exceptions
+    for col in column_list:
+        if col in df.columns and col not in exceptions:
+            try:
+                df[col] = df[col].apply(lambda x: x.upper())
+            except Exception as e:
+                print(col)
+                print(e)
+    return df
