@@ -9,12 +9,8 @@ Program (PID) of exposures comes into pipeline
 7. run inference
 """
 import os
-import glob
 import argparse
-from astropy.io import fits
-
 import numpy as np
-import pandas as pd
 from spacekit.logger.log import SPACEKIT_LOG, Logger
 from spacekit.skopes.jwst.cal.config import KEYPAIR_DATA
 from spacekit.preprocessor.scrub import JwstCalScrubber
