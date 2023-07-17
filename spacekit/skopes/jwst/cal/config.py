@@ -4,7 +4,7 @@ GENKEYS = [
     "PROGRAM",  # Program number
     "OBSERVTN",  # Observation number
     "BKGDTARG",  # Background target
-    "VISITYPE",  #  Visit type
+    "VISITYPE",  # Visit type
     "TSOVISIT",  # Time Series Observation visit indicator
     "TARGNAME",  # Standard astronomical catalog name for target
     "TARG_RA",  # Target RA at mid time of exposure
@@ -17,7 +17,7 @@ GENKEYS = [
     "CHANNEL",  # Instrument channel
     "SUBARRAY",  # Subarray used
     "NUMDTHPT",  # Total number of points in pattern
-    "GS_RA",  #  guide star right ascension
+    "GS_RA",  # guide star right ascension
     "GS_DEC",  # guide star declination
 ]
 
