@@ -663,13 +663,15 @@ class DynamoDBScraper(Scraper):
 
 
 class FitsScraper(FileScraper):
-    def __init__(self, data, input_path, genkeys=[], scikeys=[], name="FitsScraper", **log_kws):
+    def __init__(
+        self, data, input_path, genkeys=[], scikeys=[], name="FitsScraper", **log_kws
+    ):
         super().__init__(name=name, **log_kws)
         self.df = data.copy()
         self.input_path = input_path
         self.genkeys = genkeys
         self.scikeys = scikeys
-    
+
     def get_input_exposures(self, sfx="_uncal.fits"):
         """create list of local paths to L1B exposure files for a given program
 
@@ -710,7 +712,7 @@ class FitsScraper(FileScraper):
         exp_headers = {}
         for fpath in fpaths:
             fname = str(os.path.basename(fpath))
-            sfx = fname.split("_")[-1] # _uncal.fits
+            sfx = fname.split("_")[-1]  # _uncal.fits
             name = fname.replace(f"_{sfx}", "")
             exp_headers[name] = dict()
             if self.genkeys:
@@ -761,31 +763,38 @@ class JwstFitsScraper(FitsScraper):
     def __init__(self, data, input_path, sfx="_uncal.fits", **log_kws):
         self.genkeys = self.general_header_keys()
         self.scikeys = self.science_header_keys()
-        super().__init__(data, input_path, genkeys=self.genkeys, scikeys=self.scikeys, name="JwstFitsScraper", **log_kws)
+        super().__init__(
+            data,
+            input_path,
+            genkeys=self.genkeys,
+            scikeys=self.scikeys,
+            name="JwstFitsScraper",
+            **log_kws,
+        )
         self.sfx = sfx
         self.fpaths = super().get_input_exposures(sfx=self.sfx)
         self.exp_headers = None
-    
+
     def general_header_keys(self):
         return [
-            "PROGRAM", # Program number
-            "OBSERVTN", # Observation number
-            "BKGDTARG", # Background target
-            "VISITYPE", #  Visit type
-            "TSOVISIT", # Time Series Observation visit indicator
-            "TARGNAME", # Standard astronomical catalog name for target
-            "TARG_RA", # Target RA at mid time of exposure
-            "TARG_DEC", # Target Dec at mid time of exposure
-            "INSTRUME", # Instrument used to acquire the data
-            "DETECTOR", # Name of detector used to acquire the data
-            "FILTER", # Name of the filter element used
-            "PUPIL", # Name of the pupil element used  
-            "EXP_TYPE", # Type of data in the exposure
-            "CHANNEL", # Instrument channel 
-            "SUBARRAY", # Subarray used
-            "NUMDTHPT", # Total number of points in pattern
-            "GS_RA",  #  guide star right ascension                     
-            "GS_DEC", # guide star declination 
+            "PROGRAM",  # Program number
+            "OBSERVTN",  # Observation number
+            "BKGDTARG",  # Background target
+            "VISITYPE",  #  Visit type
+            "TSOVISIT",  # Time Series Observation visit indicator
+            "TARGNAME",  # Standard astronomical catalog name for target
+            "TARG_RA",  # Target RA at mid time of exposure
+            "TARG_DEC",  # Target Dec at mid time of exposure
+            "INSTRUME",  # Instrument used to acquire the data
+            "DETECTOR",  # Name of detector used to acquire the data
+            "FILTER",  # Name of the filter element used
+            "PUPIL",  # Name of the pupil element used
+            "EXP_TYPE",  # Type of data in the exposure
+            "CHANNEL",  # Instrument channel
+            "SUBARRAY",  # Subarray used
+            "NUMDTHPT",  # Total number of points in pattern
+            "GS_RA",  #  guide star right ascension
+            "GS_DEC",  # guide star declination
         ]
 
     def science_header_keys(self):
@@ -804,7 +813,9 @@ class JwstFitsScraper(FitsScraper):
 class SvmFitsScraper(FitsScraper):
     def __init__(self, data, input_path, **log_kws):
         self.scikeys = ["rms_ra", "rms_dec", "nmatches", "wcstype"]
-        super().__init__(data, input_path, scikeys=self.scikeys, name="SvmFitsScraper", **log_kws)
+        super().__init__(
+            data, input_path, scikeys=self.scikeys, name="SvmFitsScraper", **log_kws
+        )
 
     def scrape_fits(self):
         self.df = super().scrape_drizzle_fits()

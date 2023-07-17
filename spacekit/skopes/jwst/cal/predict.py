@@ -81,7 +81,9 @@ class JwstCalPredict:
 
     def preprocess(self):
         self.log.info("Preprocessing input data")
-        self.input_data = JwstCalScrubber(self.input_path, keypair=KEYPAIR_DATA, **self.log_kws).scrub_inputs()
+        self.input_data = JwstCalScrubber(
+            self.input_path, keypair=KEYPAIR_DATA, **self.log_kws
+        ).scrub_inputs()
         for product, inputs in self.input_data.iterrows():
             self.log.info(f"product: {product} features: {inputs}")
         self.normalize_inputs()

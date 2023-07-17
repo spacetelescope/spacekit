@@ -3,6 +3,7 @@ from spacekit.preprocessor.transform import arrays_to_tensors, y_tensors, PowerX
 from sklearn.model_selection import train_test_split
 from spacekit.logger.log import Logger
 
+
 class Prep:
     def __init__(
         self,
@@ -219,7 +220,7 @@ class JwstCalPrep(Prep):
     def __init__(
         self,
         data,
-        y_target='imagesize',
+        y_target="imagesize",
         X_cols=[],
         norm_cols=[],
         rename_cols=[],
@@ -250,46 +251,45 @@ class JwstCalPrep(Prep):
         self.y_mem_train = None
         self.y_mem_test = None
 
-
     def set_X_cols(self, X_cols):
         if len(X_cols) == 0:
             self.X_cols = [
-                'nexposur',
-                'expspcin',
-                'mostilno',
-                'numdthpt',
-                'ditherid',
-                'pattstrt',
-                'bkgdtarg',
-                'tsovisit',
-                'is_imprt',
-                'is_psf',
-                'exposerr',
-                'msametfl',
-                'target_acq',
-                'exptype',
-                'asn_type',
-                'detector',
-                'module_detector',
-                'channel',
-                'exp_type',
-                'patttype',
-                'filter',
-                'pupil',
-                'fxd_slit',
-                'subarray',
-                'pattsize',
-                'band',
-                'opmode',
-                'lamp',
-                'allowed_bkgdtarg',
-                'non_science',
-                'restricted_slitless',
-                'pupil_2',
-                'image_exp_type',
-                'msastate',
-                'instr',
-                'visitype_c'
+                "nexposur",
+                "expspcin",
+                "mostilno",
+                "numdthpt",
+                "ditherid",
+                "pattstrt",
+                "bkgdtarg",
+                "tsovisit",
+                "is_imprt",
+                "is_psf",
+                "exposerr",
+                "msametfl",
+                "target_acq",
+                "exptype",
+                "asn_type",
+                "detector",
+                "module_detector",
+                "channel",
+                "exp_type",
+                "patttype",
+                "filter",
+                "pupil",
+                "fxd_slit",
+                "subarray",
+                "pattsize",
+                "band",
+                "opmode",
+                "lamp",
+                "allowed_bkgdtarg",
+                "non_science",
+                "restricted_slitless",
+                "pupil_2",
+                "image_exp_type",
+                "msastate",
+                "instr",
+                "visitype_c",
             ]
         else:
             self.X_cols = X_cols
@@ -315,6 +315,7 @@ class JwstCalPrep(Prep):
         self.y_mem_train, self.y_mem_test = y_tensors(
             y_train.values, y_test.values, reshape=True
         )
+
 
 # TODO
 class SvmPrep(Prep):
