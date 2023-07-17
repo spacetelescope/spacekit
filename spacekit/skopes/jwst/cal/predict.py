@@ -81,9 +81,11 @@ class JwstCalPredict:
 
     def preprocess(self):
         self.log.info("Preprocessing input data")
-        self.inputs = JwstCalScrubber(
+        scrubber = JwstCalScrubber(
             self.input_path, keypair=KEYPAIR_DATA, **self.log_kws
-        ).scrub_inputs()
+        )
+        self.inputs = scrubber.scrub_inputs()
+        self.products = scrubber.products
         for product, input_data in self.inputs.iterrows():
             self.log.info(f"product: {product} features: {input_data}")
         self.normalize_inputs()
@@ -125,7 +127,8 @@ class JwstCalPredict:
             self.preprocess()
         self.predictions = dict()
         self.probabilities = dict()
-        for product, X in self.X.iterrows():
+        for product in self.products:
+            X = np.asarray(self.X[product].values)
             membin, pred_proba = self.classifier(self.mem_clf.model, X)
             memval = np.round(float(self.regressor(self.mem_reg.model, X)), 2)
             self.predictions[product] = {"memBin": membin, "memVal": memval}
