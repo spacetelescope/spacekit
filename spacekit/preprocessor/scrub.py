@@ -510,8 +510,6 @@ class HstCalScrubber(Scrubber):
 
 
 class JwstCalScrubber(Scrubber):
-    # TODO
-    # df, enc_pairs = encode_categories(df, categorical, **encoding_kwargs)
 
     def __init__(
         self,
@@ -690,7 +688,7 @@ class JwstCalScrubber(Scrubber):
 
 
 class NaNdler:
-    # NaN-HANDLERS (NaNdlers)
+
     def __init__(self, df, dtype_cols, allow_neg=False, verbose=False):
         self.df = df
         self.dtype_cols = dtype_cols
