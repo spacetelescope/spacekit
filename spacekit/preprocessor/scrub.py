@@ -14,7 +14,7 @@ from spacekit.extractor.scrape import (
     JwstFitsScraper,
     scrape_catalogs,
 )
-from spacekit.preprocessor.encode import SvmEncoder, CategoricalEncoder, encode_booleans
+from spacekit.preprocessor.encode import SvmEncoder, JwstEncoder, encode_booleans
 from spacekit.logger.log import Logger
 
 
@@ -75,7 +75,6 @@ class Scrubber:
         return cols
 
     def rename_cols(self, old=None, new=None):
-        print("\nRenaming columns")
         if old is None:
             old = self.df.columns
         if new is None:
@@ -510,11 +509,11 @@ class HstCalScrubber(Scrubber):
 
 
 class JwstCalScrubber(Scrubber):
-
     def __init__(
         self,
         input_path,
         data=None,
+        sfx="_uncal.fits",
         dropnans=False,
         save_raw=True,
         keypairs=None,
@@ -522,6 +521,7 @@ class JwstCalScrubber(Scrubber):
     ):
         self.input_path = input_path
         self.exp_headers = None
+        self.sfx = sfx
         super().__init__(
             data=data,
             col_order=self.set_col_order(),
@@ -559,19 +559,20 @@ class JwstCalScrubber(Scrubber):
             "frac",
         ]
 
-    def set_new_cols(self):
-        self.new_cols = []
+    def set_new_cols(self, new_cols):
+        self.new_cols = new_cols
         return self.new_cols.extend(self.col_order)
 
     def scrape_inputs(self):
-        self.scraper = JwstFitsScraper(self.df, self.input_path, sfx="_uncal.fits")
+        self.scraper = JwstFitsScraper(self.input_path, data=self.df, sfx=self.sfx)
         self.fpaths = self.scraper.fpaths
         self.exp_headers = self.scraper.scrape_fits()
 
     def calculate_offsets(self):
         self.products = self.get_potential_l3_products()
+        self.refpix = dict()
         for p in list(self.products.keys()):
-            self.refpix[p] = self.get_pixel_offsets(self, p)[p]
+            self.refpix[p] = self.get_pixel_offsets(p)[p]
         return self.refpix
 
     def scrub_inputs(self):
@@ -581,10 +582,10 @@ class JwstCalScrubber(Scrubber):
         self.df = self.df[self.xcols]
         dtype_keys = self.get_dtype_keys()
         nandler = NaNdler(self.df, dtype_keys, allow_neg=False, verbose=False)
-        self.df = nandler.apply_nandlers(self.df, dtype_keys)
-        enc = CategoricalEncoder(self.df, dtype_keys["categorical"])
-        enc.encoding_keypair_data = self.keypairs
-        self.df = enc.encode_from_keypairs()
+        self.df = nandler.apply_nandlers()
+        encoder = JwstEncoder(self.df, fkeys=dtype_keys["categorical"], keymaker_pairs=self.keypairs)
+        encoder.encode_features()
+        self.df = encoder.df
         return self.df
 
     def get_potential_l3_products(self):
@@ -629,8 +630,8 @@ class JwstCalScrubber(Scrubber):
         else:
             return self.pixel_scales[instr]
 
-    def get_pixel_offsets(self, products, p):
-        exp_headers = products.get(p)
+    def get_pixel_offsets(self, p):
+        exp_headers = self.products.get(p)
         offsets = []
         refpix = {p: dict(nexposur=len(list(exp_headers.keys())))}
         min_offset = None
@@ -643,24 +644,24 @@ class JwstCalScrubber(Scrubber):
             )
             exp_headers[k]["offset"] = pixel
             offsets.append(pixel)
+            if v["DETECTOR"] not in detectors:
+                detectors.append(v["DETECTOR"])
             if min_offset is None:
                 min_offset = pixel
             elif pixel < min_offset:
                 min_offset = pixel
             else:
                 continue
-            if v["DETECTOR"] not in detectors:
-                detectors.append(v["DETECTOR"])
         ref_exp = [k for k, v in exp_headers.items() if v["offset"] == min_offset][0]
         refpix[p].update(exp_headers[ref_exp])
         if len(detectors) > 1:
-            refpix[p]["DETECTOR"] = "|".join([d for d in detectors])
+            refpix[p]["DETECTOR"] = "|".join(sorted([d for d in detectors]))
         else:
             refpix[p]["DETECTOR"] = detectors[0]
         refpix = offset_statistics(offsets, p, refpix=refpix)
         return refpix
 
-    def get_dtype_keys():
+    def get_dtype_keys(self):
         return dict(
             continuous=[
                 "nexposur",
@@ -688,7 +689,6 @@ class JwstCalScrubber(Scrubber):
 
 
 class NaNdler:
-
     def __init__(self, df, dtype_cols, allow_neg=False, verbose=False):
         self.df = df
         self.dtype_cols = dtype_cols

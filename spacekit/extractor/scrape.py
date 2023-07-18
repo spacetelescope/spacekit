@@ -687,7 +687,7 @@ class FitsScraper(FileScraper):
         list
             Paths to (typically uncalibrated) input exposure .fits files in this program/visit
         """
-        return glob.glob(f"{self.input_path}/*{sfx}")
+        return glob.glob(f"{os.path.expanduser(self.input_path)}/*{sfx}")
 
     def scrape_fits_headers(self, fpaths=None):
         """scrape values from ext=0 general info header (genkeys) and ext=1 science header (scikeys)
@@ -760,9 +760,11 @@ class FitsScraper(FileScraper):
 
 
 class JwstFitsScraper(FitsScraper):
-    def __init__(self, data, input_path, sfx="_uncal.fits", **log_kws):
+    def __init__(self, input_path, data=None, sfx="_uncal.fits", **log_kws):
         self.genkeys = self.general_header_keys()
         self.scikeys = self.science_header_keys()
+        if data is None:
+            data = pd.DataFrame()
         super().__init__(
             data,
             input_path,

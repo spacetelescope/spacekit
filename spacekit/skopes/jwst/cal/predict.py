@@ -82,7 +82,7 @@ class JwstCalPredict:
     def preprocess(self):
         self.log.info("Preprocessing input data")
         scrubber = JwstCalScrubber(
-            self.input_path, keypair=KEYPAIR_DATA, **self.log_kws
+            self.input_path, keypairs=KEYPAIR_DATA, **self.log_kws
         )
         self.inputs = scrubber.scrub_inputs()
         self.products = scrubber.products

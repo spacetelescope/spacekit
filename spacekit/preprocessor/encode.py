@@ -5,6 +5,8 @@ from sklearn.preprocessing import LabelEncoder
 from tensorflow.keras.utils import to_categorical
 import numpy as np
 
+from spacekit.logger.log import Logger
+
 
 def boolean_encoder(x):
     if x in [True, "True", "T", "t"]:
@@ -76,11 +78,13 @@ def encode_target_data(y_train, y_test):
 
 
 class PairEncoder:
-    def __init__(self):
+    def __init__(self, name="PairEncoder", **log_kws):
+        self.__name__ = name
         self.arr = None
         self.transformed = None
         self.invpairs = None
         self.inversed = None
+        self.log = Logger(self.__name__, **log_kws).spacekit_logger()
 
     def lambda_func(self, inverse=False):
         if inverse is False:
@@ -99,7 +103,7 @@ class PairEncoder:
 
     def warn_unknowns(self):
         unknowns = np.where([a not in self.classes_ for a in self.arr])
-        print(f"WARNING: Found unknown values:\n {self.arr[unknowns]}")
+        self.log.warning(f"Found unknown values:\n {self.arr[unknowns]}")
 
     def handle_unknowns(self):
         unknowns = np.where([a not in self.classes_ for a in self.arr])
@@ -108,34 +112,33 @@ class PairEncoder:
             # TODO handle multiple different unknowns
             self.keypairs[self.arr[unknowns][0]] = add_encoding
             self.classes_ = list(self.keypairs.keys())
-            print("Successfully added encoding for unknown values.")
+            self.log.info("Successfully added encoding for unknown values.")
         except Exception as e:
-            print("Error: unable to add encoding for unknown value(s)")
-            print(e)
+            self.log.error("Unable to add encoding for unknown value(s)", e)
 
     def fit(self, data, keypairs, axiscol=None, handle_unknowns=True):
         if isinstance(data, pd.DataFrame):
             if axiscol is None:
-                print(
-                    "Error: Must indicate which column to fit if `data` is a `dataframe`."
+                self.log.error(
+                    "Must indicate which column to fit if `data` is a `dataframe`."
                 )
                 return
             try:
                 self.arr = np.asarray(data[axiscol], dtype=object)
             except Exception as e:
-                print(e)
+                self.log.error(e)
         elif isinstance(data, np.ndarray):
             if len(data.shape) > 1:
                 if data.shape[-1] > 1:
                     if axiscol is None:
-                        print("Error - must specify index using `axiscol`")
+                        self.log.error("Must specify index using `axiscol`")
                         return
                     else:
                         self.arr = np.asarray(data[:, axiscol], dtype=object)
             else:
                 self.arr = np.asarray(data, dtype=object)
         else:
-            print("Invalid Type: `data` must be of an array or dataframe.")
+            self.log.error("Invalid Type: `data` must be of an array or dataframe.")
             return
         self.keypairs = keypairs
         self.classes_ = list(self.keypairs.keys())
@@ -149,12 +152,12 @@ class PairEncoder:
         try:
             self.unique = np.unique(self.arr)
         except Exception as e:
-            print(e)
+            self.log.error(e)
         return self
 
     def transform(self):
         if self.arr is None:
-            print("Error - Must fit the data first.")
+            self.log.error("Must fit the data first.")
             return
         self.transformed = self.lambda_func()
         return self.transformed
@@ -172,7 +175,87 @@ class PairEncoder:
         self.transform()
 
 
-class SvmEncoder:
+class CategoricalEncoder:
+    def __init__(
+        self,
+        data,
+        fkeys=[],
+        names=[],
+        drop=False,
+        rename=False,
+        name="CategoricalEncoder",
+        **log_kws,
+    ):
+        self.data = data
+        self.fkeys = fkeys
+        self.names = names
+        self.drop = drop
+        self.rename = rename
+        self.__name__ = name
+        self.log = Logger(self.__name__, **log_kws).spacekit_logger()
+        self.encodings = dict(zip(self.fkeys, self.names))
+
+    def categorical_data(self):
+        """Makes a copy of input dataframe and extracts only the categorical features based on the column names in `fkeys`.
+
+        Returns
+        -------
+        df: dataframe
+            dataframe with only the categorical feature columns
+        """
+        return self.data.copy()[self.fkeys]
+
+    def rejoin_original(self):
+        encoded = list(self.encodings.values())
+        originals = list(self.encodings.keys())
+        self.df.drop(originals, axis=1, inplace=True)
+        self.df = self.data.join(self.df, how="left")
+        if self.drop is True:
+            self.df.drop(originals, axis=1, inplace=True)
+        if self.rename is True:
+            self.df.rename(dict(zip(encoded, originals)), axis=1, inplace=True)
+
+    def _encode_features(self, encoding_pairs):
+        """Encodes input features matching column names assigned to the object's ``encodings`` keys.
+
+        Returns
+        -------
+        dataframe
+            original dataframe with all categorical type features label-encoded.
+        """
+        self.log.info("ENCODING CATEGORICAL FEATURES")
+        for col, name in self.encodings.items():
+            keypairs = encoding_pairs[col]
+            enc = PairEncoder()
+            enc.fit_transform(self.df, keypairs, axiscol=col)
+            self.df[name] = enc.transformed
+            self.log.info(f"\n*** {col} --> {name} ***")
+            self.log.info(f"\n\nORIGINAL:\n{self.df[col].value_counts()}")
+            self.log.info(f"\n\nENCODED:\n{self.df[name].value_counts()}\n")
+        self.rejoin_original()
+        return self.df
+
+    def display_encoding(self):
+        self.log.info("---" * 7)
+        for k, v in self.encodings.items():
+            res = list(
+                zip(
+                    self.df[v].value_counts(),
+                    self.df[v].unique(),
+                    self.df[k].value_counts(),
+                    self.df[k].unique(),
+                )
+            )
+            self.log.info(f"\n{k}<--->{v}\n")
+            self.log.info("#VAL\t\tENC\t\t#VAL\t\tORDINAL")
+            for r in res:
+                string = "\t\t".join(str(i) for i in r)
+                self.log.info(string)
+            self.log.info("\n")
+        self.log.info("---" * 7)
+
+
+class SvmEncoder(CategoricalEncoder):
     """Categorical encoding class for HST Single Visit Mosiac regression test data inputs."""
 
     def __init__(
@@ -180,6 +263,10 @@ class SvmEncoder:
         data,
         fkeys=["category", "detector", "wcstype"],
         names=["cat", "det", "wcs"],
+        drop=False,
+        rename=False,
+        name="SvmEncoder",
+        **log_kws,
     ):
         """Instantiates an SvmEncoder class object.
 
@@ -195,11 +282,12 @@ class SvmEncoder:
             new names to assign columns of the encoded versions of categorical data
 
         """
-        self.data = data
-        self.fkeys = fkeys
-        self.names = names
-        self.df = self.categorical_data()
+        super().__init__(data, fkeys=fkeys, names=names, drop=drop, rename=rename)
+        self.__name__ = name
+        self.log = Logger(self.__name__, **log_kws).spacekit_logger()
+        self.df = super().categorical_data()
         self.make_keypairs()
+        self.encode_categories()
 
     def __repr__(self):
         return (
@@ -207,19 +295,11 @@ class SvmEncoder:
             % (self.encodings, self.category_keys, self.detector_keys, self.wcs_keys)
         )
 
-    def categorical_data(self):
-        """Makes a copy of input dataframe and extracts only the categorical features based on the column names in `fkeys`.
-
-        Returns
-        -------
-        df: dataframe
-            dataframe with only the categorical feature columns
-        """
-        return self.data.copy()[self.fkeys]
+    def encode_features(self):
+        super()._encode_features(self.svm_keypairs())
 
     def make_keypairs(self):
         """Instantiates key-pair dictionaries for each of the categorical features."""
-        self.encodings = dict(zip(self.fkeys, self.names))
         self.category_keys = self.set_category_keys()
         self.detector_keys = self.set_detector_keys()
         self.wcs_keys = self.set_wcs_keys()
@@ -298,12 +378,11 @@ class SvmEncoder:
         return self.wcs_keys
 
     def svm_keypairs(self, column):
-        keypairs = {
+        return {
             "category": self.category_keys,
             "detector": self.detector_keys,
             "wcstype": self.wcs_keys,
         }
-        return keypairs[column]
 
     def encode_categories(self, cname="category", sep=";"):
         """Transforms the raw string inputs from MAST target category naming conventions into an abbreviated form. For example, `CLUSTER OF GALAXIES;GRAVITATIONA` becomes `GC` for galaxy cluster; and `STELLAR CLUSTER;GLOBULAR CLUSTER` becomes `SC` for stellar cluster. This serves to group similar but differently named objects into a discrete set of 8 possible categorizations. The 8 categories will then be encoded into integer values in the final encoding step (machine learning inputs must be numeric).
@@ -324,52 +403,6 @@ class SvmEncoder:
         self.df = self.df.join(df_cat, how="left")
         return self.df
 
-    def rejoin_original(self):
-        originals = list(self.encodings.keys())
-        self.df.drop(originals, axis=1, inplace=True)
-        self.df = self.data.join(self.df, how="left")
-
-    def encode_features(self):
-        """Encodes input features matching column names assigned to the object's ``encodings`` keys.
-
-        Returns
-        -------
-        dataframe
-            original dataframe with all categorical type features label-encoded.
-        """
-        self.encode_categories()
-        print("\n\nENCODING CATEGORICAL FEATURES")
-        for col, name in self.encodings.items():
-            keypairs = self.svm_keypairs(col)
-            enc = PairEncoder()
-            enc.fit_transform(self.df, keypairs, axiscol=col)
-            self.df[name] = enc.transformed
-            print(f"\n*** {col} --> {name} ***")
-            print(
-                f"ORIGINAL:\n{self.df[col].value_counts()}\n\nENCODED:\n{self.df[name].value_counts()}\n"
-            )
-        self.rejoin_original()
-        return self.df
-
-    def display_encoding(self):
-        print("---" * 7)
-        for k, v in self.encodings.items():
-            res = list(
-                zip(
-                    self.df[v].value_counts(),
-                    self.df[v].unique(),
-                    self.df[k].value_counts(),
-                    self.df[k].unique(),
-                )
-            )
-            print(f"\n{k}<--->{v}\n")
-            print("#VAL\t\tENC\t\t#VAL\t\tORDINAL")
-            for r in res:
-                string = "\t\t".join(str(i) for i in r)
-                print(string)
-            print("\n")
-        print("---" * 7)
-
 
 class CalEncoder:
 
@@ -380,6 +413,8 @@ class CalEncoder:
         data,
         fkeys=["DETECTOR", "SUBARRAY", "DRIZCORR", "PCTECORR"],
         names=["detector", "subarray", "drizcorr", "pctecorr"],
+        name="CalEncoder",
+        **log_kws,
     ):
         """Instantiates a CalEncoder class object.
 
@@ -398,8 +433,9 @@ class CalEncoder:
         self.data = data
         self.fkeys = fkeys
         self.names = names
+        self.log = Logger(self.__name__, **log_kws).spacekit_logger()
         self.df = self.categorical_data()
-        self.make_keypairs()
+        self.keypair_data = self.make_keypairs()
 
     def __repr__(self):
         return (
@@ -428,18 +464,73 @@ class CalEncoder:
     def set_instr_keys(self, i):
         return dict(j=0, l=1, o=2, i=3)
 
+    def make_keypairs(self):
+        return dict(
+            drizcorr=self.set_calibration_keys(),
+            pctecorr=self.set_calibration_keys(),
+            detector=self.set_detector_keys(),
+            subarray=self.set_subarray_keys(),
+            crsplit=self.set_crsplit_keys(),
+            dtype=self.set_dtype_keys(),
+            instr=self.set_instr_keys(),
+        )
 
-class CategoricalEncoder:
+    def encode_features(self):
+        super()._encode_features(self.keypair_data)
+
+
+class JwstEncoder(CategoricalEncoder):
     def __init__(
-        self, df, cols, keypair_file=None, recast=[], codify=[], forced_zeros={}
+        self,
+        data,
+        fkeys=[],
+        names=[],
+        drop=True,
+        rename=True,
+        keymaker_pairs=None,
+        name="JwstEncoder",
+        **log_kws,
     ):
-        # recast=['channel'], codify=['visitype'], forced_zeros={'exptype':'none'}
+        if not names:
+            names = [c + "_enc" for c in fkeys]
+        super().__init__(data, fkeys=fkeys, names=names, drop=drop, rename=rename)
+        self.__name__ = name
+        self.log = Logger(self.__name__, **log_kws).spacekit_logger()
+        self.df = super().categorical_data()
+        self.keymaker_pairs = keymaker_pairs
+        # self.make_keypairs() # for training only
+
+    def make_keypairs(self):
+        """Instantiates key-pair dictionaries for each of the categorical features."""
+        keymaker = CategoricalKeymaker(
+            self.df, list(self.df.columns), recast=["channel"]
+        )
+        self.keymaker_pairs = keymaker.encode_categories()
+
+    def encode_features(self):
+        super()._encode_features(self.keymaker_pairs)
+
+
+class CategoricalKeymaker:
+    def __init__(
+        self,
+        df,
+        cols,
+        keypair_file=None,
+        recast=[],
+        codify=[],
+        forced_zeros={},
+        name="CategoricalEncoder",
+        **log_kws,
+    ):
         self.df = df
         self.cols = [c for c in cols if c in self.df.columns]
         self.keypair_file = keypair_file
         self.recast = recast
         self.codify = codify
         self.forced_zeros = forced_zeros
+        self.__name__ = name
+        self.log = Logger(self.__name__, **log_kws).spacekit_logger()
         self.non_defaults()
         self.set_default_kwargs()
         self.set_recast_kwargs()
@@ -455,18 +546,25 @@ class CategoricalEncoder:
         with open(fpath, "w") as f:
             json.dump(self.encoding_keypair_data, f)
 
-    def encode_categories(self):
+    def encode_categories(self, inverse=True):
         self.encoding_keypair_data = {}
         for col in self.cols:
             try:
                 enc_kwargs = self.encoding_kwargs.get(col, self.default_kwargs)
-                self.df, ekey = self.encode_categorical(col, **enc_kwargs)
-                self.encoding_keypair_data[col] = ekey
+                encoding_key = self.make_encoding_key(col, **enc_kwargs)
+                self.encoding_keypair_data[col] = encoding_key
             except KeyError:
                 print("Error: ", col)
-        return self.df
+        if inverse is True:
+            encoding_pairs = {}
+            for col, pairs in self.encoding_keypair_data.items():
+                encoding_pairs[col] = {}
+                for k, v in pairs.items():
+                    encoding_pairs[col][v] = k
+            self.encoding_keypair_data = encoding_pairs
+        return self.encoding_keypair_data
 
-    def encode_categorical(self, col, forced_zero="NONE", recast=None, codify=None):
+    def make_encoding_key(self, col, forced_zero="NONE", recast=None, codify=None):
         # convert values / apply datatype recasting
         if recast:
             self.recast_data(col, **recast)
@@ -484,10 +582,6 @@ class CategoricalEncoder:
         else:
             coded = self.make_default_keypairs(col, zero_val=forced_zero)
 
-        self.df[f"{col}_enc"] = self.df[col].apply(
-            lambda x: self.string_encoder(x, coded)
-        )
-
         encoding_key = dict(zip(coded.values(), coded.keys()))
 
         if keypairs:
@@ -495,18 +589,44 @@ class CategoricalEncoder:
                 for k, v in keypairs.items():
                     if j == v:
                         encoding_key[i] = {j: k}
-        self.encoding_key = encoding_key
+        return encoding_key
 
-    def keypair_encoder(self, x, keypairs):
+    def get_inversed_keypairs(self):
+        self.inversed_pairs = dict()
+        for column, keypairs in self.encoding_keypair_data.items():
+            inverse_pairs = self.inverse_keypairs(keypairs)
+            self.inversed_pairs[column] = inverse_pairs
+
+    def inverse_keypairs(self, keypairs):
+        inverse_pairs = {}
         for k, v in keypairs.items():
-            if v == x:
-                return k
+            if isinstance(v, dict):
+                for i, j in v.items():
+                    inverse_pairs[j] = k
+            else:
+                inverse_pairs[v] = k
+        return inverse_pairs
+
+    def keypair_encoder(self, x, keypairs, col):
+        if x not in list(keypairs.values()):
+            self.log.warning(f"New value not in keypairs - adding {x}...")
+            keys = sorted(int(k) for k in list(keypairs.keys()))
+            new_key = keys[-1] + 1
+            keypairs[str(new_key)] = x
+            self.encoding_keypair_data[col] = keypairs
+            self.inversed_pairs[col] = self.inverse_keypairs(keypairs)
+            return new_key
+        else:
+            return self.inversed_pairs[col].get(x)
 
     def encode_from_keypairs(self):
-        for col, keypairs in self.encoding_keypair_data.items():
-            self.df[col] = self.df[col].apply(
-                lambda x: self.keypair_encoder(x, keypairs)
-            )
+        self.get_inversed_keypairs()
+        for col in self.cols:
+            keypairs = self.encoding_keypair_data.get(col, None)
+            if keypairs:
+                self.df[col] = self.df[col].apply(
+                    lambda x: self.keypair_encoder(x, keypairs, col)
+                )
         return self.df
 
     def non_defaults(self):
@@ -616,7 +736,7 @@ class CategoricalEncoder:
         return keypairs
 
     def make_default_keypairs(self, col, zero_val="NONE"):
-        keys = list(self.df[col].unique())
+        keys = sorted(list(self.df[col].unique()))
         if zero_val in keys and keys[0] != zero_val:
             try:
                 idx = np.where([np.asarray(keys) == zero_val])[1][0]
@@ -633,7 +753,7 @@ class CategoricalEncoder:
     def codify_keypairs(self, col, forced_zero="NONE", **kwargs):
         # convert long string to abbreviated string prior to numeric encoding
         # e.g. 'PRIME_UNTARGETED': 'PU'
-        keypairs = self.create_keypair_dict(self.df, col, **kwargs)
+        keypairs = self.create_keypair_dict(col, **kwargs)
         forced_key = keypairs[forced_zero]
         keylist = sorted(list(keypairs.values()))
         if keylist[0] != forced_zero:
