@@ -53,7 +53,15 @@ COLUMN_ORDER = {
 }
 
 NORM_COLS = {
-    "asn": [],
+    "asn": [
+        "offset",
+        "max_offset",
+        "mean_offset",
+        "sigma_offset",
+        "err_offset",
+        "sigma1_mean",
+        "frac",
+    ],
 }
 
 RENAME_COLS = {

@@ -14,7 +14,7 @@ df = run_preprocessing("home/syntheticdata", fname="synth2", crpt=1, draw=0)
 import argparse
 import os
 from spacekit.extractor.scrape import JsonScraper
-from spacekit.preprocessor.scrub import SvmScrubber
+from spacekit.preprocessor.scrub import HstSvmScrubber
 from spacekit.generator.draw import DrawMosaics
 
 
@@ -75,7 +75,7 @@ def run_preprocessing(
     else:
         jsc = JsonScraper(h5_file=h5).load_h5_file()
     # 2: Scrape Fits Files and SCRUB DATAFRAME
-    scrub = SvmScrubber(
+    scrub = HstSvmScrubber(
         input_path, data=jsc.data, output_path=output_path, output_file=fname, crpt=crpt
     )
     scrub.preprocess_data()

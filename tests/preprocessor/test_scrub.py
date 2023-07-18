@@ -1,5 +1,5 @@
 from pytest import mark
-from spacekit.preprocessor.scrub import SvmScrubber
+from spacekit.preprocessor.scrub import HstSvmScrubber
 import pandas as pd
 import os
 
@@ -35,7 +35,7 @@ FINAL_COLS = [
 @mark.scrub
 def test_svm_scrubber(raw_csv_file, single_visit_path):
     data = pd.read_csv(raw_csv_file, index_col="index")
-    scrubber = SvmScrubber(
+    scrubber = HstSvmScrubber(
         single_visit_path, data=data, output_path="tmp", output_file="scrubbed", crpt=0
     )
     assert scrubber.df.shape[1] == 9
@@ -55,7 +55,7 @@ def test_svm_scrubber(raw_csv_file, single_visit_path):
 @mark.scrub
 def test_scrub_cols(raw_csv_file, single_visit_path):
     data = pd.read_csv(raw_csv_file, index_col="index")
-    scrubber = SvmScrubber(
+    scrubber = HstSvmScrubber(
         single_visit_path, data=data, output_path="tmp", output_file="scrubbed", crpt=0
     )
     scrubber.scrub_columns()

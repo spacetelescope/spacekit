@@ -5,7 +5,7 @@ import shutil
 import pandas as pd
 
 from spacekit.extractor.scrape import JsonScraper
-from spacekit.preprocessor.scrub import SvmScrubber
+from spacekit.preprocessor.scrub import HstSvmScrubber
 from spacekit.generator.draw import DrawMosaics
 
 from spacekit.analyzer.track import timer, record_metrics
@@ -109,7 +109,7 @@ class SvmAlignmentIngest:
         else:
             jsc = JsonScraper(h5_file=h5).load_h5_file()
         # 2: Scrape Fits Files and SCRUB DATAFRAME
-        scrub = SvmScrubber(
+        scrub = HstSvmScrubber(
             self.input_path,
             data=jsc.data,
             output_path=self.batch_out,

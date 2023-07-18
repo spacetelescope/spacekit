@@ -14,7 +14,7 @@ from spacekit.extractor.scrape import (
     JwstFitsScraper,
     scrape_catalogs,
 )
-from spacekit.preprocessor.encode import SvmEncoder, JwstEncoder, encode_booleans
+from spacekit.preprocessor.encode import HstSvmEncoder, JwstEncoder, encode_booleans
 from spacekit.logger.log import Logger
 
 
@@ -81,7 +81,7 @@ class Scrubber:
             new = self.col_splitter()
         hc = dict(zip(old, new))
         self.df.rename(hc, axis="columns", inplace=True)
-        self.log.info(f"New column names: {self.df.columns}")
+        self.log.debug(f"New column names: {self.df.columns}")
 
     def drop_nans(self, save_backup=True):
         if self.dropnans is True:
@@ -138,7 +138,7 @@ class Scrubber:
         df.drop(index_col, axis=1, inplace=True)
 
 
-class SvmScrubber(Scrubber):
+class HstSvmScrubber(Scrubber):
     """Class for invocating standard preprocessing steps of Single Visit Mosaic regression test data.
 
     Parameters
@@ -184,7 +184,7 @@ class SvmScrubber(Scrubber):
             output_file=output_file,
             dropnans=dropnans,
             save_raw=save_raw,
-            name="SVMScrubber",
+            name="HstSvmScrubber",
             **log_kws,
         )
 
@@ -211,7 +211,7 @@ class SvmScrubber(Scrubber):
                 time.sleep(5)
                 n_retries -= 1
         # STAGE 3 final encoding
-        enc = SvmEncoder(self.df)
+        enc = HstSvmEncoder(self.df)
         self.df = enc.encode_features()
         enc.display_encoding()
         if self.save_raw is True:
@@ -238,7 +238,7 @@ class SvmScrubber(Scrubber):
         if self.save_raw is True:
             super().save_csv_file(pfx="raw_")
         # STAGE 3 final encoding
-        self.df = SvmEncoder(self.df).encode_features()
+        self.df = HstSvmEncoder(self.df).encode_features()
         super().drop_and_set_cols()
         # STAGE 4 target labels
         self.make_pos_label_list()
@@ -516,7 +516,7 @@ class JwstCalScrubber(Scrubber):
         sfx="_uncal.fits",
         dropnans=False,
         save_raw=True,
-        keypairs=None,
+        encoding_pairs=None,
         **log_kws,
     ):
         self.input_path = input_path
@@ -534,7 +534,7 @@ class JwstCalScrubber(Scrubber):
         self.pixel_scales = self.image_pixel_scales()
         self.refpix = self.calculate_offsets()
         self.xcols = self.set_col_order()
-        self.keypairs = keypairs
+        self.encoding_pairs = encoding_pairs
 
     def set_col_order(self):
         return [
@@ -583,15 +583,16 @@ class JwstCalScrubber(Scrubber):
         dtype_keys = self.get_dtype_keys()
         nandler = NaNdler(self.df, dtype_keys, allow_neg=False, verbose=False)
         self.df = nandler.apply_nandlers()
-        encoder = JwstEncoder(self.df, fkeys=dtype_keys["categorical"], keymaker_pairs=self.keypairs)
+        encoder = JwstEncoder(
+            self.df, fkeys=dtype_keys["categorical"], encoding_pairs=self.encoding_pairs
+        )
         encoder.encode_features()
-        self.df = encoder.df
+        self.df = encoder.df[self.xcols]
         return self.df
 
     def get_potential_l3_products(self):
         # determine potential L3 products based on obs, filters, detectors, etc
         # group by target+obs num+filter (+pupil)
-        # exp_headers = scrape_fits_headers()
         targetnames = list(set([v["TARGNAME"] for v in self.exp_headers.values()]))
         tnums = [f"t{i+1}" for i, t in enumerate(targetnames)]
         targs = dict(zip(targetnames, tnums))

@@ -52,7 +52,7 @@ class JwstCalPredict:
         self.X = None
         self.mem_clf = None
         self.mem_reg = None
-        self.__name__ = "jwstpredict"
+        self.__name__ = "JwstCalPredict"
         self.log = Logger(self.__name__, **log_kws).setup_logger(logger=SPACEKIT_LOG)
         self.log_kws = dict(log=self.log, **log_kws)
         self.predictions = None
@@ -77,7 +77,7 @@ class JwstCalPredict:
             self.log.debug(f"tx_data: {self.tx_data}")
             self.log.info(f"dataset: {self.dataset} normalized inputs (X): {self.X}")
         else:
-            self.X = self.inputs
+            self.X = np.asarray(self.inputs)
 
     def preprocess(self):
         self.log.info("Preprocessing input data")
@@ -87,7 +87,7 @@ class JwstCalPredict:
         self.inputs = scrubber.scrub_inputs()
         self.products = scrubber.products
         for product, input_data in self.inputs.iterrows():
-            self.log.info(f"product: {product} features: {input_data}")
+            self.log.info(f"product: {product}\nfeatures: {input_data}")
         self.normalize_inputs()
 
     def load_models(self, models={}):
@@ -127,12 +127,12 @@ class JwstCalPredict:
             self.preprocess()
         self.predictions = dict()
         self.probabilities = dict()
-        for product in self.products:
-            X = np.asarray(self.X[product].values)
+        product_index = list(self.inputs.index)
+        for i, X in enumerate(self.X):
             membin, pred_proba = self.classifier(self.mem_clf.model, X)
             memval = np.round(float(self.regressor(self.mem_reg.model, X)), 2)
-            self.predictions[product] = {"memBin": membin, "memVal": memval}
-            self.probabilities[product] = {"probabilities": pred_proba}
+            self.predictions[product_index[i]] = {"memBin": membin, "memVal": memval}
+            self.probabilities[product_index[i]] = {"probabilities": pred_proba}
         self.log.info(f"predictions: {self.predictions}")
         self.log.info(f"probabilities: {self.probabilities}")
 
