@@ -17,7 +17,6 @@
 import os
 import sys
 import logging
-from stsci.tools import logutil
 
 
 # Logging formatter supporting colorized output
@@ -61,7 +60,6 @@ class Logger:
         logdir=".",
         asctime=True,
         threadname=False,
-        splunk=False,
         verbose=False,
         log=None,
     ):
@@ -83,7 +81,6 @@ class Logger:
         self.logfile_formatter = None
         self.asctime = asctime
         self.threadname = threadname
-        self.splunk = splunk
         self.console_handler = None
         self.logfile_handler = None
         self.verbose = verbose
@@ -230,31 +227,6 @@ class Logger:
 
 global SPACEKIT_LOG
 SPACEKIT_LOG = Logger("spacekit").setup_logger()
-
-
-def splunk_logger(__name__, log_level="info"):
-    """Initializes a logging object which logs process info to sys.stdout
-
-    Returns
-    -------
-    logutil.log object
-        logs process info to sys.stdout
-    """
-    levels = {
-        "info": logutil.logging.INFO,
-        "debug": logutil.logging.DEBUG,
-        "error": logutil.logging.ERROR,
-        "warning": logutil.logging.WARNING,
-    }
-    template = dict(
-        level=levels[log_level],
-        stream=sys.stdout,
-        format="%(asctime)s %(levelname)s src=%(name)s- %(message)s",
-        datefmt="%Y%j%H%M%S",
-    )
-    logger = logutil.create_logger(__name__, **template)
-    logger.log.setLevel(log_level)
-    return logger
 
 
 # Command line test
