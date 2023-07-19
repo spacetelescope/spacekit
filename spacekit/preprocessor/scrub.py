@@ -507,6 +507,13 @@ class HstCalScrubber(Scrubber):
             ]
         )
 
+    def image_pixel_scales(self):
+        # calculate sky separation / reference pixel offset statistics
+        return dict(
+            ACS=dict(WFC=0.05),
+            WFC3=dict(UVIS=0.04, IR=0.13),
+        )
+
 
 class JwstCalScrubber(Scrubber):
     def __init__(
