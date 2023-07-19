@@ -1,5 +1,5 @@
 from pytest import mark
-from spacekit.preprocessor.encode import PairEncoder, SvmEncoder
+from spacekit.preprocessor.encode import PairEncoder, HstSvmEncoder
 import pandas as pd
 from numpy import asarray
 
@@ -30,7 +30,7 @@ ENCODED_COL_EXPECTED = [
 @mark.encode
 def test_svm_encoder(scraped_mast_file):
     data = pd.read_csv(scraped_mast_file, index_col="index")
-    enc = SvmEncoder(data)
+    enc = HstSvmEncoder(data)
     enc.encode_features()
     assert enc.df.shape == (1, 18)
     for col in ENCODED_COL_EXPECTED:

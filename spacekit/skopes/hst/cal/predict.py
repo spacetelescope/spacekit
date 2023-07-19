@@ -33,7 +33,7 @@ import os
 import argparse
 import numpy as np
 from spacekit.extractor.scrape import S3Scraper
-from spacekit.preprocessor.scrub import CalScrubber
+from spacekit.preprocessor.scrub import HstCalScrubber
 from spacekit.preprocessor.transform import PowerX, array_to_tensor
 from spacekit.builder.architect import Builder
 from spacekit.logger.log import SPACEKIT_LOG, Logger
@@ -118,7 +118,7 @@ class Predict:
             self.scrape_s3_inputs()
         self.log.info(f"dataset: {self.dataset} keys: {self.input_data}")
         self.log.info("Preprocessing features")
-        self.inputs = CalScrubber(
+        self.inputs = HstCalScrubber(
             data={self.dataset: self.input_data}, **self.log_kws
         ).scrub_inputs()
         self.log.info(f"dataset: {self.dataset} features: {self.inputs}")

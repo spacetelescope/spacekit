@@ -5,8 +5,39 @@ import numpy as np
 from scipy.ndimage.filters import uniform_filter1d
 from sklearn.preprocessing import PowerTransformer
 import tensorflow as tf
+from astropy.coordinates import SkyCoord
 
 from spacekit.logger.log import Logger
+
+
+def get_skycoord(ra, dec, unit="deg"):
+    return SkyCoord(ra, dec, unit=unit)
+
+
+def pixel_sky_separation(ra, dec, p_coords, scale, unit="deg"):
+    coords = get_skycoord(ra, dec, unit=unit)
+    skysep_angle = p_coords.separation(coords)
+    arcsec = skysep_angle.arcsecond
+    pixel = arcsec / scale
+    return pixel
+
+
+def offset_statistics(offsets, k, refpix=None, pfx=""):
+    if refpix is None:
+        refpix = {k:dict()}
+    offsets = np.asarray(offsets)
+    refpix[k][f"{pfx}max_offset"] = np.max(offsets)
+    refpix[k][f"{pfx}mean_offset"] = np.mean(offsets)
+    refpix[k][f"{pfx}sigma_offset"] = np.std(offsets)
+    refpix[k][f"{pfx}err_offset"] = np.std(offsets) / np.sqrt(len(offsets))
+    sigma1_idx = np.where(offsets > np.mean(offsets) + np.std(offsets))[0]
+    if len(sigma1_idx) > 0:
+        refpix[k][f"{pfx}sigma1_mean"] = np.mean(offsets[sigma1_idx])
+        refpix[k][f"{pfx}frac"] = len(offsets[sigma1_idx]) / len(offsets)
+    else:
+        refpix[k][f"{pfx}sigma1_mean"] = 0.0
+        refpix[k][f"{pfx}frac"] = 0.0
+    return refpix
 
 
 class Transformer:
