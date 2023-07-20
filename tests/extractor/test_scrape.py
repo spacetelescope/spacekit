@@ -1,5 +1,6 @@
 from pytest import mark
-from spacekit.extractor.scrape import JsonScraper, SvmFitsScraper, MastScraper
+from spacekit.extractor.scrape import JsonScraper, SvmFitsScraper
+from spacekit.extractor.radio import HstSvmRadio
 import os
 import pandas as pd
 
@@ -87,7 +88,7 @@ def test_scrape_fits(scrubbed_cols_file, single_visit_path):
 @mark.scrape
 def test_scrape_mast(scraped_fits_file):
     data = pd.read_csv(scraped_fits_file, index_col="index")
-    scraper = MastScraper(data)
+    scraper = HstSvmRadio(data)
     scraper.scrape_mast()
     assert scraper.df.shape == (1, 15)
     assert "category" in scraper.df.columns
