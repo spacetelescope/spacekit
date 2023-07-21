@@ -4,14 +4,33 @@ import glob
 import boto3
 import numpy as np
 import pandas as pd
-# from astroquery.mast import Catalogs
 from spacekit.logger.log import Logger
 
 try:
     from astroquery.mast import Observations
+except ImportError:
+    Observations = None
+try:
     from progressbar import ProgressBar
 except ImportError:
-    Logger("spacekit").spacekit_logger().warning("Packages needed for the Radio module are not installed. Use `pip install spacekit[x]`")
+    ProgressBar = None
+
+
+def check_astroquery():
+    return Observations is not None
+
+
+def check_progressbar():
+    return ProgressBar is not None
+
+
+def check_imports():
+    if not check_astroquery():
+        return False
+    elif not check_progressbar():
+        return False
+    else:
+        return True
 
 
 class Radio:
@@ -32,7 +51,6 @@ class Radio:
         self.s3 = boto3.resource("s3", region_name=self.region)
         self.bucket = self.s3.Bucket("stpubdata")
         self.location = {"LocationConstraint": self.region}
-        self.configure_aws()
         self.target_list = None
         self.proposal_id = None  # '13926'
         self.collection = None # "K2" "HST" "HLA" "JWST"
@@ -44,7 +62,18 @@ class Radio:
         self.s3_uris = []
         self.errors = []
         self.science_files = []
+        if not check_imports():
+            self.log.error("astroquery and/or progressbar not installed.")
+            raise ImportError(
+                "You must install astroquery (`pip install astroquery`) "
+                "and progressbar (`pip install progressbar`) for the "
+                "radio module to work. \n\nInstall extra deps via "
+                "`pip install spacekit[x]`"
+            )
 
+
+        self.configure_aws()
+        
 
     def configure_aws(self):
         """Sets cloud (AWS) configuration On or Off."""

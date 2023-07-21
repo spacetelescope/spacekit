@@ -16,19 +16,25 @@ from sklearn.metrics import (
     confusion_matrix,
 )
 from tensorflow.python.ops.numpy_ops import np_config
+from spacekit.logger.log import Logger
 
 try:
     import plotly.graph_objects as go
 except ImportError:
-    raise ValueError("plotly is not installed. Use `pip install spacekit[x]`")
+    go = None
+
 
 plt.style.use("seaborn-bright")
 font_dict = {"family": "monospace", "size": 16}  # Titillium Web
 mpl.rc("font", **font_dict)
 
+def check_plotly():
+    return go is not None
 
 class Computer(object):
-    def __init__(self, algorithm, res_path=None, show=False, validation=False):
+    def __init__(self, algorithm, res_path=None, show=False, validation=False, name="Computer", **log_kws):
+        self.__name__ = name
+        self.log = Logger(self.__name__, **log_kws).spacekit_logger()
         self.algorithm = algorithm
         self.res_path = res_path
         self.show = show
@@ -55,6 +61,13 @@ class Computer(object):
         self.loss_fig = None
         self.roc_fig = None
         self.pr_fig = None
+        if not check_plotly():
+            self.log.error("plotly not installed.")
+            raise ImportError(
+                "You must install plotly (`pip install plotly`) "
+                "for the compute module to work."
+                "\n\nInstall extra deps via `pip install spacekit[x]`"
+            )
 
     def inputs(self, model, history, X_train, y_train, X_test, y_test, test_idx):
         """Instantiates training vars as attributes. By default, a Computer object is instantiated without these - they are only needed for calculating and storing
@@ -237,7 +250,6 @@ class Computer(object):
         Computer object
             updated with standard plot attribute values
         """
-
         self.acc_fig = self.keras_acc_plot()
         self.loss_fig = self.keras_loss_plot()
         self.roc_fig = self.make_roc_curve()
@@ -587,8 +599,10 @@ class ComputeClassifier(Computer):
         res_path="results/mem_bin",
         show=False,
         validation=False,
+        name="ComputeClassifier",
+        **log_kws,
     ):
-        super().__init__(algorithm, res_path=res_path, show=show, validation=validation)
+        super().__init__(algorithm, res_path=res_path, show=show, validation=validation, name=name, **log_kws)
         self.classes = classes
 
     def make_outputs(self, dl=True):
@@ -713,6 +727,7 @@ class ComputeBinary(ComputeClassifier):
         res_path="results/svm",
         show=False,
         validation=False,
+        **log_kws,
     ):
         super().__init__(
             algorithm=algorithm,
@@ -720,6 +735,8 @@ class ComputeBinary(ComputeClassifier):
             res_path=res_path,
             show=show,
             validation=validation,
+            name="ComputeBinary",
+            **log_kws,
         )
         self.builder_inputs(builder=builder)
 
@@ -772,6 +789,7 @@ class ComputeMulti(ComputeClassifier):
         res_path="results/mem_bin",
         show=False,
         validation=False,
+        **log_kws,
     ):
         super().__init__(
             algorithm=algorithm,
@@ -779,6 +797,8 @@ class ComputeMulti(ComputeClassifier):
             res_path=res_path,
             show=show,
             validation=validation,
+            name="ComputeMulti",
+            **log_kws,
         )
         if builder:
             self.inputs(
@@ -924,9 +944,10 @@ class ComputeRegressor(Computer):
         res_path="results/memory",
         show=False,
         validation=False,
+        **log_kws,
     ):
         super().__init__(
-            algorithm=algorithm, res_path=res_path, show=show, validation=validation
+            algorithm=algorithm, res_path=res_path, show=show, validation=validation, name="ComputeRegressor", **log_kws,
         )
         if builder:
             self.inputs(

@@ -5,13 +5,21 @@ import os
 import pandas as pd
 import glob
 from spacekit.analyzer.compute import ComputeBinary, ComputeMulti, ComputeRegressor
+from spacekit.logger.log import Logger
 
 try:
     import plotly.graph_objects as go
     import plotly.figure_factory as ff
     from plotly import subplots
 except ImportError:
-    raise ValueError("plotly is not installed. Use `pip install spacekit[x]`")
+    go = None
+    ff = None
+    subplots = None
+
+
+def check_plotly():
+    return go is not None
+
 
 def decode_categorical(df, decoder_key):
     """Add decoded column (using "{column}_key" suffix) to dataframe.
@@ -73,7 +81,9 @@ class MegaScanner:
 
     """
 
-    def __init__(self, perimeter="data/20??-*-*-*", primary=-1):
+    def __init__(self, perimeter="data/20??-*-*-*", primary=-1, name="MegaScanner", **log_kws):
+        self.__name__ = name
+        self.log = Logger(self.__name__, **log_kws).spacekit_logger()
         self.perimeter = perimeter
         self.datapaths = sorted(list(glob.glob(perimeter)))
         self.datasets = [d.split("/")[-1] for d in self.datapaths]
@@ -102,6 +112,13 @@ class MegaScanner:
         self.keras = {}
         self.roc = {}
         self.cmx = {}
+        if not check_plotly():
+            self.log.error("plotly not installed.")
+            raise ImportError(
+                "You must install plotly (`pip install plotly`) "
+                "for the scan module to work."
+                "\n\nInstall extra deps via `pip install spacekit[x]`"
+            )
 
     def select_dataset(self, primary=None):
         """Select which dataset file (if there are multiple timestamps) to use, e.g. for performing EDA.
@@ -124,9 +141,8 @@ class MegaScanner:
         if primary:
             self.primary = primary
         if self.primary > len(self.datapaths):
-            print("Using default index (-1)")
+            self.log.warning("Using default index (-1)")
             self.primary = -1
-            raise IndexError
         if len(self.datapaths) > 0:
             dataset_path = self.datapaths[self.primary]
             self.data = glob.glob(f"{dataset_path}/data/*.csv")[0]
@@ -191,7 +207,7 @@ class MegaScanner:
             try:  # initialize Compute figure attrs
                 com.draw_plots()
             except Exception as e:
-                print(e)
+                self.log.error(e)
         return com
 
     def _scan_results(self, coms=[ComputeBinary], algs=["clf"], names=["test"]):
@@ -521,7 +537,7 @@ class MegaScanner:
         return fig
 
 
-class CalScanner(MegaScanner):
+class HstCalScanner(MegaScanner):
     """MegaScanner subclass for HST calibration model training iteration analysis
 
     Parameters
@@ -530,8 +546,8 @@ class CalScanner(MegaScanner):
         Parent class object
     """
 
-    def __init__(self, perimeter="data/20??-*-*-*", primary=-1):
-        super().__init__(perimeter=perimeter, primary=primary)
+    def __init__(self, perimeter="data/20??-*-*-*", primary=-1, **log_kws):
+        super().__init__(perimeter=perimeter, primary=primary, name="HstCalScanner", **log_kws)
         self.labels = ["2g", "8g", "16g", "64g"]
         self.classes = [0, 1, 2, 3]
         self.res_keys = dict(mem_bin=None, memory=None, wallclock=None)
@@ -546,7 +562,7 @@ class CalScanner(MegaScanner):
 
         Returns
         -------
-        CalScanner.mega dictionary attribute
+        HstCalScanner.mega dictionary attribute
             dictionary of model training results for each iteration found.
         """
         com_objects = []
@@ -587,8 +603,8 @@ class CalScanner(MegaScanner):
         return (B, M, W)
 
 
-class SvmScanner(MegaScanner):
-    """MegaScanner subclass for HST Single Visit Mosaic model training iteration analysis
+class HstSvmScanner(MegaScanner):
+    """MegaScanner subclass for HST Single Visit Mosaic alignment model training iteration analysis
 
     Parameters
     ----------
@@ -596,8 +612,8 @@ class SvmScanner(MegaScanner):
         MegaScanner object
     """
 
-    def __init__(self, perimeter="data/20??-*-*-*", primary=-1):
-        super().__init__(perimeter=perimeter, primary=primary)
+    def __init__(self, perimeter="data/20??-*-*-*", primary=-1, **log_kws):
+        super().__init__(perimeter=perimeter, primary=primary, name="HstSvmScanner", **log_kws)
         self.labels = ["aligned", "misaligned"]
         self.classes = [0, 1]
         self.res_keys = {"test": {}, "val": {}}
@@ -612,7 +628,7 @@ class SvmScanner(MegaScanner):
 
         Returns
         -------
-        SvmScanner.mega dictionary attribute
+        HstSvmScanner.mega dictionary attribute
             dictionary of model training results for each iteration found.
         """
         com_objects = []

@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from scipy.stats import iqr
 from spacekit.preprocessor.transform import PowerX
 from spacekit.generator.augment import augment_image
-
+from spacekit.logger.log import Logger
 try:
     from keras.preprocessing.image import array_to_img
 except ImportError:
@@ -20,7 +20,15 @@ try:
     import plotly.figure_factory as ff
     import plotly.express as px
 except ImportError:
-    raise ValueError("plotly is not installed. Use `pip install spacekit[x]`")
+    go = None
+    subplots = None
+    pyo = None
+    ff = None
+    px = None
+
+
+def check_plotly():
+    return go is not None
 
 plt.style.use("seaborn-bright")
 font_dict = {"family": "monospace", "size": 16}
@@ -30,9 +38,18 @@ mpl.rc("font", **font_dict)
 class ImagePreviews:
     """Base parent class for rendering and displaying images as plots"""
 
-    def __init__(self, X, labels):
+    def __init__(self, X, labels, name="ImagePreviews", **log_kws):
+        self.__name__ = name
+        self.log = Logger(self.__name__, **log_kws).spacekit_logger()
         self.X = X
         self.y = labels
+        if not check_plotly():
+            self.log.error("plotly not installed.")
+            raise ImportError(                
+                "You must install plotly (`pip install plotly`) "
+                "for ImagePreviews to work."
+                "\n\nInstall extra deps via `pip install spacekit[x]`"
+            )
 
 
 class SVMPreviews(ImagePreviews):
@@ -54,6 +71,7 @@ class SVMPreviews(ImagePreviews):
         w=128,
         h=128,
         figsize=(10, 10),
+        **log_kws,
     ):
         """Instantiates an SVMPreviews class object.
 
@@ -72,7 +90,7 @@ class SVMPreviews(ImagePreviews):
         h : int, optional
             height of images, by default 128
         """
-        super().__init__(X, labels)
+        super().__init__(X, labels, name="SVMPreviews", **log_kws)
         self.names = names
         self.n_images = len(X)
         self.ndims = ndims
@@ -212,7 +230,9 @@ class SVMPreviews(ImagePreviews):
 class DataPlots:
     """Parent class for drawing exploratory data analysis plots from a dataframe."""
 
-    def __init__(self, df, width=1300, height=700, show=False, save_html=None):
+    def __init__(self, df, width=1300, height=700, show=False, save_html=None, name="DataPlots", **log_kws):
+        self.__name__ = name
+        self.log = Logger(self.__name__, **log_kws).spacekit_logger()
         self.df = df
         self.width = width
         self.height = height
@@ -235,6 +255,13 @@ class DataPlots:
         self.bar = None
         self.groupedbar = None
         self.kde = None
+        if not check_plotly():
+            self.log.error("plotly not installed.")
+            raise ImportError(                
+                "You must install plotly (`pip install plotly`) "
+                "for DataPlots to work."
+                "\n\nInstall extra deps via `pip install spacekit[x]`"
+            )
 
     def group_keys(self):
         if self.group in ["instr", "instrument"]:
@@ -617,9 +644,9 @@ class HstSvmPlots(DataPlots):
     """
 
     def __init__(
-        self, df, group="det", width=1300, height=700, show=False, save_html=None
+        self, df, group="det", width=1300, height=700, show=False, save_html=None, **log_kws,
     ):
-        super().__init__(df, width=width, height=height, show=show, save_html=save_html)
+        super().__init__(df, width=width, height=height, show=show, save_html=save_html, name="HstSvmPlots", **log_kws)
         self.group = group
         self.telescope = "HST"
         self.target = "label"
@@ -713,8 +740,8 @@ class HstSvmPlots(DataPlots):
 
 
 class HstCalPlots(DataPlots):
-    def __init__(self, df, group="instr"):
-        super().__init__(df)
+    def __init__(self, df, group="instr", **log_kws):
+        super().__init__(df, name="HstCalPlots", **log_kws)
         self.telescope = "HST"
         self.target = "mem_bin"
         self.classes = [0, 1, 2, 3]

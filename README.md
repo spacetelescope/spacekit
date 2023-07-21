@@ -18,7 +18,7 @@ Astronomical Data Science and Machine Learning Toolkit
 # install full deps for using analysis / data viz / non-pipeline tools
 $ pip install spacekit[x]
 
-# for minimal STScI pipeline operations install:
+# for minimal STScI pipeline operations (skopes module) install:
 $ pip install spacekit
 ```
 

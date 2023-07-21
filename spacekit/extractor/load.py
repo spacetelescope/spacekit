@@ -4,12 +4,23 @@ import pandas as pd
 import numpy as np
 import json
 import pickle
-import zipfile
+from zipfile import ZipFile
 import time
 from tensorflow.keras.preprocessing.image import load_img, img_to_array
 from sklearn.model_selection import train_test_split
 from spacekit.analyzer.track import stopwatch
 from spacekit.logger.log import Logger
+from tarfile import TarFile
+
+
+try:
+    from tqdm import tqdm
+except ImportError:
+    tqdm = None
+
+
+def check_tqdm():
+    return tqdm is not None
 
 
 def find_local_dataset(source_path, fname=None, date_key=None):
@@ -185,12 +196,12 @@ class ImageIO:
         self.data = data
         self.__name__ = name
         self.log = Logger(self.__name__, **log_kws).spacekit_logger()
-        try:
-            from tqdm import tqdm
-        except ImportError:
-            self.log.error("tqdm is not installed. Use `pip install spacekit[x]`")
-            raise ValueError
-        self.tqdm = tqdm
+        if not check_tqdm():
+            self.log.error("tqdm not installed.")
+            raise ImportError(
+                "You must install tqdm (`pip install tqdm`) for ImageIO to work."
+                "\n\nInstall extra deps via `pip install spacekit[x]`"
+            )
 
     def check_format(self, format):
         """Checks the format type of ``img_path`` (``png``, ``jpg`` or ``npz``) and initializes the ``format`` attribute accordingly.
@@ -469,7 +480,7 @@ class SVMImageIO(ImageIO):
                 # print(f"missing: {i}")
                 idx.remove(i)
         img = []
-        for ch1, ch2, ch3 in self.tqdm(files):
+        for ch1, ch2, ch3 in tqdm(files):
             img.append(read_channels([ch1, ch2, ch3], self.w, self.h, self.d, exp=exp))
         X, y = np.array(img, np.float32), np.array(labels)
         return (idx, X, y)
@@ -505,7 +516,7 @@ class SVMImageIO(ImageIO):
         start = time.time()
         stopwatch("LOADING IMAGES", t0=start)
         img = []
-        for ch1, ch2, ch3 in self.tqdm(image_files):
+        for ch1, ch2, ch3 in tqdm(image_files):
             img.append(read_channels([ch1, ch2, ch3], self.w, self.h, self.d, exp=exp))
         X_img = np.array(img, np.float32)
         end = time.time()
@@ -599,7 +610,42 @@ def zip_subdirs(top_path, zipname="models.zip"):
             filepath = os.path.join(root, filename)
             file_paths.append(filepath)
     print("Zipping model files:")
-    with zipfile.ZipFile(zipname, "w") as zip_ref:
+    with ZipFile(zipname, "w") as zip_ref:
         for file in file_paths:
             zip_ref.write(file)
             print(file)
+
+
+def is_within_directory(directory, target):
+    abs_directory = os.path.abspath(directory)
+    abs_target = os.path.abspath(target)
+    prefix = os.path.commonprefix([abs_directory, abs_target])
+    return prefix == abs_directory
+
+
+def safe_extract(tar, expath=".", members=None, *, numeric_owner=False):
+    directory = os.path.dirname(tar)
+    for member in tar.getmembers():
+        member_path = os.path.join(directory, member.name)
+        if not is_within_directory(directory, member_path):
+            raise Exception("WARNING: Attempted Path Traversal in Tar File")
+
+    tar.extractall(expath, members, numeric_owner=numeric_owner)
+
+
+def extract_file(fpath, dest="."):
+    fp = fpath.split(".")
+    if len(fp) > 2:
+        mode = f"r:{fp[-1]}"
+        kind = fp[-2]
+    else:
+        kind = fp[-1]
+        mode = "r"
+    if kind == "zip":
+        with ZipFile(fpath, mode) as zip_ref:
+            zip_ref.extractall(dest)
+    elif kind == "tar":
+        with TarFile.open(fpath, mode) as tar:
+            safe_extract(tar, expath=dest)
+    else:
+        raise Exception(f"Could not extract file of type {kind}")

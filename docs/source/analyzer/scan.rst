@@ -22,12 +22,12 @@ decoder_key examples:
     :undoc-members:
     :show-inheritance:
 
-.. autoclass:: CalScanner
+.. autoclass:: HstCalScanner
     :members:
     :undoc-members:
     :show-inheritance:
 
-.. autoclass:: SvmScanner
+.. autoclass:: HstSvmScanner
     :members:
     :undoc-members:
     :show-inheritance:

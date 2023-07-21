@@ -4,7 +4,7 @@ from pytest import fixture
 import tarfile
 from zipfile import ZipFile
 from spacekit.analyzer.explore import HstCalPlots, HstSvmPlots
-from spacekit.analyzer.scan import SvmScanner, CalScanner, import_dataset
+from spacekit.analyzer.scan import HstSvmScanner, HstCalScanner, import_dataset
 from spacekit.extractor.load import load_datasets
 
 
@@ -169,9 +169,9 @@ def df_ncols(skope):
 @fixture(scope="session")
 def scanner(skope, res_data_path):
     if skope.env == "svm":
-        scanner = SvmScanner(perimeter=f"{res_data_path}/20??-*-*-*", primary=-1)
+        scanner = HstSvmScanner(perimeter=f"{res_data_path}/20??-*-*-*", primary=-1)
     elif skope.env == "cal":
-        scanner = CalScanner(perimeter=f"{res_data_path}/20??-*-*-*", primary=-1)
+        scanner = HstCalScanner(perimeter=f"{res_data_path}/20??-*-*-*", primary=-1)
     scanner.exp = skope.env
     return scanner
 
