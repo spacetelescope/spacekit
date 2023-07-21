@@ -4,11 +4,6 @@ import numpy as np
 import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-import plotly.graph_objs as go
-from plotly import subplots
-import plotly.offline as pyo
-import plotly.figure_factory as ff
-import plotly.express as px
 from scipy.stats import iqr
 from spacekit.preprocessor.transform import PowerX
 from spacekit.generator.augment import augment_image
@@ -17,6 +12,15 @@ try:
     from keras.preprocessing.image import array_to_img
 except ImportError:
     from tensorflow.keras.utils import array_to_img
+
+try:
+    import plotly.graph_objects as go
+    from plotly import subplots
+    import plotly.offline as pyo
+    import plotly.figure_factory as ff
+    import plotly.express as px
+except ImportError:
+    raise ValueError("plotly is not installed. Use `pip install spacekit[x]`")
 
 plt.style.use("seaborn-bright")
 font_dict = {"family": "monospace", "size": 16}

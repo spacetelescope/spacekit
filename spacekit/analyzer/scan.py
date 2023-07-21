@@ -4,11 +4,14 @@ This module is a convenient and efficient tool for loading results metrics of mu
 import os
 import pandas as pd
 import glob
-import plotly.graph_objs as go
-import plotly.figure_factory as ff
-from plotly import subplots
 from spacekit.analyzer.compute import ComputeBinary, ComputeMulti, ComputeRegressor
 
+try:
+    import plotly.graph_objects as go
+    import plotly.figure_factory as ff
+    from plotly import subplots
+except ImportError:
+    raise ValueError("plotly is not installed. Use `pip install spacekit[x]`")
 
 def decode_categorical(df, decoder_key):
     """Add decoded column (using "{column}_key" suffix) to dataframe.

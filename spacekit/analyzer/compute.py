@@ -7,7 +7,6 @@ import pandas as pd
 import datetime as dt
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-import plotly.graph_objects as go
 from sklearn.metrics import (
     roc_curve,
     roc_auc_score,
@@ -17,6 +16,11 @@ from sklearn.metrics import (
     confusion_matrix,
 )
 from tensorflow.python.ops.numpy_ops import np_config
+
+try:
+    import plotly.graph_objects as go
+except ImportError:
+    raise ValueError("plotly is not installed. Use `pip install spacekit[x]`")
 
 plt.style.use("seaborn-bright")
 font_dict = {"family": "monospace", "size": 16}  # Titillium Web
