@@ -9,9 +9,9 @@ from astropy.io import fits, ascii
 from astropy.visualization import ImageNormalize, ZScaleInterval
 import matplotlib.pyplot as plt
 import time
-from tqdm import tqdm
 
 from spacekit.analyzer.track import stopwatch
+from spacekit.logger.log import Logger, SPACEKIT_LOG
 
 
 class DrawMosaics:
@@ -28,6 +28,8 @@ class DrawMosaics:
         size=(24, 24),
         crpt=0,
         subset_name=None,
+        name="DrawMosaics",
+        **log_kws,
     ):
         """Initializes a DrawMosaics class object.
 
@@ -50,6 +52,13 @@ class DrawMosaics:
         crpt : int, optional
             modifies the input search pattern as well as output png file naming convention (so that a non-corrupt visit of the same name is not overwritten), by default 0
         """
+        self.__name__ = name
+        self.log = Logger(self.__name__, **log_kws).setup_logger(logger=SPACEKIT_LOG)
+        try:
+            from tqdm import tqdm
+        except ImportError:
+            self.log.warning("tqdm is not installed. Use `pip install spacekit[x]`")
+        self.tqdm = tqdm
         self.input_path = input_path
         self.output_path = output_path
         self.check_output()
@@ -302,7 +311,7 @@ class DrawMosaics:
 
         print(f"Generating images for {len(self.datasets)} datasets.")
 
-        for dataset in tqdm(self.datasets):
+        for dataset in self.tqdm(self.datasets):
             if self.gen == 3:  # original, point-segment, and GAIA
                 self.draw_total_images(dataset)
                 self.draw_total_images(dataset, P=1, S=1)
@@ -432,7 +441,7 @@ class DrawMosaics:
             print("No datasets available. Exiting")
             sys.exit(1)
         print(f"Generating images for {len(self.datasets)} datasets.")
-        for dataset in tqdm(self.datasets):
+        for dataset in self.tqdm(self.datasets):
             self.draw_filter_images(dataset)
 
     def draw_filter_images(self, dataset):

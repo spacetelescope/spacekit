@@ -14,7 +14,6 @@ import glob
 import numpy as np
 from astropy.io import fits
 import time
-from tqdm import tqdm
 from progressbar import ProgressBar
 
 from spacekit.generator.draw import DrawMosaics
@@ -26,6 +25,10 @@ except ImportError:
     print(
         "Running this script requires drizzlepac to be installed. Run `pip install drizzlepac` then try again."
     )
+try:
+    from tqdm import tqdm
+except ImportError:
+    raise ValueError("tqdm is not installed. Use `pip install spacekit[x]`")
 
 SVM_QUALITY_TESTING = "on"
 os.environ["SVM_QUALITY_TESTING"] = "on"

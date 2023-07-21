@@ -5,11 +5,11 @@ import numpy as np
 import json
 import pickle
 import zipfile
-from tqdm import tqdm
 import time
 from tensorflow.keras.preprocessing.image import load_img, img_to_array
 from sklearn.model_selection import train_test_split
 from spacekit.analyzer.track import stopwatch
+from spacekit.logger.log import Logger
 
 
 def find_local_dataset(source_path, fname=None, date_key=None):
@@ -179,10 +179,18 @@ def read_channels(channels, w, h, d, exp=None, color_mode="rgb"):
 class ImageIO:
     """Parent Class for image file input/output operations"""
 
-    def __init__(self, img_path, format="png", data=None):
+    def __init__(self, img_path, format="png", data=None, name="ImageIO", **log_kws):
         self.img_path = img_path
         self.format = self.check_format(format)
         self.data = data
+        self.__name__ = name
+        self.log = Logger(self.__name__, **log_kws).spacekit_logger()
+        try:
+            from tqdm import tqdm
+        except ImportError:
+            self.log.error("tqdm is not installed. Use `pip install spacekit[x]`")
+            raise ValueError
+        self.tqdm = tqdm
 
     def check_format(self, format):
         """Checks the format type of ``img_path`` (``png``, ``jpg`` or ``npz``) and initializes the ``format`` attribute accordingly.
@@ -320,6 +328,7 @@ class SVMImageIO(ImageIO):
         data=None,
         target="label",
         v=0.85,
+        **log_kws,
     ):
         """Instantiates an SVMFileIO object.
 
@@ -344,7 +353,7 @@ class SVMImageIO(ImageIO):
         v: float, optional
             size ratio for validation set, by default 0.85
         """
-        super().__init__(img_path, format=format, data=data)
+        super().__init__(img_path, format=format, data=data, name="SVMImageIO", **log_kws)
         self.w = w
         self.h = h
         self.d = d
@@ -460,7 +469,7 @@ class SVMImageIO(ImageIO):
                 # print(f"missing: {i}")
                 idx.remove(i)
         img = []
-        for ch1, ch2, ch3 in tqdm(files):
+        for ch1, ch2, ch3 in self.tqdm(files):
             img.append(read_channels([ch1, ch2, ch3], self.w, self.h, self.d, exp=exp))
         X, y = np.array(img, np.float32), np.array(labels)
         return (idx, X, y)
@@ -496,7 +505,7 @@ class SVMImageIO(ImageIO):
         start = time.time()
         stopwatch("LOADING IMAGES", t0=start)
         img = []
-        for ch1, ch2, ch3 in tqdm(image_files):
+        for ch1, ch2, ch3 in self.tqdm(image_files):
             img.append(read_channels([ch1, ch2, ch3], self.w, self.h, self.d, exp=exp))
         X_img = np.array(img, np.float32)
         end = time.time()
