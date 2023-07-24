@@ -4,12 +4,26 @@ import pandas as pd
 import numpy as np
 import json
 import pickle
-import zipfile
-from tqdm import tqdm
+from zipfile import ZipFile
 import time
-from tensorflow.keras.preprocessing.image import load_img, img_to_array
 from sklearn.model_selection import train_test_split
 from spacekit.analyzer.track import stopwatch
+from spacekit.logger.log import Logger
+from tarfile import TarFile
+
+try:
+    from tensorflow.keras.utils import load_img, img_to_array  # tensorflow >= 2.9
+except ImportError:
+    from keras.preprocessing.image import load_img, img_to_array  # tensorflow < 2.9
+
+try:
+    from tqdm import tqdm
+except ImportError:
+    tqdm = None
+
+
+def check_tqdm():
+    return tqdm is not None
 
 
 def find_local_dataset(source_path, fname=None, date_key=None):
@@ -179,10 +193,18 @@ def read_channels(channels, w, h, d, exp=None, color_mode="rgb"):
 class ImageIO:
     """Parent Class for image file input/output operations"""
 
-    def __init__(self, img_path, format="png", data=None):
+    def __init__(self, img_path, format="png", data=None, name="ImageIO", **log_kws):
         self.img_path = img_path
         self.format = self.check_format(format)
         self.data = data
+        self.__name__ = name
+        self.log = Logger(self.__name__, **log_kws).spacekit_logger()
+        if not check_tqdm():
+            self.log.error("tqdm not installed.")
+            raise ImportError(
+                "You must install tqdm (`pip install tqdm`) for ImageIO to work."
+                "\n\nInstall extra deps via `pip install spacekit[x]`"
+            )
 
     def check_format(self, format):
         """Checks the format type of ``img_path`` (``png``, ``jpg`` or ``npz``) and initializes the ``format`` attribute accordingly.
@@ -320,6 +342,7 @@ class SVMImageIO(ImageIO):
         data=None,
         target="label",
         v=0.85,
+        **log_kws,
     ):
         """Instantiates an SVMFileIO object.
 
@@ -344,7 +367,9 @@ class SVMImageIO(ImageIO):
         v: float, optional
             size ratio for validation set, by default 0.85
         """
-        super().__init__(img_path, format=format, data=data)
+        super().__init__(
+            img_path, format=format, data=data, name="SVMImageIO", **log_kws
+        )
         self.w = w
         self.h = h
         self.d = d
@@ -590,7 +615,43 @@ def zip_subdirs(top_path, zipname="models.zip"):
             filepath = os.path.join(root, filename)
             file_paths.append(filepath)
     print("Zipping model files:")
-    with zipfile.ZipFile(zipname, "w") as zip_ref:
+    with ZipFile(zipname, "w") as zip_ref:
         for file in file_paths:
             zip_ref.write(file)
             print(file)
+
+
+def is_within_directory(directory, target):
+    abs_directory = os.path.abspath(directory)
+    abs_target = os.path.abspath(target)
+    prefix = os.path.commonprefix([abs_directory, abs_target])
+    return prefix == abs_directory
+
+
+def safe_extract(tar, fpath, expath=".", members=None, *, numeric_owner=False):
+    directory = os.path.dirname(fpath)
+    for member in tar.getmembers():
+        member_path = os.path.join(directory, member.name)
+        if not is_within_directory(directory, member_path):
+            raise Exception("WARNING: Attempted Path Traversal in Tar File")
+    tar.extractall(expath, members, numeric_owner=numeric_owner)
+
+
+def extract_file(fpath, dest="."):
+    if fpath.endswith("tgz") or fpath.endswith("tar.gz"):
+        kind = "tar"
+        mode = "r:gz"
+    elif fpath.endswith("tar"):
+        kind = "tar"
+        mode = "r"
+    elif fpath.endswith("zip"):
+        kind = "zip"
+        mode = "r"
+    if kind == "zip":
+        with ZipFile(fpath, mode) as zip_ref:
+            zip_ref.extractall(dest)
+    elif kind == "tar":
+        with TarFile.open(fpath, mode) as tar:
+            safe_extract(tar, fpath, expath=dest)
+    else:
+        raise Exception(f"Could not extract file of type {kind}")

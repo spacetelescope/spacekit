@@ -29,9 +29,5 @@ spacekit.extractor.scrape
     :undoc-members:
     :show-inheritance:
 
-.. autoclass:: MastScraper
-    :members:
-
-
 .. autoclass:: JsonScraper
     :members:

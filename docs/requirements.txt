@@ -2,8 +2,7 @@ setuptools
 Sphinx
 sphinx_automodapi
 matplotlib<4
-#myst-parser==0.16.1
-tensorflow>=2.6.2
+tensorflow>=2.7
 numpy>=1.19
 numpydoc
 astropy
@@ -14,7 +13,6 @@ astroquery
 boto3
 plotly
 progressbar
-stsci.tools
 sklearn
 tables
 tqdm

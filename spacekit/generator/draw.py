@@ -7,11 +7,29 @@ import numpy as np
 from astropy.wcs import WCS
 from astropy.io import fits, ascii
 from astropy.visualization import ImageNormalize, ZScaleInterval
-import matplotlib.pyplot as plt
 import time
-from tqdm import tqdm
-
 from spacekit.analyzer.track import stopwatch
+from spacekit.logger.log import Logger, SPACEKIT_LOG
+
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    plt = None
+
+try:
+    from tqdm import tqdm
+except ImportError:
+    tqdm = None
+
+
+def check_viz_imports():
+    return plt is not None
+
+def check_imports():
+    if not check_viz_imports():
+        return False
+    else:
+        return tqdm is not None
 
 
 class DrawMosaics:
@@ -28,6 +46,8 @@ class DrawMosaics:
         size=(24, 24),
         crpt=0,
         subset_name=None,
+        name="DrawMosaics",
+        **log_kws,
     ):
         """Initializes a DrawMosaics class object.
 
@@ -50,6 +70,16 @@ class DrawMosaics:
         crpt : int, optional
             modifies the input search pattern as well as output png file naming convention (so that a non-corrupt visit of the same name is not overwritten), by default 0
         """
+        self.__name__ = name
+        self.log = Logger(self.__name__, **log_kws).setup_logger(logger=SPACEKIT_LOG)
+        if not check_imports():
+            self.log.error("tqdm and/or matplotlib not installed.")
+            raise ImportError(
+                "You must install tqdm (`pip install tqdm`) "
+                "and matplotlib<4 (`pip install matplotlib<4`) "
+                "for the draw module to work."
+                "\n\nInstall extra deps via `pip install spacekit[x]`"
+            )
         self.input_path = input_path
         self.output_path = output_path
         self.check_output()

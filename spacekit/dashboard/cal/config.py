@@ -1,9 +1,9 @@
 from spacekit.analyzer.explore import HstCalPlots
-from spacekit.analyzer.scan import CalScanner
+from spacekit.analyzer.scan import HstCalScanner
 from spacekit.builder.architect import Builder
 
 # Find available datasets and load most recent (default)
-cal = CalScanner(perimeter="data/20??-*-*-*", primary=-1)
+cal = HstCalScanner(perimeter="data/20??-*-*-*", primary=-1)
 cal.scan_results()
 # Initialize EVAL
 cal.make_barplots()  # scores, acc_fig, loss_fig, acc_loss_fig

@@ -1,11 +1,11 @@
 import os
 import pytest
 from pytest import fixture
-import tarfile
 from zipfile import ZipFile
+import pandas as pd
 from spacekit.analyzer.explore import HstCalPlots, HstSvmPlots
-from spacekit.analyzer.scan import SvmScanner, CalScanner, import_dataset
-from spacekit.extractor.load import load_datasets
+from spacekit.analyzer.scan import HstSvmScanner, HstCalScanner, import_dataset
+from spacekit.extractor.load import load_datasets, extract_file
 
 
 TESTED_VERSIONS = {}
@@ -169,9 +169,9 @@ def df_ncols(skope):
 @fixture(scope="session")
 def scanner(skope, res_data_path):
     if skope.env == "svm":
-        scanner = SvmScanner(perimeter=f"{res_data_path}/20??-*-*-*", primary=-1)
+        scanner = HstSvmScanner(perimeter=f"{res_data_path}/20??-*-*-*", primary=-1)
     elif skope.env == "cal":
-        scanner = CalScanner(perimeter=f"{res_data_path}/20??-*-*-*", primary=-1)
+        scanner = HstCalScanner(perimeter=f"{res_data_path}/20??-*-*-*", primary=-1)
     scanner.exp = skope.env
     return scanner
 
@@ -193,10 +193,9 @@ def explorer(skope, res_data_path):
 def single_visit_path(tmp_path_factory):
     visit_path = os.path.abspath("tests/data/svm/prep/singlevisits.tgz")
     basepath = tmp_path_factory.getbasetemp()
-    with tarfile.TarFile.open(visit_path) as tar:
-        tar.extractall(basepath)
-        dname = os.path.basename(visit_path.split(".")[0])
-        visit_path = os.path.join(basepath, dname)
+    extract_file(visit_path, dest=basepath)
+    dname = os.path.basename(visit_path.split(".")[0])
+    visit_path = os.path.join(basepath, dname)
     return visit_path
 
 
@@ -216,10 +215,9 @@ def svm_pred_img(request, tmp_path_factory):
     img_path = os.path.join("tests/data/svm/predict", request.param)
     if img_path.split(".")[-1] == "tgz":
         basepath = tmp_path_factory.getbasetemp()
-        with tarfile.TarFile.open(img_path) as tar:
-            tar.extractall(basepath)
-            fname = os.path.basename(img_path.split(".")[0])
-            img_path = os.path.join(basepath, fname)
+        extract_file(img_path, dest=basepath)
+        fname = os.path.basename(img_path.split(".")[0])
+        img_path = os.path.join(basepath, fname)
     return img_path
 
 
@@ -232,12 +230,11 @@ def svm_labeled_dataset():
 @fixture(scope="session", params=["img.tgz", "img_data.npz"])
 def svm_train_img(request, tmp_path_factory):
     img_path = os.path.join("tests/data/svm/train", request.param)
+    fname = os.path.basename(img_path.split(".")[0])
     if img_path.split(".")[-1] == "tgz":
         basepath = tmp_path_factory.getbasetemp()
-        with tarfile.TarFile.open(img_path) as tar:
-            tar.extractall(basepath)
-            fname = os.path.basename(img_path.split(".")[0])
-            img_path = os.path.join(basepath, fname)
+        extract_file(img_path, dest=basepath)
+        img_path = os.path.join(basepath, fname)
     return img_path
 
 
@@ -258,9 +255,15 @@ def draw_mosaic_pattern(request):
 
 
 # PREPROCESSOR: SCRUB
-@fixture(scope="function")
+@fixture(scope="module")
 def raw_csv_file():
     return "tests/data/svm/prep/single_scrub.csv"
+
+
+@fixture(scope="module")
+def raw_svm_data(raw_csv_file):
+    data = pd.read_csv(raw_csv_file, index_col="index")
+    return data
 
 
 @fixture(scope="function")
@@ -269,13 +272,25 @@ def h5_data():
 
 
 @fixture(scope="function")
-def scrubbed_cols_file():
+def scrubbed_svm_file():
     return "tests/data/svm/prep/scrubbed_cols.csv"
+
+
+@fixture(scope="function")
+def scrubbed_svm_data(scrubbed_svm_file):
+    data = pd.read_csv(scrubbed_svm_file, index_col="index")
+    return data
 
 
 @fixture(scope="function")
 def scraped_fits_file():
     return "tests/data/svm/prep/scraped_fits.csv"
+
+
+@fixture(scope="function")
+def scraped_fits_data(scraped_fits_file):
+    data = pd.read_csv(scraped_fits_file, index_col="index")
+    return data
 
 
 @fixture(scope="function")

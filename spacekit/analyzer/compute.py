@@ -5,9 +5,6 @@ import itertools
 import numpy as np
 import pandas as pd
 import datetime as dt
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-import plotly.graph_objects as go
 from sklearn.metrics import (
     roc_curve,
     roc_auc_score,
@@ -17,14 +14,39 @@ from sklearn.metrics import (
     confusion_matrix,
 )
 from tensorflow.python.ops.numpy_ops import np_config
+from spacekit.logger.log import Logger
+
+try:
+    import plotly.graph_objects as go
+    import matplotlib as mpl
+    import matplotlib.pyplot as plt
+except ImportError:
+    go = None
+    mpl = None
+    plt = None
+
 
 plt.style.use("seaborn-bright")
 font_dict = {"family": "monospace", "size": 16}  # Titillium Web
 mpl.rc("font", **font_dict)
 
 
+def check_viz_imports():
+    return go is not None
+
+
 class Computer(object):
-    def __init__(self, algorithm, res_path=None, show=False, validation=False):
+    def __init__(
+        self,
+        algorithm,
+        res_path=None,
+        show=False,
+        validation=False,
+        name="Computer",
+        **log_kws,
+    ):
+        self.__name__ = name
+        self.log = Logger(self.__name__, **log_kws).spacekit_logger()
         self.algorithm = algorithm
         self.res_path = res_path
         self.show = show
@@ -51,6 +73,14 @@ class Computer(object):
         self.loss_fig = None
         self.roc_fig = None
         self.pr_fig = None
+        if not check_viz_imports():
+            self.log.error("plotly and/or matplotlib not installed.")
+            raise ImportError(
+                "You must install plotly (`pip install plotly`) "
+                "and matplotlib<4 (`pip install matplotlib<4`) "
+                "for the compute module to work."
+                "\n\nInstall extra deps via `pip install spacekit[x]`"
+            )
 
     def inputs(self, model, history, X_train, y_train, X_test, y_test, test_idx):
         """Instantiates training vars as attributes. By default, a Computer object is instantiated without these - they are only needed for calculating and storing
@@ -143,7 +173,7 @@ class Computer(object):
             key = f"{self.res_path}/{k}"
             with open(key, "wb") as pyfi:
                 pickle.dump(v, pyfi)
-        print(f"Results saved to: {self.res_path}")
+        self.log.info(f"Results saved to: {self.res_path}")
 
     def upload(self):
         """Imports model training results (`outputs` previously calculated by Computer obj) from local pickle objects. These can then be used for plotting/analysis.
@@ -153,19 +183,26 @@ class Computer(object):
         dictionary
             model training results loaded from files on local disk.
         """
+        outputs = {}
         if self.res_path is None:
             try:
                 self.res_path = glob.glob(f"data/*/results/{self.algorithm}")[0]
             except Exception as e:
-                print(f"No results found @ {self.res_path} \n", e)
-        if not os.path.exists(self.res_path):
-            print(f"Path DNE @ {self.res_path}")
+                self.log.error(f"No results found @ {self.res_path} \n", e)
+                return outputs
+        if os.path.exists(self.res_path):
+            try:
+                for r in glob.glob(f"{self.res_path}/*"):
+                    key = r.split("/")[-1]
+                    with open(r, "rb") as pyfi:
+                        outputs[key] = pickle.load(pyfi)
+            except ModuleNotFoundError:
+                self.log.error(
+                    "Results were saved in an older version of Pandas "
+                    " (<2.x). Downgrade to Pandas 1.x and try again."
+                )
         else:
-            outputs = {}
-            for r in glob.glob(f"{self.res_path}/*"):
-                key = r.split("/")[-1]
-                with open(r, "rb") as pyfi:
-                    outputs[key] = pickle.load(pyfi)
+            self.log.error(f"Path DNE @ {self.res_path}")
         return outputs
 
     """ MODEL PERFORMANCE METRICS """
@@ -233,7 +270,6 @@ class Computer(object):
         Computer object
             updated with standard plot attribute values
         """
-
         self.acc_fig = self.keras_acc_plot()
         self.loss_fig = self.keras_loss_plot()
         self.roc_fig = self.make_roc_curve()
@@ -583,8 +619,17 @@ class ComputeClassifier(Computer):
         res_path="results/mem_bin",
         show=False,
         validation=False,
+        name="ComputeClassifier",
+        **log_kws,
     ):
-        super().__init__(algorithm, res_path=res_path, show=show, validation=validation)
+        super().__init__(
+            algorithm,
+            res_path=res_path,
+            show=show,
+            validation=validation,
+            name=name,
+            **log_kws,
+        )
         self.classes = classes
 
     def make_outputs(self, dl=True):
@@ -709,6 +754,7 @@ class ComputeBinary(ComputeClassifier):
         res_path="results/svm",
         show=False,
         validation=False,
+        **log_kws,
     ):
         super().__init__(
             algorithm=algorithm,
@@ -716,6 +762,8 @@ class ComputeBinary(ComputeClassifier):
             res_path=res_path,
             show=show,
             validation=validation,
+            name="ComputeBinary",
+            **log_kws,
         )
         self.builder_inputs(builder=builder)
 
@@ -768,6 +816,7 @@ class ComputeMulti(ComputeClassifier):
         res_path="results/mem_bin",
         show=False,
         validation=False,
+        **log_kws,
     ):
         super().__init__(
             algorithm=algorithm,
@@ -775,6 +824,8 @@ class ComputeMulti(ComputeClassifier):
             res_path=res_path,
             show=show,
             validation=validation,
+            name="ComputeMulti",
+            **log_kws,
         )
         if builder:
             self.inputs(
@@ -920,9 +971,15 @@ class ComputeRegressor(Computer):
         res_path="results/memory",
         show=False,
         validation=False,
+        **log_kws,
     ):
         super().__init__(
-            algorithm=algorithm, res_path=res_path, show=show, validation=validation
+            algorithm=algorithm,
+            res_path=res_path,
+            show=show,
+            validation=validation,
+            name="ComputeRegressor",
+            **log_kws,
         )
         if builder:
             self.inputs(

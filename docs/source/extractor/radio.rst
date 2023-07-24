@@ -12,3 +12,6 @@ Querying and downloading .fits files from a MAST s3 bucket on AWS. Unlike `space
    :members:
    :undoc-members:
    :show-inheritance:
+
+.. autoclass:: HstSvmRadio
+    :members:

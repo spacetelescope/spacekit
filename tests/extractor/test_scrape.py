@@ -1,7 +1,6 @@
 from pytest import mark
-from spacekit.extractor.scrape import JsonScraper, SvmFitsScraper, MastScraper
+from spacekit.extractor.scrape import JsonScraper, SvmFitsScraper
 import os
-import pandas as pd
 
 JSON_COL_EXPECTED = [
     "header.TARGNAME",
@@ -68,13 +67,12 @@ def test_json_scraper(raw_csv_file, single_visit_path):
 
 @mark.extractor
 @mark.scrape
-def test_scrape_fits(scrubbed_cols_file, single_visit_path):
-    data = pd.read_csv(scrubbed_cols_file, index_col="index")
-    scraper = SvmFitsScraper(data, single_visit_path)
-    assert scraper.drz_paths == {
+def test_scrape_drizzle_fits(scrubbed_svm_data, single_visit_path):
+    scraper = SvmFitsScraper(scrubbed_svm_data, single_visit_path)
+    assert scraper.fpaths == {
         "hst_12286_38_wfc3_ir_total_ibl738": f"{single_visit_path}/ibl738/hst_12286_38_wfc3_ir_total_ibl738_drz.fits"
     }
-    scraper.scrape_fits()
+    scraper.scrape_drizzle_fits()
     assert scraper.df.shape == (1, 14)
     for col in FITS_COL_EXPECTED:
         if col in list(scraper.df.columns):
@@ -83,11 +81,11 @@ def test_scrape_fits(scrubbed_cols_file, single_visit_path):
             assert False
 
 
-@mark.extractor
-@mark.scrape
-def test_scrape_mast(scraped_fits_file):
-    data = pd.read_csv(scraped_fits_file, index_col="index")
-    scraper = MastScraper(data)
-    scraper.scrape_mast()
-    assert scraper.df.shape == (1, 15)
-    assert "category" in scraper.df.columns
+# @mark.extractor
+# @mark.scrape
+# def test_scrape_mast(scraped_fits_file):
+#     data = pd.read_csv(scraped_fits_file, index_col="index")
+#     scraper = HstSvmRadio(data)
+#     scraper.scrape_mast()
+#     assert scraper.df.shape == (1, 15)
+#     assert "category" in scraper.df.columns

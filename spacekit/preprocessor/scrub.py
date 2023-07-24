@@ -9,11 +9,11 @@ from spacekit.preprocessor.transform import (
     offset_statistics,
 )
 from spacekit.extractor.scrape import (
-    MastScraper,
     SvmFitsScraper,
     JwstFitsScraper,
     scrape_catalogs,
 )
+from spacekit.extractor.radio import HstSvmRadio
 from spacekit.preprocessor.encode import HstSvmEncoder, JwstEncoder, encode_booleans
 from spacekit.logger.log import Logger
 
@@ -187,7 +187,6 @@ class HstSvmScrubber(Scrubber):
             name="HstSvmScrubber",
             **log_kws,
         )
-
         self.input_path = input_path
         self.make_pos_list = make_pos_list
         self.crpt = crpt
@@ -204,7 +203,7 @@ class HstSvmScrubber(Scrubber):
         n_retries = 3
         while n_retries > 0:
             try:
-                self.df = MastScraper(self.df).scrape_mast()
+                self.df = HstSvmRadio(self.df).scrape_mast()
                 n_retries = 0
             except Exception as e:
                 self.log.warning(e)
@@ -213,15 +212,14 @@ class HstSvmScrubber(Scrubber):
         # STAGE 3 final encoding
         enc = HstSvmEncoder(self.df)
         self.df = enc.encode_features()
-        enc.display_encoding()
         if self.save_raw is True:
             super().save_csv_file(pfx="raw_")
-        super().drop_and_set_cols()
+        self.drop_and_set_cols()
         # STAGE 4 target labels
         self.make_pos_label_list()
         self.add_crpt_labels()
         self.find_subsamples()
-        super().save_csv_file()
+        self.save_csv_file()
         return self
 
     # TODO
@@ -246,6 +244,7 @@ class HstSvmScrubber(Scrubber):
         self.find_subsamples()
         super().save_csv_file()
 
+    # TODO
     def run_qa(self, total_obj_file="total_obj_list_full.pickle"):
         pass
         # import pickle
@@ -266,7 +265,7 @@ class HstSvmScrubber(Scrubber):
         self.scrub_columns()
         # STAGE 2 initial encoding
         self.df = SvmFitsScraper(self.df, self.input_path).scrape_fits()
-        self.df = MastScraper(self.df).scrape_mast()
+        self.df = HstSvmRadio(self.df).scrape_mast()
 
     def scrub_qa_summary(self, csvfile="single_visit_mosaics*.csv", idx=0):
         """Alternative if no .json files available (QA step not run during processing)"""

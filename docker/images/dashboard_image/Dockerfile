@@ -38,7 +38,7 @@ WORKDIR /home/developer
 RUN python3 -m venv /home/developer/venv && \
   pip install --upgrade pip && \
   pip install \
-    spacekit \
+    spacekit[x] \
     dash~=2.0.0 \
     dash-cytoscape \
     dash-daq && \

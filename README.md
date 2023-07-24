@@ -15,6 +15,10 @@ Astronomical Data Science and Machine Learning Toolkit
 **Install with pip**
 
 ```bash
+# install full deps for using analysis / data viz / non-pipeline tools
+$ pip install spacekit[x]
+
+# for minimal STScI pipeline operations (skopes module) install:
 $ pip install spacekit
 ```
 
@@ -23,7 +27,7 @@ $ pip install spacekit
 ```bash
 $ git clone https://github.com/alphasentaurii/spacekit
 $ cd spacekit
-$ pip install -e .
+$ pip install -e .[x]
 ```
 
 *Testing*

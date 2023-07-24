@@ -5,7 +5,6 @@ from zipfile import ZipFile
 import numpy as np
 import time
 import datetime as dt
-from tensorflow.keras.utils import plot_model  # req: pydot, graphviz
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.models import Sequential, Model, load_model
 from tensorflow.keras import optimizers, callbacks
@@ -22,6 +21,7 @@ from tensorflow.keras.layers import (
     MaxPool3D,
     GlobalAveragePooling3D,
 )
+
 from tensorflow.keras.metrics import RootMeanSquaredError as RMSE
 from spacekit.generator.augment import augment_data, augment_image
 from spacekit.analyzer.track import stopwatch
@@ -352,6 +352,8 @@ class Builder:
         if output_path is None:
             output_path = os.getcwd()
         try:
+            from tensorflow.keras.utils import plot_model  # req: pydot, graphviz
+
             plot_model(
                 model,
                 to_file=f"{output_path}/{model.name}.png",
@@ -363,9 +365,10 @@ class Builder:
                 dpi=96,
                 layer_range=None,
             )
-        # TODO error handling
-        except Exception as e:
-            self.log.error(e)
+        except ImportError:
+            self.log.error(
+                "pydot and graphviz not installed: `pip install spacekit[viz]`"
+            )
 
     # TODO
     # def timer(self, func, model_name):
