@@ -416,5 +416,6 @@ class HstSvmRadio(Radio):
             params[idx]['obs_id'] = obs_id
             params[idx]['proposal_id'] = prop_id
             params[idx]['ra_targ'] = row[self.ra_col]
-            params[idx]['dec_targ'] = row[self.dec_targ]
+            params[idx]['dec_targ'] = row[self.dec_col]
         self.log.info(f"Other targets (ANY): {len(params)}")
+        return params

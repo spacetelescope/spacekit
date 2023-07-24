@@ -1,6 +1,5 @@
 from pytest import mark
 from spacekit.preprocessor.scrub import HstSvmScrubber
-import pandas as pd
 import os
 
 SCRUBBED_COLS = [
@@ -29,14 +28,13 @@ FINAL_COLS = [
     "cat",
 ]
 
-
+@mark.hst
 @mark.svm
 @mark.preprocessor
 @mark.scrub
-def test_svm_scrubber(raw_csv_file, single_visit_path):
-    data = pd.read_csv(raw_csv_file, index_col="index")
+def test_svm_scrubber(raw_svm_data, single_visit_path):
     scrubber = HstSvmScrubber(
-        single_visit_path, data=data, output_path="tmp", output_file="scrubbed", crpt=0
+        single_visit_path, data=raw_svm_data, output_path="tmp", output_file="scrubbed", crpt=0
     )
     assert scrubber.df.shape[1] == 9
     scrubber.preprocess_data()
@@ -50,13 +48,13 @@ def test_svm_scrubber(raw_csv_file, single_visit_path):
 
 
 # TEST SCRUBCOLS
+@mark.hst
 @mark.svm
 @mark.preprocessor
 @mark.scrub
-def test_scrub_cols(raw_csv_file, single_visit_path):
-    data = pd.read_csv(raw_csv_file, index_col="index")
+def test_scrub_cols(raw_svm_data, single_visit_path):
     scrubber = HstSvmScrubber(
-        single_visit_path, data=data, output_path="tmp", output_file="scrubbed", crpt=0
+        single_visit_path, data=raw_svm_data, output_path="tmp", output_file="scrubbed", crpt=0
     )
     scrubber.scrub_columns()
     assert scrubber.df.shape == (1, 10)

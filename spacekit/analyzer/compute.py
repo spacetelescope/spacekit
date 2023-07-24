@@ -160,7 +160,7 @@ class Computer(object):
             key = f"{self.res_path}/{k}"
             with open(key, "wb") as pyfi:
                 pickle.dump(v, pyfi)
-        print(f"Results saved to: {self.res_path}")
+        self.log.info(f"Results saved to: {self.res_path}")
 
     def upload(self):
         """Imports model training results (`outputs` previously calculated by Computer obj) from local pickle objects. These can then be used for plotting/analysis.
@@ -170,19 +170,26 @@ class Computer(object):
         dictionary
             model training results loaded from files on local disk.
         """
+        outputs = {}
         if self.res_path is None:
             try:
                 self.res_path = glob.glob(f"data/*/results/{self.algorithm}")[0]
             except Exception as e:
-                print(f"No results found @ {self.res_path} \n", e)
-        if not os.path.exists(self.res_path):
-            print(f"Path DNE @ {self.res_path}")
+                self.log.error(f"No results found @ {self.res_path} \n", e)
+                return outputs
+        if os.path.exists(self.res_path):
+            try:
+                for r in glob.glob(f"{self.res_path}/*"):
+                    key = r.split("/")[-1]
+                    with open(r, "rb") as pyfi:
+                        outputs[key] = pickle.load(pyfi)
+            except ModuleNotFoundError:
+                self.log.error(
+                    "Results were saved in an older version of Pandas "
+                    " (<2.x). Downgrade to Pandas 1.x and try again."
+                )
         else:
-            outputs = {}
-            for r in glob.glob(f"{self.res_path}/*"):
-                key = r.split("/")[-1]
-                with open(r, "rb") as pyfi:
-                    outputs[key] = pickle.load(pyfi)
+            self.log.error(f"Path DNE @ {self.res_path}")
         return outputs
 
     """ MODEL PERFORMANCE METRICS """

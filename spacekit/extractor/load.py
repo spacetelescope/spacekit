@@ -1,17 +1,21 @@
 import os
 import sys
+import glob
 import pandas as pd
 import numpy as np
 import json
 import pickle
 from zipfile import ZipFile
 import time
-from tensorflow.keras.preprocessing.image import load_img, img_to_array
 from sklearn.model_selection import train_test_split
 from spacekit.analyzer.track import stopwatch
 from spacekit.logger.log import Logger
 from tarfile import TarFile
 
+try:
+    from tensorflow.keras.utils import load_img, img_to_array # tensorflow >= 2.9
+except ImportError:
+    from keras.preprocessing.image import load_img, img_to_array # tensorflow < 2.9
 
 try:
     from tqdm import tqdm
@@ -623,29 +627,30 @@ def is_within_directory(directory, target):
     return prefix == abs_directory
 
 
-def safe_extract(tar, expath=".", members=None, *, numeric_owner=False):
-    directory = os.path.dirname(tar)
+def safe_extract(tar, fpath, expath=".", members=None, *, numeric_owner=False):
+    directory = os.path.dirname(fpath)
     for member in tar.getmembers():
         member_path = os.path.join(directory, member.name)
         if not is_within_directory(directory, member_path):
             raise Exception("WARNING: Attempted Path Traversal in Tar File")
-
     tar.extractall(expath, members, numeric_owner=numeric_owner)
 
 
 def extract_file(fpath, dest="."):
-    fp = fpath.split(".")
-    if len(fp) > 2:
-        mode = f"r:{fp[-1]}"
-        kind = fp[-2]
-    else:
-        kind = fp[-1]
+    if fpath.endswith("tgz") or fpath.endswith("tar.gz"):
+        kind = "tar"
+        mode = "r:gz"
+    elif fpath.endswith("tar"):
+        kind = "tar"
+        mode = "r"
+    elif fpath.endswith("zip"):
+        kind = "zip"
         mode = "r"
     if kind == "zip":
         with ZipFile(fpath, mode) as zip_ref:
             zip_ref.extractall(dest)
     elif kind == "tar":
         with TarFile.open(fpath, mode) as tar:
-            safe_extract(tar, expath=dest)
+            safe_extract(tar, fpath, expath=dest)
     else:
         raise Exception(f"Could not extract file of type {kind}")

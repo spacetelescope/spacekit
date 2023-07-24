@@ -212,15 +212,14 @@ class HstSvmScrubber(Scrubber):
         # STAGE 3 final encoding
         enc = HstSvmEncoder(self.df)
         self.df = enc.encode_features()
-        enc.display_encoding()
         if self.save_raw is True:
             super().save_csv_file(pfx="raw_")
-        super().drop_and_set_cols()
+        self.drop_and_set_cols()
         # STAGE 4 target labels
         self.make_pos_label_list()
         self.add_crpt_labels()
         self.find_subsamples()
-        super().save_csv_file()
+        self.save_csv_file()
         return self
 
     # TODO

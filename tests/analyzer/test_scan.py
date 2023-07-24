@@ -103,7 +103,7 @@ def test_scan_acc_loss_bars(scanner):
     figs = [scanner.acc_fig, scanner.loss_fig, scanner.acc_loss_fig]
     fig_lengths = e["fig_lengths"]
     for fig, length in list(zip(figs, fig_lengths)):
-        assert str(type(fig)) == "<class 'plotly.graph_objects._figure.Figure'>"
+        assert str(type(fig)) == "<class 'plotly.graph_objs._figure.Figure'>"
         assert len(fig.data) == length
 
 

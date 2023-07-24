@@ -1,5 +1,4 @@
 import os
-from keras.utils.data_utils import get_file
 import boto3
 import numpy as np
 import pandas as pd
@@ -13,6 +12,15 @@ from astropy.io import fits, ascii
 from botocore.config import Config
 from decimal import Decimal
 from boto3.dynamodb.conditions import Attr
+
+try:
+    from keras.utils import get_file
+except ImportError:
+    try:
+        from keras.utils.data_utils import get_file
+    except ImportError:
+        get_file = None
+
 from spacekit.logger.log import Logger
 
 
@@ -669,6 +677,7 @@ class FitsScraper(FileScraper):
         self.input_path = input_path
         self.genkeys = genkeys
         self.scikeys = scikeys
+        self.fpaths = None
 
     def get_input_exposures(self, sfx="_uncal.fits"):
         """create list of local paths to L1B exposure files for a given program
@@ -724,23 +733,25 @@ class FitsScraper(FileScraper):
         return exp_headers
 
     def find_drz_paths(self, dname_col="dataset", drzimg_col="imgname"):
-        self.drz_paths = {}
+        if not self.fpaths:
+            self.fpaths = dict()
         try:
             for idx, row in self.df.iterrows():
-                self.drz_paths[idx] = ""
+                self.fpaths[idx] = ""
                 dname = row[dname_col]
                 drz = row[drzimg_col]
                 path = os.path.join(self.input_path, dname, drz)
-                self.drz_paths[idx] = path
+                self.fpaths[idx] = path
         except Exception:
             self.log.error("Unable to locate drizzle files from dataframe.")
-        return self.drz_paths
+        return self.fpaths
 
     def scrape_drizzle_fits(self):
-        self.drz_paths = self.find_drz_paths()
+        if not self.fpaths:
+            self.fpaths = self.find_drz_paths()
         self.log.info("\n*** Extracting fits data ***")
         fits_dct = {}
-        for key, path in self.drz_paths.items():
+        for key, path in self.fpaths.items():
             fits_dct[key] = {}
             scihdr = fits.getheader(path, ext=1)
             for k in self.scikeys:
@@ -816,9 +827,10 @@ class SvmFitsScraper(FitsScraper):
         super().__init__(
             data, input_path, scikeys=self.scikeys, name="SvmFitsScraper", **log_kws
         )
+        self.fpaths = self.find_drz_paths(dname_col="dataset", drzimg_col="imgname")
 
     def scrape_fits(self):
-        self.df = super().scrape_drizzle_fits()
+        return self.scrape_drizzle_fits()
 
 
 class JsonScraper(FileScraper):

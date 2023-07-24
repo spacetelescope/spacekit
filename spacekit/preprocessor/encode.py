@@ -317,7 +317,7 @@ class HstSvmEncoder(CategoricalEncoder):
         )
 
     def encode_features(self):
-        super()._encode_features()
+        return super()._encode_features()
 
     def make_keypairs(self):
         """Instantiates key-pair dictionaries for each of the categorical features listed in `fkeys`. Except for the target classification "category" feature, each string value is assigned an integer in alphabetical and increasing order, respectively. For the image target category feature, an integer is assigned to each abbreviated version of strings collected from the MAST archive). The extra abbreviation step is done to allow for debugging and analysis purposes (value-count of abbreviated versions are printed to stdout before the final encoding).
