@@ -53,7 +53,7 @@ class Radio:
         self.location = {"LocationConstraint": self.region}
         self.target_list = None
         self.proposal_id = None  # '13926'
-        self.collection = None # "K2" "HST" "HLA" "JWST"
+        self.collection = None  # "K2" "HST" "HLA" "JWST"
         self.filters = None  # 'F657N'
         self.obsid = None  # 'ICK90[5678]*'
         self.subgroup = None  # ['FLC', 'SPT'], ["LLC"], ["CAL"], ["I2D"]
@@ -71,9 +71,7 @@ class Radio:
                 "`pip install spacekit[x]`"
             )
 
-
         self.configure_aws()
-        
 
     def configure_aws(self):
         """Sets cloud (AWS) configuration On or Off."""
@@ -91,8 +89,8 @@ class Radio:
         """
         query_params = dict()
         for k, v in kwargs.items():
-            if v != None:
-                query_params[k]=v
+            if v is not None:
+                query_params[k] = v
         return query_params
 
     def set_product_params(self, obs, obsid=None):
@@ -101,13 +99,12 @@ class Radio:
         """
         if self.collection and self.exptime:
             want = (obs["obs_collection"] == self.collection) & (
-                    obs["t_exptime"] == self.exptime
+                obs["t_exptime"] == self.exptime
             )
         elif obsid:
-            want = (obs['obsid'] == obsid)
+            want = obs["obsid"] == obsid
 
         return want
-
 
     def prop_search(self, proposal_id, filters, obsid, subgroup):
         """Sets parameters for prop search as object attributes: proposal ID, filters, obsid and subgroup.
@@ -301,7 +298,14 @@ class Radio:
         bar.finish()
         return target_categories
 
-    def search_by_radec(self, data, propid="proposal_id", ra="ra_targ", dec="dec_targ", datacol="target_classification"):
+    def search_by_radec(
+        self,
+        data,
+        propid="proposal_id",
+        ra="ra_targ",
+        dec="dec_targ",
+        datacol="target_classification",
+    ):
         """Scrapes MAST for remaining target classifications that could not be identified using target name. This method instead uses a broader set of query parameters: the ``ra_targ`` and ``dec_targ`` coordinates along with the dataset's proposal ID. If multiple datasets are found to match, the first of these containing a target_classification value will be used.
 
         Returns
@@ -312,9 +316,7 @@ class Radio:
         other_cat = {}
         if len(data) > 0:
             bar = ProgressBar().start()
-            for x, (k, v) in zip(
-                bar(range(len(data))), data.items()
-            ):
+            for x, (k, v) in zip(bar(range(len(data))), data.items()):
                 other_cat[k] = {}
                 propid, ra, dec = v[propid], v[ra], v[dec]
                 obs = Observations.query_criteria(
@@ -413,9 +415,9 @@ class HstSvmRadio(Radio):
         for idx, row in self.targ_any.iterrows():
             params[idx] = dict()
             obs_id, prop_id = self.extract_params_from_index(idx)
-            params[idx]['obs_id'] = obs_id
-            params[idx]['proposal_id'] = prop_id
-            params[idx]['ra_targ'] = row[self.ra_col]
-            params[idx]['dec_targ'] = row[self.dec_col]
+            params[idx]["obs_id"] = obs_id
+            params[idx]["proposal_id"] = prop_id
+            params[idx]["ra_targ"] = row[self.ra_col]
+            params[idx]["dec_targ"] = row[self.dec_col]
         self.log.info(f"Other targets (ANY): {len(params)}")
         return params

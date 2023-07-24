@@ -1,6 +1,5 @@
 import os
 import sys
-import glob
 import pandas as pd
 import numpy as np
 import json
@@ -13,9 +12,9 @@ from spacekit.logger.log import Logger
 from tarfile import TarFile
 
 try:
-    from tensorflow.keras.utils import load_img, img_to_array # tensorflow >= 2.9
+    from tensorflow.keras.utils import load_img, img_to_array  # tensorflow >= 2.9
 except ImportError:
-    from keras.preprocessing.image import load_img, img_to_array # tensorflow < 2.9
+    from keras.preprocessing.image import load_img, img_to_array  # tensorflow < 2.9
 
 try:
     from tqdm import tqdm
@@ -368,7 +367,9 @@ class SVMImageIO(ImageIO):
         v: float, optional
             size ratio for validation set, by default 0.85
         """
-        super().__init__(img_path, format=format, data=data, name="SVMImageIO", **log_kws)
+        super().__init__(
+            img_path, format=format, data=data, name="SVMImageIO", **log_kws
+        )
         self.w = w
         self.h = h
         self.d = d

@@ -353,6 +353,7 @@ class Builder:
             output_path = os.getcwd()
         try:
             from tensorflow.keras.utils import plot_model  # req: pydot, graphviz
+
             plot_model(
                 model,
                 to_file=f"{output_path}/{model.name}.png",
@@ -365,7 +366,9 @@ class Builder:
                 layer_range=None,
             )
         except ImportError:
-            self.log.error("pydot and graphviz not installed: `pip install spacekit[viz]`")
+            self.log.error(
+                "pydot and graphviz not installed: `pip install spacekit[viz]`"
+            )
 
     # TODO
     # def timer(self, func, model_name):

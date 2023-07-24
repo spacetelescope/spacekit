@@ -81,7 +81,9 @@ class MegaScanner:
 
     """
 
-    def __init__(self, perimeter="data/20??-*-*-*", primary=-1, name="MegaScanner", **log_kws):
+    def __init__(
+        self, perimeter="data/20??-*-*-*", primary=-1, name="MegaScanner", **log_kws
+    ):
         self.__name__ = name
         self.log = Logger(self.__name__, **log_kws).spacekit_logger()
         self.perimeter = perimeter
@@ -547,7 +549,9 @@ class HstCalScanner(MegaScanner):
     """
 
     def __init__(self, perimeter="data/20??-*-*-*", primary=-1, **log_kws):
-        super().__init__(perimeter=perimeter, primary=primary, name="HstCalScanner", **log_kws)
+        super().__init__(
+            perimeter=perimeter, primary=primary, name="HstCalScanner", **log_kws
+        )
         self.labels = ["2g", "8g", "16g", "64g"]
         self.classes = [0, 1, 2, 3]
         self.res_keys = dict(mem_bin=None, memory=None, wallclock=None)
@@ -613,7 +617,9 @@ class HstSvmScanner(MegaScanner):
     """
 
     def __init__(self, perimeter="data/20??-*-*-*", primary=-1, **log_kws):
-        super().__init__(perimeter=perimeter, primary=primary, name="HstSvmScanner", **log_kws)
+        super().__init__(
+            perimeter=perimeter, primary=primary, name="HstSvmScanner", **log_kws
+        )
         self.labels = ["aligned", "misaligned"]
         self.classes = [0, 1]
         self.res_keys = {"test": {}, "val": {}}

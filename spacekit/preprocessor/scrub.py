@@ -244,7 +244,7 @@ class HstSvmScrubber(Scrubber):
         self.find_subsamples()
         super().save_csv_file()
 
-    #TODO
+    # TODO
     def run_qa(self, total_obj_file="total_obj_list_full.pickle"):
         pass
         # import pickle

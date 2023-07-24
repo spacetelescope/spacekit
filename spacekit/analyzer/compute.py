@@ -28,11 +28,21 @@ plt.style.use("seaborn-bright")
 font_dict = {"family": "monospace", "size": 16}  # Titillium Web
 mpl.rc("font", **font_dict)
 
+
 def check_plotly():
     return go is not None
 
+
 class Computer(object):
-    def __init__(self, algorithm, res_path=None, show=False, validation=False, name="Computer", **log_kws):
+    def __init__(
+        self,
+        algorithm,
+        res_path=None,
+        show=False,
+        validation=False,
+        name="Computer",
+        **log_kws,
+    ):
         self.__name__ = name
         self.log = Logger(self.__name__, **log_kws).spacekit_logger()
         self.algorithm = algorithm
@@ -609,7 +619,14 @@ class ComputeClassifier(Computer):
         name="ComputeClassifier",
         **log_kws,
     ):
-        super().__init__(algorithm, res_path=res_path, show=show, validation=validation, name=name, **log_kws)
+        super().__init__(
+            algorithm,
+            res_path=res_path,
+            show=show,
+            validation=validation,
+            name=name,
+            **log_kws,
+        )
         self.classes = classes
 
     def make_outputs(self, dl=True):
@@ -954,7 +971,12 @@ class ComputeRegressor(Computer):
         **log_kws,
     ):
         super().__init__(
-            algorithm=algorithm, res_path=res_path, show=show, validation=validation, name="ComputeRegressor", **log_kws,
+            algorithm=algorithm,
+            res_path=res_path,
+            show=show,
+            validation=validation,
+            name="ComputeRegressor",
+            **log_kws,
         )
         if builder:
             self.inputs(

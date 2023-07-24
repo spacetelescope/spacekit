@@ -24,7 +24,7 @@ def pixel_sky_separation(ra, dec, p_coords, scale, unit="deg"):
 
 def offset_statistics(offsets, k, refpix=None, pfx=""):
     if refpix is None:
-        refpix = {k:dict()}
+        refpix = {k: dict()}
     offsets = np.asarray(offsets)
     refpix[k][f"{pfx}max_offset"] = np.max(offsets)
     refpix[k][f"{pfx}mean_offset"] = np.mean(offsets)

@@ -8,6 +8,7 @@ from scipy.stats import iqr
 from spacekit.preprocessor.transform import PowerX
 from spacekit.generator.augment import augment_image
 from spacekit.logger.log import Logger
+
 try:
     from keras.preprocessing.image import array_to_img
 except ImportError:
@@ -30,6 +31,7 @@ except ImportError:
 def check_plotly():
     return go is not None
 
+
 plt.style.use("seaborn-bright")
 font_dict = {"family": "monospace", "size": 16}
 mpl.rc("font", **font_dict)
@@ -45,7 +47,7 @@ class ImagePreviews:
         self.y = labels
         if not check_plotly():
             self.log.error("plotly not installed.")
-            raise ImportError(                
+            raise ImportError(
                 "You must install plotly (`pip install plotly`) "
                 "for ImagePreviews to work."
                 "\n\nInstall extra deps via `pip install spacekit[x]`"
@@ -230,7 +232,16 @@ class SVMPreviews(ImagePreviews):
 class DataPlots:
     """Parent class for drawing exploratory data analysis plots from a dataframe."""
 
-    def __init__(self, df, width=1300, height=700, show=False, save_html=None, name="DataPlots", **log_kws):
+    def __init__(
+        self,
+        df,
+        width=1300,
+        height=700,
+        show=False,
+        save_html=None,
+        name="DataPlots",
+        **log_kws,
+    ):
         self.__name__ = name
         self.log = Logger(self.__name__, **log_kws).spacekit_logger()
         self.df = df
@@ -257,7 +268,7 @@ class DataPlots:
         self.kde = None
         if not check_plotly():
             self.log.error("plotly not installed.")
-            raise ImportError(                
+            raise ImportError(
                 "You must install plotly (`pip install plotly`) "
                 "for DataPlots to work."
                 "\n\nInstall extra deps via `pip install spacekit[x]`"
@@ -644,9 +655,24 @@ class HstSvmPlots(DataPlots):
     """
 
     def __init__(
-        self, df, group="det", width=1300, height=700, show=False, save_html=None, **log_kws,
+        self,
+        df,
+        group="det",
+        width=1300,
+        height=700,
+        show=False,
+        save_html=None,
+        **log_kws,
     ):
-        super().__init__(df, width=width, height=height, show=show, save_html=save_html, name="HstSvmPlots", **log_kws)
+        super().__init__(
+            df,
+            width=width,
+            height=height,
+            show=show,
+            save_html=save_html,
+            name="HstSvmPlots",
+            **log_kws,
+        )
         self.group = group
         self.telescope = "HST"
         self.target = "label"
