@@ -7,11 +7,29 @@ import numpy as np
 from astropy.wcs import WCS
 from astropy.io import fits, ascii
 from astropy.visualization import ImageNormalize, ZScaleInterval
-import matplotlib.pyplot as plt
 import time
-
 from spacekit.analyzer.track import stopwatch
 from spacekit.logger.log import Logger, SPACEKIT_LOG
+
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    plt = None
+
+try:
+    from tqdm import tqdm
+except ImportError:
+    tqdm = None
+
+
+def check_viz_imports():
+    return plt is not None
+
+def check_imports():
+    if not check_viz_imports():
+        return False
+    else:
+        return tqdm is not None
 
 
 class DrawMosaics:
@@ -54,11 +72,14 @@ class DrawMosaics:
         """
         self.__name__ = name
         self.log = Logger(self.__name__, **log_kws).setup_logger(logger=SPACEKIT_LOG)
-        try:
-            from tqdm import tqdm
-        except ImportError:
-            self.log.warning("tqdm is not installed. Use `pip install spacekit[x]`")
-        self.tqdm = tqdm
+        if not check_imports():
+            self.log.error("tqdm and/or matplotlib not installed.")
+            raise ImportError(
+                "You must install tqdm (`pip install tqdm`) "
+                "and matplotlib<4 (`pip install matplotlib<4`) "
+                "for the draw module to work."
+                "\n\nInstall extra deps via `pip install spacekit[x]`"
+            )
         self.input_path = input_path
         self.output_path = output_path
         self.check_output()
@@ -311,7 +332,7 @@ class DrawMosaics:
 
         print(f"Generating images for {len(self.datasets)} datasets.")
 
-        for dataset in self.tqdm(self.datasets):
+        for dataset in tqdm(self.datasets):
             if self.gen == 3:  # original, point-segment, and GAIA
                 self.draw_total_images(dataset)
                 self.draw_total_images(dataset, P=1, S=1)
@@ -441,7 +462,7 @@ class DrawMosaics:
             print("No datasets available. Exiting")
             sys.exit(1)
         print(f"Generating images for {len(self.datasets)} datasets.")
-        for dataset in self.tqdm(self.datasets):
+        for dataset in tqdm(self.datasets):
             self.draw_filter_images(dataset)
 
     def draw_filter_images(self, dataset):

@@ -5,8 +5,6 @@ import itertools
 import numpy as np
 import pandas as pd
 import datetime as dt
-import matplotlib as mpl
-import matplotlib.pyplot as plt
 from sklearn.metrics import (
     roc_curve,
     roc_auc_score,
@@ -20,8 +18,12 @@ from spacekit.logger.log import Logger
 
 try:
     import plotly.graph_objects as go
+    import matplotlib as mpl
+    import matplotlib.pyplot as plt
 except ImportError:
     go = None
+    mpl = None
+    plt = None
 
 
 plt.style.use("seaborn-bright")
@@ -29,7 +31,7 @@ font_dict = {"family": "monospace", "size": 16}  # Titillium Web
 mpl.rc("font", **font_dict)
 
 
-def check_plotly():
+def check_viz_imports():
     return go is not None
 
 
@@ -71,10 +73,11 @@ class Computer(object):
         self.loss_fig = None
         self.roc_fig = None
         self.pr_fig = None
-        if not check_plotly():
-            self.log.error("plotly not installed.")
+        if not check_viz_imports():
+            self.log.error("plotly and/or matplotlib not installed.")
             raise ImportError(
                 "You must install plotly (`pip install plotly`) "
+                "and matplotlib<4 (`pip install matplotlib<4`) "
                 "for the compute module to work."
                 "\n\nInstall extra deps via `pip install spacekit[x]`"
             )

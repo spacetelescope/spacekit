@@ -2,8 +2,6 @@
 import os
 import numpy as np
 import pandas as pd
-import matplotlib as mpl
-import matplotlib.pyplot as plt
 from scipy.stats import iqr
 from spacekit.preprocessor.transform import PowerX
 from spacekit.generator.augment import augment_image
@@ -13,6 +11,16 @@ try:
     from keras.preprocessing.image import array_to_img
 except ImportError:
     from tensorflow.keras.utils import array_to_img
+
+try:
+    import matplotlib as mpl
+    import matplotlib.pyplot as plt
+    plt.style.use("seaborn-bright")
+    font_dict = {"family": "monospace", "size": 16}
+    mpl.rc("font", **font_dict)
+except ImportError:
+    mpl = None
+    plt = None
 
 try:
     import plotly.graph_objects as go
@@ -28,13 +36,8 @@ except ImportError:
     px = None
 
 
-def check_plotly():
+def check_viz_imports():
     return go is not None
-
-
-plt.style.use("seaborn-bright")
-font_dict = {"family": "monospace", "size": 16}
-mpl.rc("font", **font_dict)
 
 
 class ImagePreviews:
@@ -45,14 +48,14 @@ class ImagePreviews:
         self.log = Logger(self.__name__, **log_kws).spacekit_logger()
         self.X = X
         self.y = labels
-        if not check_plotly():
-            self.log.error("plotly not installed.")
+        if not check_viz_imports():
+            self.log.error("plotly and/or matplotlib not installed.")
             raise ImportError(
                 "You must install plotly (`pip install plotly`) "
-                "for ImagePreviews to work."
+                "and matplotlib<4 (`pip install matplotlib<4`) "
+                "for the compute module to work."
                 "\n\nInstall extra deps via `pip install spacekit[x]`"
             )
-
 
 class SVMPreviews(ImagePreviews):
     """ImagePreviews subclass for previewing SVM images. Primarily can be used to compare original with augmented versions.
@@ -266,11 +269,12 @@ class DataPlots:
         self.bar = None
         self.groupedbar = None
         self.kde = None
-        if not check_plotly():
-            self.log.error("plotly not installed.")
+        if not check_viz_imports():
+            self.log.error("plotly and/or matplotlib not installed.")
             raise ImportError(
                 "You must install plotly (`pip install plotly`) "
-                "for DataPlots to work."
+                "and matplotlib<4 (`pip install matplotlib<4`) "
+                "for the compute module to work."
                 "\n\nInstall extra deps via `pip install spacekit[x]`"
             )
 
