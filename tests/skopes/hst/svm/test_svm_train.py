@@ -30,10 +30,10 @@ PARAMS = dict(
 @mark.svm
 @mark.train
 @mark.parametrize("norm", [(1), (0)])
-def test_svm_training(svm_labeled_dataset, svm_train_npz, norm):
+def test_svm_training(labeled_dataset, svm_train_npz, norm):
     output_path = os.path.join("tmp", "2021-11-04-1636048291")
     ens, com, _ = run_training(
-        svm_labeled_dataset,
+        labeled_dataset,
         svm_train_npz,
         img_size=128,
         norm=norm,
@@ -70,9 +70,9 @@ def test_svm_training(svm_labeled_dataset, svm_train_npz, norm):
 
 @mark.svm
 @mark.train
-def test_load_training_data(svm_labeled_dataset, svm_train_img):
+def test_load_training_data(labeled_dataset, svm_train_img):
     tv_idx, XTR, YTR, XTS, YTS, XVL, YVL = load_ensemble_data(
-        svm_labeled_dataset,
+        labeled_dataset,
         svm_train_img,
         img_size=128,
         norm=0,

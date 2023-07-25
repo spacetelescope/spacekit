@@ -130,10 +130,6 @@ def pytest_addoption(parser):
 def env(request):
     return request.config.getoption("--env")
 
-# @fixture(scope="session")
-# def cfg(env):
-#     cfg = Config(env)
-#     return cfg
 
 @fixture(scope="session", params=["cal", "svm"])
 def skope(request):
@@ -154,7 +150,7 @@ def res_data_path(test_data, skope):
     if not os.path.exists(skope_data):
         with ZipFile(skope.data_path, "r") as z:
             z.extractall(os.path.dirname(skope_data))
-    return skope_data 
+    return skope_data
 
 
 @fixture(scope="session")
@@ -187,6 +183,16 @@ def explorer(skope, res_data_path):
     hst.env = skope.env
     return hst
 
+@fixture(scope="session")
+def labeled_dataset(skope):
+    return skope.labeled
+    # return "tests/data/svm/train/training.csv"
+
+
+@fixture(scope="session")  # session
+def unlabeled_dataset(skope):
+    return skope.unlabeled
+
 
 # SVM PREP
 @fixture(scope="session")  # "ibl738.tgz"
@@ -204,7 +210,7 @@ def img_outpath(tmp_path):
     return os.path.join(tmp_path, "img")
 
 
-# SVM PREDICT
+# # SVM PREDICT
 @fixture(scope="function")
 def svm_unlabeled_dataset():
     return "tests/data/svm/predict/unlabeled.csv"
@@ -221,7 +227,7 @@ def svm_pred_img(request, tmp_path_factory):
     return img_path
 
 
-# SVM TRAIN
+# # SVM TRAIN
 @fixture(scope="function")  # session
 def svm_labeled_dataset():
     return "tests/data/svm/train/training.csv"

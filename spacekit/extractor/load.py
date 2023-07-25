@@ -667,10 +667,11 @@ def save_multitype_data(data_dict, output_path, **npz_kwargs):
             v = np.asarray(v)
             np.save(f"{output_path}/{k}.npy", v)
         elif isinstance(v, pd.DataFrame):
-            v[v.index.name] = v.index
+            if v.index.name:
+                v[v.index.name] = v.index
             v.to_csv(f"{output_path}/{k}.csv", index=False)
         elif isinstance(v, pd.Series):
-            v.to_csv(f"{output_path}/{k}.csv", index=False)
+            v.to_csv(f"{output_path}/{k}.csv", index=True)
         elif isinstance(v, str):
             save_json(v, f"{output_path}/{k}.json")
         else:
@@ -696,7 +697,7 @@ def save_multitype_data(data_dict, output_path, **npz_kwargs):
                 save_json(v, f"{output_path}/{k}.json")
 
 
-def load_multitype_data(input_path):
+def load_multitype_data(input_path, index_names=['index','ipst']):
     outputs = dict()
     files = glob.glob(f"{input_path}/*")
     for f in files:
@@ -705,7 +706,11 @@ def load_multitype_data(input_path):
         keysfx = str(os.path.basename(f)).split(".")
         sfx = keysfx[-1] if len(keysfx) > 1 else None
         if sfx == "csv":
-            outputs[key] = pd.read_csv(f, index_col=-1)
+            outputs[key] = pd.read_csv(f)
+            if isinstance(outputs[key], pd.DataFrame):
+                setidx = [i for i in outputs[key].columns if i in index_names]
+                if setidx:
+                    outputs[key].set_index(setidx[0], inplace=True)
         elif sfx == "npy":
             outputs[key] = np.load(f)
         elif sfx == "txt":
@@ -746,3 +751,17 @@ def load_multitype_data(input_path):
                 f"Unrecognized file format: {sfx}. Allowed types are: csv, txt, json, npy, npz."
             )
     return outputs
+
+
+def overwrite_results(input_path, out=None, subdirs=["memory", "wallclock","mem_bin"], delete_existing=False, **npz_kwargs):
+    import shutil
+    for sub in subdirs:
+        respath = os.path.join(input_path, sub)
+        outputs = load_multitype_data(respath)
+        if out is None:
+            outpath = respath
+        else:
+            outpath = os.path.join(out, sub)
+        if delete_existing is True:
+            shutil.rmtree(outpath)
+        save_multitype_data(outputs, outpath, **npz_kwargs)
