@@ -28,14 +28,14 @@ def pytest_configure(config):
     if not os.path.exists(data_path):
         #tmp_path_factory = TempPathFactory(config.option.basetemp, retention_count, retention_policy, trace=config.trace.get("tmpdir"), _ispytest=True)
         tmp_path_factory = TempPathFactory(config.option.basetemp, trace=config.trace.get("tmpdir"), _ispytest=True)
-        data_uri = "https://zenodo.org/record/7839172/files/pytest_data.tgz?download=1"
+        data_uri = "https://zenodo.org/record/8180727/files/pytest_data.tgz?download=1"
         basepath = tmp_path_factory.getbasetemp()
         target_path = os.path.join(basepath, "pytest_data.tgz")
         with open(target_path, 'wb') as f:
             response = requests.get(data_uri, stream=True)
             if response.status_code == 200:
                 f.write(response.raw.read())
-        chksum = "d54b319e8535c62858ed3ad5083cf329941c2d1dd1a5e9687c5fe4ccea15f931"
+        chksum = "154c814e66fe9f4e5b8c6ed0f803590a5311024f12ad8fce8de94798212c68da"
         with open(target_path, "rb") as f:
             digest = hashlib.sha256(f.read())
             if digest.hexdigest() == chksum:

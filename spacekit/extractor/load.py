@@ -1,5 +1,6 @@
 import os
 import sys
+import glob
 import pandas as pd
 import numpy as np
 import json
@@ -655,3 +656,93 @@ def extract_file(fpath, dest="."):
             safe_extract(tar, fpath, expath=dest)
     else:
         raise Exception(f"Could not extract file of type {kind}")
+
+
+def save_multitype_data(data_dict, output_path, **npz_kwargs):
+    os.makedirs(output_path, exist_ok=True)
+    for k, v in data_dict.items():
+        if isinstance(v, np.ndarray):
+            np.save(f"{output_path}/{k}.npy", v)
+        elif isinstance(v, list) or isinstance(v, float):
+            v = np.asarray(v)
+            np.save(f"{output_path}/{k}.npy", v)
+        elif isinstance(v, pd.DataFrame):
+            v[v.index.name] = v.index
+            v.to_csv(f"{output_path}/{k}.csv", index=False)
+        elif isinstance(v, pd.Series):
+            v.to_csv(f"{output_path}/{k}.csv", index=False)
+        elif isinstance(v, str):
+            save_json(v, f"{output_path}/{k}.json")
+        else:
+            npzd = npz_kwargs.get(k, None)
+            npzpath = f"{output_path}/{k}.npz"
+            nest_arr = {k:dict()}
+            nested_data = False
+            if npzd == 'arrays':
+                for i, j in v.items():
+                    j = np.asarray(j)
+                np.savez(npzpath, **v)
+            elif npzd == 'nested':
+                for i, j in v.items():
+                    if isinstance(j, dict):
+                        nested_data = True
+                        npzsubpath = f"{output_path}/{k}-{i}.npz"
+                        np.savez(npzsubpath, **j)
+                    else:
+                        nest_arr[k][i] = j
+                if nested_data is True:
+                    np.savez(npzpath, **nest_arr)
+            else:
+                save_json(v, f"{output_path}/{k}.json")
+
+
+def load_multitype_data(input_path):
+    outputs = dict()
+    files = glob.glob(f"{input_path}/*")
+    for f in files:
+        key = str(os.path.basename(f)).split(".")[0]
+        nested_keys = None if len(key.split("-")) < 2 else key.split("-")
+        keysfx = str(os.path.basename(f)).split(".")
+        sfx = keysfx[-1] if len(keysfx) > 1 else None
+        if sfx == "csv":
+            outputs[key] = pd.read_csv(f, index_col=-1)
+        elif sfx == "npy":
+            outputs[key] = np.load(f)
+        elif sfx == "txt":
+            with open(f, "r") as f:
+                outputs[key] = f.read()
+        elif sfx == "json":
+            with open(f, "r") as j:
+                outputs[key] = json.load(j)
+        elif sfx == "npz":
+            subkey = None
+            if nested_keys:
+                key,subkey = nested_keys
+            if key not in outputs:
+                outputs[key] = dict()
+            if subkey:
+                outputs[key][subkey] = dict()
+                npzd = np.load(f, allow_pickle=True)
+                nkeys = list(npzd.keys())
+                for k in nkeys:
+                    outputs[key][subkey][k] = npzd[k]
+            else:
+                npzd = np.load(f, allow_pickle=True)
+                nkeys = list(npzd.keys())
+                for k in nkeys:
+                    outputs[key][k] = npzd[k]
+        elif not sfx:
+            if os.path.isfile(f):
+                try:
+                    with open(f, "rb") as pyfi:
+                        outputs[key] = pickle.load(pyfi)
+                except ModuleNotFoundError:
+                    print(
+                        "Results were saved with an older version of Pandas "
+                        " (<2.x). Downgrade to Pandas 1.x and try again."
+                    )
+        else:
+            print(
+                f"Unrecognized file format: {sfx}. Allowed types are: csv, txt, json, npy, npz."
+            )
+    return outputs

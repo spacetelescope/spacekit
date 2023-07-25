@@ -1,30 +1,30 @@
 calcloud = {
-    "uri": "https://zenodo.org/record/7839172/files",
+    "uri": "https://zenodo.org/record/8180727/files",
     "data": {
         "2022-02-14": {
             "fname": "hst_cal_std_2022-02-14.zip?download=1",
-            "hash": "7522ec6bdaffaa06827e9ec9781b5182",
+            "hash": "1f59a81785809c8ca817f44376aba824",
             "desc": "data, model and training results",
             "key": "2022-02-14-1644848448",
-            "size": "12.9MB",
+            "size": "10.8MB",
         },
         "2021-11-04": {
             "fname": "hst_cal_std_2021-11-04.zip?download=1",
-            "hash": "d1ba4329ee18219e1a562d7a72c96368",
+            "hash": "158ec68fbaeace4e8599262999d9772e",
             "desc": "data, model and training results",
             "key": "2021-11-04-1636048291",
-            "size": "11.6MB",
+            "size": "11.5MB",
         },
         "2021-10-28": {
             "fname": "hst_cal_std_2021-10-28.zip?download=1",
-            "hash": "09fe043a61165def660ca0209a4c562e",
+            "hash": "2addecfe13d22f8b552b3b907705d688",
             "desc": "data, model and training results",
             "key": "2021-10-28-1635457222",
             "size": "8.6MB",
         },
         "2021-08-22": {
             "fname": "hst_cal_std_2021-08-22.zip?download=1",
-            "hash": "2ac4857954ddcd384c43a9a0dd8d7cff",
+            "hash": "c8ab3427fb5f0819d905901167061030",
             "desc": "data, model and training results",
             "key": "2021-08-22-1629663047",
             "size": "6MB",
@@ -40,28 +40,28 @@ calcloud = {
 }
 
 svm = {
-    "uri": "https://zenodo.org/record/7839172/files",
+    "uri": "https://zenodo.org/record/8180727/files",
     "data": {
         "2022-02-14": {
             "fname": "hst_drz_svm_2022-02-14.zip?download=1",
-            "hash": "c0590ee3277aa1f2607a0d9ad827db27",
+            "hash": "6a43e41e5a21be6bf8af1305753b6c54",
             "desc": "latest model, data and training results",
             "key": "2022-02-14-1644850390",
             "size": "18MB",
         },
         "2022-01-30": {
             "fname": "hst_drz_svm_2022-01-30.zip?download=1",
-            "hash": "758334cf0f4e80038e2f966ac5c044a1",
-            "desc": "retrained model, data and training results",
+            "hash": "761471ebbbce908d268a757abc72238e",
+            "desc": "retrained model training results",
             "key": "2022-01-30-1643523529",
             "size": "18MB",
         },
         "2022-01-16": {
             "fname": "hst_drz_svm_2022-01-16.zip?download=1",
-            "hash": "8c0e87943afeb62404df0d2e529051d6",
-            "desc": "baseline model, data and training results",
+            "hash": "d6273a59116cf1359e761e5822b59d61",
+            "desc": "baseline model training results",
             "key": "2022-01-16-1642337739",
-            "size": "34.1kB",
+            "size": "20.8kB",
         },
         "2021-07-28": {
             "fname": "svm_labeled_2021-07-28.csv?download=1",
@@ -88,7 +88,7 @@ svm = {
 }
 
 k2 = {
-    "uri": "https://zenodo.org/record/7839172/files",
+    "uri": "https://zenodo.org/record/8180727/files",
     "data": {
         "test": {
             "fname": "k2-exo-flux-ts-test.csv.zip?download=1",
