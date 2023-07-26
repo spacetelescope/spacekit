@@ -1,6 +1,5 @@
 import os
 import glob
-import pickle
 import itertools
 import numpy as np
 import pandas as pd
@@ -15,20 +14,20 @@ from sklearn.metrics import (
 )
 from tensorflow.python.ops.numpy_ops import np_config
 from spacekit.logger.log import Logger
+from spacekit.extractor.load import save_multitype_data, load_multitype_data
 
 try:
     import plotly.graph_objects as go
     import matplotlib as mpl
     import matplotlib.pyplot as plt
+
+    plt.style.use("seaborn-bright")
+    font_dict = {"family": "monospace", "size": 16}  # Titillium Web
+    mpl.rc("font", **font_dict)
 except ImportError:
     go = None
     mpl = None
     plt = None
-
-
-plt.style.use("seaborn-bright")
-font_dict = {"family": "monospace", "size": 16}  # Titillium Web
-mpl.rc("font", **font_dict)
 
 
 def check_viz_imports():
@@ -168,11 +167,14 @@ class Computer(object):
             datestamp = dt.date.fromtimestamp(timestamp).isoformat()
             prefix = str(datestamp) + "-" + str(timestamp)
             self.res_path = os.path.join(os.getcwd(), prefix, "results", self.algorithm)
-        os.makedirs(f"{self.res_path}", exist_ok=True)
-        for k, v in outputs.items():
-            key = f"{self.res_path}/{k}"
-            with open(key, "wb") as pyfi:
-                pickle.dump(v, pyfi)
+        save_multitype_data(
+            outputs,
+            f"{self.res_path}",
+            fnfp="nested",
+            acc_loss="arrays",
+            history="arrays",
+            loss="arrays",
+        )
         self.log.info(f"Results saved to: {self.res_path}")
 
     def upload(self):
@@ -191,16 +193,7 @@ class Computer(object):
                 self.log.error(f"No results found @ {self.res_path} \n", e)
                 return outputs
         if os.path.exists(self.res_path):
-            try:
-                for r in glob.glob(f"{self.res_path}/*"):
-                    key = r.split("/")[-1]
-                    with open(r, "rb") as pyfi:
-                        outputs[key] = pickle.load(pyfi)
-            except ModuleNotFoundError:
-                self.log.error(
-                    "Results were saved in an older version of Pandas "
-                    " (<2.x). Downgrade to Pandas 1.x and try again."
-                )
+            outputs = load_multitype_data(self.res_path)
         else:
             self.log.error(f"Path DNE @ {self.res_path}")
         return outputs

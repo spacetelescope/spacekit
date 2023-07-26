@@ -15,6 +15,7 @@ except ImportError:
 try:
     import matplotlib as mpl
     import matplotlib.pyplot as plt
+
     plt.style.use("seaborn-bright")
     font_dict = {"family": "monospace", "size": 16}
     mpl.rc("font", **font_dict)
@@ -56,6 +57,7 @@ class ImagePreviews:
                 "for the compute module to work."
                 "\n\nInstall extra deps via `pip install spacekit[x]`"
             )
+
 
 class SVMPreviews(ImagePreviews):
     """ImagePreviews subclass for previewing SVM images. Primarily can be used to compare original with augmented versions.
@@ -470,7 +472,6 @@ class DataPlots:
         height=500,
         cmap=["dodgerblue", "fuchsia"],
     ):
-
         traces = []
         for i in self.classes:
             i = int(i)

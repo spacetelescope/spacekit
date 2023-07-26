@@ -21,7 +21,6 @@ import logging
 
 # Logging formatter supporting colorized output
 class LogFormatter(logging.Formatter):
-
     COLOR_CODES = {
         logging.CRITICAL: "\033[1;35m",  # bright/bold magenta
         logging.ERROR: "\033[1;31m",  # bright/bold red

@@ -14,7 +14,6 @@ from spacekit.extractor.load import save_to_pickle
 
 
 def k_estimator(buildClass, n_splits=10, y=None, stratify=False):
-
     bld = buildClass()
 
     if stratify is True:

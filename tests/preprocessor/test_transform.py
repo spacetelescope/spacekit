@@ -1,4 +1,5 @@
 from pytest import mark
+from conftest import check_skope
 from spacekit.extractor.load import load_datasets, SVMImageIO
 from spacekit.preprocessor.transform import PowerX
 import numpy as np
@@ -111,8 +112,9 @@ def test_transform_1d_array(skope, df_ncols):
 @mark.svm
 @mark.preprocessor
 @mark.transform
-def test_svm_normalize_training(svm_labeled_dataset, svm_train_npz):
-    df = load_datasets([svm_labeled_dataset])
+def test_svm_normalize_training(skope, labeled_dataset, svm_train_npz):
+    check_skope(skope, "svm")
+    df = load_datasets([labeled_dataset])
     (X, _), _ = SVMImageIO(
         svm_train_npz, w=128, h=128, d=3 * 3, inference=False, data=df, v=0.85
     ).load()

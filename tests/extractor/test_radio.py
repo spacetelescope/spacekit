@@ -1,6 +1,7 @@
 from pytest import mark
 from spacekit.extractor.radio import HstSvmRadio
 
+
 @mark.hst
 @mark.svm
 @mark.extractor

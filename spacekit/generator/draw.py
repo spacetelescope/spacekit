@@ -25,6 +25,7 @@ except ImportError:
 def check_viz_imports():
     return plt is not None
 
+
 def check_imports():
     if not check_viz_imports():
         return False
