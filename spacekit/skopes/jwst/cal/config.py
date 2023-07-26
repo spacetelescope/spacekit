@@ -60,7 +60,6 @@ NORM_COLS = {
         "sigma_offset",
         "err_offset",
         "sigma1_mean",
-        "frac",
     ],
 }
 

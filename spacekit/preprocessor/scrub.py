@@ -4,9 +4,10 @@ import time
 import pandas as pd
 import numpy as np
 from spacekit.preprocessor.transform import (
-    get_skycoord,
-    pixel_sky_separation,
-    offset_statistics,
+    SkyTransformer
+    # get_skycoord,
+    # pixel_sky_separation,
+    # offset_statistics,
 )
 from spacekit.extractor.scrape import (
     SvmFitsScraper,
@@ -515,6 +516,7 @@ class HstCalScrubber(Scrubber):
 
 
 class JwstCalScrubber(Scrubber):
+
     def __init__(
         self,
         input_path,
@@ -537,8 +539,7 @@ class JwstCalScrubber(Scrubber):
             **log_kws,
         )
         self.scrape_inputs()
-        self.pixel_scales = self.image_pixel_scales()
-        self.refpix = self.calculate_offsets()
+        self.pixel_offsets()
         self.xcols = self.set_col_order()
         self.encoding_pairs = encoding_pairs
 
@@ -574,27 +575,9 @@ class JwstCalScrubber(Scrubber):
         self.fpaths = self.scraper.fpaths
         self.exp_headers = self.scraper.scrape_fits()
 
-    def calculate_offsets(self):
+    def pixel_offsets(self):
         self.products = self.get_potential_l3_products()
-        self.refpix = dict()
-        for p in list(self.products.keys()):
-            self.refpix[p] = self.get_pixel_offsets(p)[p]
-        return self.refpix
-
-    def scrub_inputs(self):
-        self.df = pd.DataFrame.from_dict(self.refpix, orient="index")
-        super().rename_cols(new=[c.lower() for c in self.df.columns])
-        super().rename_cols(old=["instrume"], new=["instr"])
-        self.df = self.df[self.xcols]
-        dtype_keys = self.get_dtype_keys()
-        nandler = NaNdler(self.df, dtype_keys, allow_neg=False, verbose=False)
-        self.df = nandler.apply_nandlers()
-        encoder = JwstEncoder(
-            self.df, fkeys=dtype_keys["categorical"], encoding_pairs=self.encoding_pairs
-        )
-        encoder.encode_features()
-        self.df = encoder.df[self.xcols]
-        return self.df
+        self.refpix = SkyTransformer("JWST").calculate_offsets(self.products)
 
     def get_potential_l3_products(self):
         # determine potential L3 products based on obs, filters, detectors, etc
@@ -613,60 +596,25 @@ class JwstCalScrubber(Scrubber):
             else:
                 p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['FILTER']}".lower()
             if p in products:
-                products[p]
                 products[p][k] = v
             else:
                 products[p] = {k: v}
         return products
 
-    def image_pixel_scales(self):
-        # calculate sky separation / reference pixel offset statistics
-        return dict(
-            NIRCAM=dict(
-                SHORT=0.03,
-                LONG=0.06,
-            ),
-            MIRI=0.11,
-            NIRISS=0.06,
-            NIRSPEC=0.1,
+    def scrub_inputs(self):
+        self.df = pd.DataFrame.from_dict(self.refpix, orient="index")
+        super().rename_cols(new=[c.lower() for c in self.df.columns])
+        super().rename_cols(old=["instrume"], new=["instr"])
+        self.df = self.df[self.xcols]
+        dtype_keys = self.get_dtype_keys()
+        nandler = NaNdler(self.df, dtype_keys, allow_neg=False, verbose=False)
+        self.df = nandler.apply_nandlers()
+        encoder = JwstEncoder(
+            self.df, fkeys=dtype_keys["categorical"], encoding_pairs=self.encoding_pairs
         )
-
-    def get_scale(self, instr, channel=None):
-        if channel not in [None, "NONE", "NaN"]:
-            return self.pixel_scales[instr][channel]
-        else:
-            return self.pixel_scales[instr]
-
-    def get_pixel_offsets(self, p):
-        exp_headers = self.products.get(p)
-        offsets = []
-        refpix = {p: dict(nexposur=len(list(exp_headers.keys())))}
-        min_offset = None
-        detectors = []
-        for k, v in exp_headers.items():
-            scale = self.get_scale(v["INSTRUME"], channel=v["CHANNEL"])
-            t_coords = get_skycoord(v["TARG_RA"], v["TARG_DEC"], unit="deg")
-            pixel = pixel_sky_separation(
-                v["CRVAL1"], v["CRVAL2"], t_coords, scale=scale
-            )
-            exp_headers[k]["offset"] = pixel
-            offsets.append(pixel)
-            if v["DETECTOR"] not in detectors:
-                detectors.append(v["DETECTOR"])
-            if min_offset is None:
-                min_offset = pixel
-            elif pixel < min_offset:
-                min_offset = pixel
-            else:
-                continue
-        ref_exp = [k for k, v in exp_headers.items() if v["offset"] == min_offset][0]
-        refpix[p].update(exp_headers[ref_exp])
-        if len(detectors) > 1:
-            refpix[p]["DETECTOR"] = "|".join(sorted([d for d in detectors]))
-        else:
-            refpix[p]["DETECTOR"] = detectors[0]
-        refpix = offset_statistics(offsets, p, refpix=refpix)
-        return refpix
+        encoder.encode_features()
+        self.df = encoder.df[self.xcols]
+        return self.df
 
     def get_dtype_keys(self):
         return dict(
