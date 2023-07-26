@@ -1,5 +1,7 @@
 import os
+from conftest import check_skope
 from pytest import mark
+
 from spacekit.skopes.hst.svm.train import load_ensemble_data, run_training
 
 EXPECTED_RES = [
@@ -27,10 +29,12 @@ PARAMS = dict(
 )
 
 
+@mark.hst
 @mark.svm
 @mark.train
 @mark.parametrize("norm", [(1), (0)])
-def test_svm_training(labeled_dataset, svm_train_npz, norm):
+def test_svm_training(skope, labeled_dataset, svm_train_npz, norm):
+    check_skope(skope, "svm")
     output_path = os.path.join("tmp", "2021-11-04-1636048291")
     ens, com, _ = run_training(
         labeled_dataset,
@@ -68,9 +72,11 @@ def test_svm_training(labeled_dataset, svm_train_npz, norm):
     assert [r in res_actual for r in EXPECTED_RES]
 
 
+@mark.hst
 @mark.svm
 @mark.train
-def test_load_training_data(labeled_dataset, svm_train_img):
+def test_load_training_data(skope, labeled_dataset, svm_train_img):
+    check_skope(skope, "svm")
     tv_idx, XTR, YTR, XTS, YTS, XVL, YVL = load_ensemble_data(
         labeled_dataset,
         svm_train_img,

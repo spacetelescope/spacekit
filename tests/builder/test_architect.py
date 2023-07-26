@@ -1,13 +1,15 @@
 from pytest import mark
+from conftest import check_skope
 from spacekit.builder.architect import BuilderEnsemble, Builder
 from spacekit.skopes.hst.svm.train import load_ensemble_data
 
 @mark.svm
 @mark.builder
 @mark.architect
-def test_ensemble_builder_with_data(svm_labeled_dataset, svm_train_npz):
+def test_ensemble_builder_with_data(skope, labeled_dataset, svm_train_npz):
+    check_skope(skope, "svm")
     tv_idx, XTR, YTR, XTS, YTS, _, _ = load_ensemble_data(
-        svm_labeled_dataset,
+        labeled_dataset,
         svm_train_npz,
         img_size=128,
         norm=0,
@@ -40,7 +42,8 @@ def test_ensemble_builder_with_data(svm_labeled_dataset, svm_train_npz):
 @mark.svm
 @mark.builder
 @mark.architect
-def test_ensemble_builder_without_data():
+def test_ensemble_builder_without_data(skope):
+    check_skope(skope, "svm")
     ens = BuilderEnsemble()
     assert ens.blueprint == "ensemble"
     assert ens.steps_per_epoch > 0
@@ -55,7 +58,8 @@ def test_ensemble_builder_without_data():
 @mark.cal
 @mark.builder
 @mark.architect
-def test_cal_builder_without_data():
+def test_cal_builder_without_data(skope):
+    check_skope(skope, "cal")
     builder = Builder(name="mem_clf")
     builder.load_saved_model("calmodels")
     assert builder.model is not None

@@ -112,18 +112,22 @@ def pytest_addoption(parser):
     parser.addoption("--env", action="store", default=None, help="Environment to run tests against")
 
 # def pytest_configure(config):
-#     config.addinivalue_line("markers", "skopes: check env against param")
+#     config.addinivalue_line("markers", "skope_svm: only run in svm skope")
+#     config.addinivalue_line("markers", "skope_cal: only run in cal skope")
 
-# def pytest_collection_modifyitems(config, items):
-#     env_param = config.getoption("--env")
-#     if env_param:
-#         skope_param = pytest.mark.parametrize("skope", [(env_param)], indirect=True)
-#     else:
-#         skope_param = pytest.mark.parametrize("skope", [("cal", "svm")], indirect=True)
-#         # skip_param = pytest.mark.skipif(reason="skip params based on --env")
-#     for item in items:
-#         if "skopes" in item.keywords:
-#             item.add_marker(skope_param)
+# def pytest_collection_modifyitems(config, items, skope):
+#     if skope.env == "cal"
+    # env_param = config.getoption("--env")
+    # if env_param:
+    #     skope_param = pytest.mark.parametrize("skope", [(env_param)], indirect=True)
+    # else:
+    #     skope_param = pytest.mark.parametrize("skope", [("cal", "svm")], indirect=True)
+    #     # skip_param = pytest.mark.skipif(reason="skip params based on --env")
+    # for item in items:
+    #     if "skopes" in item.keywords:
+    #         item.add_marker(skope_param)
+
+
 
 
 @fixture(scope="session")
@@ -138,6 +142,12 @@ def skope(request):
         pytest.skip(reason="skipping param based on --env")
     else:
         return Config(request.param)
+
+
+def check_skope(skope, param):
+    if skope.env != param:
+        pytest.skip(reason="skipping based on skope param")
+
 
 @fixture(scope="session")
 def test_data(request):
@@ -211,9 +221,9 @@ def img_outpath(tmp_path):
 
 
 # # SVM PREDICT
-@fixture(scope="function")
-def svm_unlabeled_dataset():
-    return "tests/data/svm/predict/unlabeled.csv"
+# @fixture(scope="function")
+# def svm_unlabeled_dataset():
+#     return "tests/data/svm/predict/unlabeled.csv"
 
 
 @fixture(scope="session", params=["img.tgz", "img_pred.npz"])
@@ -228,9 +238,9 @@ def svm_pred_img(request, tmp_path_factory):
 
 
 # # SVM TRAIN
-@fixture(scope="function")  # session
-def svm_labeled_dataset():
-    return "tests/data/svm/train/training.csv"
+# @fixture(scope="function")  # session
+# def svm_labeled_dataset():
+#     return "tests/data/svm/train/training.csv"
 
 
 @fixture(scope="session", params=["img.tgz", "img_data.npz"])
@@ -305,9 +315,9 @@ def scraped_mast_file():
 
 
 # CAL
-@fixture(scope="function")
-def cal_labeled_dataset():
-    return "tests/data/cal/train/training.csv"
+# @fixture(scope="function")
+# def cal_labeled_dataset():
+#     return "tests/data/cal/train/training.csv"
 
 # @fixture(scope="function")
 # def training_data_file(skope):
