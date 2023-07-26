@@ -3,6 +3,7 @@ from conftest import check_skope
 from spacekit.builder.architect import BuilderEnsemble, Builder
 from spacekit.skopes.hst.svm.train import load_ensemble_data
 
+
 @mark.svm
 @mark.builder
 @mark.architect
@@ -39,6 +40,7 @@ def test_ensemble_builder_with_data(skope, labeled_dataset, svm_train_npz):
     ens.build()
     assert ens.model is not None
 
+
 @mark.svm
 @mark.builder
 @mark.architect
@@ -50,9 +52,9 @@ def test_ensemble_builder_without_data(skope):
     ens.load_saved_model(arch="ensemble")
     assert ens.model is not None
     assert len(ens.model.layers) == 28
-    assert ens.model_path == 'models/ensemble/ensembleSVM'
+    assert ens.model_path == "models/ensemble/ensembleSVM"
     ens.find_tx_file()
-    assert ens.tx_file == 'models/ensemble/tx_data.json'
+    assert ens.tx_file == "models/ensemble/tx_data.json"
 
 
 @mark.cal
@@ -66,6 +68,6 @@ def test_cal_builder_without_data(skope):
     assert builder.blueprint == "mem_clf"
     builder.get_blueprint(builder.blueprint)
     assert len(builder.model.layers) == 8
-    assert builder.model_path == 'models/calmodels/mem_clf'
+    assert builder.model_path == "models/calmodels/mem_clf"
     builder.find_tx_file()
-    assert builder.tx_file == 'models/calmodels/tx_data.json'
+    assert builder.tx_file == "models/calmodels/tx_data.json"

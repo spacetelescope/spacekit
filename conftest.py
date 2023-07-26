@@ -128,8 +128,6 @@ def pytest_addoption(parser):
     #         item.add_marker(skope_param)
 
 
-
-
 @fixture(scope="session")
 def env(request):
     return request.config.getoption("--env")

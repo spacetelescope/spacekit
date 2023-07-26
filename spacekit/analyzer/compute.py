@@ -15,10 +15,12 @@ from sklearn.metrics import (
 from tensorflow.python.ops.numpy_ops import np_config
 from spacekit.logger.log import Logger
 from spacekit.extractor.load import save_multitype_data, load_multitype_data
+
 try:
     import plotly.graph_objects as go
     import matplotlib as mpl
     import matplotlib.pyplot as plt
+
     plt.style.use("seaborn-bright")
     font_dict = {"family": "monospace", "size": 16}  # Titillium Web
     mpl.rc("font", **font_dict)
@@ -26,7 +28,6 @@ except ImportError:
     go = None
     mpl = None
     plt = None
-
 
 
 def check_viz_imports():
@@ -169,10 +170,10 @@ class Computer(object):
         save_multitype_data(
             outputs,
             f"{self.res_path}",
-            fnfp='nested',
-            acc_loss='arrays',
-            history='arrays',
-            loss='arrays'
+            fnfp="nested",
+            acc_loss="arrays",
+            history="arrays",
+            loss="arrays",
         )
         self.log.info(f"Results saved to: {self.res_path}")
 

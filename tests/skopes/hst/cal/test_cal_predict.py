@@ -7,10 +7,10 @@ import boto3
 
 EXPECTED_PREDS = {
     "asn": {
-        "j8zs05020": {'memBin': 3, 'memVal': 18.89, 'clockTime': 76479},
-        "ic0k06010": {'memBin': 2, 'memVal': 8.55, 'clockTime': 13904},
-        "la8mffg5q": {'memBin': 0, 'memVal': 0.8, 'clockTime': 295},
-        "oc3p011i0": {'memBin': 0, 'memVal': 0.47, 'clockTime': 55}
+        "j8zs05020": {"memBin": 3, "memVal": 18.89, "clockTime": 76479},
+        "ic0k06010": {"memBin": 2, "memVal": 8.55, "clockTime": 13904},
+        "la8mffg5q": {"memBin": 0, "memVal": 0.8, "clockTime": 295},
+        "oc3p011i0": {"memBin": 0, "memVal": 0.47, "clockTime": 55},
     }
 }
 
@@ -32,7 +32,7 @@ def test_local_predict_handler(cal_predict_visits, pipeline):
     bucketname = "spacekit_bucket"
     s3 = boto3.resource("s3", region_name="us-east-1")
     s3.create_bucket(Bucket=bucketname)
-    dataset = cal_predict_visits[pipeline][0] # "j8zs05020"
+    dataset = cal_predict_visits[pipeline][0]  # "j8zs05020"
     put_moto_s3_object(dataset, bucketname)
     pred = local_handler(dataset, bucket_name=bucketname)
     for k, v in pred.predictions.items():
@@ -48,7 +48,9 @@ def test_local_handler_multiple(cal_predict_visits, pipeline):
     bucketname = "spacekit_bucket"
     s3 = boto3.resource("s3", region_name="us-east-1")
     s3.create_bucket(Bucket=bucketname)
-    datasets = cal_predict_visits[pipeline]# ["j8zs05020", "ic0k06010", "la8mffg5q", "oc3p011i0"]
+    datasets = cal_predict_visits[
+        pipeline
+    ]  # ["j8zs05020", "ic0k06010", "la8mffg5q", "oc3p011i0"]
     for dataset in datasets:
         put_moto_s3_object(dataset, bucketname)
         pred = local_handler(dataset, bucket_name=bucketname)
@@ -65,7 +67,9 @@ def test_lambda_handler(cal_predict_visits, pipeline):
     bucketname = "spacekit_bucket"
     s3 = boto3.resource("s3", region_name="us-east-1")
     s3.create_bucket(Bucket=bucketname)
-    dataset = cal_predict_visits[pipeline][0] # ["j8zs05020", "ic0k06010", "la8mffg5q", "oc3p011i0"]
+    dataset = cal_predict_visits[pipeline][
+        0
+    ]  # ["j8zs05020", "ic0k06010", "la8mffg5q", "oc3p011i0"]
     put_moto_s3_object(dataset, bucketname)
     os.environ["MODEL_PATH"] = "models/calmodels"
     key = f"control/{dataset}/{dataset}_MemModelFeatures.txt"

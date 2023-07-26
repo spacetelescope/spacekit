@@ -677,13 +677,13 @@ def save_multitype_data(data_dict, output_path, **npz_kwargs):
         else:
             npzd = npz_kwargs.get(k, None)
             npzpath = f"{output_path}/{k}.npz"
-            nest_arr = {k:dict()}
+            nest_arr = {k: dict()}
             nested_data = False
-            if npzd == 'arrays':
+            if npzd == "arrays":
                 for i, j in v.items():
                     j = np.asarray(j)
                 np.savez(npzpath, **v)
-            elif npzd == 'nested':
+            elif npzd == "nested":
                 for i, j in v.items():
                     if isinstance(j, dict):
                         nested_data = True
@@ -697,7 +697,7 @@ def save_multitype_data(data_dict, output_path, **npz_kwargs):
                 save_json(v, f"{output_path}/{k}.json")
 
 
-def load_multitype_data(input_path, index_names=['index','ipst']):
+def load_multitype_data(input_path, index_names=["index", "ipst"]):
     outputs = dict()
     files = glob.glob(f"{input_path}/*")
     for f in files:
@@ -722,7 +722,7 @@ def load_multitype_data(input_path, index_names=['index','ipst']):
         elif sfx == "npz":
             subkey = None
             if nested_keys:
-                key,subkey = nested_keys
+                key, subkey = nested_keys
             if key not in outputs:
                 outputs[key] = dict()
             if subkey:
@@ -753,8 +753,15 @@ def load_multitype_data(input_path, index_names=['index','ipst']):
     return outputs
 
 
-def overwrite_results(input_path, out=None, subdirs=["memory", "wallclock","mem_bin"], delete_existing=False, **npz_kwargs):
+def overwrite_results(
+    input_path,
+    out=None,
+    subdirs=["memory", "wallclock", "mem_bin"],
+    delete_existing=False,
+    **npz_kwargs,
+):
     import shutil
+
     for sub in subdirs:
         respath = os.path.join(input_path, sub)
         outputs = load_multitype_data(respath)

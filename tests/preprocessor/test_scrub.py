@@ -28,13 +28,18 @@ FINAL_COLS = [
     "cat",
 ]
 
+
 @mark.hst
 @mark.svm
 @mark.preprocessor
 @mark.scrub
 def test_svm_scrubber(raw_svm_data, single_visit_path):
     scrubber = HstSvmScrubber(
-        single_visit_path, data=raw_svm_data, output_path="tmp", output_file="scrubbed", crpt=0
+        single_visit_path,
+        data=raw_svm_data,
+        output_path="tmp",
+        output_file="scrubbed",
+        crpt=0,
     )
     assert scrubber.df.shape[1] == 9
     scrubber.preprocess_data()
@@ -54,7 +59,11 @@ def test_svm_scrubber(raw_svm_data, single_visit_path):
 @mark.scrub
 def test_scrub_cols(raw_svm_data, single_visit_path):
     scrubber = HstSvmScrubber(
-        single_visit_path, data=raw_svm_data, output_path="tmp", output_file="scrubbed", crpt=0
+        single_visit_path,
+        data=raw_svm_data,
+        output_path="tmp",
+        output_file="scrubbed",
+        crpt=0,
     )
     scrubber.scrub_columns()
     assert scrubber.df.shape == (1, 10)

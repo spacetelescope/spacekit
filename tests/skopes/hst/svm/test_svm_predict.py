@@ -8,6 +8,7 @@ from spacekit.skopes.hst.svm.predict import (
     classify_alignments,
 )
 
+
 @mark.hst
 @mark.svm
 @mark.predict
@@ -22,6 +23,7 @@ def test_predict_alignment(skope, unlabeled_dataset, svm_pred_img, tmp_path):
     actual = os.listdir(pred_files)
     for e in expected:
         assert e in actual
+
 
 @mark.hst
 @mark.svm
