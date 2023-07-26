@@ -4,7 +4,7 @@ import time
 import pandas as pd
 import numpy as np
 from spacekit.preprocessor.transform import (
-    SkyTransformer
+    SkyTransformer,
     # get_skycoord,
     # pixel_sky_separation,
     # offset_statistics,
@@ -516,7 +516,6 @@ class HstCalScrubber(Scrubber):
 
 
 class JwstCalScrubber(Scrubber):
-
     def __init__(
         self,
         input_path,
