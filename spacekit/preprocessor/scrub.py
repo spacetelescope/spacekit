@@ -3,12 +3,7 @@ import glob
 import time
 import pandas as pd
 import numpy as np
-from spacekit.preprocessor.transform import (
-    SkyTransformer,
-    # get_skycoord,
-    # pixel_sky_separation,
-    # offset_statistics,
-)
+from spacekit.preprocessor.transform import SkyTransformer
 from spacekit.extractor.scrape import (
     SvmFitsScraper,
     JwstFitsScraper,
