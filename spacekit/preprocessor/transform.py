@@ -6,38 +6,242 @@ from scipy.ndimage.filters import uniform_filter1d
 from sklearn.preprocessing import PowerTransformer
 import tensorflow as tf
 from astropy.coordinates import SkyCoord
+from astropy import units as u
 
 from spacekit.logger.log import Logger
 
 
-def get_skycoord(ra, dec, unit="deg"):
-    return SkyCoord(ra, dec, unit=unit)
+class SkyTransformer:
+    # calculate sky separation / reference pixel offset statistics
+    def __init__(self, mission, name="SkyTransformer", **log_kws):
+        """_summary_
 
+        Parameters
+        ----------
+        mission : str
+            Name of mission or observatory, e.g. "JWST", "HST"
+        product_exp_headers : dict, optional
+            , by default None
+        name : str, optional
+            logging name, by default "SkyTransformer"
+        """
+        self.__name__ = name
+        self.log = Logger(self.__name__).spacekit_logger(**log_kws)
+        self.mission = mission
+        self.pixel_scales = self.image_pixel_scales()
+        self.instr = None
+        self.detector = None
+        self.channel = None
+        self.refpix = dict()
+        self.set_keys()
 
-def pixel_sky_separation(ra, dec, p_coords, scale, unit="deg"):
-    coords = get_skycoord(ra, dec, unit=unit)
-    skysep_angle = p_coords.separation(coords)
-    arcsec = skysep_angle.arcsecond
-    pixel = arcsec / scale
-    return pixel
+    def set_keys(self, **kwargs):
+        """
+        Set keys used in exposure header dictionary to identify values
+        (typically derived from fits file sciheaders). Possible keyword
+        arguments include: instr,detector,channel,ra,dec where 'ra','dec'
+        refer to the fiducial (center pixel coordinate in degrees).
+        None values will use defaults (see below); unrecognized kwargs
+        will be ignored.
+        Defaults:
+            instr="INSTRUME"
+            detector="DETECTOR"
+            channel="CHANNEL"
+            ra="CRVAL1" / could also use "RA_REF"
+            dec="CRVAL2" / could also use "DEC_REF
+        """
+        self.instr_key = kwargs.get("instr", "INSTRUME")
+        self.detector_key = kwargs.get("detector", "DETECTOR")
+        self.channel_key = kwargs.get("channel", "CHANNEL")
+        self.ra_key = kwargs.get("ra", "CRVAL1")
+        self.dec_key = kwargs.get("dec", "CRVAL2")
 
+    def calculate_offsets(self, product_exp_headers):
+        """Given key-value pairs of header info from a set of input exposures,
+        estimate the fiducial (center pixel coordinates) of the final image product
+        and calculated pixel offset statistics between inputs and final output using
+        detector-based footprints and sky separation angles.
 
-def offset_statistics(offsets, k, refpix=None, pfx=""):
-    if refpix is None:
-        refpix = {k: dict()}
-    offsets = np.asarray(offsets)
-    refpix[k][f"{pfx}max_offset"] = np.max(offsets)
-    refpix[k][f"{pfx}mean_offset"] = np.mean(offsets)
-    refpix[k][f"{pfx}sigma_offset"] = np.std(offsets)
-    refpix[k][f"{pfx}err_offset"] = np.std(offsets) / np.sqrt(len(offsets))
-    sigma1_idx = np.where(offsets > np.mean(offsets) + np.std(offsets))[0]
-    if len(sigma1_idx) > 0:
-        refpix[k][f"{pfx}sigma1_mean"] = np.mean(offsets[sigma1_idx])
-        refpix[k][f"{pfx}frac"] = len(offsets[sigma1_idx]) / len(offsets)
-    else:
-        refpix[k][f"{pfx}sigma1_mean"] = 0.0
-        refpix[k][f"{pfx}frac"] = 0.0
-    return refpix
+        NOTE: the product keys and input exposure keys could be any strings and are used
+        simply for organization. The fits-related key-value pairs nested within each input
+        exposure dictionary must contain, at minimum, the instrument and fiducial
+        ra/dec coordinates (e.g. "INSTRUME","CRVAL1","CRVAL1"). The keys themselves
+        can be custom set using `self.set_keys(**kwargs)` but must match the contents
+        of the nested dictionary passed into `product_exp_headers`. Typically these are
+        derived directly from fits file sci headers of the input exposures.
+
+        Some missions and instruments require additional information such as "CHANNEL"
+        (JWST Nircam) or "DETECTOR" (HST) in order to identify the correct pixel scale
+        and footprint size based on the detector and/or wavelength channel.
+
+        Parameters
+        ----------
+        product_exp_headers : dict
+            nested dictionary of (typically Level 3) product names (keys),
+            their input exposures (values) and relevant fits header information
+            per exposure (key-value pairs).
+        """
+        product_refpix = dict()
+        for product, exp_headers in product_exp_headers.items():
+            product_refpix[product] = self.get_pixel_offsets(exp_headers)
+        return product_refpix
+
+    def get_pixel_offsets(self, exp_data):
+        refpix = dict(nexposur=len(list(exp_data.keys())))
+        offsets, detectors = [], []
+        # detectors, footprints, fiducials = [], [], []
+        for exp, data in exp_data.items():
+            instr = data[self.instr_key]
+            detector = data.get(self.detector_key, None)
+            channel = data.get(self.channel_key, None)
+            fiducial = (data[self.ra_key], data[self.dec_key])
+            scale = self.get_scale(instr, channel=channel, detector=detector)
+            shape = self.data_shapes(instr)
+            # footprint from shape
+            footprint = self.footprint_from_shape(fiducial, scale, shape)
+            exp_data[exp].update(
+                dict(
+                    fiducial=fiducial,
+                    footprint=footprint,
+                    scale=scale,
+                )
+            )
+            if detector is not None and detector.upper() not in detectors:
+                detectors.append(detector.upper())
+        # find fiducial (final product)
+        footprints = [v["footprint"] for v in exp_data.values()]
+        lon_fiducial, lat_fiducial = self.estimate_fiducial(footprints)
+        refpix["fx_ra"], refpix["fy_dec"] = lon_fiducial, lat_fiducial
+        # pixel sky sep offsets from estimated fiducial
+        pcoord = SkyCoord(lon_fiducial, lat_fiducial, unit="deg")
+        for exp, data in exp_data.items():
+            (ra, dec) = data["fiducial"]
+            pixel = self.pixel_sky_separation(ra, dec, pcoord, data["scale"])
+            exp_data[exp]["offset"] = pixel
+            offsets.append(pixel)
+        # fill in metadata for product using reference exposure (usually vals are equal across inputs)
+        ref_exp = [
+            k for k, v in exp_data.items() if v["offset"] == np.min(np.asarray(offsets))
+        ][0]
+        keys = [
+            k
+            for k in list(exp_data[ref_exp].keys())
+            if k not in ["DETECTOR", "footprint", "fiducial"]
+        ]
+        for k in keys:
+            refpix[k] = exp_data[ref_exp][k]
+        if len(detectors) > 1:
+            refpix["DETECTOR"] = "|".join(sorted([d for d in detectors]))
+        else:
+            refpix["DETECTOR"] = detectors[0]
+        # offset statistics
+        offset_stats = self.offset_statistics(offsets)
+        refpix.update(offset_stats)
+        # experimental
+        refpix["t_offset"] = self.pixel_sky_separation(
+            refpix["TARG_RA"], refpix["TARG_DEC"], pcoord, refpix["scale"]
+        )
+        refpix["gs_offset"] = self.pixel_sky_separation(
+            refpix["GS_RA"], refpix["GS_DEC"], pcoord, refpix["scale"]
+        )
+        return refpix
+
+    def image_pixel_scales(self):
+        return dict(
+            HST=dict(ACS=dict(WFC=0.05), WFC3=dict(UVIS=0.04, IR=0.13)),
+            JWST=dict(
+                NIRCAM=dict(
+                    SHORT=0.03,
+                    LONG=0.06,
+                ),
+                MIRI=0.11,
+                NIRISS=0.06,
+                NIRSPEC=0.1,
+            ),
+        )[self.mission]
+
+    def data_shapes(self, instr):
+        return dict(
+            JWST=dict(
+                NIRCAM=(2048, 2048),
+                MIRI=(1024, 1032),
+                NIRISS=(2048, 2048),
+                NIRSPEC=(2048, 2048),
+            ),
+            HST=dict(
+                ACS=(),
+                WFC3=(),
+            ),
+        )[self.mission][instr]
+
+    def get_scale(self, instr, channel=None, detector=None):
+        if channel.upper() in ["SHORT", "LONG"]:
+            return self.pixel_scales[instr][channel]
+        elif detector.upper() in ["WFC", "UVIS", "IR"]:
+            return self.pixel_scales[instr][detector]
+        else:
+            return self.pixel_scales[instr]
+
+    @staticmethod
+    def footprint_from_shape(fiducial, scale, shape):
+        sep_y = (shape[0] / 2 * scale * u.arcsec).to(u.deg).value
+        sep_x = (shape[1] / 2 * scale * u.arcsec).to(u.deg).value
+
+        ra_ref, dec_ref = fiducial
+
+        footprint = np.array(
+            [
+                [ra_ref - sep_x, dec_ref - sep_y],
+                [ra_ref + sep_x, dec_ref - sep_y],
+                [ra_ref + sep_x, dec_ref + sep_y],
+                [ra_ref - sep_x, dec_ref + sep_y],
+            ]
+        )
+        return footprint
+
+    @staticmethod
+    def estimate_fiducial(footprints: list):
+        # footprints = np.hstack(
+        #      [w.footprint().T for w in wcslist])
+        footprints = np.vstack([foot for foot in footprints])
+
+        lon, lat = footprints[:, 0], footprints[:, 1]
+        lon, lat = np.deg2rad(lon), np.deg2rad(lat)
+        x = np.cos(lat) * np.cos(lon)
+        y = np.cos(lat) * np.sin(lon)
+        z = np.sin(lat)
+
+        x_mid = (np.max(x) + np.min(x)) / 2.0
+        y_mid = (np.max(y) + np.min(y)) / 2.0
+        z_mid = (np.max(z) + np.min(z)) / 2.0
+        lon_fiducial = np.rad2deg(np.arctan2(y_mid, x_mid)) % 360.0
+        lat_fiducial = np.rad2deg(np.arctan2(z_mid, np.sqrt(x_mid**2 + y_mid**2)))
+        return lon_fiducial, lat_fiducial
+
+    @staticmethod
+    def pixel_sky_separation(ra, dec, p_coords, scale, unit="deg"):
+        coords = SkyCoord(ra, dec, unit=unit)
+        skysep_angle = p_coords.separation(coords)
+        arcsec = skysep_angle.arcsecond
+        pixel = arcsec / scale
+        return pixel
+
+    @staticmethod
+    def offset_statistics(offsets, pfx=""):
+        offsets = np.asarray(offsets)
+        stats = dict()
+        stats[f"{pfx}max_offset"] = np.max(offsets)
+        stats[f"{pfx}mean_offset"] = np.mean(offsets)
+        stats[f"{pfx}sigma_offset"] = np.std(offsets)
+        stats[f"{pfx}err_offset"] = np.std(offsets) / np.sqrt(len(offsets))
+        sigma1_idx = np.where(offsets > np.mean(offsets) + np.std(offsets))[0]
+        if len(sigma1_idx) > 0:
+            stats[f"{pfx}sigma1_mean"] = np.mean(offsets[sigma1_idx])
+            stats[f"{pfx}frac"] = len(offsets[sigma1_idx]) / len(offsets)
+        else:
+            stats[f"{pfx}sigma1_mean"] = 0.0
+            stats[f"{pfx}frac"] = 0.0
+        return stats
 
 
 class Transformer:
