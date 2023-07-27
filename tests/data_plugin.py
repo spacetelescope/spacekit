@@ -1,10 +1,12 @@
 import requests
 import hashlib
-import tarfile
 import os
 import shutil
 from pytest import TempPathFactory
+from spacekit.extractor.load import extract_file
 
+RETENTION_COUNT=1
+RETENTION_POLICY='none'
 
 def pytest_addoption(parser):
     parser.addoption(
@@ -26,12 +28,21 @@ def pytest_addoption(parser):
 def pytest_configure(config):
     config.option.disable_warnings = True
     data_path = config.getoption("data_path")
+    
     # only retrieve from zenodo if tests/data/{env}/data.zip DNE
     if not os.path.exists(data_path):
-        # tmp_path_factory = TempPathFactory(config.option.basetemp, retention_count, retention_policy, trace=config.trace.get("tmpdir"), _ispytest=True)
-        tmp_path_factory = TempPathFactory(
-            config.option.basetemp, trace=config.trace.get("tmpdir"), _ispytest=True
-        )
+        try:
+            tmp_path_factory = TempPathFactory(
+                config.option.basetemp, 
+                RETENTION_COUNT, 
+                RETENTION_POLICY,
+                trace=config.trace.get("tmpdir"),
+                _ispytest=True
+            )
+        except: # pytest >= 7.3
+            tmp_path_factory = TempPathFactory(
+                config.option.basetemp, trace=config.trace.get("tmpdir"), _ispytest=True
+            )
         data_uri = "https://zenodo.org/record/8185020/files/pytest_data.tgz?download=1"
         basepath = tmp_path_factory.getbasetemp()
         target_path = os.path.join(basepath, "pytest_data.tgz")
@@ -43,9 +54,7 @@ def pytest_configure(config):
         with open(target_path, "rb") as f:
             digest = hashlib.sha256(f.read())
             if digest.hexdigest() == chksum:
-                with tarfile.TarFile.open(target_path) as tar:
-                    tar.extractall(os.path.abspath("tests"))
-
+                extract_file(target_path, dest=os.path.abspath("tests"))
 
 def pytest_unconfigure(config):
     cleanup = config.getoption("cleanup")
