@@ -164,13 +164,13 @@ class SkyTransformer:
         return dict(
             JWST=dict(
                 NIRCAM=(2048, 2048),
-                MIRI=(1024, 1032),
+                MIRI=(1032, 1024),
                 NIRISS=(2048, 2048),
                 NIRSPEC=(2048, 2048),
             ),
             HST=dict(
-                ACS=(),
-                WFC3=(),
+                ACS=(4096,2048), # ACS -> WFC,
+                WFC3=(4096,2051), # WFC3 -> UVIS (IR=(1024,1024))
             ),
         )[self.mission][instr]
 
@@ -184,8 +184,9 @@ class SkyTransformer:
 
     @staticmethod
     def footprint_from_shape(fiducial, scale, shape):
-        sep_y = (shape[0] / 2 * scale * u.arcsec).to(u.deg).value
-        sep_x = (shape[1] / 2 * scale * u.arcsec).to(u.deg).value
+        sep_x = (shape[0] / 2 * scale * u.arcsec).to(u.deg).value
+        sep_y = (shape[1] / 2 * scale * u.arcsec).to(u.deg).value
+
 
         ra_ref, dec_ref = fiducial
 
@@ -201,8 +202,6 @@ class SkyTransformer:
 
     @staticmethod
     def estimate_fiducial(footprints: list):
-        # footprints = np.hstack(
-        #      [w.footprint().T for w in wcslist])
         footprints = np.vstack([foot for foot in footprints])
 
         lon, lat = footprints[:, 0], footprints[:, 1]
