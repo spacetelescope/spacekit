@@ -26,38 +26,20 @@ EXPECTED = {
     },
 }
 
-@mark.skip(reason="tbd for model")
-@mark.jwst
-@mark.predict
-def test_jwst_cal_preprocess(jwstcal_input_path):
-    kwargs = dict(
-        model_path=None,
-        models={},
-        tx_file=None,
-        norm=0,
-        norm_cols=[]
-    )
-    predictor = JwstCalPredict(input_path=jwstcal_input_path, **kwargs)
-    predictor.preprocess()
-    for prod in list(predictor.products.keys()):
-        assert prod in EXPECTED['products']
-    nrc_product = 'jw02732-o001-t2_nircam_clear-f150w'
-    miri_product = 'jw02732-o005-t1_miri_f1130w'
-    nrc_exposures = sorted(list(predictor.products[nrc_product].keys()))
-    assert nrc_exposures == EXPECTED['exposures']['nircam']
-    miri_exposures = sorted(list(predictor.products[miri_product].keys()))
-    assert miri_exposures == EXPECTED['exposures']['miri']
 
-
-@mark.skip(reason="tbd for model")
 @mark.jwst
 @mark.predict
 def test_jwst_cal_predict(jwstcal_input_path):
-    kwargs = dict(
-        model_path=None,
-        models={},
-        tx_file=None,
-        norm=0,
-        norm_cols=[]
-    )
-    preds = predict_handler(jwstcal_input_path, **kwargs)
+    jcal = JwstCalPredict(input_path=jwstcal_input_path)
+    assert jcal.img3_reg.__name__ == "Builder"
+    assert jcal.img3_reg.blueprint == "jwst_img3_reg"
+    assert jcal.img3_reg.model_path == 'models/jwst_cal/img3_reg'
+    assert jcal.tx_file == 'models/jwst_cal/tx_data.json'
+    assert jcal.img3_reg.model.name == 'img3_reg'
+    jcal.run_inference()
+
+
+@mark.jwst
+@mark.predict
+def test_jwst_cal_predict_handler(jwstcal_input_path):
+    preds = predict_handler(jwstcal_input_path)

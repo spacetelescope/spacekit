@@ -134,7 +134,7 @@ class Prep:
         ).Xt
 
 
-class CalPrep(Prep):
+class HstCalPrep(Prep):
     def __init__(
         self,
         data,
@@ -273,6 +273,7 @@ class JwstCalPrep(Prep):
                 "err_offset",
                 "sigma1_mean",
                 "frac",
+                "targ_frac",
                 # "exp_type",
                 # "tsovisit",
             ]
@@ -299,6 +300,7 @@ class JwstCalPrep(Prep):
             "err_offset_scl",
             "sigma1_mean_scl",
             "frac",
+            "targ_frac",
             #"exp_type",
             #"tsovisit",
         ]

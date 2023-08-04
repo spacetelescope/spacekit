@@ -43,6 +43,29 @@ JWST_EXPECTED = {
     # 'jw01018-o006-t1_niriss_clear-f150w': [],
 }
 
+JWST_SCRUBBED_COLS = [
+    'instr',
+    'detector',
+    'exp_type',
+    'visitype',
+    'filter',
+    'pupil',
+    'channel',
+    'subarray',
+    'bkgdtarg',
+    'tsovisit',
+    'nexposur',
+    'numdthpt',
+    'offset',
+    'max_offset',
+    'mean_offset',
+    'sigma_offset',
+    'err_offset',
+    'sigma1_mean',
+    'frac',
+    'targ_frac'
+]
+
 
 
 @mark.hst
@@ -90,18 +113,22 @@ def test_scrub_cols(raw_svm_data, single_visit_path):
             assert False
 
 
+@mark.jwst
+@mark.preprocessor
+@mark.scrub
 def test_jwst_cal_scrubber(jwstcal_input_path):
     scrubber = JwstCalScrubber(jwstcal_input_path, encoding_pairs=KEYPAIR_DATA)
     assert len(scrubber.fpaths) == 6
+    assert len(scrubber.refpix) == 2
     nrc_product = 'jw02732-o001-t2_nircam_clear-f150w'
     miri_product = 'jw02732-o005-t1_miri_f1130w'
+    assert len(scrubber.refpix[nrc_product].keys()) == 42
     for prod in list(scrubber.products.keys()):
         assert prod in list(JWST_EXPECTED.keys())
-
     nrc_exposures = sorted(list(scrubber.products[nrc_product].keys()))
     assert nrc_exposures == JWST_EXPECTED[nrc_product]
     miri_exposures = sorted(list(scrubber.products[miri_product].keys()))
     assert miri_exposures == JWST_EXPECTED[miri_product]
-
     scrubber.scrub_inputs()
     assert len(scrubber.df) > 0
+    assert list(scrubber.df.columns) == JWST_SCRUBBED_COLS

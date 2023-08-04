@@ -178,6 +178,7 @@ class CategoricalEncoder:
         rename=False,
         keypair_file=None,
         encoding_pairs=None,
+        verbose=0,
         name="CategoricalEncoder",
         **log_kws,
     ):
@@ -188,6 +189,7 @@ class CategoricalEncoder:
         self.rename = rename
         self.keypair_file = keypair_file
         self.encoding_pairs = encoding_pairs
+        self.verbose = verbose
         self.__name__ = name
         self.log = Logger(self.__name__, **log_kws).spacekit_logger()
         self.encodings = dict(zip(self.fkeys, self.names))
@@ -208,7 +210,8 @@ class CategoricalEncoder:
         originals = list(self.encodings.keys())
         self.df.drop(originals, axis=1, inplace=True)
         self.df = self.data.join(self.df, how="left")
-        self.display_encoding()
+        if self.verbose:
+            self.display_encoding()
         if self.drop is True:
             self.df.drop(originals, axis=1, inplace=True)
         if self.rename is True:

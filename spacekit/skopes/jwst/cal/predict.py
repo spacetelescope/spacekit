@@ -19,7 +19,7 @@ from spacekit.builder.architect import Builder
 
 
 # build from local filepath
-# MODEL_PATH = os.environ.get("MODEL_PATH", "./models") #"data/2023-07-14-1644848448/models"
+# MODEL_PATH = os.environ.get("MODEL_PATH", "./models/jwst_cal")
 # TX_FILE = os.path.join(MODEL_PATH, "tx_data.json")
 
 
@@ -36,7 +36,7 @@ class JwstCalPredict:
         model_path=None,
         models={},
         tx_file=None,
-        norm=0,
+        norm=1,
         norm_cols=[
             "offset",
             "max_offset",
@@ -82,7 +82,6 @@ class JwstCalPredict:
             self.X = Px.Xt
             self.tx_data = Px.tx_data
             self.log.debug(f"tx_data: {self.tx_data}")
-            self.log.info(f"dataset: {self.dataset} normalized inputs (X): {self.X}")
         else:
             self.X = np.asarray(self.inputs)
 
@@ -133,7 +132,7 @@ class JwstCalPredict:
         if self.X is None:
             self.preprocess()
         self.predictions = dict()
-        self.probabilities = dict()
+        # self.probabilities = dict()
         product_index = list(self.inputs.index)
         for i, X in enumerate(self.X):
             # membin, pred_proba = self.classifier(self.mem_clf.model, X)
@@ -162,6 +161,13 @@ if __name__ == "__main__":
         help="path to input exposure fits files",
     )
     parser.add_argument(
+        "-p",
+        "--pid",
+        type=str,
+        default="",
+        help="restrict to input files matching a specific program ID or comma-separated IDs, e.g. 1018 or 1018,1024"
+    )
+    parser.add_argument(
         "-n",
         "--norm",
         type=int,
@@ -172,7 +178,7 @@ if __name__ == "__main__":
         "-c",
         "--norm_cols",
         type=str,
-        default="0,1",
+        default="offset,max_offset,mean_offset,sigma_offset,err_offset,sigma1_mean",
         help="comma-separated index of input columns to apply normalization",
     )
     parser.add_argument(
@@ -214,4 +220,6 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     args.norm_cols = [int(i) for i in args.norm_cols.split(",")]
+    if args.pid:
+        args.pid = [str(i) for i in args.pid.split(",")]
     predict_handler(**vars(args))

@@ -76,7 +76,7 @@ class Builder:
         self.log = Logger(self.__name__, **log_kws).spacekit_logger()
 
     def load_saved_model(
-        self, arch=None, compile_params=None, custom_obj={}, extract_to="models"
+        self, arch=None, compile_params=None, custom_obj={}, extract_to="models", keras_archive=True
     ):
         """Load saved keras model from local disk (located at the ``model_path`` attribute) or a pre-trained model from spacekit.skopes.trained_networks (if ``model_path`` attribute is None). Example for ``compile_params``: ``dict(loss="binary_crossentropy", metrics=["accuracy"], optimizer=Adam(learning_rate=optimizers.schedules.ExponentialDecay(lr=1e-4, decay_steps=100000, decay_rate=0.96, staircase=True)))``
 
@@ -86,6 +86,12 @@ class Builder:
             select a pre-trained model included from the spacekit library of trained networks ("svm_align", "jwst_cal", or "hst_cal"), by default None
         compile_params : dict, optional
             Compile the model using kwarg parameters, by default None
+        custom_obj : dict, optional
+            custom objects keyword arguments to be passed into Keras `load_model`, by default {}
+        extract_to : str or path, optional
+            directory location to extract into, by default "models"
+        keras_archive : bool, optional
+            for models saved in the newer high-level .keras compressed archive format (recommended), by default True
 
         Returns
         -------
@@ -97,14 +103,20 @@ class Builder:
         if str(self.model_path).split(".")[-1] == "zip":
             self.unzip_model_files(
                 extract_to=extract_to
-            )  # ./models | ./models/svm_align
+            )
         model_basename = os.path.basename(self.model_path.rstrip("/"))
-        if model_basename != self.name:
-            # look through subdirectories for saved model folder matching "self.name"
-            for root, dirs, _ in os.walk(self.model_path):
-                for d in dirs:
-                    if d == self.name:
-                        self.model_path = os.path.join(root, d)
+        if model_basename != self.name: # for spacekit archives, this is always True
+            for root, dirs, files in os.walk(self.model_path):
+                if keras_archive is True:
+                    for f in files:
+                        if f == f"{self.name}.keras":
+                            self.model_path = os.path.join(root, f)
+                            break
+                else: # for legacy SavedModel folder containing assets, variables and saved_model.pb
+                    for d in dirs:
+                        if d == self.name:
+                            self.model_path = os.path.join(root, d)
+
         self.log.debug(f"Loading saved model from {str(self.model_path)}")
         try:
             self.model = load_model(self.model_path, custom_objects=custom_obj)
@@ -133,10 +145,9 @@ class Builder:
             mission_arch = arch.split("_")[0]
             if mission_arch in mission_blueprints:
                 self.blueprint = f"{mission_arch}_{self.name}"
-        if arch == "hst_cal" and self.blueprint is None:
-            self.blueprint = self.name
-        elif arch == "jwst_cal" and self.blueprint is None:
-            self.blueprint = "jwst_" + self.name
+            elif mission_arch == "svm":
+                self.blueprint = "ensemble"
+
 
     def unzip_model_files(self, extract_to="models"):
         """Extracts a keras model object from a zip archive

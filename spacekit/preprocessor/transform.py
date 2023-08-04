@@ -88,7 +88,8 @@ class SkyTransformer:
 
     def get_pixel_offsets(self, exp_data):
         refpix = dict(nexposur=len(list(exp_data.keys())))
-        offsets, detectors = [], []
+        offsets, targ_offsets, detectors = [], [], []
+        targ_radec = None
         for exp, data in exp_data.items():
             instr = data[self.instr_key]
             detector = data.get(self.detector_key, None)
@@ -105,6 +106,8 @@ class SkyTransformer:
                     scale=scale,
                 )
             )
+            if targ_radec is None:
+                targ_radec = (data['TARG_RA'], data['TARG_DEC'])
             if detector is not None and detector.upper() not in detectors:
                 detectors.append(detector.upper())
         # find fiducial (final product)
@@ -113,11 +116,15 @@ class SkyTransformer:
         refpix["fx_ra"], refpix["fy_dec"] = lon_fiducial, lat_fiducial
         # pixel sky sep offsets from estimated fiducial
         pcoord = SkyCoord(lon_fiducial, lat_fiducial, unit="deg")
+        tcoord = SkyCoord(targ_radec[0], targ_radec[1], unit="deg")
         for exp, data in exp_data.items():
             (ra, dec) = data["fiducial"]
             pixel = self.pixel_sky_separation(ra, dec, pcoord, data["scale"])
+            targ_pixel = self.pixel_sky_separation(ra, dec, tcoord, data["scale"])
             exp_data[exp]["offset"] = pixel
+            exp_data[exp]['targ_offset'] = targ_pixel
             offsets.append(pixel)
+            targ_offsets.append(targ_pixel)
         # fill in metadata for product using reference exposure (usually vals are equal across inputs)
         ref_exp = [
             k for k, v in exp_data.items() if v["offset"] == np.min(np.asarray(offsets))
@@ -135,7 +142,9 @@ class SkyTransformer:
             refpix["DETECTOR"] = detectors[0]
         # offset statistics
         offset_stats = self.offset_statistics(offsets)
+        targ_offset_stats = self.offset_statistics(targ_offsets, pfx="targ_")
         refpix.update(offset_stats)
+        refpix.update(targ_offset_stats)
         # experimental
         refpix["t_offset"] = self.pixel_sky_separation(
             refpix["TARG_RA"], refpix["TARG_DEC"], pcoord, refpix["scale"]

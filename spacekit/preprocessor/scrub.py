@@ -523,6 +523,7 @@ class JwstCalScrubber(Scrubber):
     ):
         self.input_path = input_path
         self.exp_headers = None
+        self.products = dict()
         self.sfx = sfx
         super().__init__(
             data=data,
@@ -558,7 +559,9 @@ class JwstCalScrubber(Scrubber):
             "err_offset",
             "sigma1_mean",
             "frac",
+            "targ_frac"
         ]
+
 
     def set_new_cols(self, new_cols):
         self.new_cols = new_cols
@@ -570,30 +573,45 @@ class JwstCalScrubber(Scrubber):
         self.exp_headers = self.scraper.scrape_fits()
 
     def pixel_offsets(self):
-        self.products = self.get_potential_l3_products()
-        self.refpix = SkyTransformer("JWST").calculate_offsets(self.products)
+        # Wait to add image products to self.products until after offset calc
+        self.get_level3_products()
+        self.refpix = SkyTransformer("JWST").calculate_offsets(self.img_products)
+        self.products.update(self.img_products)
 
-    def get_potential_l3_products(self):
+    def make_image_product_name(self, v, tnum):
+        if v["PUPIL"] == "CLEAR":
+            p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['PUPIL']}-{v['FILTER']}".lower()
+        elif v["PUPIL"] not in ["NaN", "N/A", "NONE"]:
+            p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['FILTER']}-{v['PUPIL']}".lower()
+        else:
+            p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['FILTER']}".lower()
+        return p
+
+    def get_level3_products(self):
         # determine potential L3 products based on obs, filters, detectors, etc
         # group by target+obs num+filter (+pupil)
+        # TODO: other L3 exp_types
         targetnames = list(set([v["TARGNAME"] for v in self.exp_headers.values()]))
-        tnums = [f"t{i+1}" for i, t in enumerate(targetnames)]
+        tnums = [f"t{i+1}" for i, _ in enumerate(targetnames)]
         targs = dict(zip(targetnames, tnums))
-        products = dict()
+        self.img_products = dict()
 
         for k, v in self.exp_headers.items():
             tnum = targs.get(v["TARGNAME"])
-            if v["PUPIL"] == "CLEAR":
-                p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['PUPIL']}-{v['FILTER']}".lower()
-            elif v["PUPIL"] not in ["NaN", "N/A", "NONE"]:
-                p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['FILTER']}-{v['PUPIL']}".lower()
+            exp_mode = v['EXP_TYPE']
+            if exp_mode.split('_')[-1] == "IMAGE":
+                p = self.make_image_product_name(v, tnum)
+                if p in self.img_products:
+                    self.img_products[p][k] = v
+                else:
+                    self.img_products[p] = {k: v}
             else:
-                p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['FILTER']}".lower()
-            if p in products:
-                products[p][k] = v
-            else:
-                products[p] = {k: v}
-        return products
+                continue # TEMP: ignoring non-image exp_types
+                # p = self.make_spec_product_name(v, tnum)
+                # if p in self.products:
+                #   self.products[p][k] = v
+                # else:
+                #   self.products[p] = {k: v}
 
     def scrub_inputs(self):
         self.df = pd.DataFrame.from_dict(self.refpix, orient="index")
@@ -622,6 +640,7 @@ class JwstCalScrubber(Scrubber):
                 "err_offset",
                 "sigma1_mean",
                 "frac",
+                "targ_frac"
             ],
             boolean=["bkgdtarg", "tsovisit"],
             categorical=[
@@ -681,11 +700,13 @@ class NaNdler:
                 print(f"\nNaNs to be NaNdled:\n{self.df[cols].isna().sum()}\n")
             df_cat = self.df[cols].copy()
             for col in cols:
+                df_cat.loc[df_cat[col]=="N/A", col] = np.nan
                 if df_cat[col].isna().sum() > 0:
                     truevals = list(df_cat[col].value_counts().index)
-                    self.df[col] = df_cat[col].apply(
+                    df_cat[col] = df_cat[col].apply(
                         lambda x: self.nandle_cats(x, truevals)
                     )
+            self.df[cols] = df_cat[cols]
 
     def boolean_nandler(self, replace=True):
         if self.boolean:

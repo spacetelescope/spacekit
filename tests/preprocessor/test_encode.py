@@ -176,3 +176,11 @@ def test_pair_encoder_inverse_transform():
     assert enc.transformed == [1, 1, 3, 4]
     enc.inverse_transform()
     assert enc.inversed == list(data)
+
+
+@mark.skip(reason="TODO")
+@mark.jwst
+@mark.preprocessor
+@mark.encode
+def test_jwst_encoder(jwst_scrubbed_data):
+    pass
