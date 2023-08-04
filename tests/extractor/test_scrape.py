@@ -1,5 +1,5 @@
 from pytest import mark
-from spacekit.extractor.scrape import JsonScraper, SvmFitsScraper
+from spacekit.extractor.scrape import JsonScraper, SvmFitsScraper, JwstFitsScraper
 import os
 
 JSON_COL_EXPECTED = [
@@ -30,6 +30,8 @@ FITS_COL_EXPECTED = [
     "nmatches",
     "wcstype",
 ]
+
+JWST_EXPECTED_HEADERS = []
 
 
 # TEST JSON SCRAPER
@@ -65,6 +67,8 @@ def test_json_scraper(raw_csv_file, single_visit_path):
     assert os.path.exists(jsc.h5_file)
 
 
+@mark.hst
+@mark.svm
 @mark.extractor
 @mark.scrape
 def test_scrape_drizzle_fits(scrubbed_svm_data, single_visit_path):
@@ -81,11 +85,11 @@ def test_scrape_drizzle_fits(scrubbed_svm_data, single_visit_path):
             assert False
 
 
-# @mark.extractor
-# @mark.scrape
-# def test_scrape_mast(scraped_fits_file):
-#     data = pd.read_csv(scraped_fits_file, index_col="index")
-#     scraper = HstSvmRadio(data)
-#     scraper.scrape_mast()
-#     assert scraper.df.shape == (1, 15)
-#     assert "category" in scraper.df.columns
+#TODO
+@mark.jwst
+@mark.extractor
+@mark.scrape
+def test_jwst_cal_scraper(skope, input_path):
+    scraper = JwstFitsScraper(input_path, data=None, sfx="_uncal.fits")
+    assert len(scraper.fpaths) > 0
+    exp_headers = scraper.scrape_fits()

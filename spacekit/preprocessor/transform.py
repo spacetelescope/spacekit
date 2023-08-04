@@ -89,7 +89,6 @@ class SkyTransformer:
     def get_pixel_offsets(self, exp_data):
         refpix = dict(nexposur=len(list(exp_data.keys())))
         offsets, detectors = [], []
-        # detectors, footprints, fiducials = [], [], []
         for exp, data in exp_data.items():
             instr = data[self.instr_key]
             detector = data.get(self.detector_key, None)

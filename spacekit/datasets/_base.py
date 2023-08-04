@@ -2,7 +2,7 @@
 Base IO code for all datasets (borrowing concepts from sklearn.datasets and keras.utils.load_data)
 """
 from spacekit.extractor.scrape import WebScraper
-from spacekit.analyzer.scan import import_dataset, HstCalScanner, HstSvmScanner
+from spacekit.analyzer.scan import import_dataset, HstCalScanner, HstSvmScanner, JwstCalScanner
 from spacekit.datasets.meta import spacekit_collections
 
 
@@ -78,6 +78,12 @@ def load_k2():
     return train, test
 
 
+def load_jwst_cal(fpath=None, date_key=None):
+    jw = spacekit_collections["jwst_cal"]
+    df = load_from_archive(jw, fpath=fpath, date_key=date_key, scanner=JwstCalScanner)
+    return df
+
+
 def load(name="calcloud", date_key=None, fpath=None, data_home=None):
     if fpath is None:
         fpath = import_collection(name, date_key=date_key, data_home=data_home)
@@ -85,5 +91,7 @@ def load(name="calcloud", date_key=None, fpath=None, data_home=None):
         scn = HstCalScanner(perimeter=fpath)
     elif name == "svm":
         scn = HstSvmScanner(perimeter=fpath)
+    elif name == "jwst_cal":
+        scn = JwstCalScanner(perimeter=fpath)
     scn.load_dataframe()
     return scn.df

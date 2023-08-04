@@ -31,7 +31,7 @@ def test_predict_alignment(skope, unlabeled_dataset, svm_pred_img, tmp_path):
 def test_load_predict(skope, unlabeled_dataset, svm_pred_img, tmp_path):
     check_skope(skope, "svm")
     ens = BuilderEnsemble()
-    ens.load_saved_model(arch="ensemble")
+    ens.load_saved_model(arch="svm_align")
     ens.find_tx_file()
     X = load_mixed_inputs(
         unlabeled_dataset, svm_pred_img, size=128, tx=ens.tx_file, norm=0

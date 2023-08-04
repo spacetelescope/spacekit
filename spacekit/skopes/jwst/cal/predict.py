@@ -25,7 +25,7 @@ from spacekit.builder.architect import Builder
 
 def load_pretrained_model(**builder_kwargs):
     builder = Builder(**builder_kwargs)
-    builder.load_saved_model(arch="jwstcal")
+    builder.load_saved_model(arch="jwst_cal")
     return builder
 
 
@@ -37,7 +37,14 @@ class JwstCalPredict:
         models={},
         tx_file=None,
         norm=0,
-        norm_cols=[],
+        norm_cols=[
+            "offset",
+            "max_offset",
+            "mean_offset",
+            "sigma_offset",
+            "err_offset",
+            "sigma1_mean"
+        ],
         **log_kws,
     ):
         self.input_path = input_path
@@ -50,8 +57,8 @@ class JwstCalPredict:
         self.inputs = None
         self.tx_data = None
         self.X = None
-        self.mem_clf = None
-        self.mem_reg = None
+        # self.mem_clf = None
+        self.img3_reg = None
         self.__name__ = "JwstCalPredict"
         self.log = Logger(self.__name__, **log_kws).setup_logger(logger=SPACEKIT_LOG)
         self.log_kws = dict(log=self.log, **log_kws)
@@ -91,23 +98,23 @@ class JwstCalPredict:
         self.normalize_inputs()
 
     def load_models(self, models={}):
-        self.mem_clf = models.get(
-            "mem_clf",
+        # self.mem_clf = models.get(
+        #     "mem_clf",
+        #     load_pretrained_model(
+        #         model_path=self.model_path, name="mem_clf", **self.log_kws
+        #     ),
+        # )
+        self.img3_reg = models.get(
+            "img3_reg",
             load_pretrained_model(
-                model_path=self.model_path, name="mem_clf", **self.log_kws
-            ),
-        )
-        self.mem_reg = models.get(
-            "mem_reg",
-            load_pretrained_model(
-                model_path=self.model_path, name="mem_reg", **self.log_kws
+                model_path=self.model_path, name="img3_reg", **self.log_kws
             ),
         )
         if self.model_path is None:
-            self.model_path = os.path.dirname(self.mem_clf.model_path)
+            self.model_path = os.path.dirname(self.img3_reg.model_path)
         if self.tx_file is None or not os.path.exists(self.tx_file):
-            self.mem_clf.find_tx_file()
-            self.tx_file = self.mem_clf.tx_file
+            self.img3_reg.find_tx_file()
+            self.tx_file = self.img3_reg.tx_file
 
     def classifier(self, model, data):
         """Returns class prediction"""
@@ -129,12 +136,13 @@ class JwstCalPredict:
         self.probabilities = dict()
         product_index = list(self.inputs.index)
         for i, X in enumerate(self.X):
-            membin, pred_proba = self.classifier(self.mem_clf.model, X)
-            memval = np.round(float(self.regressor(self.mem_reg.model, X)), 2)
-            self.predictions[product_index[i]] = {"memBin": membin, "memVal": memval}
-            self.probabilities[product_index[i]] = {"probabilities": pred_proba}
+            # membin, pred_proba = self.classifier(self.mem_clf.model, X)
+            memval = np.round(float(self.regressor(self.img3_reg.model, X)), 2)
+            self.predictions[product_index[i]] = {"memVal": memval}
+            # self.predictions[product_index[i]] = {"memBin": membin, "memVal": memval}
+            # self.probabilities[product_index[i]] = {"probabilities": pred_proba}
         self.log.info(f"predictions: {self.predictions}")
-        self.log.info(f"probabilities: {self.probabilities}")
+        # self.log.info(f"probabilities: {self.probabilities}")
 
 
 def predict_handler(input_path, **kwargs):
@@ -157,7 +165,7 @@ if __name__ == "__main__":
         "-n",
         "--norm",
         type=int,
-        default=1,
+        default=0,
         help="apply normalization and scaling (bool)",
     )
     parser.add_argument(

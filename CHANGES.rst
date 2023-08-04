@@ -1,3 +1,16 @@
+1.0.0 (unreleased)
+==================
+
+- Pretrained neural network files and paths renamed: calmodels.zip is now hst_cal.zip,
+ensemble.zip is now svm_align.zip.
+
+- New feature: JWST Calibration Processing resource prediction model and skope (prediction script) added under the architecture name "jwst_cal"
+
+- Tests added for JWST; existing tests and metadata updated to reflect above changes
+
+
+
+
 0.4.1 (2023-07-03)
 ==================
 

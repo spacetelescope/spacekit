@@ -6,6 +6,7 @@ import pandas as pd
 import glob
 from spacekit.analyzer.compute import ComputeBinary, ComputeMulti, ComputeRegressor
 from spacekit.logger.log import Logger
+from spacekit.skopes.jwst.cal.config import KEYPAIR_DATA
 
 try:
     import plotly.graph_objects as go
@@ -571,7 +572,7 @@ class HstCalScanner(MegaScanner):
         """
         com_objects = []
         for d in self.datapaths:
-            coms = self.load_cal_objects(d)
+            coms = self.load_com_objects(d)
             com_objects.append(coms)
             del coms
 
@@ -582,7 +583,7 @@ class HstCalScanner(MegaScanner):
             del b, m, w
         return self.mega
 
-    def load_cal_objects(self, dpath):
+    def load_com_objects(self, dpath):
         """Loads Multi classifier and Regression compute objects (3 total) for a single iteration of results
 
         Parameters
@@ -639,7 +640,7 @@ class HstSvmScanner(MegaScanner):
         """
         com_objects = []
         for d in self.datapaths:
-            coms = self.load_svm_objects(d)
+            coms = self.load_com_objects(d)
             com_objects.append(coms)
             del coms
 
@@ -650,7 +651,7 @@ class HstSvmScanner(MegaScanner):
             del tcom, vcom
         # return self.mega
 
-    def load_svm_objects(self, dpath):
+    def load_com_objects(self, dpath):
         """Load Binary classifier compute objects for a single iteration of test and validation results
 
         Parameters
@@ -674,31 +675,57 @@ class HstSvmScanner(MegaScanner):
         )
         return (T, V)
 
-    # def scan_results(self):
-    #     """Scans local disk for Computer object-generated test and validation results files for SVM model training iterations.
 
-    #     Returns
-    #     -------
-    #     SvmScanner.mega dictionary attribute
-    #         dictionary of model training results for each iteration found.
-    #     """
-    #     self.mega = self.make_mega()
-    #     for i, d in enumerate(self.datapaths):
-    #         v = self.versions[i]
-    #         tCom = ComputeBinary(
-    #             algorithm="clf", classes=self.classes, res_path=f"{d}/results/test"
-    #         )
-    #         test_out = tCom.upload()
-    #         tCom.load_results(test_out)
-    #         self.mega[v]["res"]["test"] = tCom
+class JwstCalScanner(MegaScanner):
 
-    #         vCom = ComputeBinary(
-    #             algorithm="clf",
-    #             classes=self.classes,
-    #             res_path=f"{d}/results/val",
-    #             validation=True,
-    #         )
-    #         val_out = vCom.upload()
-    #         vCom.load_results(val_out)
-    #         self.mega[v]["res"]["val"] = vCom
-    #     return self.mega
+    def __init__(self, perimeter="data/20??-*-*-*", primary=-1, **log_kws):
+        super().__init__(
+            perimeter=perimeter, primary=primary, name="JwstCalScanner", **log_kws
+        )
+        self.labels = []
+        self.classes = []
+        self.res_keys = dict(img3_reg=None)
+        self.target = list(self.res_keys.keys())[0]
+        self.data = self.select_dataset()
+        self.mega = self.make_mega()
+        self.kwargs = dict(index_col="img_name")
+        self.decoder = KEYPAIR_DATA
+
+    def scan_results(self):
+        """Scans local disk for Computer object-generated results files and stores them as new Compute objects (according to the model type) in a nested dictionary.
+
+        Returns
+        -------
+        HstCalScanner.mega dictionary attribute
+            dictionary of model training results for each iteration found.
+        """
+        com_objects = []
+        for d in self.datapaths:
+            coms = self.load_com_objects(d)
+            com_objects.append(coms)
+            del coms
+
+        for i in list(range(len(self.versions))):
+            v = self.versions[i]
+            (im3) = com_objects[i]
+            self.mega[v]["res"] = dict(img3_reg=im3)
+            del im3
+        return self.mega
+
+    def load_com_objects(self, dpath):
+        """Loads Multi classifier and Regression compute objects (3 total) for a single iteration of results
+
+        Parameters
+        ----------
+        dpath : str
+            dataset subdirectory path, e.g. "data/2022-02-03/results"
+
+        Returns
+        -------
+        tuple
+            tuple of mem_bin, memory, wallclock compute objects for one iteration
+        """
+        im3 = super().load_compute_object(
+            Com=ComputeRegressor, alg="linreg", res_path=f"{dpath}/results/img3_reg"
+        )
+        return (im3)

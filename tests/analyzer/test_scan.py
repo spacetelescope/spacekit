@@ -22,7 +22,7 @@ EXPECTED = {
         "df_ncol": 12,
         "df_key": "det_key",
     },
-    "cal": {
+    "hstcal": {
         "classes": [0, 1, 2, 3],
         "labels": ["2g", "8g", "16g", "64g"],
         "target": "mem_bin",

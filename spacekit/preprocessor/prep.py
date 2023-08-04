@@ -220,18 +220,20 @@ class JwstCalPrep(Prep):
     def __init__(
         self,
         data,
-        y_target="imagesize",
+        y_target="imgsize_gb",
         X_cols=[],
-        norm_cols=[],
-        rename_cols=[],
+        norm_cols=['offset','max_offset','mean_offset','sigma_offset','err_offset','sigma1_mean'],
+        rename_cols='_scl',
         tensors=True,
-        normalize=False,
+        normalize=True,
         random=42,
         tsize=0.2,
         encode_targets=False,
+        exp_mode="image",
         name="JwstCalPrep",
         **log_kws,
     ):
+        self.exp_mode = exp_mode
         self.set_X_cols(X_cols)
         self.__name__ = name
         self.log = Logger(self.__name__, **log_kws).spacekit_logger()
@@ -247,7 +249,7 @@ class JwstCalPrep(Prep):
         )
         self.norm_cols = norm_cols
         self.rename_cols = rename_cols
-        self.imagesize = data["imagesize"]
+        self.target_data = data[self.y_target]
         self.y_mem_train = None
         self.y_mem_test = None
 
@@ -256,14 +258,12 @@ class JwstCalPrep(Prep):
             self.X_cols = [
                 "instr",
                 "detector",
-                "exp_type",
                 "visitype",
                 "filter",
                 "pupil",
                 "channel",
                 "subarray",
                 "bkgdtarg",
-                "tsovisit",
                 "nexposur",
                 "numdthpt",
                 "offset",
@@ -273,9 +273,36 @@ class JwstCalPrep(Prep):
                 "err_offset",
                 "sigma1_mean",
                 "frac",
+                # "exp_type",
+                # "tsovisit",
             ]
         else:
             self.X_cols = X_cols
+
+
+    def norm_col_order(self):
+        return [ 
+            "instr",
+            "detector",
+            "visitype",
+            "filter",
+            "pupil",
+            "channel",
+            "subarray",
+            "bkgdtarg",
+            "nexposur",
+            "numdthpt",
+            "offset_scl",
+            "max_offset_scl",
+            "mean_offset_scl",
+            "sigma_offset_scl",
+            "err_offset_scl",
+            "sigma1_mean_scl",
+            "frac",
+            #"exp_type",
+            #"tsovisit",
+        ]
+
 
     def prep_data(self, existing_splits=False):
         if existing_splits is True:
@@ -286,15 +313,19 @@ class JwstCalPrep(Prep):
                 self.log.warning("'split' not found in data columns")
                 return
         else:
-            super().stratify_split(y_target="imagesize", stratify=False)
+            super().stratify_split(y_target=self.y_target, stratify=False)
         self.X_train, self.X_test = super().get_X_train_test()
-        # super().apply_normalization(
-        #     T=PowerX, cols=self.norm_cols, rename=self.rename_cols, join=2
-        # )
+        super().apply_normalization(
+            T=PowerX, cols=self.norm_cols, rename=self.rename_cols, join=1
+        )
+        norm_cols = self.norm_col_order()
+        self.set_X_cols(norm_cols)
+        self.X_train = self.X_train[self.X_cols]
+        self.X_test = self.X_test[self.X_cols]
 
-    def prep_imagesize(self):
+    def prep_targets(self):
         """main calling function"""
-        y_train, y_test = super().get_y_train_test("imagesize")
+        y_train, y_test = super().get_y_train_test(self.y_target)
         self.y_mem_train, self.y_mem_test = y_tensors(
             y_train.values, y_test.values, reshape=True
         )

@@ -22,13 +22,15 @@ from spacekit.analyzer.track import stopwatch
 try:
     from drizzlepac import runsinglehap
 except ImportError:
-    print(
+    raise ValueError(
         "Running this script requires drizzlepac to be installed. Run `pip install drizzlepac` then try again."
     )
 try:
     from tqdm import tqdm
+    from progressbar import ProgressBar
 except ImportError:
-    raise ValueError("tqdm is not installed. Use `pip install spacekit[x]`")
+    raise ValueError("tqdm and/or progressbar is not installed. Use `pip install spacekit[x]`")
+
 
 SVM_QUALITY_TESTING = "on"
 os.environ["SVM_QUALITY_TESTING"] = "on"

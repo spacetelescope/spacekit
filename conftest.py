@@ -6,6 +6,7 @@ import pandas as pd
 from spacekit.analyzer.explore import HstCalPlots, HstSvmPlots
 from spacekit.analyzer.scan import HstSvmScanner, HstCalScanner, import_dataset
 from spacekit.extractor.load import load_datasets, extract_file
+from spacekit.skopes.jwst.cal.config import KEYPAIR_DATA
 
 
 TESTED_VERSIONS = {}
@@ -34,7 +35,7 @@ pytest_plugins = [
 
 class Config:
     def __init__(self, env):
-        SUPPORTED_ENVS = ["svm", "cal"]
+        SUPPORTED_ENVS = ["svm", "hstcal", "jwstcal"]
         self.env = env
 
         if env.lower() not in SUPPORTED_ENVS:
@@ -44,26 +45,32 @@ class Config:
 
         self.data_path = {
             "svm": os.path.join(f"tests/data/{env}/data.zip"),
-            "cal": os.path.join(f"tests/data/{env}/data.zip"),
+            "hstcal": os.path.join(f"tests/data/{env}/data.zip"),
+            "jwstcal": os.path.join(f"tests/data/{env}/data.zip"),
         }[env]
 
-        self.kwargs = {"svm": dict(index_col="index"), "cal": dict(index_col="ipst")}[
-            env
-        ]
+        self.kwargs = {
+            "svm": dict(index_col="index"), 
+            "hstcal": dict(index_col="ipst"),
+            "jwstcal": dict(index_col="img_name")
+        }[env]
 
         self.decoder = {
             "svm": {"det": {0: "hrc", 1: "ir", 2: "sbc", 3: "uvis", 4: "wfc"}},
-            "cal": {"instr": {0: "acs", 1: "cos", 2: "stis", 3: "wfc3"}},
+            "hstcal": {"instr": {0: "acs", 1: "cos", 2: "stis", 3: "wfc3"}},
+            "jwstcal": KEYPAIR_DATA,
         }[env]
 
         self.labeled = {
             "svm": "tests/data/svm/train/training.csv",
-            "cal": "tests/data/cal/train/training.csv",
+            "hstcal": "tests/data/hstcal/train/training.csv",
+            "jwstcal": "tests/data/jwstcal/train/training.csv",
         }[env]
 
         self.unlabeled = {
             "svm": "tests/data/svm/predict/unlabeled.csv",
-            "cal": "tests/data/cal/predict/unlabeled.csv",
+            "hstcal": "tests/data/hstcal/predict/unlabeled.csv",
+            "jwstcal" : "tests/data/jwstcal/predict/unlabeled.csv"
         }[env]
 
         self.norm_cols = {
@@ -76,13 +83,26 @@ class Config:
                 "segment",
                 "gaia",
             ],
-            "cal": ["n_files", "total_mb"],
+            "hstcal": ["n_files", "total_mb"],
+            "jwstcal": [
+                'offset',
+                'max_offset',
+                'mean_offset',
+                'sigma_offset',
+                'err_offset',
+                'sigma1_mean'
+            ],
         }[env]
-        self.rename_cols = {"svm": "_scl", "cal": ["x_files", "x_size"]}[env]
+
+        self.rename_cols = {
+            "svm": "_scl",
+            "hstcal": ["x_files", "x_size"],
+            "jwstcal": "_scl"
+        }[env]
 
         self.enc_cols = {
             "svm": ["det", "wcs", "cat"],
-            "cal": [
+            "hstcal": [
                 "drizcorr",
                 "pctecorr",
                 "crsplit",
@@ -91,24 +111,35 @@ class Config:
                 "dtype",
                 "instr",
             ],
+            "jwstcal": [
+                "instr",
+                "detector",
+                "visitype",
+                "filter",
+                "pupil",
+                "channel",
+                "subarray"
+            ],
         }[env]
 
         self.tx_file = {
             "svm": "tests/data/svm/tx_data.json",
-            "cal": "tests/data/cal/tx_data.json",
+            "hstcal": "tests/data/hstcal/tx_data.json",
+            "jwstcal": "tests/data/jwstcal/tx_data.json"
         }[env]
 
         self.visits = {
             "svm": [],
-            "cal": {
+            "hstcal": {
                 "asn": ["j8zs05020", "ic0k06010", "la8mffg5q", "oc3p011i0"],
-                "svm": []
-            }
+                "svm": [],
+            },
+            "jwstcal": ["jw02732"],
         }[env]
 
 
 def pytest_addoption(parser):
-    # parser.addoption("--env", action="store", default="cal", help="Environment to run tests against")
+    # parser.addoption("--env", action="store", default="hstcal", help="Environment to run tests against")
     parser.addoption("--env", action="store", default=None, help="Environment to run tests against")
 
 # def pytest_configure(config):
@@ -116,12 +147,12 @@ def pytest_addoption(parser):
 #     config.addinivalue_line("markers", "skope_cal: only run in cal skope")
 
 # def pytest_collection_modifyitems(config, items, skope):
-#     if skope.env == "cal"
+#     if skope.env == "hstcal"
     # env_param = config.getoption("--env")
     # if env_param:
     #     skope_param = pytest.mark.parametrize("skope", [(env_param)], indirect=True)
     # else:
-    #     skope_param = pytest.mark.parametrize("skope", [("cal", "svm")], indirect=True)
+    #     skope_param = pytest.mark.parametrize("skope", [("hstcal", "svm")], indirect=True)
     #     # skip_param = pytest.mark.skipif(reason="skip params based on --env")
     # for item in items:
     #     if "skopes" in item.keywords:
@@ -133,7 +164,7 @@ def env(request):
     return request.config.getoption("--env")
 
 
-@fixture(scope="session", params=["cal", "svm"])
+@fixture(scope="session", params=["hstcal", "svm"])
 def skope(request):
     env_param = request.config.getoption("--env")
     if env_param is not None and request.param != env_param:
@@ -174,8 +205,10 @@ def df_ncols(skope):
 def scanner(skope, res_data_path):
     if skope.env == "svm":
         scanner = HstSvmScanner(perimeter=f"{res_data_path}/20??-*-*-*", primary=-1)
-    elif skope.env == "cal":
+    elif skope.env == "hstcal":
         scanner = HstCalScanner(perimeter=f"{res_data_path}/20??-*-*-*", primary=-1)
+    else:
+        pytest.skip(reason="JWST does not yet have a scanner.")
     scanner.exp = skope.env
     return scanner
 
@@ -186,15 +219,16 @@ def explorer(skope, res_data_path):
     df = import_dataset(filename=fname, kwargs=skope.kwargs, decoder=skope.decoder)
     if skope.env == "svm":
         hst = HstSvmPlots(df)
-    elif skope.env == "cal":
+    elif skope.env == "hstcal":
         hst = HstCalPlots(df)
+    elif skope.env == "jwstcal":
+        pytest.skip(reason="TODO")
     hst.env = skope.env
     return hst
 
 @fixture(scope="session")
 def labeled_dataset(skope):
     return skope.labeled
-    # return "tests/data/svm/train/training.csv"
 
 
 @fixture(scope="session")  # session
@@ -219,10 +253,6 @@ def img_outpath(tmp_path):
 
 
 # # SVM PREDICT
-# @fixture(scope="function")
-# def svm_unlabeled_dataset():
-#     return "tests/data/svm/predict/unlabeled.csv"
-
 
 @fixture(scope="session", params=["img.tgz", "img_pred.npz"])
 def svm_pred_img(request, tmp_path_factory):
@@ -236,10 +266,6 @@ def svm_pred_img(request, tmp_path_factory):
 
 
 # # SVM TRAIN
-# @fixture(scope="function")  # session
-# def svm_labeled_dataset():
-#     return "tests/data/svm/train/training.csv"
-
 
 @fixture(scope="session", params=["img.tgz", "img_data.npz"])
 def svm_train_img(request, tmp_path_factory):
@@ -312,22 +338,13 @@ def scraped_mast_file():
     return "tests/data/svm/prep/scraped_mast.csv"
 
 
-# CAL
-# @fixture(scope="function")
-# def cal_labeled_dataset():
-#     return "tests/data/cal/train/training.csv"
-
-# @fixture(scope="function")
-# def training_data_file(skope):
-#     return skope.labeled
-
 @fixture(scope="function")
-def cal_predict_visits():
+def hst_cal_predict_visits():
     return {
             "asn": ["j8zs05020", "ic0k06010", "la8mffg5q", "oc3p011i0"]
     }
-# def predict_visits(skope):
-    # if skope.env == "svm":
-    #     pytest.skip(reason="SVM test data not yet available")
-    # else:
-    #     return skope.visits
+
+
+@fixture(scope="function")
+def jwstcal_input_path():
+    return "tests/data/jwstcal/jw02732"

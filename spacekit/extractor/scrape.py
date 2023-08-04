@@ -694,7 +694,10 @@ class FitsScraper(FileScraper):
         list
             Paths to (typically uncalibrated) input exposure .fits files in this program/visit
         """
-        return glob.glob(f"{os.path.expanduser(self.input_path)}/*{sfx}")
+        fpaths = glob.glob(f"{os.path.expanduser(self.input_path)}/*{sfx}")
+        if not fpaths:
+            fpaths = glob.glob(f"{os.path.expanduser(self.input_path)}/*/*{sfx}")
+        return fpaths
 
     def scrape_fits_headers(self, fpaths=None):
         """scrape values from ext=0 general info header (genkeys) and ext=1 science header (scikeys)
@@ -713,7 +716,7 @@ class FitsScraper(FileScraper):
         _type_
             _description_
         """
-        self.log.info("\n*** Extracting fits data ***")
+        self.log.info("*** Extracting fits data ***")
         if fpaths is None:
             fpaths = self.get_input_exposures()
         exp_headers = {}
@@ -749,7 +752,7 @@ class FitsScraper(FileScraper):
     def scrape_drizzle_fits(self):
         if not self.fpaths:
             self.fpaths = self.find_drz_paths()
-        self.log.info("\n*** Extracting fits data ***")
+        self.log.info("*** Extracting fits data ***")
         fits_dct = {}
         for key, path in self.fpaths.items():
             fits_dct[key] = {}

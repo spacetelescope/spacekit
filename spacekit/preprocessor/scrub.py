@@ -585,7 +585,7 @@ class JwstCalScrubber(Scrubber):
             tnum = targs.get(v["TARGNAME"])
             if v["PUPIL"] == "CLEAR":
                 p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['PUPIL']}-{v['FILTER']}".lower()
-            elif v["PUPIL"] != "NaN":
+            elif v["PUPIL"] not in ["NaN", "N/A", "NONE"]:
                 p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['FILTER']}-{v['PUPIL']}".lower()
             else:
                 p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['FILTER']}".lower()
