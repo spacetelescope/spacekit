@@ -223,7 +223,7 @@ class JwstCalPrep(Prep):
         y_target="imgsize_gb",
         X_cols=[],
         norm_cols=['offset','max_offset','mean_offset','sigma_offset','err_offset','sigma1_mean'],
-        rename_cols='_scl',
+        rename_cols=None,
         tensors=True,
         normalize=True,
         random=42,

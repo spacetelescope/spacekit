@@ -679,7 +679,7 @@ class FitsScraper(FileScraper):
         self.scikeys = scikeys
         self.fpaths = None
 
-    def get_input_exposures(self, sfx="_uncal.fits"):
+    def get_input_exposures(self, pfx="", sfx="_uncal.fits"):
         """create list of local paths to L1B exposure files for a given program
 
         Parameters
@@ -694,12 +694,12 @@ class FitsScraper(FileScraper):
         list
             Paths to (typically uncalibrated) input exposure .fits files in this program/visit
         """
-        fpaths = glob.glob(f"{os.path.expanduser(self.input_path)}/*{sfx}")
+        fpaths = glob.glob(f"{os.path.expanduser(self.input_path)}/{pfx}*{sfx}")
         if not fpaths:
-            fpaths = glob.glob(f"{os.path.expanduser(self.input_path)}/*/*{sfx}")
+            fpaths = glob.glob(f"{os.path.expanduser(self.input_path)}/*/{pfx}*{sfx}")
         return fpaths
 
-    def scrape_fits_headers(self, fpaths=None):
+    def scrape_fits_headers(self, fpaths=None, **kwargs):
         """scrape values from ext=0 general info header (genkeys) and ext=1 science header (scikeys)
 
         Parameters
@@ -716,9 +716,9 @@ class FitsScraper(FileScraper):
         _type_
             _description_
         """
-        self.log.info("*** Extracting fits data ***")
+        self.log.info("Extracting fits data...")
         if fpaths is None:
-            fpaths = self.get_input_exposures()
+            fpaths = self.get_input_exposures(**kwargs)
         exp_headers = {}
         for fpath in fpaths:
             fname = str(os.path.basename(fpath))
@@ -772,7 +772,7 @@ class FitsScraper(FileScraper):
 
 
 class JwstFitsScraper(FitsScraper):
-    def __init__(self, input_path, data=None, sfx="_uncal.fits", **log_kws):
+    def __init__(self, input_path, data=None, pfx="", sfx="_uncal.fits", **log_kws):
         self.genkeys = self.general_header_keys()
         self.scikeys = self.science_header_keys()
         if data is None:
@@ -785,8 +785,9 @@ class JwstFitsScraper(FitsScraper):
             name="JwstFitsScraper",
             **log_kws,
         )
+        self.pfx = pfx
         self.sfx = sfx
-        self.fpaths = super().get_input_exposures(sfx=self.sfx)
+        self.fpaths = super().get_input_exposures(pfx=self.pfx, sfx=self.sfx)
         self.exp_headers = None
 
     def general_header_keys(self):

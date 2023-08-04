@@ -515,6 +515,7 @@ class JwstCalScrubber(Scrubber):
         self,
         input_path,
         data=None,
+        pfx="",
         sfx="_uncal.fits",
         dropnans=False,
         save_raw=True,
@@ -524,6 +525,8 @@ class JwstCalScrubber(Scrubber):
         self.input_path = input_path
         self.exp_headers = None
         self.products = dict()
+        self.refpix = None
+        self.pfx = pfx
         self.sfx = sfx
         super().__init__(
             data=data,
@@ -534,6 +537,7 @@ class JwstCalScrubber(Scrubber):
             **log_kws,
         )
         self.scrape_inputs()
+        self.get_level3_products()
         self.pixel_offsets()
         self.xcols = self.set_col_order()
         self.encoding_pairs = encoding_pairs
@@ -562,21 +566,23 @@ class JwstCalScrubber(Scrubber):
             "targ_frac"
         ]
 
-
     def set_new_cols(self, new_cols):
         self.new_cols = new_cols
         return self.new_cols.extend(self.col_order)
 
     def scrape_inputs(self):
-        self.scraper = JwstFitsScraper(self.input_path, data=self.df, sfx=self.sfx)
+        self.scraper = JwstFitsScraper(self.input_path, data=self.df, pfx=self.pfx, sfx=self.sfx)
         self.fpaths = self.scraper.fpaths
         self.exp_headers = self.scraper.scrape_fits()
 
     def pixel_offsets(self):
         # Wait to add image products to self.products until after offset calc
-        self.get_level3_products()
         self.refpix = SkyTransformer("JWST").calculate_offsets(self.img_products)
-        self.products.update(self.img_products)
+        self.products.update(self.refpix)
+
+    def spec_products(self):
+        #TODO
+        pass
 
     def make_image_product_name(self, v, tnum):
         if v["PUPIL"] == "CLEAR":
@@ -595,6 +601,7 @@ class JwstCalScrubber(Scrubber):
         tnums = [f"t{i+1}" for i, _ in enumerate(targetnames)]
         targs = dict(zip(targetnames, tnums))
         self.img_products = dict()
+        # self.spec_products = dict()
 
         for k, v in self.exp_headers.items():
             tnum = targs.get(v["TARGNAME"])
@@ -608,13 +615,19 @@ class JwstCalScrubber(Scrubber):
             else:
                 continue # TEMP: ignoring non-image exp_types
                 # p = self.make_spec_product_name(v, tnum)
-                # if p in self.products:
-                #   self.products[p][k] = v
+                # if p in self.spec_products:
+                #   self.spec_products[p][k] = v
                 # else:
-                #   self.products[p] = {k: v}
+                #   self.spec_products[p] = {k: v}
 
-    def scrub_inputs(self):
-        self.df = pd.DataFrame.from_dict(self.refpix, orient="index")
+    def input_data(self):
+        return dict(
+            IMAGE=self.refpix
+        )
+
+    def scrub_inputs(self, exp_type="IMAGE"):
+        data = self.input_data()[exp_type] # IMAGE=self.refpix
+        self.df = pd.DataFrame.from_dict(data, orient="index")
         super().rename_cols(new=[c.lower() for c in self.df.columns])
         super().rename_cols(old=["instrume"], new=["instr"])
         self.df = self.df[self.xcols]

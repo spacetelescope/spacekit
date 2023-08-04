@@ -230,13 +230,13 @@ class CategoricalEncoder:
                 "encoding_pairs attr must be instantiated with key-value pairs"
             )
             return
-        self.log.info("ENCODING CATEGORICAL FEATURES")
+        self.log.info("Encoding categorical features...")
         for col, name in self.encodings.items():
             keypairs = self.encoding_pairs[col]
             enc = PairEncoder()
             enc.fit_transform(self.df, keypairs, axiscol=col)
             self.df[name] = enc.transformed
-            self.log.info(f"*** {col} --> {name} ***")
+            self.log.debug(f"*** {col} --> {name} ***")
             self.log.debug(
                 f"\n\nORIGINAL:\n{self.df[col].value_counts()}\n\nENCODED:\n{self.df[name].value_counts()}\n"
             )

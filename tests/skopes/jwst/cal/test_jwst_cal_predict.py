@@ -21,8 +21,8 @@ EXPECTED = {
         ]
     },
     "predictions": {
-        "jw02732-o005-t1_miri_f1130w'": {"gbSize": 2},
-        "jw02732-o001-t2_nircam_clear-f150w": {"gbSize": 60},
+        "jw02732-o005-t1_miri_f1130w'": {"gbSize": 0.79},
+        "jw02732-o001-t2_nircam_clear-f150w": {"gbSize": 3.8},
     },
 }
 
@@ -36,6 +36,7 @@ def test_jwst_cal_predict(jwstcal_input_path):
     assert jcal.img3_reg.model_path == 'models/jwst_cal/img3_reg'
     assert jcal.tx_file == 'models/jwst_cal/tx_data.json'
     assert jcal.img3_reg.model.name == 'img3_reg'
+    assert len(jcal.img3_reg.model.layers) == 10
     jcal.run_inference()
 
 

@@ -678,11 +678,11 @@ def normalize_training_images(X_tr, X_ts, X_vl=None):
         return X_tr, X_ts
 
 
-def array_to_tensor(arr, reshape=False):
+def array_to_tensor(arr, reshape=False, shape=(-1, 1)):
     if type(arr) == tf.Tensor:
         return arr
     if reshape is True:
-        arr = arr.reshape(-1, 1)
+        arr = arr.reshape(shape[0], shape[1])
     return tf.convert_to_tensor(arr, dtype=tf.float32)
 
 
@@ -724,7 +724,7 @@ def arrays_to_tensors(X_train, y_train, X_test, y_test, reshape_y=False):
     return X_train, y_train, X_test, y_test
 
 
-def tensor_to_array(tensor, reshape=False):
+def tensor_to_array(tensor, reshape=False, shape=(-1,1)):
     """Convert a tensor back into a numpy array. Optionally reshape the array (e.g. for target class data).
 
     Parameters
@@ -740,7 +740,7 @@ def tensor_to_array(tensor, reshape=False):
         array of same shape as input tensor, unless reshape=True
     """
     if reshape:
-        return np.asarray(tensor).reshape(-1, 1)
+        return np.asarray(tensor).reshape(shape[0], shape[1])
     else:
         return np.asarray(tensor)
 

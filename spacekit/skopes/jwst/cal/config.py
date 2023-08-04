@@ -29,17 +29,15 @@ SCIKEYS = [
 ]
 
 COLUMN_ORDER = {
-    "asn": [
+    "IMAGE": [
         "instr",
         "detector",
-        "exp_type",
         "visitype",
         "filter",
         "pupil",
         "channel",
         "subarray",
         "bkgdtarg",
-        "tsovisit",
         "nexposur",
         "numdthpt",
         "offset",
@@ -49,11 +47,12 @@ COLUMN_ORDER = {
         "err_offset",
         "sigma1_mean",
         "frac",
+        "targ_frac",
     ]
 }
 
 NORM_COLS = {
-    "asn": [
+    "IMAGE": [
         "offset",
         "max_offset",
         "mean_offset",
@@ -63,11 +62,6 @@ NORM_COLS = {
     ],
 }
 
-RENAME_COLS = {
-    "asn": [],
-}
-
-X_NORM = {"asn": []}
 
 KEYPAIR_DATA = {
     "instr": {"FGS": 0, "MIRI": 1, "NIRCAM": 2, "NIRISS": 3, "NIRSPEC": 4},
