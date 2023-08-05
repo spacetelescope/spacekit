@@ -223,18 +223,18 @@ class JwstCalPrep(Prep):
         y_target="imgsize_gb",
         X_cols=[],
         norm_cols=['offset','max_offset','mean_offset','sigma_offset','err_offset','sigma1_mean'],
-        rename_cols=None,
+        exp_mode="image",
         tensors=True,
         normalize=True,
-        random=42,
+        random=None,
         tsize=0.2,
         encode_targets=False,
-        exp_mode="image",
         name="JwstCalPrep",
         **log_kws,
     ):
         self.exp_mode = exp_mode
         self.set_X_cols(X_cols)
+        self.norm_cols = norm_cols
         self.__name__ = name
         self.log = Logger(self.__name__, **log_kws).spacekit_logger()
         super().__init__(
@@ -247,64 +247,56 @@ class JwstCalPrep(Prep):
             tsize=tsize,
             encode_targets=encode_targets,
         )
-        self.norm_cols = norm_cols
-        self.rename_cols = rename_cols
         self.target_data = data[self.y_target]
-        self.y_mem_train = None
-        self.y_mem_test = None
+        self.y_img_train = None
+        self.y_img_test = None
 
     def set_X_cols(self, X_cols):
         if len(X_cols) == 0:
-            self.X_cols = [
-                "instr",
-                "detector",
-                "visitype",
-                "filter",
-                "pupil",
-                "channel",
-                "subarray",
-                "bkgdtarg",
-                "nexposur",
-                "numdthpt",
-                "offset",
-                "max_offset",
-                "mean_offset",
-                "sigma_offset",
-                "err_offset",
-                "sigma1_mean",
-                "frac",
-                "targ_frac",
-                # "exp_type",
-                # "tsovisit",
-            ]
+            self.X_cols = dict(
+                image = [
+                    "instr",
+                    "detector",
+                    "visitype",
+                    "filter",
+                    "pupil",
+                    "channel",
+                    "subarray",
+                    "bkgdtarg",
+                    "nexposur",
+                    "numdthpt",
+                    "offset",
+                    "max_offset",
+                    "mean_offset",
+                    "sigma_offset",
+                    "err_offset",
+                    "sigma1_mean",
+                    "frac",
+                    "targ_frac",
+                ],
+                spec = [
+                    "instr",
+                    "detector",
+                    "visitype",
+                    "filter",
+                    "grating",
+                    # "channel",
+                    "subarray",
+                    "bkgdtarg",
+                    "nexposur",
+                    "numdthpt",
+                    "offset",
+                    "max_offset",
+                    "mean_offset",
+                    "sigma_offset",
+                    "err_offset",
+                    "sigma1_mean",
+                    "frac",
+                    # "targ_frac",       
+                ]
+            )[self.exp_mode]
         else:
             self.X_cols = X_cols
-
-
-    def norm_col_order(self):
-        return [ 
-            "instr",
-            "detector",
-            "visitype",
-            "filter",
-            "pupil",
-            "channel",
-            "subarray",
-            "bkgdtarg",
-            "nexposur",
-            "numdthpt",
-            "offset_scl",
-            "max_offset_scl",
-            "mean_offset_scl",
-            "sigma_offset_scl",
-            "err_offset_scl",
-            "sigma1_mean_scl",
-            "frac",
-            "targ_frac",
-            #"exp_type",
-            #"tsovisit",
-        ]
-
 
     def prep_data(self, existing_splits=False):
         if existing_splits is True:
@@ -318,17 +310,15 @@ class JwstCalPrep(Prep):
             super().stratify_split(y_target=self.y_target, stratify=False)
         self.X_train, self.X_test = super().get_X_train_test()
         super().apply_normalization(
-            T=PowerX, cols=self.norm_cols, rename=self.rename_cols, join=1
+            T=PowerX, cols=self.norm_cols, rename=None, join=1
         )
-        norm_cols = self.norm_col_order()
-        self.set_X_cols(norm_cols)
         self.X_train = self.X_train[self.X_cols]
         self.X_test = self.X_test[self.X_cols]
 
     def prep_targets(self):
         """main calling function"""
         y_train, y_test = super().get_y_train_test(self.y_target)
-        self.y_mem_train, self.y_mem_test = y_tensors(
+        self.y_img_train, self.y_img_test = y_tensors(
             y_train.values, y_test.values, reshape=True
         )
 

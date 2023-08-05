@@ -119,10 +119,10 @@ def test_scrub_cols(raw_svm_data, single_visit_path):
 def test_jwst_cal_scrubber(jwstcal_input_path):
     scrubber = JwstCalScrubber(jwstcal_input_path, encoding_pairs=KEYPAIR_DATA)
     assert len(scrubber.fpaths) == 6
-    assert len(scrubber.refpix) == 2
+    assert len(scrubber.imgpix) == 2
     nrc_product = 'jw02732-o001-t2_nircam_clear-f150w'
     miri_product = 'jw02732-o005-t1_miri_f1130w'
-    assert len(scrubber.refpix[nrc_product].keys()) == 42
+    assert len(scrubber.imgpix[nrc_product].keys()) == 42
     for prod in list(scrubber.products.keys()):
         assert prod in list(JWST_EXPECTED.keys())
     nrc_exposures = sorted(list(scrubber.products[nrc_product].keys()))

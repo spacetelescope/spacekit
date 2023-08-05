@@ -721,18 +721,22 @@ class FitsScraper(FileScraper):
             fpaths = self.get_input_exposures(**kwargs)
         exp_headers = {}
         for fpath in fpaths:
-            fname = str(os.path.basename(fpath))
-            sfx = fname.split("_")[-1]  # _uncal.fits
-            name = fname.replace(f"_{sfx}", "")
-            exp_headers[name] = dict()
-            if self.genkeys:
-                genhdr = fits.getheader(fpath, ext=0)
-                for g in self.genkeys:
-                    exp_headers[name][g] = genhdr[g] if g in genhdr else "NaN"
-            if self.scikeys:
-                scihdr = fits.getheader(fpath, ext=1)
-                for s in self.scikeys:
-                    exp_headers[name][s] = scihdr[s] if s in scihdr else "NaN"
+            try:
+                fname = str(os.path.basename(fpath))
+                sfx = fname.split("_")[-1]  # _uncal.fits
+                name = fname.replace(f"_{sfx}", "")
+                exp_headers[name] = dict()
+                if self.genkeys:
+                    genhdr = fits.getheader(fpath, ext=0)
+                    for g in self.genkeys:
+                        exp_headers[name][g] = genhdr[g] if g in genhdr else "NaN"
+                if self.scikeys:
+                    scihdr = fits.getheader(fpath, ext=1)
+                    for s in self.scikeys:
+                        exp_headers[name][s] = scihdr[s] if s in scihdr else "NaN"
+            except Exception:
+                del exp_headers[name]
+                continue
         return exp_headers
 
     def find_drz_paths(self, dname_col="dataset", drzimg_col="imgname"):
@@ -795,6 +799,7 @@ class JwstFitsScraper(FitsScraper):
             "PROGRAM",  # Program number
             "OBSERVTN",  # Observation number
             "BKGDTARG",  # Background target
+            "IS_IMPRT", # NIRSpec imprint exposure
             "VISITYPE",  # Visit type
             "TSOVISIT",  # Time Series Observation visit indicator
             "TARGNAME",  # Standard astronomical catalog name for target
@@ -804,12 +809,15 @@ class JwstFitsScraper(FitsScraper):
             "DETECTOR",  # Name of detector used to acquire the data
             "FILTER",  # Name of the filter element used
             "PUPIL",  # Name of the pupil element used
+            "GRATING", # Name of the grating element used (SPEC)
             "EXP_TYPE",  # Type of data in the exposure
             "CHANNEL",  # Instrument channel
             "SUBARRAY",  # Subarray used
             "NUMDTHPT",  # Total number of points in pattern
             "GS_RA",  # guide star right ascension
             "GS_DEC",  # guide star declination
+            "GS_MAG", # guide star magnitude in FGS detector
+            "CROWDFLD", # Are the FGSes in a crowded field?
         ]
 
     def science_header_keys(self):

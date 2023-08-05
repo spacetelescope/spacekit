@@ -525,7 +525,8 @@ class JwstCalScrubber(Scrubber):
         self.input_path = input_path
         self.exp_headers = None
         self.products = dict()
-        self.refpix = None
+        self.imgpix = None
+        self.specpix = None
         self.pfx = pfx
         self.sfx = sfx
         super().__init__(
@@ -536,11 +537,11 @@ class JwstCalScrubber(Scrubber):
             name="JwstCalScrubber",
             **log_kws,
         )
-        self.scrape_inputs()
-        self.get_level3_products()
-        self.pixel_offsets()
         self.xcols = self.set_col_order()
         self.encoding_pairs = encoding_pairs
+        self.scrape_inputs()
+        self.get_level3_products()
+        # self.pixel_offsets()
 
     def set_col_order(self):
         return [
@@ -550,12 +551,15 @@ class JwstCalScrubber(Scrubber):
             "visitype",
             "filter",
             "pupil",
+            "grating",
             "channel",
             "subarray",
             "bkgdtarg",
+            "is_imprt",
             "tsovisit",
             "nexposur",
             "numdthpt",
+            "targ_max_offset",
             "offset",
             "max_offset",
             "mean_offset",
@@ -564,11 +568,9 @@ class JwstCalScrubber(Scrubber):
             "sigma1_mean",
             "frac",
             "targ_frac"
+            "gs_mag",
+            "crowdfld",
         ]
-
-    def set_new_cols(self, new_cols):
-        self.new_cols = new_cols
-        return self.new_cols.extend(self.col_order)
 
     def scrape_inputs(self):
         self.scraper = JwstFitsScraper(self.input_path, data=self.df, pfx=self.pfx, sfx=self.sfx)
@@ -576,57 +578,89 @@ class JwstCalScrubber(Scrubber):
         self.exp_headers = self.scraper.scrape_fits()
 
     def pixel_offsets(self):
-        # Wait to add image products to self.products until after offset calc
-        self.refpix = SkyTransformer("JWST").calculate_offsets(self.img_products)
-        self.products.update(self.refpix)
+        sky = SkyTransformer("JWST")
+        self.imgpix = sky.calculate_offsets(self.img_products)
+        self.products.update(self.imgpix)
+        sky.set_keys(ra="RA_REF", dec="DEC_REF")
+        self.specpix = sky.calculate_offsets(self.spec_products)
+        self.products.update(self.specpix)
 
-    def spec_products(self):
-        #TODO
-        pass
-
-    def make_image_product_name(self, v, tnum):
+    def make_image_product_name(self, k, v, tnum):
         if v["PUPIL"] == "CLEAR":
-            p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['PUPIL']}-{v['FILTER']}".lower()
+            p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['PUPIL']}-{v['FILTER']}"
         elif v["PUPIL"] not in ["NaN", "N/A", "NONE"]:
-            p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['FILTER']}-{v['PUPIL']}".lower()
+            p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['FILTER']}-{v['PUPIL']}"
         else:
-            p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['FILTER']}".lower()
-        return p
+            p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['FILTER']}"
+        p = p.lower()
+        if p in self.img_products:
+            self.img_products[p][k] = v
+        else:
+            self.img_products[p] = {k: v}
+
+    def make_spec_product_name(self, k, v, tnum):
+        if v["GRATING"] not in ["NaN", "N/A", "NONE"]:
+            p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['GRATING']}"
+        else:
+            p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}"
+        p = p.lower()
+        if p in self.spec_products:
+            self.spec_products[p][k] = v
+        else:
+            self.spec_products[p] = {k: v}
+
+    def make_fgs_product_name(self, k, v, tnum):
+        p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_clear"
+        p = p.lower()
+        if p in self.fgs_products:
+            self.fgs_products[p][k] = v
+        else:
+            self.fgs_products[p] = {k: v}
+        if p not in self.products:
+            self.products[p] = v
+
+    def make_tso_product_name(self, k, v, tnum):
+        p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['FILTER']}-{v['SUBARRAY']}"
+        p = p.lower()
+        if p in self.tso_products:
+            self.tso_products[p][k] = v
+        else:
+            self.tso_products[p] = {k: v}
 
     def get_level3_products(self):
         # determine potential L3 products based on obs, filters, detectors, etc
         # group by target+obs num+filter (+pupil)
-        # TODO: other L3 exp_types
         targetnames = list(set([v["TARGNAME"] for v in self.exp_headers.values()]))
         tnums = [f"t{i+1}" for i, _ in enumerate(targetnames)]
         targs = dict(zip(targetnames, tnums))
         self.img_products = dict()
-        # self.spec_products = dict()
+        self.spec_products = dict()
+        self.fgs_products = dict()
+        self.tso_products = dict()
 
         for k, v in self.exp_headers.items():
             tnum = targs.get(v["TARGNAME"])
-            exp_mode = v['EXP_TYPE']
-            if exp_mode.split('_')[-1] == "IMAGE":
-                p = self.make_image_product_name(v, tnum)
-                if p in self.img_products:
-                    self.img_products[p][k] = v
-                else:
-                    self.img_products[p] = {k: v}
+            exp_type = v['EXP_TYPE']
+            if v["TSOVISIT"] in [True, 't', 'T', 'True']:
+                self.make_tso_product_name(k, v, tnum)
+            elif v['INSTRUME'] == "FGS":
+                if exp_type == "FGS_IMAGE":
+                    self.make_fgs_product_name(v, tnum)
             else:
-                continue # TEMP: ignoring non-image exp_types
-                # p = self.make_spec_product_name(v, tnum)
-                # if p in self.spec_products:
-                #   self.spec_products[p][k] = v
-                # else:
-                #   self.spec_products[p] = {k: v}
+                if exp_type.split('_')[-1] == "IMAGE":
+                    self.make_image_product_name(v, tnum)
+                else:
+                    self.make_spec_product_name(v, tnum)
 
     def input_data(self):
         return dict(
-            IMAGE=self.refpix
+            IMAGE=self.imgpix,
+            SPEC=self.specpix,
+            FGS=None,
         )
 
     def scrub_inputs(self, exp_type="IMAGE"):
-        data = self.input_data()[exp_type] # IMAGE=self.refpix
+        data = self.input_data()[exp_type]
         self.df = pd.DataFrame.from_dict(data, orient="index")
         super().rename_cols(new=[c.lower() for c in self.df.columns])
         super().rename_cols(old=["instrume"], new=["instr"])
@@ -646,6 +680,7 @@ class JwstCalScrubber(Scrubber):
             continuous=[
                 "nexposur",
                 "numdthpt",
+                "targ_max_offset",
                 "offset",
                 "max_offset",
                 "mean_offset",
@@ -653,14 +688,16 @@ class JwstCalScrubber(Scrubber):
                 "err_offset",
                 "sigma1_mean",
                 "frac",
-                "targ_frac"
+                "targ_frac",
+                "gs_mag",
             ],
-            boolean=["bkgdtarg", "tsovisit"],
+            boolean=["bkgdtarg", "tsovisit", "is_imprt", "crowdfld"],
             categorical=[
                 "instr",
                 "detector",
                 "filter",
                 "pupil",
+                "grating",
                 "exp_type",
                 "channel",
                 "subarray",
@@ -713,7 +750,7 @@ class NaNdler:
                 print(f"\nNaNs to be NaNdled:\n{self.df[cols].isna().sum()}\n")
             df_cat = self.df[cols].copy()
             for col in cols:
-                df_cat.loc[df_cat[col]=="N/A", col] = np.nan
+                df_cat.loc[df_cat[col].isin(["N/A", "NaN"]), col] = np.nan
                 if df_cat[col].isna().sum() > 0:
                     truevals = list(df_cat[col].value_counts().index)
                     df_cat[col] = df_cat[col].apply(

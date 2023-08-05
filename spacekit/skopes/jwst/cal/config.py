@@ -4,6 +4,7 @@ GENKEYS = [
     "PROGRAM",  # Program number
     "OBSERVTN",  # Observation number
     "BKGDTARG",  # Background target
+    "IS_IMPRT"  # NIRSpec imprint exposure 
     "VISITYPE",  # Visit type
     "TSOVISIT",  # Time Series Observation visit indicator
     "TARGNAME",  # Standard astronomical catalog name for target
@@ -13,13 +14,17 @@ GENKEYS = [
     "DETECTOR",  # Name of detector used to acquire the data
     "FILTER",  # Name of the filter element used
     "PUPIL",  # Name of the pupil element used
+    "GRATING", # Name of the grating element used
     "EXP_TYPE",  # Type of data in the exposure
     "CHANNEL",  # Instrument channel
     "SUBARRAY",  # Subarray used
     "NUMDTHPT",  # Total number of points in pattern
     "GS_RA",  # guide star right ascension
     "GS_DEC",  # guide star declination
+    "CROWDFLD", # Are the FGSes in a crowded field?
+    "GS_MAG", # guide star magnitude in FGS detector
 ]
+
 
 SCIKEYS = [
     "RA_REF",
@@ -27,6 +32,7 @@ SCIKEYS = [
     "CRVAL1",
     "CRVAL2",
 ]
+
 
 COLUMN_ORDER = {
     "IMAGE": [
@@ -48,6 +54,36 @@ COLUMN_ORDER = {
         "sigma1_mean",
         "frac",
         "targ_frac",
+    ],
+    "SPEC": [
+        "instr",
+        "detector",
+        "visitype",
+        "filter",
+        "grating",
+        "subarray",
+        "bkgdtarg",
+        "is_imprt",
+        "nexposur",
+        "numdthpt",
+        "targ_max_offset",
+        "offset",
+        "max_offset",
+        "mean_offset",
+        "sigma_offset",
+        "err_offset",
+        "sigma1_mean",
+        "frac",
+    ],
+    "FGS": [
+        "instr",
+        "detector",
+        "visitype",
+        "subarray",
+        "nexposur",
+        "numdthpt",
+        "crowdfld",
+        "gs_mag",       
     ]
 }
 
@@ -60,6 +96,16 @@ NORM_COLS = {
         "err_offset",
         "sigma1_mean",
     ],
+    "SPEC": [
+        "targ_max_offset",     
+        "offset",
+        "max_offset",
+        "mean_offset",
+        "sigma_offset",
+        "err_offset",
+        "sigma1_mean",
+    ],
+    "FGS": ["gs_mag"],
 }
 
 
@@ -180,6 +226,17 @@ KEYPAIR_DATA = {
         "NRM": 24,
         "WLM8": 25,
         "WLP8": 26,
+    },
+    "grating": {
+        "NONE": 0,
+        "MIRROR": 1,
+        "PRISM": 2,
+        "G140M": 3,
+        "G235M": 4,
+        "G395M": 5,
+        "G395H": 6,
+        "G140H": 7,
+        "G235H": 8,
     },
     "exp_type": {
         "NONE": 0,

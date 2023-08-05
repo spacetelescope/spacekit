@@ -1,7 +1,7 @@
 """
 Program (PID) of exposures comes into pipeline
 1. create list of L1B exposures
-2. scrape refpix vals from scihdrs + any additional metadata
+2. scrape pix offset vals from scihdrs + any additional metadata
 3. determine potential L3 products based on obs, filters, detectors, etc
 4. calculate sky separation / reference pixel offset statistics
 5. preprocessing: create dataframe of all input values, encode categoricals
@@ -12,7 +12,7 @@ import os
 import argparse
 import numpy as np
 from spacekit.logger.log import SPACEKIT_LOG, Logger
-from spacekit.skopes.jwst.cal.config import KEYPAIR_DATA, COLUMN_ORDER
+from spacekit.skopes.jwst.cal.config import KEYPAIR_DATA, COLUMN_ORDER, NORM_COLS
 from spacekit.preprocessor.scrub import JwstCalScrubber
 from spacekit.preprocessor.transform import array_to_tensor, PowerX
 from spacekit.builder.architect import Builder
@@ -59,8 +59,9 @@ class JwstCalPredict:
         self.inputs = None # dict of (normalized) arrays
         self.tx_data = None
         self.X = None
-        # self.mem_clf = None
         self.img3_reg = None
+        # self.img3_clf = None
+        #self.spec3_reg = None
         self.__name__ = "JwstCalPredict"
         self.log = Logger(self.__name__, **log_kws).setup_logger(logger=SPACEKIT_LOG)
         self.log_kws = dict(log=self.log, **log_kws)
@@ -79,12 +80,11 @@ class JwstCalPredict:
         self.log.info("Initialized.")
 
     def normalize_inputs(self, inputs, order="IMAGE"):
-        xcols = COLUMN_ORDER.get(order, None)
-        if not xcols:
-            xcols = list(inputs.columns)
+        xcols = COLUMN_ORDER.get(order, list(inputs.columns))
+        norm_cols = NORM_COLS.get(order, self.norm_cols)
         if self.norm:
             self.log.info(f"Applying normalization [{order}]...")
-            Px = PowerX(inputs, cols=self.norm_cols, tx_file=self.tx_file, rename=None, join_data=1)
+            Px = PowerX(inputs, cols=norm_cols, tx_file=self.tx_file, rename=None, join_data=1)
             X = Px.Xt
             self.tx_data = Px.tx_data
             self.log.debug(f"tx_data: {self.tx_data}")
@@ -97,10 +97,20 @@ class JwstCalPredict:
 
     def preprocess(self):
         self.input_data = dict(
-            IMAGE=None
+            IMAGE=None,
+            SPEC=None,
+            FGS=None,
+            TSO=None,
+            AMI=None,
+            CORON=None,
         )
         self.inputs = dict(
-            IMAGE=None
+            IMAGE=None,
+            SPEC=None,
+            FGS=None,
+            TSO=None,
+            AMI=None,
+            CORON=None,
         )
         self.log.info("Preprocessing inputs...")
         if self.pid is not None:
@@ -115,16 +125,15 @@ class JwstCalPredict:
         image_inputs = scrubber.scrub_inputs(exp_type="IMAGE")
         self.input_data["IMAGE"] = image_inputs
         self.inputs["IMAGE"] = self.normalize_inputs(image_inputs, order="IMAGE")
-        # TODO
-        # spec_inputs = scrubber.scrub_inputs(exp_type="SPEC")
-        # self.input_data["SPEC"] = spec_inputs
-        # self.inputs["SPEC"] =  self.normalize_inputs(spec_inputs, order="SPEC")
+        spec_inputs = scrubber.scrub_inputs(exp_type="SPEC")
+        self.input_data["SPEC"] = spec_inputs
+        self.inputs["SPEC"] = self.normalize_inputs(spec_inputs, order="SPEC")
 
     def load_models(self, models={}):
-        # self.mem_clf = models.get(
-        #     "mem_clf",
+        # self.img3_clf = models.get(
+        #     "img3_clf",
         #     load_pretrained_model(
-        #         model_path=self.model_path, name="mem_clf", **self.log_kws
+        #         model_path=self.model_path, name="img3_clf", **self.log_kws
         #     ),
         # )
         self.img3_reg = models.get(
@@ -133,6 +142,12 @@ class JwstCalPredict:
                 model_path=self.model_path, name="img3_reg", **self.log_kws
             ),
         )
+        # self.spec3_reg = models.get(
+        #     "spec3_reg",
+        #     load_pretrained_model(
+        #         model_path=self.model_path, name="spec3_reg", **self.log_kws
+        #     ),
+        # )
         if self.model_path is None:
             self.model_path = os.path.dirname(self.img3_reg.model_path)
         if self.tx_file is None or not os.path.exists(self.tx_file):
@@ -141,17 +156,18 @@ class JwstCalPredict:
 
     def classifier(self, model, data):
         """Returns class prediction"""
-        X = array_to_tensor(data, reshape=True, shape=(1,-1))
+        reshape = True if len(data.shape) == 1 else False
+        shape = (1,-1) if reshape is True else data.shape
+        X = array_to_tensor(data, reshape=reshape, shape=shape)
         pred_proba = model.predict(X)
         pred = int(np.argmax(pred_proba, axis=-1))
         return pred, pred_proba
 
     def regressor(self, model, data):
         """Returns Regression model prediction"""
-        if len(data.shape) == 1:
-            X = array_to_tensor(data, reshape=True, shape=(1,-1))
-        else:
-            X = array_to_tensor(data)
+        reshape = True if len(data.shape) == 1 else False
+        shape = (1,-1) if reshape is True else data.shape
+        X = array_to_tensor(data, reshape=reshape, shape=shape)
         pred = model.predict(X)
         return pred
 
@@ -162,6 +178,19 @@ class JwstCalPredict:
             return
         product_index = list(input_data.index)
         imgsize = self.regressor(self.img3_reg.model, X)
+        # imgbin, pred_proba = self.classifier(self.img3_clf.model, X)
+        for i, _ in enumerate(X):
+            rpred = np.round(float(imgsize[i]), 2)
+            self.predictions[product_index[i]] = {"gbSize": rpred} # "imgBin": imgbin[0]
+            # self.probabilities[product_index[i]] = {"probabilities": pred_proba[0]}
+
+    def run_spec_inference(self):
+        input_data = self.input_data.get("SPEC", None)
+        X = self.inputs.get("SPEC", None)
+        if X is None or input_data is None:
+            return
+        product_index = list(input_data.index)
+        imgsize = self.regressor(self.spec3_reg.model, X)
         # imgbin, pred_proba = self.classifier(self.img3_clf.model, X)
         for i, _ in enumerate(X):
             rpred = np.round(float(imgsize[i]), 2)
