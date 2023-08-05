@@ -599,6 +599,8 @@ class JwstCalScrubber(Scrubber):
             self.img_products[p] = {k: v}
 
     def make_spec_product_name(self, k, v, tnum):
+        if v["EXP_TYPE"].split('_')[-1] == "DARK":
+            return
         if v["GRATING"] not in ["NaN", "N/A", "NONE"]:
             p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['GRATING']}"
         else:
@@ -646,11 +648,10 @@ class JwstCalScrubber(Scrubber):
             elif v['INSTRUME'] == "FGS":
                 if exp_type == "FGS_IMAGE":
                     self.make_fgs_product_name(v, tnum)
+            elif exp_type.split('_')[-1] == "IMAGE":
+                self.make_image_product_name(v, tnum)
             else:
-                if exp_type.split('_')[-1] == "IMAGE":
-                    self.make_image_product_name(v, tnum)
-                else:
-                    self.make_spec_product_name(v, tnum)
+                self.make_spec_product_name(v, tnum)
 
     def input_data(self):
         return dict(
