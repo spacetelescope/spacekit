@@ -584,6 +584,7 @@ class JwstCalScrubber(Scrubber):
         sky.set_keys(ra="RA_REF", dec="DEC_REF")
         self.specpix = sky.calculate_offsets(self.spec_products)
         self.products.update(self.specpix)
+        self.update_fgs()
 
     def make_image_product_name(self, k, v, tnum):
         if v["PUPIL"] == "CLEAR":
@@ -618,16 +619,17 @@ class JwstCalScrubber(Scrubber):
             self.fgs_products[p][k] = v
         else:
             self.fgs_products[p] = {k: v}
-        if p not in self.products:
-            self.products[p] = v
 
-    def make_tso_product_name(self, k, v, tnum):
-        p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['FILTER']}-{v['SUBARRAY']}"
-        p = p.lower()
-        if p in self.tso_products:
-            self.tso_products[p][k] = v
+    def make_tac_product_name(self, k, v, tnum):
+        if v["PUPIL"] not in ["NaN", "N/A", "NONE"]:
+            p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['FILTER']}-{v['PUPIL']}-{v['SUBARRAY']}"
         else:
-            self.tso_products[p] = {k: v}
+            p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['FILTER']}-{v['SUBARRAY']}"
+        p = p.lower()
+        if p in self.tac_products:
+            self.tac_products[p][k] = v
+        else:
+            self.tac_products[p] = {k: v}
 
     def get_level3_products(self):
         # determine potential L3 products based on obs, filters, detectors, etc
@@ -638,13 +640,14 @@ class JwstCalScrubber(Scrubber):
         self.img_products = dict()
         self.spec_products = dict()
         self.fgs_products = dict()
-        self.tso_products = dict()
+        self.tac_products = dict()
+        coron_ami = ["MIR_4QPM", "MIR_LYOT", "NRC_CORON", "NIS_AMI"]
 
         for k, v in self.exp_headers.items():
             tnum = targs.get(v["TARGNAME"])
             exp_type = v['EXP_TYPE']
-            if v["TSOVISIT"] in [True, 't', 'T', 'True']:
-                self.make_tso_product_name(k, v, tnum)
+            if exp_type in coron_ami or v["TSOVISIT"] in [True, 't', 'T', 'True']:
+                self.make_tac_product_name(k, v, tnum)
             elif v['INSTRUME'] == "FGS":
                 if exp_type == "FGS_IMAGE":
                     self.make_fgs_product_name(v, tnum)
@@ -653,11 +656,23 @@ class JwstCalScrubber(Scrubber):
             else:
                 self.make_spec_product_name(v, tnum)
 
+    def update_fgs(self):
+        if len(self.fgs_products) == 0:
+            return
+        self.fgspix = dict()
+        for product, exp_data in self.fgs_products.items():
+            self.fgspix[product] = dict(nexposur=len(list(exp_data.keys())))
+            for k, v in exp_data.items():
+                self.fgspix[product][k] = v
+            if product not in self.products:
+                self.products[product] = exp_data
+
     def input_data(self):
         return dict(
             IMAGE=self.imgpix,
             SPEC=self.specpix,
             FGS=None,
+            TAC=None,
         )
 
     def scrub_inputs(self, exp_type="IMAGE"):

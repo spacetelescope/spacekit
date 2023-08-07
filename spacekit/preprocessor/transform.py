@@ -47,12 +47,14 @@ class SkyTransformer:
             instr="INSTRUME"
             detector="DETECTOR"
             channel="CHANNEL"
+            exp_type="EXP_TYPE"
             ra="CRVAL1" / could also use "RA_REF"
             dec="CRVAL2" / could also use "DEC_REF
         """
         self.instr_key = kwargs.get("instr", "INSTRUME")
         self.detector_key = kwargs.get("detector", "DETECTOR")
         self.channel_key = kwargs.get("channel", "CHANNEL")
+        self.exp_key = kwargs.get("exp_type", "EXP_TYPE")
         self.ra_key = kwargs.get("ra", "CRVAL1")
         self.dec_key = kwargs.get("dec", "CRVAL2")
 
@@ -94,8 +96,9 @@ class SkyTransformer:
             instr = data[self.instr_key]
             detector = data.get(self.detector_key, None)
             channel = data.get(self.channel_key, None)
+            exp_type = data.get(self.exp_key, None)
             fiducial = (data[self.ra_key], data[self.dec_key])
-            scale = self.get_scale(instr, channel=channel, detector=detector)
+            scale = self.get_scale(instr, channel=channel, detector=detector, exp_type=exp_type)
             shape = self.data_shapes(instr)
             # footprint from shape
             footprint = self.footprint_from_shape(fiducial, scale, shape)
@@ -162,9 +165,13 @@ class SkyTransformer:
                     SHORT=0.03,
                     LONG=0.06,
                 ),
-                MIRI=0.11,
+                MIRI=dict(
+                    GEN=0.11,
+                    MRS=0.196,
+                ), 
                 NIRISS=0.06,
-                NIRSPEC=0.1,
+                NIRSPEC=0.12,
+                FGS=0.069,
             ),
         )[self.mission]
 
@@ -182,9 +189,14 @@ class SkyTransformer:
             ),
         )[self.mission][instr]
 
-    def get_scale(self, instr, channel=None, detector=None):
+    def get_scale(self, instr, channel=None, detector=None, exp_type=None):
         if channel.upper() in ["SHORT", "LONG"]:
             return self.pixel_scales[instr][channel]
+        elif instr.upper() == "MIRI":
+            if exp_type in ["MIR_MRS"]:
+                return self.pixel_scales[instr]["MRS"]
+            else:
+                return self.pixel_scales[instr]["GEN"]
         elif detector.upper() in ["WFC", "UVIS", "IR"]:
             return self.pixel_scales[instr][detector]
         else:

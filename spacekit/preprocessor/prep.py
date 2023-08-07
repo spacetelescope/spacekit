@@ -222,7 +222,7 @@ class JwstCalPrep(Prep):
         data,
         y_target="imgsize_gb",
         X_cols=[],
-        norm_cols=['offset','max_offset','mean_offset','sigma_offset','err_offset','sigma1_mean'],
+        norm_cols=[],
         exp_mode="image",
         tensors=True,
         normalize=True,
@@ -234,7 +234,7 @@ class JwstCalPrep(Prep):
     ):
         self.exp_mode = exp_mode
         self.set_X_cols(X_cols)
-        self.norm_cols = norm_cols
+        self.set_norm_cols(norm_cols=norm_cols)
         self.__name__ = name
         self.log = Logger(self.__name__, **log_kws).spacekit_logger()
         super().__init__(
@@ -250,6 +250,8 @@ class JwstCalPrep(Prep):
         self.target_data = data[self.y_target]
         self.y_img_train = None
         self.y_img_test = None
+        self.y_bin_train = None
+        self.y_bin_test = None
 
     def set_X_cols(self, X_cols):
         if len(X_cols) == 0:
@@ -280,11 +282,42 @@ class JwstCalPrep(Prep):
                     "visitype",
                     "filter",
                     "grating",
-                    # "channel",
                     "subarray",
                     "bkgdtarg",
+                    "is_imprt",
                     "nexposur",
                     "numdthpt",
+                    "max_targ_offset",
+                    "offset",
+                    "max_offset",
+                    "mean_offset",
+                    "sigma_offset",
+                    "err_offset",
+                    "sigma1_mean",
+                    "frac",      
+                ],
+                fgs = [
+                    "instr",
+                    "detector",
+                    "visitype",
+                    "subarray",
+                    "nexposur",
+                    "numdthpt",
+                    "crowdfld",
+                    "gs_mag",
+                ],
+                tac = [
+                    "instr",
+                    "detector",
+                    "visitype",
+                    "exp_type",
+                    "tsovisit",
+                    "filter",
+                    "grating",
+                    "subarray",
+                    "nexposur",
+                    "numdthpt",
+                    "max_targ_offset",
                     "offset",
                     "max_offset",
                     "mean_offset",
@@ -292,11 +325,24 @@ class JwstCalPrep(Prep):
                     "err_offset",
                     "sigma1_mean",
                     "frac",
-                    # "targ_frac",       
                 ]
             )[self.exp_mode]
         else:
             self.X_cols = X_cols
+    
+    def set_norm_cols(self, norm_cols=[]):
+        if len(norm_cols) == 0:
+            norm_cols = [
+                "targ_max_offset",     
+                "offset",
+                "max_offset",
+                "mean_offset",
+                "sigma_offset",
+                "err_offset",
+                "sigma1_mean",
+                "gs_mag",
+        ]
+        self.norm_cols = [c for c in norm_cols if c in self.X_cols]
 
     def prep_data(self, existing_splits=False):
         if existing_splits is True:

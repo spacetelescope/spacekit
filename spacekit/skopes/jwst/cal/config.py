@@ -84,6 +84,26 @@ COLUMN_ORDER = {
         "numdthpt",
         "crowdfld",
         "gs_mag",       
+    ],
+    "TAC": [
+        "instr",
+        "detector",
+        "visitype",
+        "exp_type",
+        "tsovisit",
+        "filter",
+        "grating",
+        "subarray",
+        "nexposur",
+        "numdthpt",
+        "max_targ_offset",
+        "offset",
+        "max_offset",
+        "mean_offset",
+        "sigma_offset",
+        "err_offset",
+        "sigma1_mean",
+        "frac",
     ]
 }
 
@@ -106,6 +126,15 @@ NORM_COLS = {
         "sigma1_mean",
     ],
     "FGS": ["gs_mag"],
+    "TAC": [
+        "targ_max_offset",
+        "offset",
+        "max_offset",
+        "mean_offset",
+        "sigma_offset",
+        "err_offset",
+        "sigma1_mean",
+    ]
 }
 
 
