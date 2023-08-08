@@ -696,9 +696,8 @@ class JwstCalScrubber(Scrubber):
             return
         for product, exp_data in self.fgs_products.items():
             # self.fgspix[product] = dict(nexposur=len(list(exp_data.keys())))
-            self.fgspix[product] = dict()
-            for k, v in exp_data.items():
-                self.fgspix[product][k] = v
+            first_key = list(exp_data.keys())[0]
+            self.fgspix[product] = exp_data[first_key]
             if product not in self.products:
                 self.products[product] = exp_data
 

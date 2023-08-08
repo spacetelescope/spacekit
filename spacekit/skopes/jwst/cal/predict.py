@@ -118,7 +118,7 @@ class JwstCalPredict:
         scrubber = JwstCalScrubber(
             self.input_path, pfx=self.pid, sfx="_uncal.fits", encoding_pairs=KEYPAIR_DATA, **self.log_kws
         )
-        for exp_type in ["IMAGE", "SPEC", "TAC"]: # "FGS"
+        for exp_type in ["IMAGE"]: #["IMAGE", "SPEC", "TAC", "FGS"]:
             inputs = scrubber.scrub_inputs(exp_type=exp_type)
             if inputs is not None:
                 self.input_data[exp_type] = inputs
