@@ -61,7 +61,7 @@ class JwstCalPredict:
         self.X = None
         self.img3_reg = None
         # self.img3_clf = None
-        #self.spec3_reg = None
+        # self.spec3_reg = None
         self.__name__ = "JwstCalPredict"
         self.log = Logger(self.__name__, **log_kws).setup_logger(logger=SPACEKIT_LOG)
         self.log_kws = dict(log=self.log, **log_kws)
@@ -100,17 +100,13 @@ class JwstCalPredict:
             IMAGE=None,
             SPEC=None,
             FGS=None,
-            TSO=None,
-            AMI=None,
-            CORON=None,
+            TAC=None,
         )
         self.inputs = dict(
             IMAGE=None,
             SPEC=None,
             FGS=None,
-            TSO=None,
-            AMI=None,
-            CORON=None,
+            TAC=None,
         )
         self.log.info("Preprocessing inputs...")
         if self.pid is not None:
@@ -122,12 +118,11 @@ class JwstCalPredict:
         scrubber = JwstCalScrubber(
             self.input_path, pfx=self.pid, sfx="_uncal.fits", encoding_pairs=KEYPAIR_DATA, **self.log_kws
         )
-        image_inputs = scrubber.scrub_inputs(exp_type="IMAGE")
-        self.input_data["IMAGE"] = image_inputs
-        self.inputs["IMAGE"] = self.normalize_inputs(image_inputs, order="IMAGE")
-        spec_inputs = scrubber.scrub_inputs(exp_type="SPEC")
-        self.input_data["SPEC"] = spec_inputs
-        self.inputs["SPEC"] = self.normalize_inputs(spec_inputs, order="SPEC")
+        for exp_type in ["IMAGE", "SPEC", "TAC"]: # "FGS"
+            inputs = scrubber.scrub_inputs(exp_type=exp_type)
+            if inputs is not None:
+                self.input_data[exp_type] = inputs
+                self.inputs[exp_type] = self.normalize_inputs(inputs, order=exp_type)
 
     def load_models(self, models={}):
         # self.img3_clf = models.get(
@@ -202,7 +197,7 @@ class JwstCalPredict:
             self.preprocess()
         self.log.info("Estimating Level 3 output image sizes...")
         self.run_image_inference()
-        # TODO: self.run_spec_inference()
+        # self.run_spec_inference()
         self.log.info(f"predictions: {self.predictions}")
         # self.log.info(f"probabilities: {self.probabilities}")
 

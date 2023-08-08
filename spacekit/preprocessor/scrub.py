@@ -527,6 +527,8 @@ class JwstCalScrubber(Scrubber):
         self.products = dict()
         self.imgpix = None
         self.specpix = None
+        self.tacpix = None
+        self.fgspix = None
         self.pfx = pfx
         self.sfx = sfx
         super().__init__(
@@ -541,7 +543,7 @@ class JwstCalScrubber(Scrubber):
         self.encoding_pairs = encoding_pairs
         self.scrape_inputs()
         self.get_level3_products()
-        # self.pixel_offsets()
+        self.pixel_offsets()
 
     def set_col_order(self):
         return [
@@ -567,9 +569,33 @@ class JwstCalScrubber(Scrubber):
             "err_offset",
             "sigma1_mean",
             "frac",
-            "targ_frac"
+            "targ_frac",
             "gs_mag",
             "crowdfld",
+        ]
+
+    def level3_types(self):
+        return [
+            "FGS_IMAGE",
+            "MIR_IMAGE", # (TSO & Non-TSO)
+            "NRC_IMAGE",
+            "MIR_LRS-FIXEDSLIT",
+            "MIR_MRS",
+            "MIR_LYOT",
+            "MIR_4QPM",
+            "MIR_LRS-SLITLESS", # (only IF TSO)
+            "NRC_CORON",
+            "NRC_WFSS",
+            "NRC_TSIMAGE", # TSO always
+            "NRC_TSGRISM", # TSO always
+            "NIS_IMAGE",
+            "NIS_AMI",
+            "NIS_WFSS",
+            "NIS_SOSS", # (TSO & Non-TSO)
+            "NRS_FIXEDSLIT",
+            "NRS_IFU",
+            "NRS_MSASPEC",
+            "NRS_BRIGHTOBJ", # TSO always
         ]
 
     def scrape_inputs(self):
@@ -584,6 +610,9 @@ class JwstCalScrubber(Scrubber):
         sky.set_keys(ra="RA_REF", dec="DEC_REF")
         self.specpix = sky.calculate_offsets(self.spec_products)
         self.products.update(self.specpix)
+        sky.count_exposures = False # use fits data
+        self.tacpix = sky.calculate_offsets(self.tac_products)
+        self.products.update(self.tacpix)
         self.update_fgs()
 
     def make_image_product_name(self, k, v, tnum):
@@ -594,19 +623,22 @@ class JwstCalScrubber(Scrubber):
         else:
             p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['FILTER']}"
         p = p.lower()
+        del v['NEXPOSUR']
         if p in self.img_products:
             self.img_products[p][k] = v
         else:
             self.img_products[p] = {k: v}
 
-    def make_spec_product_name(self, k, v, tnum):
-        if v["EXP_TYPE"].split('_')[-1] == "DARK":
+    def make_spec_product_name(self, k, v, tnum):  
+        if v["EXP_TYPE"] == "MIR_LRS-SLITLESS" and v["TSOVISIT"] is False:
             return
-        if v["GRATING"] not in ["NaN", "N/A", "NONE"]:
-            p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['GRATING']}"
-        else:
-            p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}"
+        fltr = f"_{v['FILTER']}" if v["FILTER"] not in ["NaN", "N/A", "NONE"] else ""
+        grating = f"_{v['GRATING']}" if v["GRATING"] not in ["NaN", "N/A", "NONE"] else ""
+        if fltr and grating:
+            grating = f"-{v['GRATING']}"
+        p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}{fltr}{grating}"
         p = p.lower()
+        del v['NEXPOSUR']
         if p in self.spec_products:
             self.spec_products[p][k] = v
         else:
@@ -621,10 +653,10 @@ class JwstCalScrubber(Scrubber):
             self.fgs_products[p] = {k: v}
 
     def make_tac_product_name(self, k, v, tnum):
-        if v["PUPIL"] not in ["NaN", "N/A", "NONE"]:
-            p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['FILTER']}-{v['PUPIL']}-{v['SUBARRAY']}"
-        else:
-            p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['FILTER']}-{v['SUBARRAY']}"
+        fltr = f"_{v['FILTER']}"
+        subarray = f"-{v['SUBARRAY']}"
+        pupil = f"-{v['PUPIL']}" if v["PUPIL"] not in ["NaN", "N/A", "NONE"] else ""
+        p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}{fltr}{pupil}{subarray}"
         p = p.lower()
         if p in self.tac_products:
             self.tac_products[p][k] = v
@@ -634,6 +666,7 @@ class JwstCalScrubber(Scrubber):
     def get_level3_products(self):
         # determine potential L3 products based on obs, filters, detectors, etc
         # group by target+obs num+filter (+pupil)
+        l3_types = self.level3_types()
         targetnames = list(set([v["TARGNAME"] for v in self.exp_headers.values()]))
         tnums = [f"t{i+1}" for i, _ in enumerate(targetnames)]
         targs = dict(zip(targetnames, tnums))
@@ -644,24 +677,26 @@ class JwstCalScrubber(Scrubber):
         coron_ami = ["MIR_4QPM", "MIR_LYOT", "NRC_CORON", "NIS_AMI"]
 
         for k, v in self.exp_headers.items():
-            tnum = targs.get(v["TARGNAME"])
             exp_type = v['EXP_TYPE']
-            if exp_type in coron_ami or v["TSOVISIT"] in [True, 't', 'T', 'True']:
-                self.make_tac_product_name(k, v, tnum)
-            elif v['INSTRUME'] == "FGS":
-                if exp_type == "FGS_IMAGE":
-                    self.make_fgs_product_name(v, tnum)
-            elif exp_type.split('_')[-1] == "IMAGE":
-                self.make_image_product_name(v, tnum)
-            else:
-                self.make_spec_product_name(v, tnum)
+            if exp_type in l3_types:
+                tnum = targs.get(v["TARGNAME"])
+                if exp_type in coron_ami or v["TSOVISIT"] in [True, 't', 'T', 'True']:
+                    self.make_tac_product_name(k, v, tnum)
+                elif v['INSTRUME'] == "FGS":
+                    if exp_type == "FGS_IMAGE":
+                        self.make_fgs_product_name(k, v, tnum)
+                elif exp_type.split('_')[-1] == "IMAGE":
+                    self.make_image_product_name(k, v, tnum)
+                else:
+                    self.make_spec_product_name(k, v, tnum)
 
     def update_fgs(self):
+        self.fgspix = dict()
         if len(self.fgs_products) == 0:
             return
-        self.fgspix = dict()
         for product, exp_data in self.fgs_products.items():
-            self.fgspix[product] = dict(nexposur=len(list(exp_data.keys())))
+            # self.fgspix[product] = dict(nexposur=len(list(exp_data.keys())))
+            self.fgspix[product] = dict()
             for k, v in exp_data.items():
                 self.fgspix[product][k] = v
             if product not in self.products:
@@ -671,16 +706,19 @@ class JwstCalScrubber(Scrubber):
         return dict(
             IMAGE=self.imgpix,
             SPEC=self.specpix,
-            FGS=None,
-            TAC=None,
+            FGS=self.fgspix,
+            TAC=self.tacpix,
         )
 
     def scrub_inputs(self, exp_type="IMAGE"):
         data = self.input_data()[exp_type]
+        if not data:
+            return None
         self.df = pd.DataFrame.from_dict(data, orient="index")
         super().rename_cols(new=[c.lower() for c in self.df.columns])
         super().rename_cols(old=["instrume"], new=["instr"])
-        self.df = self.df[self.xcols]
+        xcols = [x for x in self.xcols if x in self.df]
+        self.df = self.df[xcols]
         dtype_keys = self.get_dtype_keys()
         nandler = NaNdler(self.df, dtype_keys, allow_neg=False, verbose=False)
         self.df = nandler.apply_nandlers()
@@ -688,7 +726,7 @@ class JwstCalScrubber(Scrubber):
             self.df, fkeys=dtype_keys["categorical"], encoding_pairs=self.encoding_pairs
         )
         encoder.encode_features()
-        self.df = encoder.df[self.xcols]
+        self.df = encoder.df[xcols]
         return self.df
 
     def get_dtype_keys(self):

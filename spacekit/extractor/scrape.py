@@ -798,6 +798,7 @@ class JwstFitsScraper(FitsScraper):
         return [
             "PROGRAM",  # Program number
             "OBSERVTN",  # Observation number
+            "NEXPOSUR", # number of exposures
             "BKGDTARG",  # Background target
             "IS_IMPRT", # NIRSpec imprint exposure
             "VISITYPE",  # Visit type

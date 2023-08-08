@@ -32,6 +32,7 @@ class SkyTransformer:
         self.instr = None
         self.detector = None
         self.channel = None
+        self.count_exposures = True
         self.refpix = dict()
         self.set_keys()
 
@@ -89,7 +90,10 @@ class SkyTransformer:
         return product_refpix
 
     def get_pixel_offsets(self, exp_data):
-        refpix = dict(nexposur=len(list(exp_data.keys())))
+        if self.count_exposures is True:
+            refpix = dict(NEXPOSUR=len(list(exp_data.keys())))
+        else:
+            refpix = dict()
         offsets, targ_offsets, detectors = [], [], []
         targ_radec = None
         for exp, data in exp_data.items():

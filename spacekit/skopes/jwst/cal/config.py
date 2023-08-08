@@ -83,7 +83,7 @@ COLUMN_ORDER = {
         "nexposur",
         "numdthpt",
         "crowdfld",
-        "gs_mag",       
+        "gs_mag",
     ],
     "TAC": [
         "instr",
@@ -117,7 +117,7 @@ NORM_COLS = {
         "sigma1_mean",
     ],
     "SPEC": [
-        "targ_max_offset",     
+        # "targ_max_offset",     
         "offset",
         "max_offset",
         "mean_offset",
@@ -127,7 +127,7 @@ NORM_COLS = {
     ],
     "FGS": ["gs_mag"],
     "TAC": [
-        "targ_max_offset",
+        # "targ_max_offset",
         "offset",
         "max_offset",
         "mean_offset",
@@ -136,6 +136,30 @@ NORM_COLS = {
         "sigma1_mean",
     ]
 }
+
+
+L3_TYPES = [
+    "FGS_IMAGE",
+    "MIR_IMAGE", # (TSO & Non-TSO)
+    "NRC_IMAGE"
+    "MIR_LRS-FIXEDSLIT",
+    "MIR_MRS",
+    "MIR_LYOT",
+    "MIR_4QPM",
+    "MIR_LRS-SLITLESS", # (only IF TSO)
+    "NRC_CORON",
+    "NRC_WFSS",
+    "NRC_TSIMAGE", # TSO always
+    "NRC_TSGRISM", # TSO always
+    "NIS_IMAGE",
+    "NIS_AMI",
+    "NIS_WFSS",
+    "NIS_SOSS", # (TSO & Non-TSO)
+    "NRS_FIXEDSLIT",
+    "NRS_IFU",
+    "NRS_MSASPEC",
+    "NRS_BRIGHTOBJ", # TSO always
+]
 
 
 KEYPAIR_DATA = {
@@ -172,6 +196,9 @@ KEYPAIR_DATA = {
         "NRS1": 28,
         "NRS1|NRS2": 29,
         "NRS2": 30,
+        "NRCA1|NRCA2|NRCA4|NRCB1|NRCB2|NRCB3|NRCB4": 31,
+        "NRCA1|NRCA2|NRCA4": 32,
+        "NRCA2|NRCA3|NRCA4": 33,
     },
     "filter": {
         "NONE": 0,
