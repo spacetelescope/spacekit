@@ -347,4 +347,4 @@ def hst_cal_predict_visits():
 
 @fixture(scope="function")
 def jwstcal_input_path():
-    return "tests/data/jwstcal/jw02732"
+    return "tests/data/jwstcal/predict/inputs"

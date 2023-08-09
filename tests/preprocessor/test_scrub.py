@@ -40,7 +40,12 @@ JWST_EXPECTED = {
         'jw02732005001_02105_00001_mirimage',
         'jw02732005001_02105_00002_mirimage'
     ],
-    # 'jw01018-o006-t1_niriss_clear-f150w': [],
+    'jw01018-o006-t1_niriss_clear-f150w': [
+        'jw01018006001_02101_00002_nis_uncal.fits',
+        'jw01018006001_02101_00003_nis_uncal.fits',
+        'jw01018006001_02101_00004_nis_uncal.fits',
+        'jw02732001005_02103_00005_nrcb2_uncal.fits',
+    ],
 }
 
 JWST_SCRUBBED_COLS = [
@@ -50,12 +55,15 @@ JWST_SCRUBBED_COLS = [
     'visitype',
     'filter',
     'pupil',
+    'grating',
     'channel',
     'subarray',
     'bkgdtarg',
+    'is_imprt',
     'tsovisit',
     'nexposur',
     'numdthpt',
+    'targ_max_offset',
     'offset',
     'max_offset',
     'mean_offset',
@@ -63,9 +71,10 @@ JWST_SCRUBBED_COLS = [
     'err_offset',
     'sigma1_mean',
     'frac',
-    'targ_frac'
+    'targ_frac',
+    'gs_mag',
+    'crowdfld'
 ]
-
 
 
 @mark.hst
@@ -118,17 +127,11 @@ def test_scrub_cols(raw_svm_data, single_visit_path):
 @mark.scrub
 def test_jwst_cal_scrubber(jwstcal_input_path):
     scrubber = JwstCalScrubber(jwstcal_input_path, encoding_pairs=KEYPAIR_DATA)
-    assert len(scrubber.fpaths) == 6
-    assert len(scrubber.imgpix) == 2
-    nrc_product = 'jw02732-o001-t2_nircam_clear-f150w'
-    miri_product = 'jw02732-o005-t1_miri_f1130w'
-    assert len(scrubber.imgpix[nrc_product].keys()) == 42
-    for prod in list(scrubber.products.keys()):
-        assert prod in list(JWST_EXPECTED.keys())
-    nrc_exposures = sorted(list(scrubber.products[nrc_product].keys()))
-    assert nrc_exposures == JWST_EXPECTED[nrc_product]
-    miri_exposures = sorted(list(scrubber.products[miri_product].keys()))
-    assert miri_exposures == JWST_EXPECTED[miri_product]
-    scrubber.scrub_inputs()
-    assert len(scrubber.df) > 0
-    assert list(scrubber.df.columns) == JWST_SCRUBBED_COLS
+    assert len(scrubber.fpaths) == 10
+    assert len(scrubber.imgpix) == 3
+    imgpix_products = list(scrubber.imgpix.keys())
+    for product in imgpix_products:
+        assert len(scrubber.imgpix[product].keys()) == 46
+    image_inputs = scrubber.scrub_inputs(exp_type="IMAGE")
+    assert len(image_inputs) == 3
+    assert list(image_inputs.columns) == JWST_SCRUBBED_COLS

@@ -101,7 +101,7 @@ jwst_cal = {
     },
     "model": {
         "fname": "jwst_cal.zip",
-        "hash": "31d556acf25f7452a22c709c9066a1d8",
+        "hash": "92a32f33468807793b51a0b5e761dcfb",
         "desc": "JWST Calibration Processing Resource Prediction Models",
         "key": "jwst_cal",
         "size": "597kB",
@@ -149,7 +149,7 @@ networks = {
     "jwst_cal": {
         "basepath": "spacekit.builder.trained_networks",
         "fname": "jwst_cal.zip",
-        "hash": "f3065e7d80276a162d689f90822372f84815923bd81cdc3107af23d7b0206f42",
+        "hash": "e9880f2e33fe9ab6d5aee066ab9e957abef1154fddc1297dcbaee495367ac222",
         "size": "597kB"
     }
 }

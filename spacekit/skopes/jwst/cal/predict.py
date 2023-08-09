@@ -203,7 +203,7 @@ class JwstCalPredict:
 
 
 def predict_handler(input_path, **kwargs):
-    """handles non-lambda invocations"""
+    """handles local invocations"""
     pred = JwstCalPredict(input_path, **kwargs)
     pred.run_inference()
     return pred

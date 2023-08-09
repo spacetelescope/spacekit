@@ -46,7 +46,7 @@ from spacekit.logger.log import SPACEKIT_LOG, Logger
 
 def load_pretrained_model(**builder_kwargs):
     builder = Builder(**builder_kwargs)
-    builder.load_saved_model(arch="hst_cal")
+    builder.load_saved_model(arch="hst_cal", keras_archive=False)
     return builder
 
 

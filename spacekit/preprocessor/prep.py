@@ -332,16 +332,16 @@ class JwstCalPrep(Prep):
     
     def set_norm_cols(self, norm_cols=[]):
         if len(norm_cols) == 0:
-            norm_cols = [
-                "targ_max_offset",     
-                "offset",
-                "max_offset",
-                "mean_offset",
-                "sigma_offset",
-                "err_offset",
-                "sigma1_mean",
-                "gs_mag",
-        ]
+            norm_cols = dict(
+                image = [    
+                    "offset",
+                    "max_offset",
+                    "mean_offset",
+                    "sigma_offset",
+                    "err_offset",
+                    "sigma1_mean",
+                ],
+            )[self.exp_mode]
         self.norm_cols = [c for c in norm_cols if c in self.X_cols]
 
     def prep_data(self, existing_splits=False):

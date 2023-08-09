@@ -51,7 +51,7 @@ def test_svm_ensemble_builder_without_data(skope):
     ens = BuilderEnsemble()
     assert ens.blueprint == "ensemble"
     assert ens.steps_per_epoch > 0
-    ens.load_saved_model(arch="svm_align")
+    ens.load_saved_model(arch="svm_align", keras_archive=False)
     assert ens.model is not None
     assert len(ens.model.layers) == 28
     assert ens.model_path == "models/svm_align/ensembleSVM"
@@ -66,7 +66,7 @@ def test_svm_ensemble_builder_without_data(skope):
 def test_hst_cal_builder_without_data(skope):
     check_skope(skope, "hstcal")
     builder = Builder(name="mem_clf")
-    builder.load_saved_model("hst_cal")
+    builder.load_saved_model(arch="hst_cal", keras_archive=False)
     assert builder.model is not None
     assert builder.blueprint == "hst_mem_clf"
     builder.get_blueprint(builder.blueprint)
