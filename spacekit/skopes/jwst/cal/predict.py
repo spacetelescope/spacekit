@@ -289,5 +289,5 @@ if __name__ == "__main__":
         action="store_true",
     )
     args = parser.parse_args()
-    args.norm_cols = [int(i) for i in args.norm_cols.split(",")]
+    args.norm_cols = [str(i) for i in args.norm_cols.split(",")]
     predict_handler(**vars(args))
