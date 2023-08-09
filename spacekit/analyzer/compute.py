@@ -489,7 +489,9 @@ class Computer(object):
             y = self.y_test.reshape(1, -1)
             p = self.y_pred
 
-        data = go.Scatter(x=y, y=p, name="y-y_hat", marker=dict(color="red"))
+        data = go.Scatter(
+            x=y, y=p, name="y-y_hat", mode="markers", marker=dict(color="red")
+        )
         layout = go.Layout(
             title="Residual Error",
             xaxis={"title": "y (ground truth)"},

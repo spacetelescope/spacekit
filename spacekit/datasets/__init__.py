@@ -14,6 +14,7 @@ __all__ = [
     "load_cal",
     "load_svm",
     "load_k2",
+    "load_jwst_cal",
     "import_collection",
     "load",
 ]

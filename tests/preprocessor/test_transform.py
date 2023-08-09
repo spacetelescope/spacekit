@@ -15,7 +15,7 @@ RENAMED_COLS = {
         "segment_scl",
         "gaia_scl",
     ],
-    "cal": [
+    "hstcal": [
         "x_files",
         "x_size",
     ],

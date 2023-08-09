@@ -1,5 +1,5 @@
 calcloud = {
-    "uri": "https://zenodo.org/record/8185020/files",
+    "uri": "https://zenodo.org/record/8231215/files",
     "data": {
         "2022-02-14": {
             "fname": "hst_cal_std_2022-02-14.zip?download=1",
@@ -31,16 +31,16 @@ calcloud = {
         },
     },
     "model": {
-        "fname": "calmodels.zip",
-        "hash": "101e86c6fbacd0480c8bd307685c2730",
+        "fname": "hst_cal.zip",
+        "hash": "370f9950c6f0f0412af039617eebea93",
         "desc": "hst calcloud resource prediction models",
-        "key": "calmodels",
+        "key": "hst_cal",
         "size": "2.1MB",
     },
 }
 
 svm = {
-    "uri": "https://zenodo.org/record/8185020/files",
+    "uri": "https://zenodo.org/record/8231215/files",
     "data": {
         "2022-02-14": {
             "fname": "hst_drz_svm_2022-02-14.zip?download=1",
@@ -79,16 +79,38 @@ svm = {
         },
     },
     "model": {
-        "fname": "ensemble.zip",
-        "hash": "a2122a76fd293c542bf25c3e4437960d",
+        "fname": "svm_align.zip",
+        "hash": "01468fae74ceb6b31fd073ed3b9b599f",
         "desc": "hst svm alignment prediction models",
-        "key": "ensemble",
+        "key": "svm_align",
         "size": "17.9MB",
     },
 }
 
+
+jwst_cal = {
+    "uri": "https://zenodo.org/record/8231215/files",
+    "data": {
+        "2023-08-02": {
+            "fname": "",
+            "hash": "",
+            "desc": "",
+            "key": "",
+            "size": "",
+        },
+    },
+    "model": {
+        "fname": "jwst_cal.zip",
+        "hash": "92a32f33468807793b51a0b5e761dcfb",
+        "desc": "JWST Calibration Processing Resource Prediction Models",
+        "key": "jwst_cal",
+        "size": "110kB",
+    },
+}
+
+
 k2 = {
-    "uri": "https://zenodo.org/record/8185020/files",
+    "uri": "https://zenodo.org/record/8231215/files",
     "data": {
         "test": {
             "fname": "k2-exo-flux-ts-test.csv.zip?download=1",
@@ -107,20 +129,32 @@ k2 = {
     },
 }
 
-spacekit_collections = {"calcloud": calcloud, "svm": svm, "k2": k2}
+
+spacekit_collections = {
+    "calcloud": calcloud,
+    "svm": svm,
+    "jwst_cal": jwst_cal,
+    "k2": k2,
+}
 
 # Package imports
 networks = {
     "calcloud": {
         "basepath": "spacekit.builder.trained_networks",
-        "fname": "calmodels.zip",
-        "hash": "000378942a1dcb662590ac6d911b8ba1e59d54248254d23e03427bb048597298",
+        "fname": "hst_cal.zip",
+        "hash": "84abd317355c73667e5c08ada6868f0ca9563bd87717abe0680200d05457937b",
         "size": "2.1MB",
     },
     "svm": {
         "basepath": "spacekit.builder.trained_networks",
-        "fname": "ensemble.zip",
-        "hash": "9ef2b5ddd078544c98a19e2c26fcccb34ae36c742b86ee3b9434ceab6270c07d",
+        "fname": "svm_align.zip",
+        "hash": "09550dc36499422453079ba7d1536cff2154373d7f0f6d0126e9002ce9ce3ed9",
         "size": "17.9MB",
+    },
+    "jwst_cal": {
+        "basepath": "spacekit.builder.trained_networks",
+        "fname": "jwst_cal.zip",
+        "hash": "e9880f2e33fe9ab6d5aee066ab9e957abef1154fddc1297dcbaee495367ac222",
+        "size": "597kB",
     },
 }

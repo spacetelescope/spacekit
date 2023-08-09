@@ -679,7 +679,7 @@ class FitsScraper(FileScraper):
         self.scikeys = scikeys
         self.fpaths = None
 
-    def get_input_exposures(self, sfx="_uncal.fits"):
+    def get_input_exposures(self, pfx="", sfx="_uncal.fits"):
         """create list of local paths to L1B exposure files for a given program
 
         Parameters
@@ -694,9 +694,12 @@ class FitsScraper(FileScraper):
         list
             Paths to (typically uncalibrated) input exposure .fits files in this program/visit
         """
-        return glob.glob(f"{os.path.expanduser(self.input_path)}/*{sfx}")
+        fpaths = glob.glob(f"{os.path.expanduser(self.input_path)}/{pfx}*{sfx}")
+        if not fpaths:
+            fpaths = glob.glob(f"{os.path.expanduser(self.input_path)}/*/{pfx}*{sfx}")
+        return fpaths
 
-    def scrape_fits_headers(self, fpaths=None):
+    def scrape_fits_headers(self, fpaths=None, **kwargs):
         """scrape values from ext=0 general info header (genkeys) and ext=1 science header (scikeys)
 
         Parameters
@@ -713,23 +716,27 @@ class FitsScraper(FileScraper):
         _type_
             _description_
         """
-        self.log.info("\n*** Extracting fits data ***")
+        self.log.info("Extracting fits data...")
         if fpaths is None:
-            fpaths = self.get_input_exposures()
+            fpaths = self.get_input_exposures(**kwargs)
         exp_headers = {}
         for fpath in fpaths:
-            fname = str(os.path.basename(fpath))
-            sfx = fname.split("_")[-1]  # _uncal.fits
-            name = fname.replace(f"_{sfx}", "")
-            exp_headers[name] = dict()
-            if self.genkeys:
-                genhdr = fits.getheader(fpath, ext=0)
-                for g in self.genkeys:
-                    exp_headers[name][g] = genhdr[g] if g in genhdr else "NaN"
-            if self.scikeys:
-                scihdr = fits.getheader(fpath, ext=1)
-                for s in self.scikeys:
-                    exp_headers[name][s] = scihdr[s] if s in scihdr else "NaN"
+            try:
+                fname = str(os.path.basename(fpath))
+                sfx = fname.split("_")[-1]  # _uncal.fits
+                name = fname.replace(f"_{sfx}", "")
+                exp_headers[name] = dict()
+                if self.genkeys:
+                    genhdr = fits.getheader(fpath, ext=0)
+                    for g in self.genkeys:
+                        exp_headers[name][g] = genhdr[g] if g in genhdr else "NaN"
+                if self.scikeys:
+                    scihdr = fits.getheader(fpath, ext=1)
+                    for s in self.scikeys:
+                        exp_headers[name][s] = scihdr[s] if s in scihdr else "NaN"
+            except Exception:
+                del exp_headers[name]
+                continue
         return exp_headers
 
     def find_drz_paths(self, dname_col="dataset", drzimg_col="imgname"):
@@ -749,7 +756,7 @@ class FitsScraper(FileScraper):
     def scrape_drizzle_fits(self):
         if not self.fpaths:
             self.fpaths = self.find_drz_paths()
-        self.log.info("\n*** Extracting fits data ***")
+        self.log.info("*** Extracting fits data ***")
         fits_dct = {}
         for key, path in self.fpaths.items():
             fits_dct[key] = {}
@@ -769,7 +776,7 @@ class FitsScraper(FileScraper):
 
 
 class JwstFitsScraper(FitsScraper):
-    def __init__(self, input_path, data=None, sfx="_uncal.fits", **log_kws):
+    def __init__(self, input_path, data=None, pfx="", sfx="_uncal.fits", **log_kws):
         self.genkeys = self.general_header_keys()
         self.scikeys = self.science_header_keys()
         if data is None:
@@ -782,15 +789,18 @@ class JwstFitsScraper(FitsScraper):
             name="JwstFitsScraper",
             **log_kws,
         )
+        self.pfx = pfx
         self.sfx = sfx
-        self.fpaths = super().get_input_exposures(sfx=self.sfx)
+        self.fpaths = super().get_input_exposures(pfx=self.pfx, sfx=self.sfx)
         self.exp_headers = None
 
     def general_header_keys(self):
         return [
             "PROGRAM",  # Program number
             "OBSERVTN",  # Observation number
+            "NEXPOSUR",  # number of exposures
             "BKGDTARG",  # Background target
+            "IS_IMPRT",  # NIRSpec imprint exposure
             "VISITYPE",  # Visit type
             "TSOVISIT",  # Time Series Observation visit indicator
             "TARGNAME",  # Standard astronomical catalog name for target
@@ -800,12 +810,15 @@ class JwstFitsScraper(FitsScraper):
             "DETECTOR",  # Name of detector used to acquire the data
             "FILTER",  # Name of the filter element used
             "PUPIL",  # Name of the pupil element used
+            "GRATING",  # Name of the grating element used (SPEC)
             "EXP_TYPE",  # Type of data in the exposure
             "CHANNEL",  # Instrument channel
             "SUBARRAY",  # Subarray used
             "NUMDTHPT",  # Total number of points in pattern
             "GS_RA",  # guide star right ascension
             "GS_DEC",  # guide star declination
+            "GS_MAG",  # guide star magnitude in FGS detector
+            "CROWDFLD",  # Are the FGSes in a crowded field?
         ]
 
     def science_header_keys(self):

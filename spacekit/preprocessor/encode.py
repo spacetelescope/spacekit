@@ -178,6 +178,7 @@ class CategoricalEncoder:
         rename=False,
         keypair_file=None,
         encoding_pairs=None,
+        verbose=0,
         name="CategoricalEncoder",
         **log_kws,
     ):
@@ -188,6 +189,7 @@ class CategoricalEncoder:
         self.rename = rename
         self.keypair_file = keypair_file
         self.encoding_pairs = encoding_pairs
+        self.verbose = verbose
         self.__name__ = name
         self.log = Logger(self.__name__, **log_kws).spacekit_logger()
         self.encodings = dict(zip(self.fkeys, self.names))
@@ -208,7 +210,8 @@ class CategoricalEncoder:
         originals = list(self.encodings.keys())
         self.df.drop(originals, axis=1, inplace=True)
         self.df = self.data.join(self.df, how="left")
-        self.display_encoding()
+        if self.verbose:
+            self.display_encoding()
         if self.drop is True:
             self.df.drop(originals, axis=1, inplace=True)
         if self.rename is True:
@@ -227,13 +230,13 @@ class CategoricalEncoder:
                 "encoding_pairs attr must be instantiated with key-value pairs"
             )
             return
-        self.log.info("ENCODING CATEGORICAL FEATURES")
+        self.log.info("Encoding categorical features...")
         for col, name in self.encodings.items():
             keypairs = self.encoding_pairs[col]
             enc = PairEncoder()
             enc.fit_transform(self.df, keypairs, axiscol=col)
             self.df[name] = enc.transformed
-            self.log.info(f"*** {col} --> {name} ***")
+            self.log.debug(f"*** {col} --> {name} ***")
             self.log.debug(
                 f"\n\nORIGINAL:\n{self.df[col].value_counts()}\n\nENCODED:\n{self.df[name].value_counts()}\n"
             )
@@ -507,10 +510,26 @@ class JwstEncoder(CategoricalEncoder):
 
     def make_keypairs(self):
         """Instantiates key-pair dictionaries for each of the categorical features."""
+        self.abbreviate_strings(self, cname="subarray", ckeys=["MASK", "SUB", "WFSS"])
         keymaker = CategoricalKeymaker(
             self.df, list(self.df.columns), recast=["channel"]
         )
         self.encoding_pairs = keymaker.encode_categories()
+
+    def abbreviate_strings(self, cname="subarray", ckeys=["MASK", "SUB", "WFSS"]):
+        """Abbreviates the original values based on the starting values of the string.
+        For example, if "MASK" is passed as a value in the `ckeys` keyword arg,
+        any value starting with "MASK" within the `cname` column is shortened to "MASK".
+        For the "subarray" column in JWST, this reduces the number of possible encodings to 7 values.
+        The 7 subarray values will then be encoded into integers in the final encoding step.
+
+        Returns
+        -------
+        dataframe
+            original dataframe with subarray input feature values encoded.
+        """
+        for key in ckeys:
+            self.df.loc[self.df[cname].str.startswith(key), cname] = key
 
     def encode_features(self):
         super()._encode_features()

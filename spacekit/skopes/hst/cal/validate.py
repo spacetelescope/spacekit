@@ -84,7 +84,7 @@ def run_kfold(data, s3=None, data_path=None, models=[], n_jobs=-2):
     Parameters
     ----------
     data : object
-        spacekit.preprocessor.prep.CalPrep data object
+        spacekit.preprocessor.prep.HstCalPrep data object
     s3 : str, optional
         S3 bucket name, by default None
     data_path : str, optional

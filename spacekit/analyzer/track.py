@@ -42,14 +42,14 @@ class Stopwatch:
         self.t1, self.p1 = time.time(), time.process_time()
         self.record(self.t1, "COMPLETED")
         self.duration()
-        self.log.info(f"\nWALL [{self.ps}] : {self.walltime}")
-        self.log.info(f"\nCLOCK [{self.ps}] : {self.clocktime}")
+        self.log.info(f"WALL [{self.ps}] : {self.walltime}")
+        self.log.info(f"CLOCK [{self.ps}] : {self.clocktime}")
 
     def record(self, t, info):
         timestring = dt.datetime.fromtimestamp(t).strftime("%m/%d/%Y - %H:%M:%S")
         self.log(f"{timestring} [i] {info} [{self.ps}]")
         if self.delta:
-            self.log.info(f"\nDuration [{self.ps}] : {self.delta[0]} {self.delta[1]}\n")
+            self.log.info(f"Duration [{self.ps}] : {self.delta[0]} {self.delta[1]}\n")
             self.lap += 1
             self.laps[self.lap] = self.delta
             self.reset()
@@ -109,7 +109,7 @@ def proc_time(start, end, prcname=""):
         t = f"{proc_time} minutes."
     else:
         t = f"{duration} seconds."
-    print(f"\nProcess [{prcname}] : {t}\n")
+    print(f"Process [{prcname}] : {t}\n")
     return t
 
 

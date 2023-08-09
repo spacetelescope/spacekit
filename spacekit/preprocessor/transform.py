@@ -32,6 +32,7 @@ class SkyTransformer:
         self.instr = None
         self.detector = None
         self.channel = None
+        self.count_exposures = True
         self.refpix = dict()
         self.set_keys()
 
@@ -47,12 +48,14 @@ class SkyTransformer:
             instr="INSTRUME"
             detector="DETECTOR"
             channel="CHANNEL"
+            exp_type="EXP_TYPE"
             ra="CRVAL1" / could also use "RA_REF"
             dec="CRVAL2" / could also use "DEC_REF
         """
         self.instr_key = kwargs.get("instr", "INSTRUME")
         self.detector_key = kwargs.get("detector", "DETECTOR")
         self.channel_key = kwargs.get("channel", "CHANNEL")
+        self.exp_key = kwargs.get("exp_type", "EXP_TYPE")
         self.ra_key = kwargs.get("ra", "CRVAL1")
         self.dec_key = kwargs.get("dec", "CRVAL2")
 
@@ -87,15 +90,21 @@ class SkyTransformer:
         return product_refpix
 
     def get_pixel_offsets(self, exp_data):
-        refpix = dict(nexposur=len(list(exp_data.keys())))
-        offsets, detectors = [], []
-        # detectors, footprints, fiducials = [], [], []
+        if self.count_exposures is True:
+            refpix = dict(NEXPOSUR=len(list(exp_data.keys())))
+        else:
+            refpix = dict()
+        offsets, targ_offsets, detectors = [], [], []
+        targ_radec = None
         for exp, data in exp_data.items():
             instr = data[self.instr_key]
             detector = data.get(self.detector_key, None)
             channel = data.get(self.channel_key, None)
+            exp_type = data.get(self.exp_key, None)
             fiducial = (data[self.ra_key], data[self.dec_key])
-            scale = self.get_scale(instr, channel=channel, detector=detector)
+            scale = self.get_scale(
+                instr, channel=channel, detector=detector, exp_type=exp_type
+            )
             shape = self.data_shapes(instr)
             # footprint from shape
             footprint = self.footprint_from_shape(fiducial, scale, shape)
@@ -106,6 +115,8 @@ class SkyTransformer:
                     scale=scale,
                 )
             )
+            if targ_radec is None:
+                targ_radec = (data["TARG_RA"], data["TARG_DEC"])
             if detector is not None and detector.upper() not in detectors:
                 detectors.append(detector.upper())
         # find fiducial (final product)
@@ -114,11 +125,15 @@ class SkyTransformer:
         refpix["fx_ra"], refpix["fy_dec"] = lon_fiducial, lat_fiducial
         # pixel sky sep offsets from estimated fiducial
         pcoord = SkyCoord(lon_fiducial, lat_fiducial, unit="deg")
+        tcoord = SkyCoord(targ_radec[0], targ_radec[1], unit="deg")
         for exp, data in exp_data.items():
             (ra, dec) = data["fiducial"]
             pixel = self.pixel_sky_separation(ra, dec, pcoord, data["scale"])
+            targ_pixel = self.pixel_sky_separation(ra, dec, tcoord, data["scale"])
             exp_data[exp]["offset"] = pixel
+            exp_data[exp]["targ_offset"] = targ_pixel
             offsets.append(pixel)
+            targ_offsets.append(targ_pixel)
         # fill in metadata for product using reference exposure (usually vals are equal across inputs)
         ref_exp = [
             k for k, v in exp_data.items() if v["offset"] == np.min(np.asarray(offsets))
@@ -136,7 +151,9 @@ class SkyTransformer:
             refpix["DETECTOR"] = detectors[0]
         # offset statistics
         offset_stats = self.offset_statistics(offsets)
+        targ_offset_stats = self.offset_statistics(targ_offsets, pfx="targ_")
         refpix.update(offset_stats)
+        refpix.update(targ_offset_stats)
         # experimental
         refpix["t_offset"] = self.pixel_sky_separation(
             refpix["TARG_RA"], refpix["TARG_DEC"], pcoord, refpix["scale"]
@@ -154,9 +171,13 @@ class SkyTransformer:
                     SHORT=0.03,
                     LONG=0.06,
                 ),
-                MIRI=0.11,
+                MIRI=dict(
+                    GEN=0.11,
+                    MRS=0.196,
+                ),
                 NIRISS=0.06,
-                NIRSPEC=0.1,
+                NIRSPEC=0.12,
+                FGS=0.069,
             ),
         )[self.mission]
 
@@ -164,19 +185,24 @@ class SkyTransformer:
         return dict(
             JWST=dict(
                 NIRCAM=(2048, 2048),
-                MIRI=(1024, 1032),
+                MIRI=(1032, 1024),
                 NIRISS=(2048, 2048),
                 NIRSPEC=(2048, 2048),
             ),
             HST=dict(
-                ACS=(),
-                WFC3=(),
+                ACS=(4096, 2048),  # ACS -> WFC,
+                WFC3=(4096, 2051),  # WFC3 -> UVIS (IR=(1024,1024))
             ),
         )[self.mission][instr]
 
-    def get_scale(self, instr, channel=None, detector=None):
+    def get_scale(self, instr, channel=None, detector=None, exp_type=None):
         if channel.upper() in ["SHORT", "LONG"]:
             return self.pixel_scales[instr][channel]
+        elif instr.upper() == "MIRI":
+            if exp_type in ["MIR_MRS"]:
+                return self.pixel_scales[instr]["MRS"]
+            else:
+                return self.pixel_scales[instr]["GEN"]
         elif detector.upper() in ["WFC", "UVIS", "IR"]:
             return self.pixel_scales[instr][detector]
         else:
@@ -184,8 +210,8 @@ class SkyTransformer:
 
     @staticmethod
     def footprint_from_shape(fiducial, scale, shape):
-        sep_y = (shape[0] / 2 * scale * u.arcsec).to(u.deg).value
-        sep_x = (shape[1] / 2 * scale * u.arcsec).to(u.deg).value
+        sep_x = (shape[0] / 2 * scale * u.arcsec).to(u.deg).value
+        sep_y = (shape[1] / 2 * scale * u.arcsec).to(u.deg).value
 
         ra_ref, dec_ref = fiducial
 
@@ -201,8 +227,6 @@ class SkyTransformer:
 
     @staticmethod
     def estimate_fiducial(footprints: list):
-        # footprints = np.hstack(
-        #      [w.footprint().T for w in wcslist])
         footprints = np.vstack([foot for foot in footprints])
 
         lon, lat = footprints[:, 0], footprints[:, 1]
@@ -671,11 +695,11 @@ def normalize_training_images(X_tr, X_ts, X_vl=None):
         return X_tr, X_ts
 
 
-def array_to_tensor(arr, reshape=False):
+def array_to_tensor(arr, reshape=False, shape=(-1, 1)):
     if type(arr) == tf.Tensor:
         return arr
     if reshape is True:
-        arr = arr.reshape(-1, 1)
+        arr = arr.reshape(shape[0], shape[1])
     return tf.convert_to_tensor(arr, dtype=tf.float32)
 
 
@@ -717,7 +741,7 @@ def arrays_to_tensors(X_train, y_train, X_test, y_test, reshape_y=False):
     return X_train, y_train, X_test, y_test
 
 
-def tensor_to_array(tensor, reshape=False):
+def tensor_to_array(tensor, reshape=False, shape=(-1, 1)):
     """Convert a tensor back into a numpy array. Optionally reshape the array (e.g. for target class data).
 
     Parameters
@@ -733,7 +757,7 @@ def tensor_to_array(tensor, reshape=False):
         array of same shape as input tensor, unless reshape=True
     """
     if reshape:
-        return np.asarray(tensor).reshape(-1, 1)
+        return np.asarray(tensor).reshape(shape[0], shape[1])
     else:
         return np.asarray(tensor)
 

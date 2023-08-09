@@ -1,7 +1,7 @@
 """
 Program (PID) of exposures comes into pipeline
 1. create list of L1B exposures
-2. scrape refpix vals from scihdrs + any additional metadata
+2. scrape pix offset vals from scihdrs + any additional metadata
 3. determine potential L3 products based on obs, filters, detectors, etc
 4. calculate sky separation / reference pixel offset statistics
 5. preprocessing: create dataframe of all input values, encode categoricals
@@ -12,20 +12,20 @@ import os
 import argparse
 import numpy as np
 from spacekit.logger.log import SPACEKIT_LOG, Logger
-from spacekit.skopes.jwst.cal.config import KEYPAIR_DATA
+from spacekit.skopes.jwst.cal.config import KEYPAIR_DATA, COLUMN_ORDER, NORM_COLS
 from spacekit.preprocessor.scrub import JwstCalScrubber
 from spacekit.preprocessor.transform import array_to_tensor, PowerX
 from spacekit.builder.architect import Builder
 
 
 # build from local filepath
-# MODEL_PATH = os.environ.get("MODEL_PATH", "./models") #"data/2023-07-14-1644848448/models"
+# MODEL_PATH = os.environ.get("MODEL_PATH", "./models/jwst_cal")
 # TX_FILE = os.path.join(MODEL_PATH, "tx_data.json")
 
 
 def load_pretrained_model(**builder_kwargs):
     builder = Builder(**builder_kwargs)
-    builder.load_saved_model(arch="jwstcal")
+    builder.load_saved_model(arch="jwst_cal")
     return builder
 
 
@@ -33,112 +33,189 @@ class JwstCalPredict:
     def __init__(
         self,
         input_path=None,
+        pid=None,
         model_path=None,
         models={},
         tx_file=None,
-        norm=0,
-        norm_cols=[],
+        norm=1,
+        norm_cols=[
+            "offset",
+            "max_offset",
+            "mean_offset",
+            "sigma_offset",
+            "err_offset",
+            "sigma1_mean",
+        ],
         **log_kws,
     ):
         self.input_path = input_path
+        self.pid = pid
         self.model_path = model_path
         self.models = models
         self.tx_file = tx_file
         self.norm = norm
         self.norm_cols = norm_cols
-        self.input_data = None
-        self.inputs = None
+        self.input_data = None  # dict of dataframes
+        self.inputs = None  # dict of (normalized) arrays
         self.tx_data = None
         self.X = None
-        self.mem_clf = None
-        self.mem_reg = None
+        self.img3_reg = None
+        # self.img3_clf = None
+        # self.spec3_reg = None
         self.__name__ = "JwstCalPredict"
         self.log = Logger(self.__name__, **log_kws).setup_logger(logger=SPACEKIT_LOG)
         self.log_kws = dict(log=self.log, **log_kws)
-        self.predictions = None
-        self.probabilities = None
+        self.predictions = dict()
+        self.probabilities = dict()
         self.initialize_models()
 
     def initialize_models(self):
-        self.log.info("Initializing prediction models")
+        self.log.info("Initializing prediction models...")
         if self.models is None and not os.path.exists(self.model_path):
             self.log.warning(
                 f"models path not found: {self.model_path} - defaulting to latest in spacekit-collection"
             )
             self.model_path = None
         self.load_models(models=self.models)
+        self.log.info("Initialized.")
 
-    def normalize_inputs(self):
+    def normalize_inputs(self, inputs, order="IMAGE"):
+        xcols = COLUMN_ORDER.get(order, list(inputs.columns))
+        norm_cols = NORM_COLS.get(order, self.norm_cols)
         if self.norm:
-            self.log.info("Applying normalization")
-            Px = PowerX(self.inputs, cols=self.norm_cols, tx_file=self.tx_file)
-            self.X = Px.Xt
+            self.log.info(f"Applying normalization [{order}]...")
+            Px = PowerX(
+                inputs, cols=norm_cols, tx_file=self.tx_file, rename=None, join_data=1
+            )
+            X = Px.Xt
             self.tx_data = Px.tx_data
             self.log.debug(f"tx_data: {self.tx_data}")
-            self.log.info(f"dataset: {self.dataset} normalized inputs (X): {self.X}")
+            X = X[xcols]
+            X = np.asarray(X)
         else:
-            self.X = np.asarray(self.inputs)
+            X = inputs[xcols]
+            X = np.asarray(X)
+        return X
 
     def preprocess(self):
-        self.log.info("Preprocessing input data")
-        scrubber = JwstCalScrubber(
-            self.input_path, encoding_pairs=KEYPAIR_DATA, **self.log_kws
+        self.input_data = dict(
+            IMAGE=None,
+            SPEC=None,
+            FGS=None,
+            TAC=None,
         )
-        self.inputs = scrubber.scrub_inputs()
-        self.products = scrubber.products
-        for product, input_data in self.inputs.iterrows():
-            self.log.info(f"product: {product}\nfeatures: {input_data}")
-        self.normalize_inputs()
+        self.inputs = dict(
+            IMAGE=None,
+            SPEC=None,
+            FGS=None,
+            TAC=None,
+        )
+        self.log.info("Preprocessing inputs...")
+        if self.pid is not None:
+            program_id = str(self.pid)
+            program_id = (
+                f"jw0{program_id}" if len(program_id) == 4 else f"jw{program_id}"
+            )
+            self.pid = program_id
+        else:
+            self.pid = ""
+        scrubber = JwstCalScrubber(
+            self.input_path,
+            pfx=self.pid,
+            sfx="_uncal.fits",
+            encoding_pairs=KEYPAIR_DATA,
+            **self.log_kws,
+        )
+        for exp_type in ["IMAGE"]:  # ["IMAGE", "SPEC", "TAC", "FGS"]:
+            inputs = scrubber.scrub_inputs(exp_type=exp_type)
+            if inputs is not None:
+                self.input_data[exp_type] = inputs
+                self.inputs[exp_type] = self.normalize_inputs(inputs, order=exp_type)
 
     def load_models(self, models={}):
-        self.mem_clf = models.get(
-            "mem_clf",
+        # self.img3_clf = models.get(
+        #     "img3_clf",
+        #     load_pretrained_model(
+        #         model_path=self.model_path, name="img3_clf", **self.log_kws
+        #     ),
+        # )
+        self.img3_reg = models.get(
+            "img3_reg",
             load_pretrained_model(
-                model_path=self.model_path, name="mem_clf", **self.log_kws
+                model_path=self.model_path, name="img3_reg", **self.log_kws
             ),
         )
-        self.mem_reg = models.get(
-            "mem_reg",
-            load_pretrained_model(
-                model_path=self.model_path, name="mem_reg", **self.log_kws
-            ),
-        )
+        # self.spec3_reg = models.get(
+        #     "spec3_reg",
+        #     load_pretrained_model(
+        #         model_path=self.model_path, name="spec3_reg", **self.log_kws
+        #     ),
+        # )
         if self.model_path is None:
-            self.model_path = os.path.dirname(self.mem_clf.model_path)
+            self.model_path = os.path.dirname(self.img3_reg.model_path)
         if self.tx_file is None or not os.path.exists(self.tx_file):
-            self.mem_clf.find_tx_file()
-            self.tx_file = self.mem_clf.tx_file
+            self.img3_reg.find_tx_file()
+            self.tx_file = self.img3_reg.tx_file
 
     def classifier(self, model, data):
         """Returns class prediction"""
-        X = array_to_tensor(data)
+        reshape = True if len(data.shape) == 1 else False
+        shape = (1, -1) if reshape is True else data.shape
+        X = array_to_tensor(data, reshape=reshape, shape=shape)
         pred_proba = model.predict(X)
         pred = int(np.argmax(pred_proba, axis=-1))
         return pred, pred_proba
 
     def regressor(self, model, data):
         """Returns Regression model prediction"""
-        X = array_to_tensor(data)
+        reshape = True if len(data.shape) == 1 else False
+        shape = (1, -1) if reshape is True else data.shape
+        X = array_to_tensor(data, reshape=reshape, shape=shape)
         pred = model.predict(X)
         return pred
 
+    def run_image_inference(self):
+        input_data = self.input_data.get("IMAGE", None)
+        X = self.inputs.get("IMAGE", None)
+        if X is None or input_data is None:
+            return
+        product_index = list(input_data.index)
+        imgsize = self.regressor(self.img3_reg.model, X)
+        # imgbin, pred_proba = self.classifier(self.img3_clf.model, X)
+        for i, _ in enumerate(X):
+            rpred = np.round(float(imgsize[i]), 2)
+            self.predictions[product_index[i]] = {
+                "gbSize": rpred
+            }  # "imgBin": imgbin[0]
+            # self.probabilities[product_index[i]] = {"probabilities": pred_proba[0]}
+
+    def run_spec_inference(self):
+        input_data = self.input_data.get("SPEC", None)
+        X = self.inputs.get("SPEC", None)
+        if X is None or input_data is None:
+            return
+        product_index = list(input_data.index)
+        imgsize = self.regressor(self.spec3_reg.model, X)
+        # imgbin, pred_proba = self.classifier(self.img3_clf.model, X)
+        for i, _ in enumerate(X):
+            rpred = np.round(float(imgsize[i]), 2)
+            self.predictions[product_index[i]] = {
+                "gbSize": rpred
+            }  # "imgBin": imgbin[0]
+            # self.probabilities[product_index[i]] = {"probabilities": pred_proba[0]}
+
     def run_inference(self):
-        if self.X is None:
+        if not self.inputs:
             self.preprocess()
-        self.predictions = dict()
-        self.probabilities = dict()
-        product_index = list(self.inputs.index)
-        for i, X in enumerate(self.X):
-            membin, pred_proba = self.classifier(self.mem_clf.model, X)
-            memval = np.round(float(self.regressor(self.mem_reg.model, X)), 2)
-            self.predictions[product_index[i]] = {"memBin": membin, "memVal": memval}
-            self.probabilities[product_index[i]] = {"probabilities": pred_proba}
+        self.log.info("Estimating Level 3 output image sizes...")
+        self.run_image_inference()
+        # self.run_spec_inference()
         self.log.info(f"predictions: {self.predictions}")
-        self.log.info(f"probabilities: {self.probabilities}")
+        # self.log.info(f"probabilities: {self.probabilities}")
 
 
 def predict_handler(input_path, **kwargs):
-    """handles non-lambda invocations"""
+    """handles local invocations"""
     pred = JwstCalPredict(input_path, **kwargs)
     pred.run_inference()
     return pred
@@ -154,17 +231,24 @@ if __name__ == "__main__":
         help="path to input exposure fits files",
     )
     parser.add_argument(
+        "-p",
+        "--pid",
+        type=int,
+        default=None,
+        help="restrict to input files matching a specific program ID e.g. 1018",
+    )
+    parser.add_argument(
         "-n",
         "--norm",
         type=int,
-        default=1,
+        default=0,
         help="apply normalization and scaling (bool)",
     )
     parser.add_argument(
         "-c",
         "--norm_cols",
         type=str,
-        default="0,1",
+        default="offset,max_offset,mean_offset,sigma_offset,err_offset,sigma1_mean",
         help="comma-separated index of input columns to apply normalization",
     )
     parser.add_argument(
@@ -205,5 +289,5 @@ if __name__ == "__main__":
         action="store_true",
     )
     args = parser.parse_args()
-    args.norm_cols = [int(i) for i in args.norm_cols.split(",")]
+    args.norm_cols = [str(i) for i in args.norm_cols.split(",")]
     predict_handler(**vars(args))

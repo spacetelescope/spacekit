@@ -4,7 +4,7 @@ GENKEYS = [
     "PROGRAM",  # Program number
     "OBSERVTN",  # Observation number
     "BKGDTARG",  # Background target
-    "VISITYPE",  # Visit type
+    "IS_IMPRT" "VISITYPE",  # NIRSpec imprint exposure  # Visit type
     "TSOVISIT",  # Time Series Observation visit indicator
     "TARGNAME",  # Standard astronomical catalog name for target
     "TARG_RA",  # Target RA at mid time of exposure
@@ -13,13 +13,17 @@ GENKEYS = [
     "DETECTOR",  # Name of detector used to acquire the data
     "FILTER",  # Name of the filter element used
     "PUPIL",  # Name of the pupil element used
+    "GRATING",  # Name of the grating element used
     "EXP_TYPE",  # Type of data in the exposure
     "CHANNEL",  # Instrument channel
     "SUBARRAY",  # Subarray used
     "NUMDTHPT",  # Total number of points in pattern
     "GS_RA",  # guide star right ascension
     "GS_DEC",  # guide star declination
+    "CROWDFLD",  # Are the FGSes in a crowded field?
+    "GS_MAG",  # guide star magnitude in FGS detector
 ]
+
 
 SCIKEYS = [
     "RA_REF",
@@ -28,18 +32,17 @@ SCIKEYS = [
     "CRVAL2",
 ]
 
+
 COLUMN_ORDER = {
-    "asn": [
+    "IMAGE": [
         "instr",
         "detector",
-        "exp_type",
         "visitype",
         "filter",
         "pupil",
         "channel",
         "subarray",
         "bkgdtarg",
-        "tsovisit",
         "nexposur",
         "numdthpt",
         "offset",
@@ -49,11 +52,81 @@ COLUMN_ORDER = {
         "err_offset",
         "sigma1_mean",
         "frac",
-    ]
+        "targ_frac",
+    ],
+    "SPEC": [
+        "instr",
+        "detector",
+        "visitype",
+        "filter",
+        "grating",
+        "subarray",
+        "bkgdtarg",
+        "is_imprt",
+        "nexposur",
+        "numdthpt",
+        "targ_max_offset",
+        "offset",
+        "max_offset",
+        "mean_offset",
+        "sigma_offset",
+        "err_offset",
+        "sigma1_mean",
+        "frac",
+    ],
+    "FGS": [
+        "instr",
+        "detector",
+        "visitype",
+        "subarray",
+        "nexposur",
+        "numdthpt",
+        "crowdfld",
+        "gs_mag",
+    ],
+    "TAC": [
+        "instr",
+        "detector",
+        "visitype",
+        "exp_type",
+        "tsovisit",
+        "filter",
+        "grating",
+        "subarray",
+        "nexposur",
+        "numdthpt",
+        "max_targ_offset",
+        "offset",
+        "max_offset",
+        "mean_offset",
+        "sigma_offset",
+        "err_offset",
+        "sigma1_mean",
+        "frac",
+    ],
 }
 
 NORM_COLS = {
-    "asn": [
+    "IMAGE": [
+        "offset",
+        "max_offset",
+        "mean_offset",
+        "sigma_offset",
+        "err_offset",
+        "sigma1_mean",
+    ],
+    "SPEC": [
+        # "targ_max_offset",
+        "offset",
+        "max_offset",
+        "mean_offset",
+        "sigma_offset",
+        "err_offset",
+        "sigma1_mean",
+    ],
+    "FGS": ["gs_mag"],
+    "TAC": [
+        # "targ_max_offset",
         "offset",
         "max_offset",
         "mean_offset",
@@ -63,11 +136,29 @@ NORM_COLS = {
     ],
 }
 
-RENAME_COLS = {
-    "asn": [],
-}
 
-X_NORM = {"asn": []}
+L3_TYPES = [
+    "FGS_IMAGE",
+    "MIR_IMAGE",  # (TSO & Non-TSO)
+    "NRC_IMAGE" "MIR_LRS-FIXEDSLIT",
+    "MIR_MRS",
+    "MIR_LYOT",
+    "MIR_4QPM",
+    "MIR_LRS-SLITLESS",  # (only IF TSO)
+    "NRC_CORON",
+    "NRC_WFSS",
+    "NRC_TSIMAGE",  # TSO always
+    "NRC_TSGRISM",  # TSO always
+    "NIS_IMAGE",
+    "NIS_AMI",
+    "NIS_WFSS",
+    "NIS_SOSS",  # (TSO & Non-TSO)
+    "NRS_FIXEDSLIT",
+    "NRS_IFU",
+    "NRS_MSASPEC",
+    "NRS_BRIGHTOBJ",  # TSO always
+]
+
 
 KEYPAIR_DATA = {
     "instr": {"FGS": 0, "MIRI": 1, "NIRCAM": 2, "NIRISS": 3, "NIRSPEC": 4},
@@ -103,6 +194,9 @@ KEYPAIR_DATA = {
         "NRS1": 28,
         "NRS1|NRS2": 29,
         "NRS2": 30,
+        "NRCA1|NRCA2|NRCA4|NRCB1|NRCB2|NRCB3|NRCB4": 31,
+        "NRCA1|NRCA2|NRCA4": 32,
+        "NRCA2|NRCA3|NRCA4": 33,
     },
     "filter": {
         "NONE": 0,
@@ -187,6 +281,17 @@ KEYPAIR_DATA = {
         "WLM8": 25,
         "WLP8": 26,
     },
+    "grating": {
+        "NONE": 0,
+        "MIRROR": 1,
+        "PRISM": 2,
+        "G140M": 3,
+        "G235M": 4,
+        "G395M": 5,
+        "G395H": 6,
+        "G140H": 7,
+        "G235H": 8,
+    },
     "exp_type": {
         "NONE": 0,
         "FGS_FOCUS": 1,
@@ -236,59 +341,59 @@ KEYPAIR_DATA = {
         "BRIGHTSKY": 2,
         "FULL": 3,
         "MASK1065": 4,
-        "MASK1140": 5,
-        "MASK1550": 6,
-        "MASKLYOT": 7,
-        "SLITLESSPRISM": 8,
-        "SUB128": 9,
-        "SUB160": 10,
-        "SUB160P": 11,
-        "SUB2048": 12,
-        "SUB256": 13,
-        "SUB32": 14,
-        "SUB320": 15,
-        "SUB320A335R": 16,
-        "SUB320A430R": 17,
-        "SUB320ALWB": 18,
-        "SUB32TATS": 19,
-        "SUB32TATSGRISM": 20,
-        "SUB400P": 21,
-        "SUB512": 22,
-        "SUB512S": 23,
-        "SUB64": 24,
-        "SUB640": 25,
-        "SUB640A210R": 26,
-        "SUB640ASWB": 27,
-        "SUB64FP1A": 28,
-        "SUB64P": 29,
-        "SUB80": 30,
-        "SUB96DHSPILA": 31,
-        "SUBAMPCAL": 32,
-        "SUBFSA210R": 33,
-        "SUBFSA335R": 34,
-        "SUBFSA430R": 35,
-        "SUBFSALWB": 36,
-        "SUBFSASWB": 37,
-        "SUBGRISM128": 38,
-        "SUBGRISM256": 39,
-        "SUBGRISM64": 40,
-        "SUBNDA210R": 41,
-        "SUBNDA335R": 42,
-        "SUBNDA430R": 43,
-        "SUBNDALWBL": 44,
-        "SUBNDALWBS": 45,
-        "SUBNDASWBS": 46,
-        "SUBS200A1": 47,
-        "SUBS200A2": 48,
-        "SUBS400A1": 49,
-        "SUBSTRIP256": 50,
-        "SUBSTRIP96": 51,
-        "SUBTAAMI": 52,
-        "SUBTASOSS": 53,
-        "WFSS128C": 54,
-        "WFSS128R": 55,
-        "WFSS64C": 56,
-        "WFSS64R": 57,
+        "MASK1140": 4,
+        "MASK1550": 4,
+        "MASKLYOT": 4,
+        "SLITLESSPRISM": 5,
+        "SUB128": 6,
+        "SUB160": 6,
+        "SUB160P": 6,
+        "SUB2048": 6,
+        "SUB256": 6,
+        "SUB32": 6,
+        "SUB320": 6,
+        "SUB320A335R": 6,
+        "SUB320A430R": 6,
+        "SUB320ALWB": 6,
+        "SUB32TATS": 6,
+        "SUB32TATSGRISM": 6,
+        "SUB400P": 6,
+        "SUB512": 6,
+        "SUB512S": 6,
+        "SUB64": 6,
+        "SUB640": 6,
+        "SUB640A210R": 6,
+        "SUB640ASWB": 6,
+        "SUB64FP1A": 6,
+        "SUB64P": 6,
+        "SUB80": 6,
+        "SUB96DHSPILA": 6,
+        "SUBAMPCAL": 6,
+        "SUBFSA210R": 6,
+        "SUBFSA335R": 6,
+        "SUBFSA430R": 6,
+        "SUBFSALWB": 6,
+        "SUBFSASWB": 6,
+        "SUBGRISM128": 6,
+        "SUBGRISM256": 6,
+        "SUBGRISM64": 6,
+        "SUBNDA210R": 6,
+        "SUBNDA335R": 6,
+        "SUBNDA430R": 6,
+        "SUBNDALWBL": 6,
+        "SUBNDALWBS": 6,
+        "SUBNDASWBS": 6,
+        "SUBS200A1": 6,
+        "SUBS200A2": 6,
+        "SUBS400A1": 6,
+        "SUBSTRIP256": 6,
+        "SUBSTRIP96": 6,
+        "SUBTAAMI": 6,
+        "SUBTASOSS": 6,
+        "WFSS128C": 7,
+        "WFSS128R": 7,
+        "WFSS64C": 7,
+        "WFSS64R": 7,
     },
     "visitype": {
         "NONE": 0,

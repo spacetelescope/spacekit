@@ -1,3 +1,18 @@
+1.0.0 (unreleased)
+==================
+
+- New feature: JWST Calibration Processing resource prediction model and skope (prediction script) added under the architecture name "jwst_cal"
+
+- Pretrained neural network files and paths renamed: calmodels.zip is now hst_cal.zip,
+ensemble.zip is now svm_align.zip.
+
+- If keras models are saved using the older SavedModel format, you must pass `keras_archive=False` when loading a saved model. By default, new models will be saved using the newer keras archive format.
+
+- Tests added for JWST; existing tests and metadata updated to reflect above changes
+
+- Updated zenodo version ID for remote test data
+
+
 0.4.1 (2023-07-03)
 ==================
 

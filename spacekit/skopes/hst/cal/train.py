@@ -26,7 +26,7 @@ import pandas as pd
 from spacekit.datasets import load
 from spacekit.extractor.load import find_local_dataset
 from spacekit.extractor.scrape import DynamoDBScraper, S3Scraper
-from spacekit.preprocessor.prep import CalPrep
+from spacekit.preprocessor.prep import HstCalPrep
 from spacekit.builder.architect import (
     MemoryClassifier,
     MemoryRegressor,
@@ -123,7 +123,7 @@ class Train:
 
     def load_prep(self):
         df = load(name="calcloud", date_key=self.date_key, fpath=self.fpath)
-        self.data = CalPrep(
+        self.data = HstCalPrep(
             df,
             "mem_bin",
             X_cols=self.X_cols,
@@ -191,7 +191,7 @@ class Train:
 
         Parameters
         ----------
-        data : spacekit.preprocessor.prep.CalPrep object
+        data : spacekit.preprocessor.prep.HstCalPrep object
             _description_
         model_objects : dict
             dictionary of spacekit.compute.Computer subclass objects

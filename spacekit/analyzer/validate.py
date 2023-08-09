@@ -57,7 +57,7 @@ depth = dim * ch
 
 cols = ["numexp", "rms_ra", "rms_dec", "nmatches", "point", "segment", "gaia"]
 ncols = list(range(len(cols)))
-model_name = "svm_ensemble"
+model_name = "ensembleSVM"
 
 df = load_datasets([fname])
 

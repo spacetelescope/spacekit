@@ -39,6 +39,7 @@ class Builder:
         train_data=None,
         test_data=None,
         blueprint=None,
+        algorithm=None,
         model_path=None,
         name=None,
         logname="Builder",
@@ -51,6 +52,7 @@ class Builder:
             self.X_test = test_data[0]
             self.y_test = test_data[1]
         self.blueprint = blueprint
+        self.algorithm = algorithm
         self.model_path = model_path
         self.name = name
         self.batch_size = 32
@@ -74,16 +76,27 @@ class Builder:
         self.log = Logger(self.__name__, **log_kws).spacekit_logger()
 
     def load_saved_model(
-        self, arch=None, compile_params=None, custom_obj={}, extract_to="models"
+        self,
+        arch=None,
+        compile_params=None,
+        custom_obj={},
+        extract_to="models",
+        keras_archive=True,
     ):
         """Load saved keras model from local disk (located at the ``model_path`` attribute) or a pre-trained model from spacekit.skopes.trained_networks (if ``model_path`` attribute is None). Example for ``compile_params``: ``dict(loss="binary_crossentropy", metrics=["accuracy"], optimizer=Adam(learning_rate=optimizers.schedules.ExponentialDecay(lr=1e-4, decay_steps=100000, decay_rate=0.96, staircase=True)))``
 
         Parameters
         ----------
         arch : str, optional
-            select a pre-trained model included from the spacekit library of trained networks ("ensembleSVM" or "calmodels"), by default None
+            select a pre-trained model included from the spacekit library of trained networks ("svm_align", "jwst_cal", or "hst_cal"), by default None
         compile_params : dict, optional
             Compile the model using kwarg parameters, by default None
+        custom_obj : dict, optional
+            custom objects keyword arguments to be passed into Keras `load_model`, by default {}
+        extract_to : str or path, optional
+            directory location to extract into, by default "models"
+        keras_archive : bool, optional
+            for models saved in the newer high-level .keras compressed archive format (recommended), by default True
 
         Returns
         -------
@@ -93,16 +106,20 @@ class Builder:
         if self.model_path is None:
             self.load_pretrained_network(arch=arch)
         if str(self.model_path).split(".")[-1] == "zip":
-            self.unzip_model_files(
-                extract_to=extract_to
-            )  # ./models | ./models/ensemble
+            self.unzip_model_files(extract_to=extract_to)
         model_basename = os.path.basename(self.model_path.rstrip("/"))
-        if model_basename != self.name:
-            # look through subdirectories for saved model folder matching "self.name"
-            for root, dirs, _ in os.walk(self.model_path):
-                for d in dirs:
-                    if d == self.name:
-                        self.model_path = os.path.join(root, d)
+        if model_basename != self.name:  # for spacekit archives, this is always True
+            for root, dirs, files in os.walk(self.model_path):
+                if keras_archive is True:
+                    for f in files:
+                        if f == f"{self.name}.keras":
+                            self.model_path = os.path.join(root, f)
+                            break
+                else:  # for legacy SavedModel folder containing assets, variables and saved_model.pb
+                    for d in dirs:
+                        if d == self.name:
+                            self.model_path = os.path.join(root, d)
+
         self.log.debug(f"Loading saved model from {str(self.model_path)}")
         try:
             self.model = load_model(self.model_path, custom_objects=custom_obj)
@@ -114,20 +131,25 @@ class Builder:
         return self.model
 
     def load_pretrained_network(self, arch=None):
+        mission_blueprints = ["hst", "jwst"]
         err = None
         if arch is None:
             err = "Must specify spacekit pretrained NN using `arch` when model_path attribute is not set."
-        elif arch not in ["calmodels", "ensemble"]:
+        elif arch not in ["hst_cal", "jwst_cal", "svm_align"]:
             err = f"The spacekit pretrained NN archive named {arch} does not exist."
         if err:
             self.log.error(err)
             sys.exit(1)
         model_src = "spacekit.builder.trained_networks"
-        archive_file = f"{arch}.zip"  # calmodels.zip | ensemble.zip
+        archive_file = f"{arch}.zip"  # hst_cal.zip | jwt_cal.zip | svm_align.zip
         with importlib.resources.path(model_src, archive_file) as mod:
             self.model_path = mod
-        if arch == "calmodels" and self.blueprint is None:
-            self.blueprint = self.name
+        if self.blueprint is None:
+            mission_arch = arch.split("_")[0]
+            if mission_arch in mission_blueprints:
+                self.blueprint = f"{mission_arch}_{self.name}"
+            elif mission_arch == "svm":
+                self.blueprint = "ensemble"
 
     def unzip_model_files(self, extract_to="models"):
         """Extracts a keras model object from a zip archive
@@ -181,28 +203,31 @@ class Builder:
 
         Parameters
         ----------
-        input_shape : tuple
-            shape of the inputs
-        output_shape : tuple
-            shape of the output
-        layers: list
-            sizes of hidden (dense) layers
-        kernel_size : int
-            size of the kernel
-        activation : string
-            dense layer activation
-        cost_function: str
-            function to update weights (calculate cost)
-        strides : int
-            number of strides
-        optimizer : object
-            type of optimizer to use
-        lr_sched: bool
-            use a learning_rate schedule such as ExponentialDecay
-        loss : string
-            loss metric to monitor
-        metrics : list
-            metrics for model to train on
+        input_shape : tuple, optional
+            shape of the inputs, by default None
+        output_shape : tuple, optional
+            shape of the output, by default None
+        layers: list, optional
+            sizes of hidden (dense) layers, by default None
+        kernel_size : int, optional
+            size of the kernel, by default None
+        activation : string, optional
+            dense layer activation, by default None
+        cost_function: str, optional
+            function to update weights (calculate cost), by default None
+        strides : int, optional
+            number of strides, by default None
+        optimizer : object, optional
+            type of optimizer to use, by default None
+        lr_sched: bool, optional
+            use a learning_rate schedule such as ExponentialDecay, by default None
+        loss : string, optional
+            loss metric to monitor, by default None
+        metrics : list, optional
+            metrics for model to train on, by default None
+        algorithm : str, optional
+            analysis type, used for determining spacekit.analyzer.Compute class e.g. "linreg"
+            for linear regression or "multiclass" for multi-label classification, by default None
 
         Returns
         -------
@@ -220,6 +245,7 @@ class Builder:
         self.lr_sched = lr_sched
         self.loss = loss
         self.metrics = metrics
+        self.algorithm = algorithm
         self.input_name = input_name
         self.output_name = output_name
         self.name = name
@@ -1109,7 +1135,7 @@ class MemoryClassifier(BuilderMLP):
         y_train=None,
         X_test=None,
         y_test=None,
-        blueprint="mem_clf",
+        blueprint="hst_mem_clf",
         test_idx=None,
         **builder_kwargs,
     ):
@@ -1123,6 +1149,7 @@ class MemoryClassifier(BuilderMLP):
             train_data=train_data,
             test_data=test_data,
             blueprint=blueprint,
+            algorithm="multiclass",
             logname="MemoryClassifier",
             **builder_kwargs,
         )
@@ -1141,7 +1168,6 @@ class MemoryClassifier(BuilderMLP):
         self.test_idx = test_idx
         self.epochs = 60
         self.batch_size = 32
-        self.algorithm = "multiclass"
 
 
 class MemoryRegressor(BuilderMLP):
@@ -1157,7 +1183,7 @@ class MemoryRegressor(BuilderMLP):
         y_train=None,
         X_test=None,
         y_test=None,
-        blueprint="mem_reg",
+        blueprint="hst_mem_reg",
         test_idx=None,
         **builder_kwargs,
     ):
@@ -1171,6 +1197,7 @@ class MemoryRegressor(BuilderMLP):
             train_data=train_data,
             test_data=test_data,
             blueprint=blueprint,
+            algorithm="linreg",
             logname="MemoryRegressor",
             **builder_kwargs,
         )
@@ -1189,7 +1216,6 @@ class MemoryRegressor(BuilderMLP):
         self.test_idx = test_idx
         self.epochs = 60
         self.batch_size = 32
-        self.algorithm = "linreg"
 
 
 class WallclockRegressor(BuilderMLP):
@@ -1205,7 +1231,7 @@ class WallclockRegressor(BuilderMLP):
         y_train=None,
         X_test=None,
         y_test=None,
-        blueprint="wall_reg",
+        blueprint="hst_wall_reg",
         test_idx=None,
         **builder_kwargs,
     ):
@@ -1219,6 +1245,7 @@ class WallclockRegressor(BuilderMLP):
             train_data=train_data,
             test_data=test_data,
             blueprint=blueprint,
+            algorithm="linreg",
             logname="WallclockRegressor",
             **builder_kwargs,
         )
@@ -1237,4 +1264,3 @@ class WallclockRegressor(BuilderMLP):
         self.test_idx = test_idx
         self.epochs = 300
         self.batch_size = 64
-        self.algorithm = "linreg"
