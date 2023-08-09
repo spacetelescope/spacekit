@@ -89,7 +89,7 @@ svm = {
 
 
 jwst_cal = {
-    "uri": "",
+    "uri": "https://zenodo.org/record/8231215/files",
     "data": {
         "2023-08-02": {
             "fname": "",
