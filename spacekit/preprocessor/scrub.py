@@ -577,29 +577,31 @@ class JwstCalScrubber(Scrubber):
     def level3_types(self):
         return [
             "FGS_IMAGE",
-            "MIR_IMAGE", # (TSO & Non-TSO)
+            "MIR_IMAGE",  # (TSO & Non-TSO)
             "NRC_IMAGE",
             "MIR_LRS-FIXEDSLIT",
             "MIR_MRS",
             "MIR_LYOT",
             "MIR_4QPM",
-            "MIR_LRS-SLITLESS", # (only IF TSO)
+            "MIR_LRS-SLITLESS",  # (only IF TSO)
             "NRC_CORON",
             "NRC_WFSS",
-            "NRC_TSIMAGE", # TSO always
-            "NRC_TSGRISM", # TSO always
+            "NRC_TSIMAGE",  # TSO always
+            "NRC_TSGRISM",  # TSO always
             "NIS_IMAGE",
             "NIS_AMI",
             "NIS_WFSS",
-            "NIS_SOSS", # (TSO & Non-TSO)
+            "NIS_SOSS",  # (TSO & Non-TSO)
             "NRS_FIXEDSLIT",
             "NRS_IFU",
             "NRS_MSASPEC",
-            "NRS_BRIGHTOBJ", # TSO always
+            "NRS_BRIGHTOBJ",  # TSO always
         ]
 
     def scrape_inputs(self):
-        self.scraper = JwstFitsScraper(self.input_path, data=self.df, pfx=self.pfx, sfx=self.sfx)
+        self.scraper = JwstFitsScraper(
+            self.input_path, data=self.df, pfx=self.pfx, sfx=self.sfx
+        )
         self.fpaths = self.scraper.fpaths
         self.exp_headers = self.scraper.scrape_fits()
 
@@ -610,7 +612,7 @@ class JwstCalScrubber(Scrubber):
         sky.set_keys(ra="RA_REF", dec="DEC_REF")
         self.specpix = sky.calculate_offsets(self.spec_products)
         self.products.update(self.specpix)
-        sky.count_exposures = False # use fits data
+        sky.count_exposures = False  # use fits data
         self.tacpix = sky.calculate_offsets(self.tac_products)
         self.products.update(self.tacpix)
         self.update_fgs()
@@ -623,22 +625,24 @@ class JwstCalScrubber(Scrubber):
         else:
             p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['FILTER']}"
         p = p.lower()
-        del v['NEXPOSUR']
+        del v["NEXPOSUR"]
         if p in self.img_products:
             self.img_products[p][k] = v
         else:
             self.img_products[p] = {k: v}
 
-    def make_spec_product_name(self, k, v, tnum):  
+    def make_spec_product_name(self, k, v, tnum):
         if v["EXP_TYPE"] == "MIR_LRS-SLITLESS" and v["TSOVISIT"] is False:
             return
         fltr = f"_{v['FILTER']}" if v["FILTER"] not in ["NaN", "N/A", "NONE"] else ""
-        grating = f"_{v['GRATING']}" if v["GRATING"] not in ["NaN", "N/A", "NONE"] else ""
+        grating = (
+            f"_{v['GRATING']}" if v["GRATING"] not in ["NaN", "N/A", "NONE"] else ""
+        )
         if fltr and grating:
             grating = f"-{v['GRATING']}"
         p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}{fltr}{grating}"
         p = p.lower()
-        del v['NEXPOSUR']
+        del v["NEXPOSUR"]
         if p in self.spec_products:
             self.spec_products[p][k] = v
         else:
@@ -677,15 +681,15 @@ class JwstCalScrubber(Scrubber):
         coron_ami = ["MIR_4QPM", "MIR_LYOT", "NRC_CORON", "NIS_AMI"]
 
         for k, v in self.exp_headers.items():
-            exp_type = v['EXP_TYPE']
+            exp_type = v["EXP_TYPE"]
             if exp_type in l3_types:
                 tnum = targs.get(v["TARGNAME"])
-                if exp_type in coron_ami or v["TSOVISIT"] in [True, 't', 'T', 'True']:
+                if exp_type in coron_ami or v["TSOVISIT"] in [True, "t", "T", "True"]:
                     self.make_tac_product_name(k, v, tnum)
-                elif v['INSTRUME'] == "FGS":
+                elif v["INSTRUME"] == "FGS":
                     if exp_type == "FGS_IMAGE":
                         self.make_fgs_product_name(k, v, tnum)
-                elif exp_type.split('_')[-1] == "IMAGE":
+                elif exp_type.split("_")[-1] == "IMAGE":
                     self.make_image_product_name(k, v, tnum)
                 else:
                     self.make_spec_product_name(k, v, tnum)

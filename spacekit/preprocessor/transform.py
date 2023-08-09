@@ -102,7 +102,9 @@ class SkyTransformer:
             channel = data.get(self.channel_key, None)
             exp_type = data.get(self.exp_key, None)
             fiducial = (data[self.ra_key], data[self.dec_key])
-            scale = self.get_scale(instr, channel=channel, detector=detector, exp_type=exp_type)
+            scale = self.get_scale(
+                instr, channel=channel, detector=detector, exp_type=exp_type
+            )
             shape = self.data_shapes(instr)
             # footprint from shape
             footprint = self.footprint_from_shape(fiducial, scale, shape)
@@ -114,7 +116,7 @@ class SkyTransformer:
                 )
             )
             if targ_radec is None:
-                targ_radec = (data['TARG_RA'], data['TARG_DEC'])
+                targ_radec = (data["TARG_RA"], data["TARG_DEC"])
             if detector is not None and detector.upper() not in detectors:
                 detectors.append(detector.upper())
         # find fiducial (final product)
@@ -129,7 +131,7 @@ class SkyTransformer:
             pixel = self.pixel_sky_separation(ra, dec, pcoord, data["scale"])
             targ_pixel = self.pixel_sky_separation(ra, dec, tcoord, data["scale"])
             exp_data[exp]["offset"] = pixel
-            exp_data[exp]['targ_offset'] = targ_pixel
+            exp_data[exp]["targ_offset"] = targ_pixel
             offsets.append(pixel)
             targ_offsets.append(targ_pixel)
         # fill in metadata for product using reference exposure (usually vals are equal across inputs)
@@ -172,7 +174,7 @@ class SkyTransformer:
                 MIRI=dict(
                     GEN=0.11,
                     MRS=0.196,
-                ), 
+                ),
                 NIRISS=0.06,
                 NIRSPEC=0.12,
                 FGS=0.069,
@@ -188,8 +190,8 @@ class SkyTransformer:
                 NIRSPEC=(2048, 2048),
             ),
             HST=dict(
-                ACS=(4096,2048), # ACS -> WFC,
-                WFC3=(4096,2051), # WFC3 -> UVIS (IR=(1024,1024))
+                ACS=(4096, 2048),  # ACS -> WFC,
+                WFC3=(4096, 2051),  # WFC3 -> UVIS (IR=(1024,1024))
             ),
         )[self.mission][instr]
 
@@ -210,7 +212,6 @@ class SkyTransformer:
     def footprint_from_shape(fiducial, scale, shape):
         sep_x = (shape[0] / 2 * scale * u.arcsec).to(u.deg).value
         sep_y = (shape[1] / 2 * scale * u.arcsec).to(u.deg).value
-
 
         ra_ref, dec_ref = fiducial
 
@@ -740,7 +741,7 @@ def arrays_to_tensors(X_train, y_train, X_test, y_test, reshape_y=False):
     return X_train, y_train, X_test, y_test
 
 
-def tensor_to_array(tensor, reshape=False, shape=(-1,1)):
+def tensor_to_array(tensor, reshape=False, shape=(-1, 1)):
     """Convert a tensor back into a numpy array. Optionally reshape the array (e.g. for target class data).
 
     Parameters

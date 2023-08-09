@@ -256,7 +256,7 @@ class JwstCalPrep(Prep):
     def set_X_cols(self, X_cols):
         if len(X_cols) == 0:
             self.X_cols = dict(
-                image = [
+                image=[
                     "instr",
                     "detector",
                     "visitype",
@@ -276,7 +276,7 @@ class JwstCalPrep(Prep):
                     "frac",
                     "targ_frac",
                 ],
-                spec = [
+                spec=[
                     "instr",
                     "detector",
                     "visitype",
@@ -294,9 +294,9 @@ class JwstCalPrep(Prep):
                     "sigma_offset",
                     "err_offset",
                     "sigma1_mean",
-                    "frac",      
+                    "frac",
                 ],
-                fgs = [
+                fgs=[
                     "instr",
                     "detector",
                     "visitype",
@@ -306,7 +306,7 @@ class JwstCalPrep(Prep):
                     "crowdfld",
                     "gs_mag",
                 ],
-                tac = [
+                tac=[
                     "instr",
                     "detector",
                     "visitype",
@@ -325,15 +325,15 @@ class JwstCalPrep(Prep):
                     "err_offset",
                     "sigma1_mean",
                     "frac",
-                ]
+                ],
             )[self.exp_mode]
         else:
             self.X_cols = X_cols
-    
+
     def set_norm_cols(self, norm_cols=[]):
         if len(norm_cols) == 0:
             norm_cols = dict(
-                image = [    
+                image=[
                     "offset",
                     "max_offset",
                     "mean_offset",
@@ -355,9 +355,7 @@ class JwstCalPrep(Prep):
         else:
             super().stratify_split(y_target=self.y_target, stratify=False)
         self.X_train, self.X_test = super().get_X_train_test()
-        super().apply_normalization(
-            T=PowerX, cols=self.norm_cols, rename=None, join=1
-        )
+        super().apply_normalization(T=PowerX, cols=self.norm_cols, rename=None, join=1)
         self.X_train = self.X_train[self.X_cols]
         self.X_test = self.X_test[self.X_cols]
 

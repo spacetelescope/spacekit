@@ -2,7 +2,12 @@
 Base IO code for all datasets (borrowing concepts from sklearn.datasets and keras.utils.load_data)
 """
 from spacekit.extractor.scrape import WebScraper
-from spacekit.analyzer.scan import import_dataset, HstCalScanner, HstSvmScanner, JwstCalScanner
+from spacekit.analyzer.scan import (
+    import_dataset,
+    HstCalScanner,
+    HstSvmScanner,
+    JwstCalScanner,
+)
 from spacekit.datasets.meta import spacekit_collections
 
 

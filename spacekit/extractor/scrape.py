@@ -798,9 +798,9 @@ class JwstFitsScraper(FitsScraper):
         return [
             "PROGRAM",  # Program number
             "OBSERVTN",  # Observation number
-            "NEXPOSUR", # number of exposures
+            "NEXPOSUR",  # number of exposures
             "BKGDTARG",  # Background target
-            "IS_IMPRT", # NIRSpec imprint exposure
+            "IS_IMPRT",  # NIRSpec imprint exposure
             "VISITYPE",  # Visit type
             "TSOVISIT",  # Time Series Observation visit indicator
             "TARGNAME",  # Standard astronomical catalog name for target
@@ -810,15 +810,15 @@ class JwstFitsScraper(FitsScraper):
             "DETECTOR",  # Name of detector used to acquire the data
             "FILTER",  # Name of the filter element used
             "PUPIL",  # Name of the pupil element used
-            "GRATING", # Name of the grating element used (SPEC)
+            "GRATING",  # Name of the grating element used (SPEC)
             "EXP_TYPE",  # Type of data in the exposure
             "CHANNEL",  # Instrument channel
             "SUBARRAY",  # Subarray used
             "NUMDTHPT",  # Total number of points in pattern
             "GS_RA",  # guide star right ascension
             "GS_DEC",  # guide star declination
-            "GS_MAG", # guide star magnitude in FGS detector
-            "CROWDFLD", # Are the FGSes in a crowded field?
+            "GS_MAG",  # guide star magnitude in FGS detector
+            "CROWDFLD",  # Are the FGSes in a crowded field?
         ]
 
     def science_header_keys(self):

@@ -677,7 +677,6 @@ class HstSvmScanner(MegaScanner):
 
 
 class JwstCalScanner(MegaScanner):
-
     def __init__(self, perimeter="data/20??-*-*-*", primary=-1, **log_kws):
         super().__init__(
             perimeter=perimeter, primary=primary, name="JwstCalScanner", **log_kws
@@ -728,4 +727,4 @@ class JwstCalScanner(MegaScanner):
         im3 = super().load_compute_object(
             Com=ComputeRegressor, alg="linreg", res_path=f"{dpath}/results/img3_reg"
         )
-        return (im3)
+        return im3

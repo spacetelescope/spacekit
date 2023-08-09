@@ -208,7 +208,9 @@ def predict_alignment(
         Name for this group of data (for classification report), e.g. SVM-2021-11-02
     """
     builder = BuilderEnsemble(model_path=model_path)
-    builder.load_saved_model(arch="svm_align", extract_to=extract_to, keras_archive=False)
+    builder.load_saved_model(
+        arch="svm_align", extract_to=extract_to, keras_archive=False
+    )
     builder.find_tx_file()
     X = load_mixed_inputs(data_file, img_path, tx=builder.tx_file, size=size, norm=norm)
     preds = classify_alignments(X, builder.model, output_path=output_path, group=group)

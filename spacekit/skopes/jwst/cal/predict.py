@@ -44,7 +44,7 @@ class JwstCalPredict:
             "mean_offset",
             "sigma_offset",
             "err_offset",
-            "sigma1_mean"
+            "sigma1_mean",
         ],
         **log_kws,
     ):
@@ -55,8 +55,8 @@ class JwstCalPredict:
         self.tx_file = tx_file
         self.norm = norm
         self.norm_cols = norm_cols
-        self.input_data = None # dict of dataframes
-        self.inputs = None # dict of (normalized) arrays
+        self.input_data = None  # dict of dataframes
+        self.inputs = None  # dict of (normalized) arrays
         self.tx_data = None
         self.X = None
         self.img3_reg = None
@@ -84,7 +84,9 @@ class JwstCalPredict:
         norm_cols = NORM_COLS.get(order, self.norm_cols)
         if self.norm:
             self.log.info(f"Applying normalization [{order}]...")
-            Px = PowerX(inputs, cols=norm_cols, tx_file=self.tx_file, rename=None, join_data=1)
+            Px = PowerX(
+                inputs, cols=norm_cols, tx_file=self.tx_file, rename=None, join_data=1
+            )
             X = Px.Xt
             self.tx_data = Px.tx_data
             self.log.debug(f"tx_data: {self.tx_data}")
@@ -111,14 +113,20 @@ class JwstCalPredict:
         self.log.info("Preprocessing inputs...")
         if self.pid is not None:
             program_id = str(self.pid)
-            program_id = f"jw0{program_id}" if len(program_id) == 4 else f"jw{program_id}"
+            program_id = (
+                f"jw0{program_id}" if len(program_id) == 4 else f"jw{program_id}"
+            )
             self.pid = program_id
         else:
             self.pid = ""
         scrubber = JwstCalScrubber(
-            self.input_path, pfx=self.pid, sfx="_uncal.fits", encoding_pairs=KEYPAIR_DATA, **self.log_kws
+            self.input_path,
+            pfx=self.pid,
+            sfx="_uncal.fits",
+            encoding_pairs=KEYPAIR_DATA,
+            **self.log_kws,
         )
-        for exp_type in ["IMAGE"]: #["IMAGE", "SPEC", "TAC", "FGS"]:
+        for exp_type in ["IMAGE"]:  # ["IMAGE", "SPEC", "TAC", "FGS"]:
             inputs = scrubber.scrub_inputs(exp_type=exp_type)
             if inputs is not None:
                 self.input_data[exp_type] = inputs
@@ -152,7 +160,7 @@ class JwstCalPredict:
     def classifier(self, model, data):
         """Returns class prediction"""
         reshape = True if len(data.shape) == 1 else False
-        shape = (1,-1) if reshape is True else data.shape
+        shape = (1, -1) if reshape is True else data.shape
         X = array_to_tensor(data, reshape=reshape, shape=shape)
         pred_proba = model.predict(X)
         pred = int(np.argmax(pred_proba, axis=-1))
@@ -161,7 +169,7 @@ class JwstCalPredict:
     def regressor(self, model, data):
         """Returns Regression model prediction"""
         reshape = True if len(data.shape) == 1 else False
-        shape = (1,-1) if reshape is True else data.shape
+        shape = (1, -1) if reshape is True else data.shape
         X = array_to_tensor(data, reshape=reshape, shape=shape)
         pred = model.predict(X)
         return pred
@@ -176,7 +184,9 @@ class JwstCalPredict:
         # imgbin, pred_proba = self.classifier(self.img3_clf.model, X)
         for i, _ in enumerate(X):
             rpred = np.round(float(imgsize[i]), 2)
-            self.predictions[product_index[i]] = {"gbSize": rpred} # "imgBin": imgbin[0]
+            self.predictions[product_index[i]] = {
+                "gbSize": rpred
+            }  # "imgBin": imgbin[0]
             # self.probabilities[product_index[i]] = {"probabilities": pred_proba[0]}
 
     def run_spec_inference(self):
@@ -189,7 +199,9 @@ class JwstCalPredict:
         # imgbin, pred_proba = self.classifier(self.img3_clf.model, X)
         for i, _ in enumerate(X):
             rpred = np.round(float(imgsize[i]), 2)
-            self.predictions[product_index[i]] = {"gbSize": rpred} # "imgBin": imgbin[0]
+            self.predictions[product_index[i]] = {
+                "gbSize": rpred
+            }  # "imgBin": imgbin[0]
             # self.probabilities[product_index[i]] = {"probabilities": pred_proba[0]}
 
     def run_inference(self):
@@ -223,7 +235,7 @@ if __name__ == "__main__":
         "--pid",
         type=int,
         default=None,
-        help="restrict to input files matching a specific program ID e.g. 1018"
+        help="restrict to input files matching a specific program ID e.g. 1018",
     )
     parser.add_argument(
         "-n",

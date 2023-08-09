@@ -105,7 +105,7 @@ jwst_cal = {
         "desc": "JWST Calibration Processing Resource Prediction Models",
         "key": "jwst_cal",
         "size": "597kB",
-    }
+    },
 }
 
 
@@ -130,7 +130,12 @@ k2 = {
 }
 
 
-spacekit_collections = {"calcloud": calcloud, "svm": svm, "jwst_cal": jwst_cal, "k2": k2}
+spacekit_collections = {
+    "calcloud": calcloud,
+    "svm": svm,
+    "jwst_cal": jwst_cal,
+    "k2": k2,
+}
 
 # Package imports
 networks = {
@@ -150,6 +155,6 @@ networks = {
         "basepath": "spacekit.builder.trained_networks",
         "fname": "jwst_cal.zip",
         "hash": "e9880f2e33fe9ab6d5aee066ab9e957abef1154fddc1297dcbaee495367ac222",
-        "size": "597kB"
-    }
+        "size": "597kB",
+    },
 }

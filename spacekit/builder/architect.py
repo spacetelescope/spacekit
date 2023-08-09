@@ -76,7 +76,12 @@ class Builder:
         self.log = Logger(self.__name__, **log_kws).spacekit_logger()
 
     def load_saved_model(
-        self, arch=None, compile_params=None, custom_obj={}, extract_to="models", keras_archive=True
+        self,
+        arch=None,
+        compile_params=None,
+        custom_obj={},
+        extract_to="models",
+        keras_archive=True,
     ):
         """Load saved keras model from local disk (located at the ``model_path`` attribute) or a pre-trained model from spacekit.skopes.trained_networks (if ``model_path`` attribute is None). Example for ``compile_params``: ``dict(loss="binary_crossentropy", metrics=["accuracy"], optimizer=Adam(learning_rate=optimizers.schedules.ExponentialDecay(lr=1e-4, decay_steps=100000, decay_rate=0.96, staircase=True)))``
 
@@ -101,18 +106,16 @@ class Builder:
         if self.model_path is None:
             self.load_pretrained_network(arch=arch)
         if str(self.model_path).split(".")[-1] == "zip":
-            self.unzip_model_files(
-                extract_to=extract_to
-            )
+            self.unzip_model_files(extract_to=extract_to)
         model_basename = os.path.basename(self.model_path.rstrip("/"))
-        if model_basename != self.name: # for spacekit archives, this is always True
+        if model_basename != self.name:  # for spacekit archives, this is always True
             for root, dirs, files in os.walk(self.model_path):
                 if keras_archive is True:
                     for f in files:
                         if f == f"{self.name}.keras":
                             self.model_path = os.path.join(root, f)
                             break
-                else: # for legacy SavedModel folder containing assets, variables and saved_model.pb
+                else:  # for legacy SavedModel folder containing assets, variables and saved_model.pb
                     for d in dirs:
                         if d == self.name:
                             self.model_path = os.path.join(root, d)
@@ -128,7 +131,7 @@ class Builder:
         return self.model
 
     def load_pretrained_network(self, arch=None):
-        mission_blueprints = ["hst","jwst"]
+        mission_blueprints = ["hst", "jwst"]
         err = None
         if arch is None:
             err = "Must specify spacekit pretrained NN using `arch` when model_path attribute is not set."
@@ -147,7 +150,6 @@ class Builder:
                 self.blueprint = f"{mission_arch}_{self.name}"
             elif mission_arch == "svm":
                 self.blueprint = "ensemble"
-
 
     def unzip_model_files(self, extract_to="models"):
         """Extracts a keras model object from a zip archive
@@ -224,7 +226,7 @@ class Builder:
         metrics : list, optional
             metrics for model to train on, by default None
         algorithm : str, optional
-            analysis type, used for determining spacekit.analyzer.Compute class e.g. "linreg" 
+            analysis type, used for determining spacekit.analyzer.Compute class e.g. "linreg"
             for linear regression or "multiclass" for multi-label classification, by default None
 
         Returns

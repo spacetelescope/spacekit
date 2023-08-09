@@ -4,8 +4,7 @@ GENKEYS = [
     "PROGRAM",  # Program number
     "OBSERVTN",  # Observation number
     "BKGDTARG",  # Background target
-    "IS_IMPRT"  # NIRSpec imprint exposure 
-    "VISITYPE",  # Visit type
+    "IS_IMPRT" "VISITYPE",  # NIRSpec imprint exposure  # Visit type
     "TSOVISIT",  # Time Series Observation visit indicator
     "TARGNAME",  # Standard astronomical catalog name for target
     "TARG_RA",  # Target RA at mid time of exposure
@@ -14,15 +13,15 @@ GENKEYS = [
     "DETECTOR",  # Name of detector used to acquire the data
     "FILTER",  # Name of the filter element used
     "PUPIL",  # Name of the pupil element used
-    "GRATING", # Name of the grating element used
+    "GRATING",  # Name of the grating element used
     "EXP_TYPE",  # Type of data in the exposure
     "CHANNEL",  # Instrument channel
     "SUBARRAY",  # Subarray used
     "NUMDTHPT",  # Total number of points in pattern
     "GS_RA",  # guide star right ascension
     "GS_DEC",  # guide star declination
-    "CROWDFLD", # Are the FGSes in a crowded field?
-    "GS_MAG", # guide star magnitude in FGS detector
+    "CROWDFLD",  # Are the FGSes in a crowded field?
+    "GS_MAG",  # guide star magnitude in FGS detector
 ]
 
 
@@ -104,7 +103,7 @@ COLUMN_ORDER = {
         "err_offset",
         "sigma1_mean",
         "frac",
-    ]
+    ],
 }
 
 NORM_COLS = {
@@ -117,7 +116,7 @@ NORM_COLS = {
         "sigma1_mean",
     ],
     "SPEC": [
-        # "targ_max_offset",     
+        # "targ_max_offset",
         "offset",
         "max_offset",
         "mean_offset",
@@ -134,31 +133,30 @@ NORM_COLS = {
         "sigma_offset",
         "err_offset",
         "sigma1_mean",
-    ]
+    ],
 }
 
 
 L3_TYPES = [
     "FGS_IMAGE",
-    "MIR_IMAGE", # (TSO & Non-TSO)
-    "NRC_IMAGE"
-    "MIR_LRS-FIXEDSLIT",
+    "MIR_IMAGE",  # (TSO & Non-TSO)
+    "NRC_IMAGE" "MIR_LRS-FIXEDSLIT",
     "MIR_MRS",
     "MIR_LYOT",
     "MIR_4QPM",
-    "MIR_LRS-SLITLESS", # (only IF TSO)
+    "MIR_LRS-SLITLESS",  # (only IF TSO)
     "NRC_CORON",
     "NRC_WFSS",
-    "NRC_TSIMAGE", # TSO always
-    "NRC_TSGRISM", # TSO always
+    "NRC_TSIMAGE",  # TSO always
+    "NRC_TSGRISM",  # TSO always
     "NIS_IMAGE",
     "NIS_AMI",
     "NIS_WFSS",
-    "NIS_SOSS", # (TSO & Non-TSO)
+    "NIS_SOSS",  # (TSO & Non-TSO)
     "NRS_FIXEDSLIT",
     "NRS_IFU",
     "NRS_MSASPEC",
-    "NRS_BRIGHTOBJ", # TSO always
+    "NRS_BRIGHTOBJ",  # TSO always
 ]
 
 

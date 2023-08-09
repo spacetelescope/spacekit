@@ -158,16 +158,16 @@ class Blueprint:
         return dict(
             input_shape=18,
             output_shape=1,
-            layers = [18, 36, 72, 144, 72, 36, 18, 9],
+            layers=[18, 36, 72, 144, 72, 36, 18, 9],
             activation="relu",
             cost_function="linear",
             lr_sched=True,
             optimizer=Adam,
             loss="mse",
             metrics=[RMSE(name="rmse")],
-            input_name = "jwst_cal_image3",
-            output_name = "image3_regressor",
-            name = "img3_reg",
+            input_name="jwst_cal_image3",
+            output_name="image3_regressor",
+            name="img3_reg",
             algorithm="linreg",
         )
 

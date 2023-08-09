@@ -510,18 +510,17 @@ class JwstEncoder(CategoricalEncoder):
 
     def make_keypairs(self):
         """Instantiates key-pair dictionaries for each of the categorical features."""
-        self.abbreviate_strings(self, cname="subarray", ckeys=["MASK","SUB","WFSS"])
+        self.abbreviate_strings(self, cname="subarray", ckeys=["MASK", "SUB", "WFSS"])
         keymaker = CategoricalKeymaker(
             self.df, list(self.df.columns), recast=["channel"]
         )
         self.encoding_pairs = keymaker.encode_categories()
 
-
-    def abbreviate_strings(self, cname="subarray", ckeys=["MASK","SUB","WFSS"]):
-        """Abbreviates the original values based on the starting values of the string. 
-        For example, if "MASK" is passed as a value in the `ckeys` keyword arg, 
-        any value starting with "MASK" within the `cname` column is shortened to "MASK". 
-        For the "subarray" column in JWST, this reduces the number of possible encodings to 7 values. 
+    def abbreviate_strings(self, cname="subarray", ckeys=["MASK", "SUB", "WFSS"]):
+        """Abbreviates the original values based on the starting values of the string.
+        For example, if "MASK" is passed as a value in the `ckeys` keyword arg,
+        any value starting with "MASK" within the `cname` column is shortened to "MASK".
+        For the "subarray" column in JWST, this reduces the number of possible encodings to 7 values.
         The 7 subarray values will then be encoded into integers in the final encoding step.
 
         Returns

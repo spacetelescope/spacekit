@@ -14,8 +14,6 @@ import glob
 import numpy as np
 from astropy.io import fits
 import time
-from progressbar import ProgressBar
-
 from spacekit.generator.draw import DrawMosaics
 from spacekit.analyzer.track import stopwatch
 
@@ -29,7 +27,9 @@ try:
     from tqdm import tqdm
     from progressbar import ProgressBar
 except ImportError:
-    raise ValueError("tqdm and/or progressbar is not installed. Use `pip install spacekit[x]`")
+    raise ValueError(
+        "tqdm and/or progressbar is not installed. Use `pip install spacekit[x]`"
+    )
 
 
 SVM_QUALITY_TESTING = "on"
