@@ -10,8 +10,8 @@ Pull the most recent calcloud training data and model results (default):
 The variables below are used by spacekit.datasets.beam to find specific datasets. Using the defaults will pull in the 3 most recent dataset iterations and model training results. To configure the dashboard to use other datasets, you'll need to set some configuration options. Copy variables into the `.env` file located in `docker/images/dashboard_image` - feel free to use one of the templates (`spacekit/docker/images/dashboard_image/templates`) and customize further as desired.
 
 ```bash
- # pkg, s3, git, file
-SRC="git"
+ # pkg, s3, web, file
+SRC="web"
 # collection, bucketname, repo url, or local path
 COLLECTION="calcloud" # e.g. "svm", "calcloud", "myS3bucket"
 # used by spacekit.datasets as dictionary keys
