@@ -46,6 +46,12 @@ $ pytest --env cal -m scan
 
 ### Pre-Trained Neural Nets
 
+**JWST Calibration Pipeline Resource Prediction (JWST)**
+
+[JWST CAL Docs](https://spacekit.readthedocs.io/en/latest/skopes/jwst/cal.html)
+
+* Inference ``spacekit.skopes.jwst.cal.predict``
+
 **Single Visit Mosaic Alignment (HST)**
 
 [SVM Docs](https://spacekit.readthedocs.io/en/latest/skopes/hst/svm.html)
@@ -56,12 +62,13 @@ $ pytest --env cal -m scan
 * Generate synthetic misalignments†: ``spacekit.skopes.hst.svm.corrupt``
         
 *† requires Drizzlepac*
-    
-**Calibration Data Pipeline (HST)**
 
-[CAL Docs](https://spacekit.readthedocs.io/en/latest/skopes/hst/cal.html)
+**HST Calibration Pipeline Resource Prediction (HST)**
 
-* ``spacekit.skopes.hst.cal.train``
+[HST CAL Docs](https://spacekit.readthedocs.io/en/latest/skopes/hst/cal.html)
+
+* Training ``spacekit.skopes.hst.cal.train``
+* Inference ``spacekit.skopes.hst.cal.predict``
 
 
 **Exoplanet Detection with time-series photometry (K2, TESS)**
