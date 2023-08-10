@@ -241,7 +241,7 @@ if __name__ == "__main__":
         "-n",
         "--norm",
         type=int,
-        default=0,
+        default=1,
         help="apply normalization and scaling (bool)",
     )
     parser.add_argument(
