@@ -155,6 +155,6 @@ networks = {
         "basepath": "spacekit.builder.trained_networks",
         "fname": "jwst_cal.zip",
         "hash": "e9880f2e33fe9ab6d5aee066ab9e957abef1154fddc1297dcbaee495367ac222",
-        "size": "597kB",
+        "size": "110kB",
     },
 }

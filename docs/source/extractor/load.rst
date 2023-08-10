@@ -33,8 +33,6 @@ spacekit.extractor.load
 
 .. autofunction:: save_dataframe
 
-.. autofunction:: save_dataframe
-
 .. autofunction:: zip_subdirs
 
 .. autofunction:: is_within_directory

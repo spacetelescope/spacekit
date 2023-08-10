@@ -6,8 +6,8 @@ tensorflow>=2.7
 numpy>=1.19
 numpydoc
 astropy
-pydot
 graphviz
+pydot
 -e ..
 astroquery
 boto3
