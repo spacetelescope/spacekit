@@ -45,12 +45,12 @@ class SkyTransformer:
         None values will use defaults (see below); unrecognized kwargs
         will be ignored.
         Defaults:
-            instr="INSTRUME"
-            detector="DETECTOR"
-            channel="CHANNEL"
-            exp_type="EXP_TYPE"
-            ra="CRVAL1" / could also use "RA_REF"
-            dec="CRVAL2" / could also use "DEC_REF
+        * instr="INSTRUME"
+        * detector="DETECTOR"
+        * channel="CHANNEL"
+        * exp_type="EXP_TYPE"
+        * ra="CRVAL1" / could also use "RA_REF"
+        * dec="CRVAL2" / could also use "DEC_REF"
         """
         self.instr_key = kwargs.get("instr", "INSTRUME")
         self.detector_key = kwargs.get("detector", "DETECTOR")

@@ -7,7 +7,12 @@ spacekit.preprocessor.transform
 .. currentmodule:: spacekit.preprocessor.transform
 
 .. inheritance-diagram:: spacekit.preprocessor.transform
-   :parts: 2
+   :parts: 3
+
+.. autoclass:: SkyTransformer
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 .. autoclass:: Transformer
    :members:

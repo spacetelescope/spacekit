@@ -99,6 +99,9 @@ Skøpes: Space Telescope Machine Learning Applications
 .. toctree::
    :maxdepth: 1
 
+   James Webb Space Telescope <skopes/jwst.rst>
+      Calibration Pipeline Resource Prediction Modeling <skopes/jwst/cal.rst>
+
    Hubble Space Telescope <skopes/hst.rst>
       Single Visit Mosaic Alignment Modeling <skopes/hst/svm.rst>
       Calcloud Data Pipeline Modeling <skopes/hst/cal.rst>

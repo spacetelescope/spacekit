@@ -64,7 +64,7 @@ Dataset
 
 .. code-block:: bash
 
-    $ git clone https://github.com/alphasentaurii/spacekit
+    $ git clone https://github.com/spacetelescope/spacekit
     $ cd spacekit
     $ pip install -e .
 
