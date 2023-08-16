@@ -8,7 +8,6 @@ numpydoc
 astropy
 graphviz
 pydot
--e ..
 astroquery
 boto3
 plotly
