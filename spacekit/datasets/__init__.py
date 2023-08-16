@@ -5,6 +5,7 @@ from ._base import load_from_archive
 from ._base import load_cal
 from ._base import load_svm
 from ._base import load_k2
+from ._base import load_jwst_cal
 from ._base import import_collection
 from ._base import load
 
