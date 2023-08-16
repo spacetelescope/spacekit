@@ -367,7 +367,7 @@ KEYPAIR_DATA = {
         "SUB64FP1A": 6,
         "SUB64P": 6,
         "SUB80": 6,
-        'SUB8FP1A': 6,
+        "SUB8FP1A": 6,
         "SUB96DHSPILA": 6,
         "SUBAMPCAL": 6,
         "SUBFSA210R": 6,

@@ -30,8 +30,8 @@ def load_pretrained_model(**builder_kwargs):
 
 
 class JwstCalPredict:
-    """Generate predicted memory footprint of Level 3 products using metadata from uncalibrated (Level 1) exposures).
-    """
+    """Generate predicted memory footprint of Level 3 products using metadata from uncalibrated (Level 1) exposures)."""
+
     def __init__(
         self,
         input_path=None,
