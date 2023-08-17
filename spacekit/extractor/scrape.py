@@ -220,7 +220,7 @@ class FileScraper(Scraper):
         search_path : str, optional
             top-level path to search through, by default ""
         search_patterns : list, optional
-            glob pattern strings, by default ``["*.zip"]``, by default ["*.zip"]
+            glob pattern strings, by default ``["*.zip"]``
         cache_dir : str, optional
             parent folder to save data, by default "~"
         cache_subdir : str, optional

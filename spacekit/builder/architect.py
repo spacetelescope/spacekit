@@ -83,25 +83,16 @@ class Builder:
         extract_to="models",
         keras_archive=True,
     ):
-        """Load saved keras model from local disk (located at the ``model_path`` attribute)
-        or a pre-trained model from spacekit.skopes.trained_networks (if ``model_path`` attribute
-        is None).
-        Example for ``compile_params``:
-        ``dict(
-            loss="binary_crossentropy",
-            metrics=["accuracy"],
-            optimizer=Adam(
-                learning_rate=optimizers.schedules.ExponentialDecay(
-                    lr=1e-4, decay_steps=100000, decay_rate=0.96, staircase=True
-                )
-            )
-        )``
+        """Load saved keras model from local disk (located at the ``model_path`` attribute) or a pre-trained model from 
+        spacekit.skopes.trained_networks (if ``model_path`` attribute is None). Example for ``compile_params``:
+        ``dict(loss="binary_crossentropy",metrics=["accuracy"],\
+        optimizer=Adam(learning_rate=optimizers.schedules.ExponentialDecay(lr=1e-4, \
+        decay_steps=100000, decay_rate=0.96, staircase=True)))``
 
         Parameters
         ----------
         arch : str, optional
-            select a pre-trained model included from the spacekit library of trained networks
-            ("svm_align", "jwst_cal", or "hst_cal"), by default None
+            select a pre-trained model from the spacekit library ("svm_align", "jwst_cal", or "hst_cal"), by default None
         compile_params : dict, optional
             Compile the model using kwarg parameters, by default None
         custom_obj : dict, optional
@@ -595,7 +586,7 @@ class BuilderMLP(Builder):
         smaller than the others. An epoch finishes once `steps_per_epoch` have been seen by the model.
 
         Yields
-        -------
+        ------
         tuple
             a single batch tuple of (inputs, targets) or (inputs, targets, sample_weights).
         """
