@@ -2,9 +2,12 @@
 Spacekit HST "Calibration in the Cloud" (calcloud) Job Resource Allocation Model Training
 
 This script imports and preprocesses job metadata for the Hubble Space Telescope data calibration pipeline,
-which is then used as inputs to build, train and evaluate 3 neural networks for estimating AWS batch compute job resource requirements.
+which is then used as inputs to build, train and evaluate 3 neural networks for estimating AWS batch compute job resource 
+requirements.
 
-The networks include one multi-class classifier and two linear regression estimators. The classifier predicts which of 4 possible memory bin sizes (and therefore compute instance type) is most appropriate for reprocessing a given ipppssoot (i.e. "job"). The wallclock regressor estimates the maximum execution time ("wallclock" or "kill" time) in seconds needed to complete the job.
+The networks include one multi-class classifier and two linear regression estimators. The classifier predicts which of 4 possible 
+memory bin sizes (and therefore compute instance type) is most appropriate for reprocessing a given ipppssoot (i.e. "job"). The 
+wallclock regressor estimates the maximum execution time ("wallclock" or "kill" time) in seconds needed to complete the job.
 
 Ex:
 python -m spacekit.skopes.hst.cal.train data/2021-11-04-1636048291
@@ -15,7 +18,6 @@ bcom2 = ComputeMulti(res_path=f"{res_path}/mem_bin")
 bin_out = bcom2.upload()
 bcom2.load_results(bin_out)
 test_idx = bin_out["test_idx"]
-
 """
 
 from argparse import ArgumentParser
@@ -132,7 +134,8 @@ class Train:
         )
         self.data.prep_data()
 
-    # TODO: SVM repro model training - can use same builder objects, just set diff hyperparams after instantiating (add params to builder.blueprints)
+    # TODO: SVM repro model training - can use same builder objects, just set diff hyperparams after instantiating
+    # (add params to builder.blueprints)
 
     def train_models(self):
         if self.mem_clf:
@@ -503,7 +506,8 @@ if __name__ == "__main__":
         "--source_path",
         type=str,
         default=None,
-        help="if src=file, top level (parent) directory of source data (absolute path or relative to current working directory, e.g. `data/2021-11-04-1636048291/` or just `data`",
+        help="if src=file, top level (parent) directory of source data (absolute path or relative to current working directory, \
+            e.g. `data/2021-11-04-1636048291/` or just `data`",
     )
 
     # Optional args for any data source

@@ -5,12 +5,13 @@ from spacekit.skopes.hst.svm.train import make_ensembles
 from spacekit.generator.augment import training_data_aug, training_img_aug
 from spacekit.preprocessor.transform import (
     normalize_training_images,
+    PowerX,
 )
-from spacekit.preprocessor.transform import PowerX
-from spacekit.extractor.load import load_datasets
+from spacekit.extractor.load import load_datasets, SVMImageIO
 import pandas as pd
 import numpy as np
 import os
+import datetime as dt
 
 HOME = os.path.abspath(os.curdir)
 DATA = os.path.join(HOME, "data")
@@ -41,7 +42,6 @@ params = dict(
     ensemble=True,
 )
 
-import datetime as dt
 
 timestring = dt.datetime.now().isoformat()[:-7]  # 2022-01-19T21:31:21
 timestamp = int(dt.datetime.fromisoformat(timestring).timestamp())
@@ -61,9 +61,7 @@ model_name = "ensembleSVM"
 
 df = load_datasets([fname])
 
-from spacekit.extractor.load import SVMFileIO
-
-((X_train, X_test, X_val), (y_train, y_test, y_val)), (train, test, val) = SVMFileIO(
+((X_train, X_test, X_val), (y_train, y_test, y_val)), (train, test, val) = SVMImageIO(
     img_path_npz, w=img_size, h=img_size, d=dim * ch, inference=False, data=df, v=0.85
 ).load()
 
@@ -184,7 +182,9 @@ print("Score per fold")
 for i in range(0, len(acc_per_fold)):
     print("--------" * 11)
     print(
-        f"> Fold {i+1} - Loss: {loss_per_fold[i]} - Accuracy: {acc_per_fold[i]}% - ROC: {np.round(roc_per_fold[i], 4)} - FP: {np.round((fp_per_fold[i]/T)*100, 4)} - FN: {np.round((fn_per_fold[i]/T)*100, 4)}"
+        f"> Fold {i+1} - Loss: {loss_per_fold[i]} - Accuracy: {acc_per_fold[i]}% \
+        - ROC: {np.round(roc_per_fold[i], 4)} - FP: {np.round((fp_per_fold[i]/T)*100, 4)} \
+        - FN: {np.round((fn_per_fold[i]/T)*100, 4)}"
     )
 print("--------" * 11)
 print("Averages:")

@@ -488,7 +488,9 @@ def make_styles():
             "background-color": "linear-gradient(145deg, rgba(33, 134, 244, 0.5) 0%, rgba(33, 134, 244, 0.4) 100%)",
             "background-image": "rgb(0, 0, 0)",
             "background-blend-mode": "overlay",
-            "box-shadow": "rgb(0 0 0 / 45%) 2px 2px 6px 1px, rgb(255 255 255 / 30%) 1px 1px 2px 0px inset, rgb(0 0 0 / 60%) 1px 1px 1px 0px, rgb(33 134 244) 0px 0px 3px 0px",
+            "box-shadow": "rgb(0 0 0 / 45%) 2px 2px 6px 1px, \
+            rgb(255 255 255 / 30%) 1px 1px 2px 0px inset, \
+            rgb(0 0 0 / 60%) 1px 1px 1px 0px, rgb(33 134 244) 0px 0px 3px 0px",
         },
         "gradbar-green": {
             "color": "black",
@@ -500,7 +502,9 @@ def make_styles():
             "background-image": "rgb(0, 0, 0)",
             # 'background-image': 'linear-gradient(145deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.4) 100%)',
             "background-blend-mode": "overlay",
-            "box-shadow": "rgb(0 0 0 / 45%) 2px 2px 6px 1px, rgb(255 255 255 / 30%) 1px 1px 2px 0px inset, rgb(0 0 0 / 60%) 1px 1px 1px 0px, rgb(0 234 100) 0px 0px 3px 0px",
+            "box-shadow": "rgb(0 0 0 / 45%) 2px 2px 6px 1px, \
+                rgb(255 255 255 / 30%) 1px 1px 2px 0px inset, \
+                    rgb(0 0 0 / 60%) 1px 1px 1px 0px, rgb(0 234 100) 0px 0px 3px 0px",
         },
     }
     return styles

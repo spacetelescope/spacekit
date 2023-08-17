@@ -67,7 +67,8 @@ def random_apply(func, x, p):
 
 
 def augment_random_noise(x):
-    """Random application of laplacian and/or logistic noise calculated relative to the input value. Augmentation transformations are applied randomly to impose translational invariance.
+    """Random application of laplacian and/or logistic noise calculated relative to the input value. Augmentation
+    transformations are applied randomly to impose translational invariance.
 
     Parameters
     ----------
@@ -106,7 +107,10 @@ def augment_random_integer(x):
 
 
 def augment_data(xi):
-    """Randomly apply noise to input data. For now this function is designed for SVM ensemble MLP input data. For other uses, the function tries to determine which augmentation operation to apply according to the data type - however it may not make sense for all the inputs to be augmented (e.g. if they are binary/boolean) so this should be used with caution (future updates this will be generalized properly for other use cases).
+    """Randomly apply noise to input data. For now this function is designed for SVM ensemble MLP input data. For
+    other uses, the function tries to determine which augmentation operation to apply according to the data type -
+    however it may not make sense for all the inputs to be augmented (e.g. if they are binary/boolean) so this should
+    be used with caution (future updates this will be generalized properly for other use cases).
 
     Parameters
     ----------
@@ -136,9 +140,9 @@ def augment_data(xi):
     else:
         x2 = []
         for x in xi:
-            if type(x) == int:
+            if isinstance(x, int):
                 x2.append(augment_random_integer(x))
-            elif type(x) == float:
+            elif isinstance(x, float):
                 x2.append(augment_random_noise[x])
         return np.asarray(x2)
 
@@ -226,7 +230,8 @@ def rotate_k(x):
 
 
 def color_jitter(x, brightness=0.4, contrast=0.4, saturation=0.4, hue=None):
-    """Randomly applies a combination of alterations to the image brightness, contrast, saturation and hue. Note: a clipping function is performed at the end since affine transformations can disturb the natural range of RGB images.
+    """Randomly applies a combination of alterations to the image brightness, contrast, saturation and hue. Note: a
+    clipping function is performed at the end since affine transformations can disturb the natural range of RGB images.
 
     Parameters
     ----------
@@ -424,7 +429,8 @@ def training_img_aug(train, test, val=None, dim=3, w=128, h=128, ch=3):
     Returns
     -------
     list of tuples of Pandas Index, numpy arrays
-        combined image index of train, test, val; combined original and augmented training data, reshaped test and val data. If no validation data is passed in the ``val`` arg, then only train and test are returned.
+        combined image index of train, test, val; combined original and augmented training data, reshaped test and val
+        data. If no validation data is passed in the ``val`` arg, then only train and test are returned.
     """
     depth = ch * dim
     X_tr = aug_generator(train[1], c=depth, combine=True)

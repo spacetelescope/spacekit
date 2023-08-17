@@ -4,3 +4,24 @@ requires = [
     "wheel"
 ]
 build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+line-length = 130
+exclude = [
+    'docs',
+    'docker',
+    'build',
+    '.tox',
+    '.eggs',
+    '.git',
+    '__pycache__',
+    'dist',
+    '.egg',
+    'build',
+]
+
+ignore = [
+    'E741', # ambiguous variable name
+]
+
+[tool.ruff.per-file-ignores]

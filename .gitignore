@@ -43,6 +43,7 @@ distribute-*.tar.gz
 .aws
 .cache
 .tox
+.ruff_cache
 .*.sw[op]
 *~
 .project

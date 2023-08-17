@@ -36,7 +36,10 @@ SPACEKIT_DATA = os.environ.get("SPACEKIT_DATA", "~/spacekit_data")
 
 
 def home_data_base(data_home=None):
-    """Borrowed from ``sklearn.datasets._base.get_data_home`` function: Return the path of the spacekit data dir, and create one if not existing. Folder path can be set explicitly using ``data_home`` kwarg, otherwise it looks for the 'SPACEKIT_DATA' environment variable, or defaults to 'spacekit_data' in the user home directory (the '~' symbol is expanded to the user's home folder).
+    """Borrowed from ``sklearn.datasets._base.get_data_home`` function: Return the path of the spacekit
+    data dir, and create one if not existing. Folder path can be set explicitly using ``data_home`` kwarg,
+    otherwise it looks for the 'SPACEKIT_DATA' environment variable, or defaults to 'spacekit_data' in the
+    user home directory (the '~' symbol is expanded to the user's home folder).
 
     Parameters
     ----------
@@ -214,8 +217,22 @@ class FileScraper(Scraper):
 
         Parameters
         ----------
-        patterns : list, optional
-            glob pattern strings, by default ``["*.zip"]``
+        search_path : str, optional
+            top-level path to search through, by default ""
+        search_patterns : list, optional
+            glob pattern strings, by default ``["*.zip"]``, by default ["*.zip"]
+        cache_dir : str, optional
+            parent folder to save data, by default "~"
+        cache_subdir : str, optional
+            save data in a subfolder one directory below `cache_dir`, by default "data"
+        format : str, optional
+            archive format type, by default "zip"
+        extract : bool, optional
+            extract the contents of the compressed archive file, by default True
+        clean : bool, optional
+            remove compressed file after extraction, by default False
+        name : str, optional
+            logging name, by default "FileScraper"
         """
         super().__init__(
             cache_dir=cache_dir,
@@ -233,10 +250,6 @@ class FileScraper(Scraper):
 
     def scrape(self):
         """Search local disk for files matching glob regex pattern(s)
-
-        Parameters
-        ----------
-        patterns : list, optional
 
         Returns
         -------
@@ -284,6 +297,16 @@ class WebScraper(Scraper):
             key-pair values of each dataset's filenames and hash keys
         hash_algorithm : str, optional
             type of hash key algorithm used, by default "sha256"
+        cache_dir : str, optional
+            parent folder to save data, by default "~"
+        cache_subdir : str, optional
+            save data in a subfolder one directory below `cache_dir`, by default "data"
+        format : str, optional
+            archive format type, by default "zip"
+        extract : bool, optional
+            extract the contents of the compressed archive file, by default True
+        clean : bool, optional
+            remove compressed file after extraction
         """
         super().__init__(
             cache_dir=cache_dir,
@@ -301,7 +324,10 @@ class WebScraper(Scraper):
         self.fpaths = []
 
     def scrape(self):
-        """Using the key-pair values in `dataset` dictionary attribute, download the files from a github repo and check the hash keys match before extracting. Extraction and hash-key checking is handled externally by the `keras.utils.data_utils.get_file` method. If extraction is successful, the archive file will be deleted.
+        """Using the key-pair values in `dataset` dictionary attribute, download the files from a github
+        repo and check the hash keys match before extracting. Extraction and hash-key checking is handled
+        externally by the `keras.utils.data_utils.get_file` method. If extraction is successful, the
+        archive file will be deleted.
 
         Returns
         -------
@@ -332,7 +358,8 @@ class WebScraper(Scraper):
 
 
 class S3Scraper(Scraper):
-    """Scraper subclass for extracting data from an AWS s3 bucket (requires AWS credentials with permissions to access the bucket.)
+    """Scraper subclass for extracting data from an AWS s3 bucket (requires AWS credentials with
+    permissions to access the bucket.)
 
     Parameters
     ----------
@@ -361,11 +388,14 @@ class S3Scraper(Scraper):
             aws bucket prefix (subfolder uri path), by default "archive"
         dataset : dictionary, optional
             key-value pairs of dataset filenames and prefixes, by default None
-        aws_kwargs: dictionary, optional
-            key-value pairs of AWS credentials with s3 read-access permissions retrieved
-            from environment variables, by default None. This is a fallback method in cases
-            where the aws.ini configuration file does not exist. See boto3/aws API documentation
-            for examples.
+        cache_dir : str, optional
+            parent folder to save data, by default "~"
+        cache_subdir : str, optional
+            save data in a subfolder one directory below `cache_dir`, by default "data"
+        format : str, optional
+            archive format type, by default "zip"
+        extract : bool, optional
+            extract the contents of the compressed archive file, by default True
         """
         super().__init__(
             cache_dir=cache_dir,
@@ -407,7 +437,10 @@ class S3Scraper(Scraper):
         Parameters
         ----------
         fnames : list, optional
-            dataset archive file names typically consisting of a hyphenated date and timestamp string when the data was generated (automatically the case for saved spacekit.analyzer.compute.Computer objects), by default [ "2021-10-28-1635457222.zip""2021-11-04-1636048291.zip", "2021-10-28-1635457222.zip" ]
+            dataset archive file names typically consisting of a hyphenated date and timestamp string when
+            the data was generated (automatically the case for saved spacekit.analyzer.compute.Computer
+            objects), by default [ "2021-10-28-1635457222.zip""2021-11-04-1636048291.zip",
+            "2021-10-28-1635457222.zip" ]
 
         Returns
         -------
@@ -427,7 +460,8 @@ class S3Scraper(Scraper):
             self.fpaths.append(fpath)
 
     def scrape(self):
-        """Downloads files from s3 using the configured boto3 client. Calls the `extract_archive` method for automatic extraction of file contents if object's `extract` attribute is set to True.
+        """Downloads files from s3 using the configured boto3 client. Calls the `extract_archive` method
+        for automatic extraction of file contents if object's `extract` attribute is set to True.
 
         Returns
         -------
@@ -503,6 +537,15 @@ class S3Scraper(Scraper):
 
 
 class DynamoDBScraper(Scraper):
+    """Scraper subclass for extracting data from an AWS DynamoDB table (requires AWS credentials with
+    permissions to access the table.)
+
+    Parameters
+    ----------
+    Scraper : class
+        spacekit.extractor.scrape.Scraper object
+    """
+
     def __init__(
         self,
         table_name,
@@ -516,6 +559,29 @@ class DynamoDBScraper(Scraper):
         clean=True,
         **log_kws,
     ):
+        """_summary_
+
+        Parameters
+        ----------
+        table_name : str
+            name of the DynamoDB table
+        attr : dict, optional
+            used for building a filter expression (see ``make_fxp``), by default None
+        fname : str, optional
+            path or string of filename to save data, by default "batch.csv"
+        formatter : function, optional
+            formatting function to use, by default format_hst_cal_row_item
+        cache_dir : str, optional
+            parent folder to save data, by default "~"
+        cache_subdir : str, optional
+            save data in a subfolder one directory below `cache_dir`, by default "data"
+        format : str, optional
+            archive format type, by default "zip"
+        extract : bool, optional
+            extract the contents of the compressed archive file, by default True
+        clean : bool, optional
+            remove compressed file after extraction
+        """
         super().__init__(
             cache_dir=cache_dir,
             cache_subdir=cache_subdir,
@@ -540,7 +606,9 @@ class DynamoDBScraper(Scraper):
 
     def make_fxp(self):
         """
-        Generates filter expression based on attributes dict to retrieve a subset of the database using conditional operators and keyword pairs. Returns dict containing filter expression which can be passed into the dynamodb table.scan() method.
+        Generates filter expression based on attributes dict to retrieve a subset of the database using
+        conditional operators and keyword pairs. Returns dict containing filter expression which can be
+        passed into the dynamodb table.scan() method.
         Args:
         `name` : one of db column names ('timestamp', 'mem_bin', etc.)
         `method`: begins_with, between, eq, gt, gte, lt, lte
@@ -669,9 +737,32 @@ class DynamoDBScraper(Scraper):
 
 
 class FitsScraper(FileScraper):
+    """FileScraper subclass used to search and extract FITS files on local disk
+
+    Parameters
+    ----------
+    FileScraper : spacekit.extractor.scrape.FileScraper object
+        parent FileScraper class
+    """
+
     def __init__(
         self, data, input_path, genkeys=[], scikeys=[], name="FitsScraper", **log_kws
     ):
+        """Instantiates a spacekit.extractor.scrape.FitsScraper object.
+
+        Parameters
+        ----------
+        data : pd.DataFrame
+            dataframe of visits, datasets, exposures, etc.
+        input_path : str
+            directory path containing fits files
+        genkeys : list, optional
+            general header keys to scrape, by default []
+        scikeys : list, optional
+            science header keys to scrape, by default []
+        name : str, optional
+            logging name, by default "FitsScraper"
+        """
         super().__init__(name=name, **log_kws)
         self.df = data.copy()
         self.input_path = input_path
@@ -686,6 +777,8 @@ class FitsScraper(FileScraper):
         ----------
         input_path : path or str
             directory path containing input exposure files
+        pfx : str, optional
+            filename prefix to search for, by default ""
         sfx : str, optional
             file suffix to search for, by default "uncal.fits"
 
@@ -704,17 +797,13 @@ class FitsScraper(FileScraper):
 
         Parameters
         ----------
-        fpaths : list
-            _description_
-        genkeys : list, optional
-            _description_, by default GENKEYS
-        scikeys : list, optional
-            _description_, by default SCIKEYS
+        fpaths : list, optional
+            list of fits file paths
 
         Returns
         -------
-        _type_
-            _description_
+        dict
+            exposure header info scraped from fits files
         """
         self.log.info("Extracting fits data...")
         if fpaths is None:
@@ -740,6 +829,22 @@ class FitsScraper(FileScraper):
         return exp_headers
 
     def find_drz_paths(self, dname_col="dataset", drzimg_col="imgname"):
+        """Looks for SVM input files based on information contained in the ``self.df`` attribute.
+        Input paths for files are constructed using the ``dname_col`` and ``drzimg_col`` along with
+        the ``self.input_path`` attribute.
+
+        Parameters
+        ----------
+        dname_col : str, optional
+            name of the column containing dataset names, by default "dataset"
+        drzimg_col : str, optional
+            name of the column containing image filenames, by default "imgname"
+
+        Returns
+        -------
+        list
+            absolute paths to all SVM fits files located.
+        """
         if not self.fpaths:
             self.fpaths = dict()
         try:
@@ -754,6 +859,14 @@ class FitsScraper(FileScraper):
         return self.fpaths
 
     def scrape_drizzle_fits(self):
+        """Scrape sciheaders of SVM input exposures located using ``self.find_drz_paths``.
+        Specific sciheader keys extracted are set in the ``self.scikeys`` attribute.
+
+        Returns
+        -------
+        pd.DataFrame
+            dataframe with extracted fits header information for each dataset
+        """
         if not self.fpaths:
             self.fpaths = self.find_drz_paths()
         self.log.info("*** Extracting fits data ***")
@@ -776,7 +889,28 @@ class FitsScraper(FileScraper):
 
 
 class JwstFitsScraper(FitsScraper):
+    """FitsScraper subclass used to search and extract JWST Fits files on local disk
+
+    Parameters
+    ----------
+    FitsScraper : spacekit.extractor.scrape.FitsScraper object
+        parent FitsScraper class
+    """
+
     def __init__(self, input_path, data=None, pfx="", sfx="_uncal.fits", **log_kws):
+        """_summary_
+
+        Parameters
+        ----------
+        input_path : str or path
+            directory path containing input exposure files
+        data : pd.DataFrame, optional
+            dataframe of visits, datasets, exposures, etc., by default None
+        pfx : str, optional
+            filename prefix to search for, by default ""
+        sfx : str, optional
+            file suffix to search for, by default "uncal.fits"
+        """
         self.genkeys = self.general_header_keys()
         self.scikeys = self.science_header_keys()
         if data is None:
@@ -830,12 +964,36 @@ class JwstFitsScraper(FitsScraper):
         ]
 
     def scrape_fits(self):
+        """invokes parent class method ``scrape_fits_headers`` using pre-set JWST attributes.
+
+        Returns
+        -------
+        dict
+            exposure header metadata scraped from fits files on local disk
+        """
         self.exp_headers = super().scrape_fits_headers(fpaths=self.fpaths)
         return self.exp_headers
 
 
 class SvmFitsScraper(FitsScraper):
+    """FitsScraper subclass used to search and extract HST SVM Fits files on local disk
+
+    Parameters
+    ----------
+    FitsScraper : spacekit.extractor.scrape.FitsScraper object
+        parent FitsScraper class
+    """
+
     def __init__(self, data, input_path, **log_kws):
+        """Initializes an SvmFitsScraper class object.
+
+        Parameters
+        ----------
+        data : pd.DataFrame
+            data containing visit or dataset names
+        input_path : str or path
+            input path containing fits files to scrape
+        """
         self.scikeys = ["rms_ra", "rms_dec", "nmatches", "wcstype"]
         super().__init__(
             data, input_path, scikeys=self.scikeys, name="SvmFitsScraper", **log_kws
@@ -843,30 +1001,30 @@ class SvmFitsScraper(FitsScraper):
         self.fpaths = self.find_drz_paths(dname_col="dataset", drzimg_col="imgname")
 
     def scrape_fits(self):
+        """Invokes parent class method ``scrape_drizzle_fits`` using pre-set attributes specific to HST SVM data.
+
+        Returns
+        -------
+        pd.DataFrame
+            dataframe with extracted fits header information for each dataset
+        """
         return self.scrape_drizzle_fits()
 
 
 class JsonScraper(FileScraper):
-    """Searches local files using glob pattern(s) to scrape JSON file data. Optionally can store data in h5 file (default) and/or CSV file; The JSON harvester method returns a Pandas dataframe. This class can also be used to load an h5 file. CREDIT: Majority of the code here was repurposed into a class object from ``Drizzlepac.hap_utils.json_harvester`` - multiple customizations were needed for specific machine learning preprocessing that would be outside the scope of Drizzlepac's primary intended use-cases, hence why the code is now here in a stripped down version instead of submitted as a PR to the original repo. That, and the need to avoid including Drizzlepac as a dependency for spacekit, since spacekit is meant to be used for testing Drizzlepac's SVM processing...
+    """Searches local files using glob pattern(s) to scrape JSON file data. Optionally can store data in h5
+    file (default) and/or CSV file; The JSON harvester method returns a Pandas dataframe. This class can
+    also be used to load an h5 file. CREDIT: Majority of the code here was repurposed into a class object
+    from ``Drizzlepac.hap_utils.json_harvester`` - multiple customizations were needed for specific machine
+    learning preprocessing that would be outside the scope of Drizzlepac's primary intended use-cases,
+    hence why the code is now here in a stripped down version instead of submitted as a PR to the original
+    repo. That, and the need to avoid including Drizzlepac as a dependency for spacekit, since spacekit is
+    meant to be used for testing Drizzlepac's SVM processing...
 
     Parameters
     ----------
-    search_path : str, optional
-        The full path of the directory that will be searched for json files to process. If not explicitly
-        specified, the current working directory will be used.
-    search_patterns : list, optional
-        list of glob patterns to use for search
-    file_basename : str, optional
-        Name of the output file basename (filename without the extension) for the Hierarchical Data Format version 5 (HDF5) .h5 file that the Pandas DataFrame will be written to. If not explicitly specified, the default filename basename that will be used is "svm_qa_dataframe". The default location that the
-        output file will be written to is the current working directory
-    crpt: bool, optional
-        Uses extended dataframe index name to differentiate from normal svm data, by default 0 (False)
-    save_csv: bool, optional
-        store h5 data into a CSV file, by default False
-    h5_file: str, optional
-        load from a saved hdf5 file on local disk, by default None
-    data : Pandas DataFrame
-            Pandas DataFrame
+    FileScraper : spacekit.extractor.scrape.FileScraper
+        parent FileScraper class
     """
 
     def __init__(
@@ -881,6 +1039,28 @@ class JsonScraper(FileScraper):
         output_path=None,
         **log_kws,
     ):
+        """Initializes a JsonScraper class object
+
+        Parameters
+        ----------
+        search_path : _type_, optional
+            The full path of the directory that will be searched for json files to process, by default os.getcwd()
+        search_patterns : list, optional
+            list of glob patterns to use for search, by default ["*_total_*_svm_*.json"]
+        file_basename : str, optional
+            Name of the output file basename (filename without the extension) for the Hierarchical Data
+            Format version 5 (HDF5) .h5 file that the DataFrame will be written to, by default "svm_data"
+        crpt : int, optional
+            Uses extended dataframe index name to differentiate from normal svm data, by default 0
+        save_csv : bool, optional
+            store h5 data into a CSV file, by default False
+        store_h5 : bool, optional
+            save data in hdf5 format, by default True
+        h5_file : str or path, optional
+            load from a saved hdf5 file on local disk, by default None
+        output_path : str or path, optional
+            where to save the data, by default None
+        """
         super().__init__(
             search_path=search_path,
             search_patterns=search_patterns,
@@ -937,8 +1117,8 @@ class JsonScraper(FileScraper):
         )
 
     def read_json_file(self, json_filename):
-        """extracts header and data sections from specified json file and returns the header and data (in it's original
-        pre-json format) as a nested ordered dictionary
+        """extracts header and data sections from specified json file and returns the header and data (in its
+        original pre-json format) as a nested ordered dictionary
 
         Supported output data types:
 
@@ -958,7 +1138,9 @@ class JsonScraper(FileScraper):
         Returns
         -------
         dictionary
-            out_dict structured similarly to self.out_dict with separate 'header' and 'data' keys. The information stored in the 'data' section will be in the same format that it was in before it was serialized and stored as a json file.
+            out_dict structured similarly to self.out_dict with separate 'header' and 'data' keys. The information
+            stored in the 'data' section will be in the same format that it was in before it was serialized and
+            stored as a json file.
         """
         if os.path.exists(json_filename):
             out_dict = collections.OrderedDict()
@@ -1002,7 +1184,8 @@ class JsonScraper(FileScraper):
         return out_dict
 
     def get_json_files(self):
-        """Uses glob to create a list of json files to harvest. This function looks for all the json files containing qa test results generated by `runastrodriz` and `runsinglehap`.  The search starts in the directory
+        """Uses glob to create a list of json files to harvest. This function looks for all the json files containing
+        qa test results generated by `runastrodriz` and `runsinglehap`.  The search starts in the directory
         specified in the `search_path` parameter, but will look in immediate
         sub-directories as well if no json files are located in the directory
         specified by `search_path`.
@@ -1113,7 +1296,8 @@ class JsonScraper(FileScraper):
         return self.data
 
     def json_harvester(self):
-        """Main calling function to harvest json files matching the search pattern and store in dictionaries which are then combined into a single dataframe.
+        """Main calling function to harvest json files matching the search pattern and store in dictionaries which
+        are then combined into a single dataframe.
 
         Returns
         -------
@@ -1156,7 +1340,10 @@ class JsonScraper(FileScraper):
         self.log.info("Wrote dataframe to csv file {}".format(output_csv_filename))
 
     def make_dataframe_line(self, json_filename_list):
-        """Extracts information from the json files specified by the input list *json_filename_list*. Main difference between this and the original Drizzlepac source code is a much more limited collection of data: descriptions and units are not collected; only a handful of specific keyword values are scraped from general information and header extensions.
+        """Extracts information from the json files specified by the input list *json_filename_list*. Main difference
+        between this and the original Drizzlepac source code is a much more limited collection of data: descriptions
+        and units are not collected; only a handful of specific keyword values are scraped from general information
+        and header extensions.
 
         Parameters
         ----------

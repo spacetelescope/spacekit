@@ -136,7 +136,10 @@ layout = html.Div(
             children=[
                 html.H4("Alignment Classifier Game"),
                 html.P(
-                    "Successful or Compromised? See if you can correctly identify which single visit mosaic images are aligned correctly and which ones are 'suspicious' or 'compromised' (likely to be misaligned). Can you beat the classifier algorithm?"
+                    "Successful or Compromised? See if you can correctly identify \
+                    which single visit mosaic images are aligned correctly and \
+                    which ones are 'suspicious' or 'compromised' (likely to be misaligned). \
+                    Can you beat the classifier algorithm?"
                 ),
                 html.Div(
                     children=[

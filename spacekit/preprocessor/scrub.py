@@ -15,7 +15,8 @@ from spacekit.logger.log import Logger
 
 
 class Scrubber:
-    """Base parent class for preprocessing data. Includes some basic column scrubbing methods for pandas dataframes. The heavy lifting is done via subclasses below."""
+    """Base parent class for preprocessing data. Includes some basic column scrubbing methods for pandas dataframes. The heavy
+    lifting is done via subclasses below."""
 
     def __init__(
         self,
@@ -376,7 +377,8 @@ class HstSvmScrubber(Scrubber):
         return index_df
 
     def make_pos_label_list(self):
-        """Looks for target class labels in dataframe and saves a text file listing index names of positive class. Originally this was to automate moving images into class labeled directories."""
+        """Looks for target class labels in dataframe and saves a text file listing index names of positive class. Originally
+        this was to automate moving images into class labeled directories."""
         if self.make_pos_list is True:
             if "label" in self.df.columns:
                 pos = list(self.df.loc[self.df["label"] == 1].index.values)
@@ -403,7 +405,8 @@ class HstSvmScrubber(Scrubber):
             return self.df
 
     def find_subsamples(self):
-        """Gets a varied sampling of dataframe observations and saves to local text file. This is one way of identifying a small subset for synthetic data generation."""
+        """Gets a varied sampling of dataframe observations and saves to local text file. This is one way of identifying a small
+        subset for synthetic data generation."""
         if self.make_subsamples:
             if "label" not in self.df.columns:
                 return
@@ -781,7 +784,7 @@ class NaNdler:
             if self.verbose:
                 print(f"\nNaNs to be NaNdled:\n{self.df[cols].isna().sum()}\n")
             for n in cols:
-                self.df.loc[self.df[n].isna() == True, n] = 0.0
+                self.df.loc[self.df[n].isna() is True, n] = 0.0
 
     def discrete_nandler(self, nanval=0.0):
         if self.discrete:
@@ -791,7 +794,7 @@ class NaNdler:
             for n in cols:
                 if self.allow_neg is True and 0.0 in self.df[n].value_counts().index:
                     nanval = -1.0
-                self.df.loc[self.df[n].isna() == True, n] = nanval
+                self.df.loc[self.df[n].isna() is True, n] = nanval
 
     @staticmethod
     def nandle_cats(x, truevals):
