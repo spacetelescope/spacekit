@@ -1,4 +1,18 @@
-1.0.0 (unreleased)
+1.0.1 (unreleased)
+==================
+
+installation / automation
+-------------------------
+
+- Replace flake8 with ruff, replace deprecated tf.keras.wrappers.scikit_learn with scikeras, add GA workflows [#45]
+
+documentation
+-------------
+
+- Update readthedocs.yaml for compatibility with latest formatting requirements [#44]
+
+
+1.0.0 (2023-08-10)
 ==================
 
 - New feature: JWST Calibration Processing resource prediction model and skope (prediction script) added under the architecture name "jwst_cal"
