@@ -17,7 +17,6 @@ exclude = [
     '__pycache__',
     'dist',
     '.egg',
-    'build',
 ]
 
 ignore = [
@@ -25,3 +24,4 @@ ignore = [
 ]
 
 [tool.ruff.per-file-ignores]
+    'spacekit/preprocessor/scrub.py' = ['E712']

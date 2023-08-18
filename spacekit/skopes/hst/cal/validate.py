@@ -9,7 +9,7 @@ from sklearn.model_selection import StratifiedKFold, KFold, cross_val_score
 from sklearn.preprocessing import LabelEncoder
 from spacekit.skopes.hst.cal.config import COLUMN_ORDER
 from spacekit.extractor.scrape import S3Scraper
-from spacekit.extractor.load import save_to_pickle
+from spacekit.extractor.load import save_multitype_data, zip_subdirs
 from spacekit.logger.log import SPACEKIT_LOG
 
 try:
@@ -80,11 +80,12 @@ def kfold_cross_val(data, target_col, s3=None, data_path=None, verbose=2, n_jobs
     print(f"\nMean Score: {score}\n")
 
     kfold_dict = {"kfold": {"results": list(results), "score": score, "time": duration}}
-    keys = save_to_pickle(kfold_dict, target_col=target_col)
+
+    save_multitype_data(kfold_dict, target_col)
+    zip_subdirs(target_col, zipname="kfold.zip")
     if s3 is not None:
         prefix = "training" if data_path is None else data_path
-        S3Scraper.s3_upload(keys, s3, f"{prefix}/results/{target_col}")
-
+        S3Scraper.s3_upload(["kfold.zip"], s3, f"{prefix}/results/{target_col}")
     return kfold_dict
 
 

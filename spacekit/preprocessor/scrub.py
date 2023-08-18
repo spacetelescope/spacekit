@@ -784,7 +784,7 @@ class NaNdler:
             if self.verbose:
                 print(f"\nNaNs to be NaNdled:\n{self.df[cols].isna().sum()}\n")
             for n in cols:
-                self.df.loc[self.df[n].isna() is True, n] = 0.0
+                self.df.loc[self.df[n].isna() == True, n] = 0.0
 
     def discrete_nandler(self, nanval=0.0):
         if self.discrete:
@@ -794,7 +794,7 @@ class NaNdler:
             for n in cols:
                 if self.allow_neg is True and 0.0 in self.df[n].value_counts().index:
                     nanval = -1.0
-                self.df.loc[self.df[n].isna() is True, n] = nanval
+                self.df.loc[self.df[n].isna() == True, n] = nanval
 
     @staticmethod
     def nandle_cats(x, truevals):

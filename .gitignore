@@ -14,7 +14,7 @@ __pycache__
 */cython_version.py
 htmlcov
 .benchmarks
-.coverage
+.coverage*
 MANIFEST
 .ipynb_checkpoints
 .bashrc

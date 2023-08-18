@@ -4,7 +4,7 @@ import glob
 import pandas as pd
 import numpy as np
 import json
-import pickle
+# import pickle
 from zipfile import ZipFile
 import time
 from sklearn.model_selection import train_test_split
@@ -702,22 +702,22 @@ def save_dataframe(df, df_key, index_col="ipst"):
     return df
 
 
-def save_to_pickle(data_dict, target_col=None, df_key=None):
-    keys = []
-    for k, v in data_dict.items():
-        if target_col is not None:
-            os.makedirs(f"{target_col}", exist_ok=True)
-            key = f"{target_col}/{k}"
-        else:
-            key = k
-        with open(key, "wb") as file_pi:
-            pickle.dump(v, file_pi)
-            print(f"{k} saved as {key}")
-            keys.append(key)
-    if df_key is not None:
-        keys.append(df_key)
-    print(f"File keys:\n {keys}")
-    return keys
+# def save_to_pickle(data_dict, target_col=None, df_key=None):
+#     keys = []
+#     for k, v in data_dict.items():
+#         if target_col is not None:
+#             os.makedirs(f"{target_col}", exist_ok=True)
+#             key = f"{target_col}/{k}"
+#         else:
+#             key = k
+#         with open(key, "wb") as file_pi:
+#             pickle.dump(v, file_pi)
+#             print(f"{k} saved as {key}")
+#             keys.append(key)
+#     if df_key is not None:
+#         keys.append(df_key)
+#     print(f"File keys:\n {keys}")
+#     return keys
 
 
 def zip_subdirs(top_path, zipname="models.zip"):
@@ -849,14 +849,12 @@ def load_multitype_data(input_path, index_names=["index", "ipst"]):
                     outputs[key][k] = npzd[k]
         elif not sfx:
             if os.path.isfile(f):
-                try:
-                    with open(f, "rb") as pyfi:
-                        outputs[key] = pickle.load(pyfi)
-                except ModuleNotFoundError:
-                    print(
-                        "Results were saved with an older version of Pandas "
-                        " (<2.x). Downgrade to Pandas 1.x and try again."
-                    )
+                print(
+                        "Use of Pickle for results files is no longer supported."
+                        "Please re-save results using `save_multitype_data` and "
+                        "try again. Supported types: .npy, .npz, .csv, .json, .txt"
+                )
+                raise ModuleNotFoundError
         else:
             print(
                 f"Unrecognized file format: {sfx}. Allowed types are: csv, txt, json, npy, npz."
