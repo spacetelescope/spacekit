@@ -39,7 +39,7 @@ def pytest_configure(config):
                 trace=config.trace.get("tmpdir"),
                 _ispytest=True
             )
-        except: # pytest >= 7.3
+        except Exception: # pytest >= 7.3
             tmp_path_factory = TempPathFactory(
                 config.option.basetemp, trace=config.trace.get("tmpdir"), _ispytest=True
             )

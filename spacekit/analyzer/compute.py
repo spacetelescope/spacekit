@@ -85,7 +85,7 @@ class Computer(object):
         """Instantiates training vars as attributes. By default, a Computer object
         is instantiated without these - they are only needed for calculating and storing
         results which can then be retrieved by Computer separately (without training vars)
-        from pickle objects using the `upload()` method.
+        from npz compressed files using the `upload()` method.
 
         Parameters
         ----------
@@ -158,7 +158,7 @@ class Computer(object):
 
     def download(self, outputs):
         """Downloads model training results (`outputs` calculated by Computer obj)
-        to local pickle objects for later retrieval and plotting/analysis.
+        to local files for later retrieval and plotting/analysis.
 
         Parameters
         ----------
@@ -182,7 +182,7 @@ class Computer(object):
 
     def upload(self):
         """Imports model training results (`outputs` previously calculated by Computer obj)
-        from local pickle objects. These can then be used for plotting/analysis.
+        from npz compressed files. These can then be used for plotting/analysis.
 
         Returns
         -------

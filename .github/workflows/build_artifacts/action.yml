@@ -1,0 +1,25 @@
+name: 'Build Artifacts'
+description: 'Build a Python source distribution and wheel then upload the resulting artifact'
+runs:
+  using: 'composite'
+  steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - uses: actions/setup-python@v4
+      name: Install Python
+      with:
+        python-version: '3.11'
+
+    - name: Install build tools
+      shell: 'bash'
+      run: python -m pip install build
+
+    - name: Build sdist
+      shell: 'bash'
+      run: python -m build --sdist --wheel .
+
+    - uses: actions/upload-artifact@v2
+      with:
+        path: dist/*

@@ -1,0 +1,40 @@
+name: Publish to PyPI
+
+on:
+  workflow_call:
+    inputs:
+      test:
+        required: false
+        default: false
+        type: boolean
+    secrets:
+      user: ${{ secrets.PYPI_USERNAME_SPACEKIT_MAINTAINER }}
+      password: ${{ secrets.PYPI_PASSWORD_SPACEKIT_MAINTAINER }}
+      test_password: ${{ secrets.PYPI_PASSWORD_SPACEKIT_MAINTAINER_TEST }}
+
+  # release:
+  #   types: [released]
+
+jobs:
+
+  build_artifacts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: spacetelescope/spacekit/.github/build_artifacts@develop
+
+  publish_pypi:
+    needs: [build_artifacts]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/spacekit
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+    steps:
+      - uses: spacetelescope/spacekit/.github/pypi_publish@develop
+        with:
+          test: ${{ inputs.test }}
+          user: ${{ secrets.user }}
+          password: ${{ secrets.password }}
+          test_password: ${{ secrets.test_password }}
+

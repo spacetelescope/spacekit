@@ -400,7 +400,7 @@ class DrawMosaics:
                         norm = ImageNormalize(
                             hdu.data, vmin=zmin, vmax=zmax, clip=self.clip
                         )
-                    elif type(self.manual) == dict:
+                    elif isinstance(self.manual, dict):
                         try:
                             norm = ImageNormalize(hdu.data, **self.manual)
                         except Exception as e:
