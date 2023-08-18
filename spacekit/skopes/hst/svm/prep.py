@@ -45,7 +45,8 @@ def run_preprocessing(
     json_pattern : str, optional
         glob-based search pattern, by default "*_total*_svm_*.json"
     visit: str, optional
-        single visit name (e.g. "id8f34") matching subdirectory of input_path; will search and preprocess this visit only (rather than all visits contained in the input_path), by default None
+        single visit name (e.g. "id8f34") matching subdirectory of input_path; will search and preprocess this visit only (rather
+        than all visits contained in the input_path), by default None
     crpt : int, optional
         set to 1 if using synthetic corruption data, by default 0
     draw : int, optional

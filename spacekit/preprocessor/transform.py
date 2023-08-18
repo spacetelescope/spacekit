@@ -283,22 +283,28 @@ class Transformer:
         name="Transformer",
         **log_kws,
     ):
-        """Instantiates a Transformer class object. Unless the `cols` attribute is empty, it will automatically instantiate some of the other attributes needed to transform the data. Using the Transformer subclasses instead is recommended (this class is mainly used as an object with general methods to load or save the transform data as well as instantiate some of the initial attributes).
+        """Instantiates a Transformer class object. Unless the `cols` attribute is empty, it will automatically instantiate some
+        of the other attributes needed to transform the data. Using the Transformer subclasses instead is recommended (this
+        class is mainly used as an object with general methods to load or save the transform data as well as instantiate some of
+        the initial attributes).
 
         Parameters
         ----------
         data : dataframe or numpy.ndarray
-            input data containing continuous feature vectors to be transformed (may also contain vectors or columns of categorical and other datatypes as well).
+            input data containing continuous feature vectors to be transformed (may also contain vectors or columns of
+            categorical and other datatypes as well).
         transformer : class, optional
             transform class to use (e.g. from scikit-learn), by default PowerTransformer(standardize=False)
         cols : list, optional
-            column names or array index values of feature vectors to be transformed (i.e. continuous datatype features), by default []
+            column names or array index values of feature vectors to be transformed (i.e. continuous datatype features), by
+            default []
         tx_file : string, optional
             path to saved transformer metadata, by default None
         save_tx : bool, optional
             save the transformer metadata as json file on local disk, by default True
         join_data : int, optional
-            1: join normalized data with remaining columns of original; 2: join with complete original, all columns (requires renaming)
+            1: join normalized data with remaining columns of original; 2: join with complete original, all columns (requires
+            renaming)
         rename : str or list
             if string, will be appended to normalized col names; if list, will rename normalized columns in this order
         output_path : string, optional
@@ -354,12 +360,14 @@ class Transformer:
             return None
 
     def save_transformer_data(self, tx=None):
-        """Save the transform metadata to a json file on local disk. Typical use-case is when you need to transform new inputs prior to generating a prediction but don't have access to the original dataset used to train the model.
+        """Save the transform metadata to a json file on local disk. Typical use-case is when you need to transform new inputs
+        prior to generating a prediction but don't have access to the original dataset used to train the model.
 
         Parameters
         ----------
         tx : dictionary
-            statistical metadata calculated when applying a transform to the training dataset; for PowerTransform this consists of lambdas, means and standard deviations for each continuous feature vector of the dataset.
+            statistical metadata calculated when applying a transform to the training dataset; for PowerTransform this consists
+            of lambdas, means and standard deviations for each continuous feature vector of the dataset.
 
         Returns
         -------
@@ -380,7 +388,8 @@ class Transformer:
         return self.tx_file
 
     def continuous_data(self):
-        """Store continuous feature vectors in a variable using the column names (or axis index if using numpy arrays) from `cols` attribute.
+        """Store continuous feature vectors in a variable using the column names (or axis index if using numpy arrays) from
+        `cols` attribute.
 
         Returns
         -------
@@ -413,7 +422,8 @@ class Transformer:
             return self.data[:, cat_cols]
 
     def normalized_dataframe(self, normalized):
-        """Creates a new dataframe with the normalized data. Optionally combines with non-continuous vectors (original data) and appends `_scl` to the original column names for the ones that have been transformed.
+        """Creates a new dataframe with the normalized data. Optionally combines with non-continuous vectors (original data) and
+        appends `_scl` to the original column names for the ones that have been transformed.
 
         Parameters
         ----------
@@ -473,7 +483,8 @@ class Transformer:
         return np.concatenate((normalized, cat), axis=1)
 
     def normalizeX(self, normalized):
-        """Combines original non-continuous features/vectors with the transformed/normalized data. Determines datatype (array or dataframe) and calls the appropriate method.
+        """Combines original non-continuous features/vectors with the transformed/normalized data. Determines datatype (array or
+        dataframe) and calls the appropriate method.
 
         Parameters
         ----------
@@ -501,7 +512,11 @@ class Transformer:
 
 
 class PowerX(Transformer):
-    """Applies Leo-Johnson PowerTransform (via scikit learn) normalization and scaling to continuous feature vectors of a dataframe or numpy array. The `tx_data` attribute can be instantiated from a json file, dictionary or the input data itself. The training and test sets should be normalized separately (i.e. distinct class objects) to prevent data leakage when training a machine learning model. Loading the transform metadata from a json file allows you to transform a new input array (e.g. for predictions) without needing to access the original dataframe.
+    """Applies Leo-Johnson PowerTransform (via scikit learn) normalization and scaling to continuous feature vectors of a
+    dataframe or numpy array. The `tx_data` attribute can be instantiated from a json file, dictionary or the input data itself.
+    The training and test sets should be normalized separately (i.e. distinct class objects) to prevent data leakage when
+    training a machine learning model. Loading the transform metadata from a json file allows you to transform a new input array
+    (e.g. for predictions) without needing to access the original dataframe.
 
     Parameters
     ----------
@@ -545,7 +560,9 @@ class PowerX(Transformer):
         self.Xt = super().normalizeX(self.normalized)
 
     def fitX(self):
-        """Instantiates a scikit-learn PowerTransformer object and fits to the input data. If `tx_data` was passed as a kwarg or loaded from `tx_file`, the lambdas attribute for the transformer object will be updated to use these instead of calculated at the transform step.
+        """Instantiates a scikit-learn PowerTransformer object and fits to the input data. If `tx_data` was passed as a kwarg or
+        loaded from `tx_file`, the lambdas attribute for the transformer object will be updated to use these instead of
+        calculated at the transform step.
 
         Returns
         -------
@@ -557,12 +574,14 @@ class PowerX(Transformer):
         return self.transformer
 
     def get_lambdas(self):
-        """Instantiates the lambdas from file or dictionary if passed as kwargs; otherwise it uses the lambdas calculated in the transformX method. If transformX has not been called yet, returns None.
+        """Instantiates the lambdas from file or dictionary if passed as kwargs; otherwise it uses the lambdas calculated in the
+        transformX method. If transformX has not been called yet, returns None.
 
         Returns
         -------
         ndarray or float
-            transform of multiple feature vectors returns an array of lambda values; otherwise a single vector returns a single (float) value.
+            transform of multiple feature vectors returns an array of lambda values; otherwise a single vector returns a single
+            (float) value.
         """
         if self.tx_data is not None:
             return self.tx_data["lambdas"]
@@ -579,12 +598,17 @@ class PowerX(Transformer):
         return self.transformer.transform(self.continuous)
 
     def calculate_power(self):
-        """Fits and transforms the continuous feature vectors using scikit learn PowerTransform. Calculates zero mean and unit variance for each vector as a separate step and stores these along with the lambdas in a dictionary `tx_data` attribute. This is so that the same normalization can be applied later for prediction inputs without requiring the original training data - otherwise it would be the same as using PowerTransform(standardize=True). Optionally, the calculated transform data can be stored in a json file on local disk.
+        """Fits and transforms the continuous feature vectors using scikit learn PowerTransform. Calculates zero mean and unit
+        variance for each vector as a separate step and stores these along with the lambdas in a dictionary `tx_data` attribute.
+        This is so that the same normalization can be applied later for prediction inputs without requiring the original training
+        data - otherwise it would be the same as using PowerTransform(standardize=True). Optionally, the calculated transform
+        data can be stored in a json file on local disk.
 
         Returns
         -------
         self
-            spacekit.preprocessor.transform.PowerX object with transformation metadata calculated for the input data and stored as attributes.
+            spacekit.preprocessor.transform.PowerX object with transformation metadata calculated for the input data and stored
+            as attributes.
         """
         self.transformer = self.fitX()
         self.input_matrix = self.transformX()
@@ -608,7 +632,9 @@ class PowerX(Transformer):
         return self
 
     def apply_power_matrix(self):
-        """Transforms the input data. This method assumes we already have `tx_data` and a fit-transformed input_matrix (array of continuous feature vectors), which normally is done automatically when the class object is instantiated and `calculate_power` is called.
+        """Transforms the input data. This method assumes we already have `tx_data` and a fit-transformed input_matrix (array of
+        continuous feature vectors), which normally is done automatically when the class object is instantiated and
+        `calculate_power` is called.
 
         Returns
         -------
@@ -629,7 +655,8 @@ class PowerX(Transformer):
 def normalize_training_data(
     df, cols, X_train, X_test, X_val=None, rename=None, output_path=None
 ):
-    """Apply Leo-Johnson PowerTransform (via scikit learn) normalization and scaling to the training data, saving the transform metadata to json file on local disk and transforming the train, test and val sets separately (to prevent data leakage).
+    """Apply Leo-Johnson PowerTransform (via scikit learn) normalization and scaling to the training data, saving the transform
+    metadata to json file on local disk and transforming the train, test and val sets separately (to prevent data leakage).
 
     Parameters
     ----------
@@ -763,7 +790,8 @@ def tensor_to_array(tensor, reshape=False, shape=(-1, 1)):
 
 
 def tensors_to_arrays(X_train, y_train, X_test, y_test):
-    """Converts tensors into arrays, which is necessary for certain regression analysis computations. The y_train and y_test args are reshaped using numpy.reshape(-1, 1).
+    """Converts tensors into arrays, which is necessary for certain regression analysis computations. The y_train and y_test args
+    are reshaped using numpy.reshape(-1, 1).
 
     Parameters
     ----------
@@ -791,7 +819,9 @@ def tensors_to_arrays(X_train, y_train, X_test, y_test):
 def hypersonic_pliers(
     path_to_train, path_to_test, y_col=[0], skip=1, dlm=",", subtract_y=0.0
 ):
-    """Extracts data into 1-dimensional arrays, using separate target classes (y) for training and test data. Assumes y (target) is first column in dataframe. If the target (y) classes in the raw data are 0 and 2, but you'd like them to be binaries (0 and 1), set subtract_y=1.0
+    """Extracts data into 1-dimensional arrays, using separate target classes (y) for training and test data. Assumes y (target)
+    is first column in dataframe. If the target (y) classes in the raw data are 0 and 2, but you'd like them to be binaries (0
+    and 1), set subtract_y=1.0
 
     Parameters
     ----------
@@ -837,7 +867,9 @@ def hypersonic_pliers(
 
 
 def thermo_fusion_chisel(matrix1, matrix2=None):
-    """Scales each vector of a 2d array (``matrix``) to zero mean and unit variance. The second (optional) matrix is to perform the same scaling on a separate set of inputs, e.g. train and test data. Note - normalization should be done separately to prevent data leakage in model training, hence the matrix2 kwarg.
+    """Scales each vector of a 2d array (``matrix``) to zero mean and unit variance. The second (optional) matrix is to perform
+    the same scaling on a separate set of inputs, e.g. train and test data. Note - normalization should be done separately to
+    prevent data leakage in model training, hence the matrix2 kwarg.
 
     Parameters
     ----------
@@ -871,7 +903,8 @@ def thermo_fusion_chisel(matrix1, matrix2=None):
 
 
 def babel_fish_dispenser(matrix1, matrix2=None, step_size=None, axis=2):
-    """Adds an input corresponding to the running average over a set number of time steps. This helps the neural network to ignore high frequency noise by passing in a uniform 1-D filter and stacking the arrays.
+    """Adds an input corresponding to the running average over a set number of time steps. This helps the neural network to
+    ignore high frequency noise by passing in a uniform 1-D filter and stacking the arrays.
 
     Parameters
     ----------
@@ -908,7 +941,8 @@ def babel_fish_dispenser(matrix1, matrix2=None, step_size=None, axis=2):
 
 
 def fast_fourier(matrix, bins):
-    """Takes an array (e.g. signal input values) and rotates number of ``bins`` to the left as a fast Fourier transform. Returns vector of length equal to ``matrix`` input array.
+    """Takes an array (e.g. signal input values) and rotates number of ``bins`` to the left as a fast Fourier transform. Returns
+    vector of length equal to ``matrix`` input array.
 
     Parameters
     ----------

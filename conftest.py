@@ -239,7 +239,7 @@ def unlabeled_dataset(skope):
 # SVM PREP
 @fixture(scope="session")  # "ibl738.tgz"
 def single_visit_path(tmp_path_factory):
-    visit_path = os.path.abspath("tests/data/svm/prep/singlevisits.tgz")
+    visit_path = os.path.relpath("tests/data/svm/prep/singlevisits.tgz")
     basepath = tmp_path_factory.getbasetemp()
     extract_file(visit_path, dest=basepath)
     dname = os.path.basename(visit_path.split(".")[0])

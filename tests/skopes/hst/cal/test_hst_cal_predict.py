@@ -1,7 +1,7 @@
 import os
 from pytest import mark
 from moto import mock_s3
-from spacekit.skopes.hst.cal.predict import Predict, local_handler, lambda_handler
+from spacekit.skopes.hst.cal.predict import local_handler, lambda_handler
 import boto3
 
 

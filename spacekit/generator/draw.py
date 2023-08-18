@@ -34,7 +34,9 @@ def check_imports():
 
 
 class DrawMosaics:
-    """Class for generating machine-learning image inputs from drizzled total detection fits files and their associated catalog files. Primarily used for creating multiple images at once (batch) with capability for single images/single dataset also available."""
+    """Class for generating machine-learning image inputs from drizzled total detection fits files and their
+    associated catalog files. Primarily used for creating multiple images at once (batch) with capability for single
+    images/single dataset also available."""
 
     def __init__(
         self,
@@ -65,11 +67,13 @@ class DrawMosaics:
         pattern : str, optional
             glob search pattern (to restrict image generator to look for only certain visit names, e.g. 'ia*', by default ''
         gen : int, optional
-            generator method to use: 0=generate original only; 1=point-segment, 2=gaia; 3=original, point-segment, and gaia (3 separate images), by default 3
+            generator method to use: 0=generate original only; 1=point-segment, 2=gaia; 3=original, point-segment, and gaia (3
+            separate images), by default 3
         size : tuple, optional
             size to make the figures i.e. figsize=(size,size), by default (24, 24)
         crpt : int, optional
-            modifies the input search pattern as well as output png file naming convention (so that a non-corrupt visit of the same name is not overwritten), by default 0
+            modifies the input search pattern as well as output png file naming convention (so that a non-corrupt visit of the
+            same name is not overwritten), by default 0
         """
         self.__name__ = name
         self.log = Logger(self.__name__, **log_kws).setup_logger(logger=SPACEKIT_LOG)
@@ -98,7 +102,8 @@ class DrawMosaics:
         self.subset_name = subset_name
 
     def check_output(self):
-        """check if a custom output_path is set, otherwise create a subdirectory "img" in the current working directory and set as the output_path attribute.
+        """check if a custom output_path is set, otherwise create a subdirectory "img" in the current working directory and set
+        as the output_path attribute.
 
         Returns
         -------
@@ -129,7 +134,11 @@ class DrawMosaics:
         return subdir, hfiles
 
     def get_datasets(self):
-        """Locate inputs (fits file directories) to use for drawing the images. Search method used is based on parameters set when the DrawMosaics class object is instantiated. If multiple parameters are passed in, the order of search priority is 1) `fname`: only look for visits found in the csv file/dataframe (uses `load_from_file` method); 2) `visit` only look for subdirectories matching this specific visit name; 3) `local_search`: glob-based search for any visit subdirectories matching the pattern set in `pattern` attribute. (if crpt)
+        """Locate inputs (fits file directories) to use for drawing the images. Search method used is based on parameters set
+        when the DrawMosaics class object is instantiated. If multiple parameters are passed in, the order of search priority is
+        1) `fname`: only look for visits found in the csv file/dataframe (uses `load_from_file` method); 2) `visit` only look for
+        subdirectories matching this specific visit name; 3) `local_search`: glob-based search for any visit subdirectories
+        matching the pattern set in `pattern` attribute. (if crpt)
 
         Returns
         -------
@@ -202,7 +211,9 @@ class DrawMosaics:
             sys.exit(1)
 
     def point_flag_color(self, x):
-        """determines whether or not to draw a small red (or green) circle on top of the original image data depending on the value found in point source catalog. More info on the values associated with the "flag" color can be found in the Drizzlepac handbook at drizzlepac.readthedocs.io (Drizzlepac.catalog_generation api)
+        """determines whether or not to draw a small red (or green) circle on top of the original image data depending on the
+        value found in point source catalog. More info on the values associated with the "flag" color can be found in the
+        Drizzlepac handbook at drizzlepac.readthedocs.io (Drizzlepac.catalog_generation api)
 
         Parameters
         ----------
@@ -242,7 +253,8 @@ class DrawMosaics:
             return None, None  # 'yellow', 'Flag > 5'
 
     def draw_catalogs(self, cfile, catalog):
-        """Open and read .escv catalog file associated with the visit (if available) and map the appropriate values and coordinates to draw as an overlay on the original image. Credit: based in part on code by M. Burger
+        """Open and read .escv catalog file associated with the visit (if available) and map the appropriate values and
+        coordinates to draw as an overlay on the original image. Credit: based in part on code by M. Burger
 
         Parameters
         ----------
@@ -388,7 +400,7 @@ class DrawMosaics:
                         norm = ImageNormalize(
                             hdu.data, vmin=zmin, vmax=zmax, clip=self.clip
                         )
-                    elif type(self.manual) == dict:
+                    elif isinstance(self.manual, dict):
                         try:
                             norm = ImageNormalize(hdu.data, **self.manual)
                         except Exception as e:
@@ -555,7 +567,8 @@ if __name__ == "__main__":
         "--crpt",
         type=int,
         default=0,
-        help="set equal to 1 to also search for synthetic dataset inputs (artificially misaligned images) as well as format png names; default=0 (off)",
+        help="set equal to 1 to also search for synthetic dataset inputs (artificially misaligned images) \
+            as well as format png names; default=0 (off)",
     )
     parser.add_argument(
         "-t",

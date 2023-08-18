@@ -1,0 +1,15 @@
+#!/usr/bin/env python3
+"""
+Set the changelog release date of the specified version to today.
+"""
+from pathlib import Path
+
+def main():
+    changelog_path = Path(__file__).absolute().parent.parent / "CHANGES.rst"
+    content = changelog_path.read_text()
+    changelog = content.split("\n\n\n")[0]
+    changes = changelog.split("==================")[1]
+    print(changes)
+
+if __name__ == "__main__":
+    main()

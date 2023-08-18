@@ -82,9 +82,10 @@ class Computer(object):
             )
 
     def inputs(self, model, history, X_train, y_train, X_test, y_test, test_idx):
-        """Instantiates training vars as attributes. By default, a Computer object is instantiated without these - they are only needed for calculating and storing
-        results which can then be retrieved by Computer separately (without training vars) from pickle objects using
-        the `upload()` method.
+        """Instantiates training vars as attributes. By default, a Computer object
+        is instantiated without these - they are only needed for calculating and storing
+        results which can then be retrieved by Computer separately (without training vars)
+        from npz compressed files using the `upload()` method.
 
         Parameters
         ----------
@@ -120,7 +121,8 @@ class Computer(object):
         return self
 
     def builder_inputs(self, builder=None):
-        """Produces same result as `inputs` method, using a builder object's attributes instead. Allows for automatic switch to validation set.
+        """Produces same result as `inputs` method, using a builder object's attributes
+        instead. Allows for automatic switch to validation set.
 
         Parameters
         ----------
@@ -155,7 +157,8 @@ class Computer(object):
         return self
 
     def download(self, outputs):
-        """Downloads model training results (`outputs` calculated by Computer obj) to local pickle objects for later retrieval and plotting/analysis.
+        """Downloads model training results (`outputs` calculated by Computer obj)
+        to local files for later retrieval and plotting/analysis.
 
         Parameters
         ----------
@@ -178,7 +181,8 @@ class Computer(object):
         self.log.info(f"Results saved to: {self.res_path}")
 
     def upload(self):
-        """Imports model training results (`outputs` previously calculated by Computer obj) from local pickle objects. These can then be used for plotting/analysis.
+        """Imports model training results (`outputs` previously calculated by Computer obj)
+        from npz compressed files. These can then be used for plotting/analysis.
 
         Returns
         -------
@@ -256,7 +260,8 @@ class Computer(object):
     """ PLOTS """
 
     def draw_plots(self):
-        """Generate standard classification model plots (keras accuracy and loss, ROC-AUC curve, Precision-Recall curve, Confusion Matrix)
+        """Generate standard classification model plots (keras accuracy and loss,
+        ROC-AUC curve, Precision-Recall curve, Confusion Matrix).
 
         Returns
         -------
@@ -691,7 +696,8 @@ class ComputeClassifier(Computer):
         return self
 
     def track_fnfp(self):
-        """Determine index names of false negatives and false positives from the training inputs and store in a dictionary along with related prediction probabilities.
+        """Determine index names of false negatives and false positives from the training
+        inputs and store in a dictionary along with related prediction probabilities.
 
         Returns
         -------
@@ -723,7 +729,10 @@ class ComputeClassifier(Computer):
         return self.fnfp
 
     def print_summary(self):
-        """Prints an sklearn-based classification report of model evaluation metrics, along with accuracy, loss, roc_auc fnfp scores to standard out. The report is also stored as a dictionary in the Computer object's self.report attribute."""
+        """Prints an sklearn-based classification report of model evaluation metrics,
+        along with accuracy, loss, roc_auc fnfp scores to standard out. The report is
+        also stored as a dictionary in the Computer object's self.report attribute.
+        """
         print(f"\n CLASSIFICATION REPORT: \n{self.report}")
         print(f"\n ACC/LOSS: {self.acc_loss}")
         print(f"\n ROC_AUC: {self.roc_auc}")
@@ -900,7 +909,8 @@ class ComputeMulti(ComputeClassifier):
         return self.y_onehot
 
     def fnfp_multi(self):
-        """Determine index names of false negatives and false positives from the training inputs and store in a dictionary along with related prediction probabilities.
+        """Determine index names of false negatives and false positives from the training
+        inputs and store in a dictionary along with related prediction probabilities.
 
         Returns
         -------
@@ -992,7 +1002,10 @@ class ComputeRegressor(Computer):
         self.loss = None
 
     def calculate_results(self):
-        """Main calling function to compute regression model scores, including residuals, root mean squared error and L2 cost function. Uses parent class method to save and/or load results to/from disk. Once calculated or loaded, other parent class methods can be used to generate various plots (e.g. `resid_plot`).
+        """Main calling function to compute regression model scores, including residuals,
+        root mean squared error and L2 cost function. Uses parent class method to save and/or
+        load results to/from disk. Once calculated or loaded, other parent class methods can
+        be used to generate various plots (e.g. `resid_plot`).
 
         Returns
         -------
@@ -1021,7 +1034,8 @@ class ComputeRegressor(Computer):
             return self.y_pred
 
     def yhat_matrix(self):
-        """Compare ground-truth and prediction values of a regression model side-by-side. Used for calculating residuals (see `get_resid` method below).
+        """Compare ground-truth and prediction values of a regression model side-by-side.
+        Used for calculating residuals (see `get_resid` method below).
 
         Returns
         -------
@@ -1058,7 +1072,11 @@ class ComputeRegressor(Computer):
             return self.residuals
 
     def calculate_L2(self, subset=None):
-        """Calculate the L2 Normalization score of a regression model. L2 norm is the square root of the sum of the squared vector values (also known as the Euclidean norm or Euclidean distance from the origin). This metric is often used when fitting ML algorithms as a regularization method to keep the coefficients of the model small, i.e. to make the model less complex.
+        """Calculate the L2 Normalization score of a regression model. L2 norm is the
+        square root of the sum of the squared vector values (also known as the Euclidean norm
+        or Euclidean distance from the origin). This metric is often used when fitting ML
+        algorithms as a regularization method to keep the coefficients of the model small,
+        i.e. to make the model less complex.
 
         Returns
         -------
@@ -1071,12 +1089,19 @@ class ComputeRegressor(Computer):
             return np.linalg.norm(self.residuals)
 
     def compute_scores(self, error_stats=True):
-        """Calculate overall loss metrics of training and test sets. Default for regression is MSE (mean squared error) and RMSE (root MSE). RMSE is a measure of how spread out the residuals are (i.e. how concentrated the data is around the line of best fit). Note: RMSE is better in terms of reflecting performance when dealing with large error values (penalizes large errors) while MSE tends to be biased for high values.
+        """Calculate overall loss metrics of training and test sets. Default for regression
+        is MSE (mean squared error) and RMSE (root MSE). RMSE is a measure of how spread out
+        the residuals are (i.e. how concentrated the data is around the line of best fit).
+        Note: RMSE is better in terms of reflecting performance when dealing with large error
+        values (penalizes large errors) while MSE tends to be biased for high values.
 
         Parameters
         ----------
         error_stats : bool, optional
-            Include RMSE and L2 norm for positive and negative groups of residuals in the test set (here "positive" means above the regression line (>0), "negative" means below (<0)). This can be useful when consequences might be more severe for underestimating vs. overestimating.
+            Include RMSE and L2 norm for positive and negative groups of residuals in the
+            test set (here "positive" means above the regression line (>0), "negative" means
+            below (<0)). This can be useful when consequences might be more severe for
+            underestimating vs. overestimating.
 
         Returns
         -------

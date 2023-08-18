@@ -1,0 +1,84 @@
+documentation:
+  - 'docs/**/*'
+  - any: [ '*.rst', '!CHANGES.rst' ]
+  - '*.md'
+  - '.readthedocs.yaml'
+  - 'LICENSE'
+  - 'previews/*.png'
+
+installation:
+  - 'pyproject.toml'
+  - 'setup.*'
+  - 'requirements-*.txt'
+  - 'MANIFEST.in'
+
+# --------------------------------------- testing ---------------------------------------
+
+automation:
+  - '.github/**'
+  - '.bandit.yaml'
+
+testing:
+  - 'tests/**'
+  - 'tests/**/**'
+  - '.github/workflows/ci*.yml'
+  - 'conftest.py'
+  - 'tox.ini'
+
+# --------------------------------------- modules ---------------------------------------
+
+analyzer:
+  - 'spacekit/analyzer/**'
+
+builder:
+  - 'spacekit/builder/**'
+
+trained networks:
+  - 'spacekit/builder/trained_networks/**'
+
+dashboard:
+  - 'spacekit/dashboard/**'
+  - 'spacekit/dashboard/**/**'
+
+datasets:
+  - 'spacekit/datasets/**'
+
+extractor:
+  - 'spacekit/extractor/**'
+
+generator:
+  - 'spacekit/generator/**'
+
+logger:
+  - 'spacekit/logger/**'
+
+preprocessor:
+  - 'spacekit/preprocessor/**'
+
+skopes:
+  - 'spacekit/skopes/**'
+  - 'spacekit/skopes/**/**'
+  - 'spacekit/skopes/**/**/*'
+
+# --------------------------------------- skøpes ---------------------------------------
+
+hst cal:
+  - 'spacekit/skopes/hst/cal/**'
+
+hst svm:
+  - 'spacekit/skopes/hst/svm/**'
+
+jwst cal:
+  - 'spacekit/skopes/jwst/cal/**'
+
+kepler k2:
+  - 'spacekit/skopes/kepler/**'
+
+# --------------------------------------- dashboard ---------------------------------------
+
+docker:
+  - 'spacekit/docker/**'
+  - 'spacekit/docker/**/*'
+
+scripts:
+  - 'spacekit/scripts/**'

@@ -34,7 +34,9 @@ def check_imports():
 
 
 class Radio:
-    """Class for querying and downloading .fits files from a MAST s3 bucket on AWS. Note this was originally created for K2 LLC data and is in the process of being revised for other data types/telescopes..."""
+    """Class for querying and downloading .fits files from a MAST s3 bucket on AWS.
+    Note this was originally created for K2 LLC data and is in the process of being revised
+    for other data types/telescopes..."""
 
     def __init__(self, config="disable", name="Radio", **log_kws):
         """Instantiates a spacekit.extractor.Radio object.
@@ -275,7 +277,10 @@ class Radio:
         return ra, dec, targ, cat
 
     def search_by_targname(self, targets, datacol="target_classification"):
-        """Scrapes the "target_classification" for each observation (dataframe rows) from MAST using ``astroquery`` and the target name. For observations where the target classification is not found (or is blank), the ``scrape_other_targets`` method will be called using a broader set of search parameters (``ra_targ`` and ``dec_targ``).
+        """Scrapes the "target_classification" for each observation (dataframe rows) from MAST using
+        ``astroquery`` and the target name. For observations where the target classification is not found
+        (or is blank), the ``scrape_other_targets`` method will be called using a broader set of search
+        parameters (``ra_targ`` and ``dec_targ``).
 
         Returns
         -------
@@ -306,7 +311,10 @@ class Radio:
         dec="dec_targ",
         datacol="target_classification",
     ):
-        """Scrapes MAST for remaining target classifications that could not be identified using target name. This method instead uses a broader set of query parameters: the ``ra_targ`` and ``dec_targ`` coordinates along with the dataset's proposal ID. If multiple datasets are found to match, the first of these containing a target_classification value will be used.
+        """Scrapes MAST for remaining target classifications that could not be identified using target name.
+        This method instead uses a broader set of query parameters: the ``ra_targ`` and ``dec_targ``
+        coordinates along with the dataset's proposal ID. If multiple datasets are found to match, the first
+        of these containing a target_classification value will be used.
 
         Returns
         -------
@@ -333,7 +341,15 @@ class Radio:
 
 
 class HstSvmRadio(Radio):
-    """Class for scraping metadata from MAST (Mikulsky Archive for Space Telescopes) via ``astroquery``. Current functionality for this class is limited to extracting the `target_classification` values of HAP targets from the archive. An example of a target classification is "GALAXY" - an alphanumeric categorization of an image product/.fits file. Note - the files themselves are not downloaded, just this specific metadata listed in the online archive database. For downloading MAST science files, use the ``spacekit.extractor.radio`` module. The search parameter values needed for locating a HAP product on MAST can be extracted from the fits science extension headers using the ``astropy`` library. See the ``spacekit.preprocessor.scrub`` api for an example (or the astropy documentation)."""
+    """Class for scraping metadata from MAST (Mikulsky Archive for Space Telescopes) via ``astroquery``.
+    Current functionality for this class is limited to extracting the `target_classification` values of HAP
+    targets from the archive. An example of a target classification is "GALAXY" - an alphanumeric
+    categorization of an image product/.fits file. Note - the files themselves are not downloaded, just this
+    specific metadata listed in the online archive database. For downloading MAST science files, use the
+    ``spacekit.extractor.radio`` module. The search parameter values needed for locating a HAP product on
+    MAST can be extracted from the fits science extension headers using the ``astropy`` library. See the
+    ``spacekit.preprocessor.scrub`` api for an example (or the astropy documentation).
+    """
 
     def __init__(
         self, df, trg_col="targname", ra_col="ra_targ", dec_col="dec_targ", **log_kws
@@ -384,7 +400,8 @@ class HstSvmRadio(Radio):
         ]
 
     def combine_categories(self):
-        """Combines the two dictionaries (``target_categories`` and ``other_cat``) and inserts back into the original dataframe as a new column named ``category``.
+        """Combines the two dictionaries (``target_categories`` and ``other_cat``) and inserts back into the
+        original dataframe as a new column named ``category``.
 
         Returns
         -------
