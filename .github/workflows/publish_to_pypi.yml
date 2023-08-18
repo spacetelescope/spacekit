@@ -16,8 +16,15 @@ on:
   #   types: [released]
 
 jobs:
+
+  build_artifacts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: spacetelescope/spacekit/.github/workflows/build_artifacts/action.yml@develop
+
+
   publish_pypi:
-    needs: [build_artifacts]
+    needs: [ build_artifacts ]
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -25,13 +32,9 @@ jobs:
     permissions:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
-      - uses: spacetelescope/spacekit/.github/workflows/build_artifacts/action.yml@develop
-        name: build artifacts
-
       - uses: spacetelescope/spacekit/.github/workflows/pypi_publish@develop
         with:
           test: ${{ inputs.test }}
           user: ${{ secrets.user }}
           password: ${{ secrets.password }}
           test_password: ${{ secrets.test_password }}
-

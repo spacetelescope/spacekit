@@ -45,7 +45,7 @@ runs:
         path: dist
 
     - name: Publish package distributions to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
+      uses: pypa/gh-action-pypi-publish@v1.8.10
       with:
         user: ${{ (inputs.test == 'true' && inputs.test_user) || inputs.user }}
         password: ${{ (inputs.test == 'true' && inputs.test_password) || inputs.password }}

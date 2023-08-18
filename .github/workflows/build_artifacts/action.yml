@@ -20,6 +20,6 @@ runs:
       shell: 'bash'
       run: python -m build --sdist --wheel .
 
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v3.1.2
       with:
         path: dist/*
