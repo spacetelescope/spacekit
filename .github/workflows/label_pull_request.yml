@@ -13,4 +13,4 @@ jobs:
       - uses: actions/labeler@v4
         if: github.event_name == 'pull_request_target' || github.event_name == 'pull_request'
         with:
-          repo-token: "${{ secrets.GITHUB_TOKEN }}"
+          repo-token: "${{ secrets.SPACEKIT_RELEASE_TOKEN }}"

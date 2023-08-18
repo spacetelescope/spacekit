@@ -20,7 +20,7 @@ jobs:
   build_artifacts:
     runs-on: ubuntu-latest
     steps:
-      - uses: spacetelescope/spacekit/.github/build_artifacts@develop
+      - uses: spacetelescope/spacekit/.github/workflows/build_artifacts@develop
 
   publish_pypi:
     needs: [build_artifacts]
@@ -31,7 +31,7 @@ jobs:
     permissions:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
-      - uses: spacetelescope/spacekit/.github/pypi_publish@develop
+      - uses: spacetelescope/spacekit/.github/workflows/pypi_publish@develop
         with:
           test: ${{ inputs.test }}
           user: ${{ secrets.user }}
