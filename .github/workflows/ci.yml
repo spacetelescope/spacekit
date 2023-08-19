@@ -33,9 +33,11 @@ jobs:
         include:
           - name: python 3.9
             toxenv: py39
+            python-version: 3.9
             
           - name: python 3.11
             toxenv: py311
+            python-version: 3.11
 
     steps:
       - name: Checkout code
@@ -44,6 +46,8 @@ jobs:
           fetch-depth: 0
       - name: Set up python #on ${{ matrix.runs-on }}
         uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version}}
 
       - name: Install base dependencies
         run: |
@@ -73,8 +77,8 @@ jobs:
           - name: Build Docs
             toxenv: build-docs
 
-          - name: Build dist
-            toxenv: build-dist
+          # - name: Build dist
+          #   toxenv: build-dist
 
     steps:
     - name: Checkout code
