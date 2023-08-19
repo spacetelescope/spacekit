@@ -18,30 +18,23 @@ jobs:
   # Github Actions supports ubuntu, windows, and macos virtual environments:
   # https://help.github.com/en/actions/reference/virtual-environments-for-github-hosted-runners
   unit_tests:
-    name: ${{ matrix.name }} on ${{ matrix.os }}
-    runs-on: ${{ matrix.runs-on }}
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
     env:
       TF_CPP_MIN_LOG_LEVEL: 2
       LD_LIBRARY_PATH: /usr/local/lib
     strategy:
       fail-fast: true
       matrix:
-        runs-on:
-          - ubuntu-latest
-          - macos-latest
-          - windows-latest
-
+        # runs-on:
+        #   - ubuntu-latest
+          # - macos-latest
+          # - windows-latest
         include:
-          - name: python 3.9 unit tests
-            os: ${{ matrix.runs-on }}
+          - name: python 3.9
             toxenv: py39
-
-          # - name: python 3.10 tests
-          #   os: ${{ matrix.runs-on }}
-          #   toxenv: py310
-
-          - name: python 3.11 tests
-            os: ${{ matrix.runs-on }}
+            
+          - name: python 3.11
             toxenv: py311
 
     steps:
@@ -49,16 +42,16 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - name: Set up python on ${{ matrix.os }}
+      - name: Set up python #on ${{ matrix.runs-on }}
         uses: actions/setup-python@v4
 
       - name: Install base dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install .[x,test]
+          python -m pip install tox
       - name: Run unit tests
         run:
-          pytest
+          tox -e ${{ matrix.toxenv }}
 
   ci_tests:
     name: ${{ matrix.name }}
