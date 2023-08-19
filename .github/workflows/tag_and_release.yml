@@ -69,3 +69,6 @@ jobs:
           draft: ${{ github.event.inputs.draft }}
           prerelease: ${{ github.event.inputs.prerelease }}
 
+    # outputs:
+    #   draft: ${{ github.event.inputs.draft }}
+    #   prerelease: ${{ github.event.inputs.prerelease }}
