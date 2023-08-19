@@ -1,9 +1,10 @@
 name: Publish to PyPI
 
 on:
-  workflow_call:
+  workflow_dispatch:
     inputs:
       test:
+        description: publish to test pypi
         required: false
         default: false
         type: boolean
@@ -12,8 +13,10 @@ on:
       password: ${{ secrets.PYPI_PASSWORD_SPACEKIT_MAINTAINER }}
       test_password: ${{ secrets.PYPI_PASSWORD_SPACEKIT_MAINTAINER_TEST }}
 
-  # release:
-  #   types: [released]
+  # Change to this once workflow has been tested
+  # on:
+    # release:
+    #   types: [released]
 
 jobs:
 

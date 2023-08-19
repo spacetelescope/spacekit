@@ -5,6 +5,7 @@ installation / automation
 -------------------------
 
 - GA workflow minor revision: pypi publish [#46]
+
 - Replace flake8 with ruff, replace deprecated tf.keras.wrappers.scikit_learn with scikeras, add GA workflows [#45]
 
 documentation
