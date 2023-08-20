@@ -8,6 +8,7 @@ SPHINXBUILD   = sphinx-build
 PAPER         =
 SOURCEDIR     = source
 BUILDDIR      = build
+APIDIR		  = api
 
 # # Put it first so that "make" without argument is like "make help".
 # help:

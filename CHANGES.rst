@@ -13,6 +13,8 @@ documentation
 
 - Update readthedocs.yaml for compatibility with latest formatting requirements [#44]
 
+- RTD: Install graphviz before building docs [#47]
+
 
 1.0.0 (2023-08-10)
 ==================

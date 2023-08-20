@@ -50,12 +50,26 @@ jobs:
     environment:
       name: pypi
       url: https://pypi.org/p/spacekit
+    env:
+      test_url: https://test.pypi.org/legacy/
+      verify_metadata: true
+      skip_existing: false
+      verbose: false
     permissions:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
-      - uses: spacetelescope/spacekit/.github/workflows/pypi_publish@develop
+        # retrieve your distributions here
+      - uses: actions/download-artifact@v2
         with:
-          test: ${{ inputs.test }}
+          name: artifact
+          path: dist
+
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@v1.8.10
+        with:
           user: ${{ secrets.user }}
-          password: ${{ secrets.password }}
-          test_password: ${{ secrets.test_password }}
+          password: ${{ (inputs.test == 'true' && secrets.test_password) || secrets.password }}
+          repository_url: ${{ (inputs.test == 'true' && env.test_url) || environment.url }}
+          verify_metadata: ${{ env.verify_metadata }}
+          skip_existing: ${{ env.skip_existing }}
+          verbose: ${{ env.verbose }}
