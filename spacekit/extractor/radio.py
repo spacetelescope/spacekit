@@ -6,28 +6,27 @@ import numpy as np
 import pandas as pd
 from spacekit.logger.log import Logger
 
-try:
-    from astroquery.mast import Observations
-except ImportError:
-    Observations = None
-try:
-    from progressbar import ProgressBar
-except ImportError:
-    ProgressBar = None
-
 
 def check_astroquery():
+    try:
+        from astroquery.mast import Observations
+    except ImportError:
+        Observations = None
     return Observations is not None
 
 
 def check_progressbar():
+    try:
+        from progressbar import ProgressBar
+    except ImportError:
+        ProgressBar = None
     return ProgressBar is not None
 
 
 def check_imports():
-    if not check_astroquery():
+    if not check_progressbar():
         return False
-    elif not check_progressbar():
+    elif not check_astroquery():
         return False
     else:
         return True
