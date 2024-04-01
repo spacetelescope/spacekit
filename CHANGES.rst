@@ -1,6 +1,12 @@
 1.0.1 (unreleased)
 ==================
 
+bugfixes
+--------
+
+- try/except imports for astroquery and progressbar no longer global; pin tf max version to ensure saved model compatibility [#48]
+
+
 installation / automation
 -------------------------
 
