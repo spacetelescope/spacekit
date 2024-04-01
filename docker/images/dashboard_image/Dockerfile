@@ -5,8 +5,6 @@ RUN apt update && \
     apt upgrade --assume-yes && \
     ACCEPT_EULA=Y DEBIAN_FRONTEND=noninteractive && \
     apt install --assume-yes \
-        # wget \
-        # make \
         sudo \
         git \
         vim \
@@ -42,7 +40,6 @@ RUN python3 -m venv /home/developer/venv && \
     dash~=2.0.0 \
     dash-cytoscape \
     dash-daq && \
-  pip uninstall werkzeug -y && pip install werkzeug==2.0.3 && \
   mkdir /home/developer/data && \
   python -m spacekit.datasets.beam -s="${SRC}:${COLLECTION}" -d=$DATASETS -o=$SPACEKIT_DATA
 
