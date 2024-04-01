@@ -4,7 +4,7 @@
 bugfixes
 --------
 
-- try/except imports for astroquery and progressbar no longer global; pin tf max version to ensure saved model compatibility [#48]
+- moved HstSvmRadio import inside class method to avoid importing astroquery unnecessarily; pin tf max version to ensure saved model compatibility [#48]
 
 
 installation / automation
