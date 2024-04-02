@@ -4,7 +4,7 @@
 bugfixes
 --------
 
-- moved HstSvmRadio import inside class method to avoid importing astroquery unnecessarily; pin tf max version to ensure saved model compatibility [#48]
+- move HstSvmRadio import inside class method to avoid importing astroquery unnecessarily; temporarily pin tf max version to 2.15 to ensure compatibility with models saved in 2.13 or older [#49]
 
 
 installation / automation
