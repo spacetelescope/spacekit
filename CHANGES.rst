@@ -1,6 +1,16 @@
 1.0.1 (unreleased)
 ==================
 
+bugfixes
+--------
+
+- move HstSvmRadio import inside class method to avoid importing astroquery unnecessarily [#49]
+
+- temporarily pin tf max version to 2.15 to ensure compatibility with models saved in 2.13 or older
+
+- matplotlib style setting looks for "seaborn-v0_8-bright" if "seaborn-bright" unavailable, fallback uses default style
+
+
 installation / automation
 -------------------------
 

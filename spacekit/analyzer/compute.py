@@ -20,10 +20,15 @@ try:
     import plotly.graph_objects as go
     import matplotlib as mpl
     import matplotlib.pyplot as plt
-
-    plt.style.use("seaborn-bright")
     font_dict = {"family": "monospace", "size": 16}  # Titillium Web
     mpl.rc("font", **font_dict)
+    styles = ["seaborn-bright", "seaborn-v0_8-bright"]
+    valid_styles = [s for s in styles if s in plt.style.available]
+    if len(valid_styles) > 0:
+        try:
+            plt.style.use(valid_styles[0])
+        except OSError:
+            pass
 except ImportError:
     go = None
     mpl = None

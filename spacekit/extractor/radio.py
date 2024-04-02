@@ -10,11 +10,11 @@ try:
     from astroquery.mast import Observations
 except ImportError:
     Observations = None
+
 try:
     from progressbar import ProgressBar
 except ImportError:
     ProgressBar = None
-
 
 def check_astroquery():
     return Observations is not None
@@ -25,9 +25,9 @@ def check_progressbar():
 
 
 def check_imports():
-    if not check_astroquery():
+    if not check_progressbar():
         return False
-    elif not check_progressbar():
+    elif not check_astroquery():
         return False
     else:
         return True
