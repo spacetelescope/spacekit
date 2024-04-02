@@ -1,5 +1,5 @@
 *******************************
-spacekit.skopes.hst.svm.predict
+spacekit.skopes.hst.cal.predict
 *******************************
 
 .. currentmodule:: spacekit.skopes.hst.cal.predict
