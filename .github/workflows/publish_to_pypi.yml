@@ -21,7 +21,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       with:
-        ref: main
         fetch-depth: 0
 
     - uses: actions/setup-python@v5
@@ -53,7 +52,7 @@ jobs:
       test_url: https://test.pypi.org/legacy/
       verify_metadata: true
       skip_existing: false
-      verbose: false
+      verbose: true
     permissions:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
@@ -64,11 +63,11 @@ jobs:
           path: dist
 
       - name: Publish package distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@v1.8.10
+        uses: pypa/gh-action-pypi-publish@release/v1.8.10
         with:
           user: ${{ env.user }}
           password: ${{ (inputs.test == 'true' && env.test_password) || env.password }}
-          repository_url: ${{ (inputs.test == 'true' && env.test_url) || env.url }}
-          verify_metadata: ${{ env.verify_metadata }}
-          skip_existing: ${{ env.skip_existing }}
+          repository-url: ${{ (inputs.test == 'true' && env.test_url) || env.url }}
+          verify-metadata: ${{ env.verify_metadata }}
+          skip-existing: ${{ env.skip_existing }}
           verbose: ${{ env.verbose }}
