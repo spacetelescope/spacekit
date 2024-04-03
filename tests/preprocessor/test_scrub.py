@@ -131,7 +131,7 @@ def test_jwst_cal_scrubber(jwstcal_input_path):
     assert len(scrubber.imgpix) == 3
     imgpix_products = list(scrubber.imgpix.keys())
     for product in imgpix_products:
-        assert len(scrubber.imgpix[product].keys()) == 46
+        assert len(scrubber.imgpix[product].keys()) == 48
     image_inputs = scrubber.scrub_inputs(exp_type="IMAGE")
     assert len(image_inputs) == 3
     assert list(image_inputs.columns) == JWST_SCRUBBED_COLS
