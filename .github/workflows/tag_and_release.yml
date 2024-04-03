@@ -42,9 +42,9 @@ jobs:
           fetch-depth: 0
 
       - name: Configure git
-        run:
-          git config user.name "GitHub Actions"
-          git config user.email "<>"
+        run: |
+          git config --local user.name "GitHub Actions"
+          git config --local user.email "action@github.com"
 
       - name: Set changelog release date
         run:
