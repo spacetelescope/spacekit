@@ -164,7 +164,7 @@ def load_ensemble_data(
 
 
 def train_ensemble(
-    XTR, YTR, XTS, YTS, model_name="ensembleSVM", params=None, output_path=None
+    XTR, YTR, XTS, YTS, model_name="ensembleSVM", params=None, output_path=None, keras=False,
 ):
     """Build, compile and fit an ensemble model with regression test data and image input arrays.
 
@@ -215,7 +215,7 @@ def train_ensemble(
     if output_path is None:
         output_path = os.getcwd()
     model_outpath = os.path.join(output_path, os.path.dirname(model_name))
-    ens.save_model(weights=True, output_path=model_outpath)
+    ens.save_model(weights=True, output_path=model_outpath, keras_archive=keras)
     return ens
 
 
@@ -267,6 +267,7 @@ def run_training(
     model_name="ensembleSVM",
     params=None,
     output_path=None,
+    keras=False,
 ):
     """Main calling function to load and prep the data, train the model, compute results and save to disk.
 
@@ -305,6 +306,7 @@ def run_training(
         model_name=model_name,
         params=params,
         output_path=output_path,
+        keras=keras,
     )
     com, val = compute_results(ens, tv_idx, val_set=(XVL, YVL), output_path=output_path)
     return ens, com, val
