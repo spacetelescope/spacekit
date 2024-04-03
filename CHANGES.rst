@@ -8,6 +8,8 @@ new features
 
 - `extractor.radio.JwstCalRadio` subclass for scraping datasets from MAST using ASN metadata [#51]
 
+- `extractor.scrape.FitsScraper.scrape_dataframe` method added for scraping Fits data from dataframe [#52]
+
 
 1.0.1 (2024-04-03)
 ==================
