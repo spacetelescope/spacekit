@@ -1,3 +1,12 @@
+1.1.0 (unreleased)
+==================
+
+new features
+------------
+
+- `architect.builder.Builder.save_model` uses preferred keras archive format by default [#50]
+
+
 1.0.1 (2024-04-03)
 ==================
 
