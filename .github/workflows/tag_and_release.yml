@@ -51,7 +51,7 @@ jobs:
           scripts/set_release_date ${{ github.event.inputs.version }}
 
       - name: Commit changelog and tag release
-        run:
+        run: |
           git add CHANGES.rst
           git commit -m "Set ${{ github.event.inputs.version }} release date"
           git push origin HEAD
