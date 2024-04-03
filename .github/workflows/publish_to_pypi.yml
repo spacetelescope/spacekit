@@ -44,10 +44,9 @@ jobs:
   publish_pypi:
     needs: [ build_artifacts ]
     runs-on: ubuntu-latest
-    environment:
+    env:
       name: pypi
       url: https://pypi.org/p/spacekit
-    env:
       user: ${{ secrets.PYPI_USERNAME_SPACEKIT_MAINTAINER }}
       password: ${{ secrets.PYPI_PASSWORD_SPACEKIT_MAINTAINER }}
       test_password: ${{ secrets.PYPI_PASSWORD_SPACEKIT_MAINTAINER_TEST }}
@@ -67,9 +66,9 @@ jobs:
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@v1.8.10
         with:
-          user: ${{ secrets.user }}
+          user: ${{ env.user }}
           password: ${{ (inputs.test == 'true' && env.test_password) || env.password }}
-          repository_url: ${{ (inputs.test == 'true' && env.test_url) || environment.url }}
+          repository_url: ${{ (inputs.test == 'true' && env.test_url) || env.url }}
           verify_metadata: ${{ env.verify_metadata }}
           skip_existing: ${{ env.skip_existing }}
           verbose: ${{ env.verbose }}
