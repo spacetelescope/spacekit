@@ -34,17 +34,20 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CHANGELOG: ${{ needs.changelog_entry.outputs.changes }}
+      GH_USER: ${{ secrets.GH_USERNAME }}
+      GH_EMAIL: ${{ secrets.GH_EMAIL }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
+          token: ${{ secrets.SPACEKIT_RELEASE_TOKEN }}
           ref: main
           fetch-depth: 0
 
       - name: Configure git
         run: |
-          git config --local user.name "GitHub Actions"
-          git config --local user.email "action@github.com"
+          git config --local user.name ${{ env.GH_USER }}
+          git config --local user.email ${{ env.GH_EMAIL }}
 
       - name: Set changelog release date
         run:
