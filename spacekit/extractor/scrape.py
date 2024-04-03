@@ -828,6 +828,25 @@ class FitsScraper(FileScraper):
                 continue
         return exp_headers
 
+    def scrape_dataframe(self, dnames=None, dname_col="dname"):
+        if dnames is None:
+            dnames = list(self.df[dname_col])
+        exp_headers = {}
+        for name in dnames:
+            try:
+                data = self.df.loc[name]
+                exp_headers[name] = dict()
+                if self.genkeys:
+                    for g in self.genkeys:
+                        exp_headers[name][g] = data[g] if g in self.df.columns else "NaN"
+                if self.scikeys:
+                    for s in self.scikeys:
+                        exp_headers[name][s] = data[s] if s in self.df.columns else "NaN"
+            except Exception:
+                del exp_headers[name]
+                continue
+        return exp_headers
+
     def find_drz_paths(self, dname_col="dataset", drzimg_col="imgname"):
         """Looks for SVM input files based on information contained in the ``self.df`` attribute.
         Input paths for files are constructed using the ``dname_col`` and ``drzimg_col`` along with
@@ -929,6 +948,12 @@ class JwstFitsScraper(FitsScraper):
         self.exp_headers = None
 
     def general_header_keys(self):
+        """General header key names to scrape from input exposure fits files.
+        Returns
+        -------
+        list
+            list of key names to scrape from fits header extension 0.
+        """
         return [
             "PROGRAM",  # Program number
             "OBSERVTN",  # Observation number
@@ -945,8 +970,10 @@ class JwstFitsScraper(FitsScraper):
             "FILTER",  # Name of the filter element used
             "PUPIL",  # Name of the pupil element used
             "GRATING",  # Name of the grating element used (SPEC)
+            "FXD_SLIT", # Name of fixed slit aperture used
             "EXP_TYPE",  # Type of data in the exposure
             "CHANNEL",  # Instrument channel
+            "BAND", # MRS wavelength band
             "SUBARRAY",  # Subarray used
             "NUMDTHPT",  # Total number of points in pattern
             "GS_RA",  # guide star right ascension
@@ -956,6 +983,12 @@ class JwstFitsScraper(FitsScraper):
         ]
 
     def science_header_keys(self):
+        """Science header key names to scrape from input exposure fits files science headers.
+        Returns
+        -------
+        list
+            list of key names to scrape from fits header science extension headers.
+        """
         return [
             "RA_REF",
             "DEC_REF",
@@ -1417,60 +1450,3 @@ class JsonScraper(FileScraper):
 class ImageScraper(Scraper):
     def __init__(self):
         super().__init__()
-
-
-# def extract_archives(zipfiles, extract_to="data", delete_archive=False):
-#     fpaths = []
-#     os.makedirs(extract_to, exist_ok=True)
-#     for z in zipfiles:
-#         fname = os.path.basename(z).split(".")[0]
-#         fpath = os.path.join(extract_to, fname)
-#         with ZipFile(z, "r") as zip_ref:
-#             zip_ref.extractall(extract_to)
-#         # check just in case
-#         if os.path.exists(fpath):
-#             fpaths.append(fpath)
-#             if delete_archive is True:
-#                 os.remove(z)
-#     return fpaths
-
-
-# def unzip_images(zip_file):
-#     basedir = os.path.dirname(zip_file)
-#     key = os.path.basename(zip_file).split(".")[0]
-#     image_folder = os.path.join(basedir, key + "/")
-#     os.makedirs(image_folder, exist_ok=True)
-#     with ZipFile(zip_file, "r") as zip_ref:
-#         zip_ref.extractall(basedir)
-#     print(len(os.listdir(image_folder)))
-#     return image_folder
-
-
-# def scrape_web(key, uri):
-#     fname = key["fname"]
-#     origin = f"{uri}/{fname}"
-#     hash = key["hash"]
-#     fpath = get_file(
-#         origin=origin,
-#         file_hash=hash,
-#         hash_algorithm="sha256",  # auto
-#         cache_dir="~",
-#         cache_subdir="data",
-#         extract=True,
-#         archive_format="zip",
-#     )
-#     if os.path.exists(fpath):
-#         os.remove(f"data/{fname}")
-#     return fpath
-
-
-# def get_training_data(dataset=None, uri=None):
-#     if uri is None:
-#         print("Please enter a uri.")
-#         return None
-#     keys = list(dataset.keys())
-#     fpaths = []
-#     for key in keys:
-#         fpath = scrape_web(key, uri)
-#         fpaths.append(fpath)
-#     return fpaths
