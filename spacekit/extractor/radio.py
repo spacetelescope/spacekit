@@ -1,6 +1,7 @@
 import os
 import shutil
 import glob
+import re
 import boto3
 import numpy as np
 import pandas as pd
@@ -35,8 +36,10 @@ def check_imports():
 
 class Radio:
     """Class for querying and downloading .fits files from a MAST s3 bucket on AWS.
-    Note this was originally created for K2 LLC data and is in the process of being revised
-    for other data types/telescopes..."""
+    TODO: overhaul for multi-mission (HST, JWST)
+    TODO: generalize mast_download() for other missions and options (put mission specific methods into subclasses)
+    TODO: change config attr to cloud
+    """
 
     def __init__(self, config="disable", name="Radio", **log_kws):
         """Instantiates a spacekit.extractor.Radio object.
@@ -438,3 +441,180 @@ class HstSvmRadio(Radio):
             params[idx]["dec_targ"] = row[self.dec_col]
         self.log.info(f"Other targets (ANY): {len(params)}")
         return params
+
+
+class JwstCalRadio(Radio):
+
+    def __init__(self, **log_kws):
+        super().__init__(name="JwstCalRadio", **log_kws)
+        self.product_matches = dict()
+        self.asn_kwargs = dict(
+                productSubGroupDescription=['ASN'],
+                productGroupDescription=['Minimum Recommended Products']
+        )
+        self.errs = {}
+        self.verbose = False
+
+    def match_asn_filename(self, input_data):
+        for exptype in list(input_data.keys()):
+            if input_data[exptype] is None:
+                continue
+            products = list(input_data[exptype].index)
+            self.log.info(f"Querying MAST for {len(products)} L3 {exptype} products")
+            self.product_matches[exptype] = dict()
+            self.errs[exptype] = dict()
+            spec = True if exptype == 'SPEC' else False
+            query_params = dict(wildcard=True, limit=1) if spec is True else {}
+            for k in products:
+                try:
+                    obsid = self.get_obsid(k, spec=spec)
+                    filt_prod, targname = self.run_query(obsid, **query_params)
+                    if len(filt_prod) > 0:
+                        match = self.add_match(filt_prod, targname)
+                        self.product_matches[exptype][k] = match
+                        if self.verbose:
+                            self.log.info(f"{k} = {match['pname']} = {match['asn']}")
+                    else:
+                        self.log_error(k, exptype)
+                except Exception as e:
+                    self.errs[exptype][k] = str(e)
+            nresults = len(self.product_matches[exptype])
+            self.log.info(f"{nresults} of {len(products)} matched for {exptype}.")
+        return self.product_matches
+
+    def get_obsid(self, k, spec=False):
+        pattern = re.compile('t[0-9]{1,3}')
+        if spec is False:
+            trg = k.split("_")[1]
+            m = re.match(pattern, trg)
+            if m:
+                obsid = k.replace(m[0], "t*") + "*"
+            else:
+                obsid = k + "*"
+        else:
+            if k.split('_')[-2] == 'miri': # miri ifu
+                obsid = k + "ch*"
+            else:
+                obsid = k+"*"
+
+            trg = obsid.split("_")[1]
+            if trg not in ["s*", "t*"]:
+                m = re.match(pattern, trg)
+                if m:
+                    obsid = obsid.replace(m[0], "t*")
+        return obsid
+
+    def log_error(self, k, exptype):
+        self.errs[exptype][k] = "No results found in MAST"
+        self.log.warning(f"No results found for {k}")
+
+    def run_query(self, obsid, wildcard=False, limit=0):
+        filt_prod = [] 
+        targname = None
+        obs = Observations.query_criteria(obs_id=obsid)
+        if len(obs) == 0 and wildcard is True:
+            obs = self.wildcard_query(obsid)
+        if len(obs) > 1 and limit > 0:
+            source_ids = sorted([o['obs_id'] for o in obs])
+            # limit to first result
+            obsid = source_ids[0]
+            obs = Observations.query_criteria(obs_id=obsid)
+        if len(obs) > 0:
+            try:
+                targname = obs['target_name'][0]
+            except Exception:
+                targname = None
+            data_prod = Observations.get_product_list(obs['obsid'])
+            filt_prod = Observations.filter_products(data_prod, **self.asn_kwargs)
+
+        return filt_prod, targname
+
+    def wildcard_query(self, obsid):
+        if len(obsid.split("s*")) > 1:
+            wild = obsid.split("s*") # s00001
+        elif len(obsid.split("t*")) > 1:
+            wild = obsid.split("t*")
+        else:
+            wild = None
+        if wild:
+            obsid_wild = '*'.join(wild)
+            obs = Observations.query_criteria(obs_id=obsid_wild)
+        else:
+            obs = []
+        return obs
+
+    def add_match(self, filt_prod, targname):
+        product = filt_prod['obs_id'][0]
+        asn_file = filt_prod['productFilename'][0]
+        asn_name = asn_file.replace('_asn.json', '')
+        match = dict(pname=product, asn=asn_name, TARGNAME=targname)
+        return match
+
+    def match_image_asn(self, input_data):
+        if input_data["IMAGE"] is None:
+            return
+        image_products = list(input_data["IMAGE"].index)
+        self.log.info(f"Querying MAST for {len(image_products)} L3 image products")
+        self.product_matches["IMAGE"] = dict()
+        self.errs['IMAGE'] = dict()
+        for k in image_products:
+            try:
+                obsid = self.get_obsid(k)
+                filt_prod, targname = self.run_query(obsid)
+                if len(filt_prod) > 0:
+                    match = self.add_match(filt_prod, targname)
+                    self.product_matches["IMAGE"][k] = match
+                    if self.verbose:
+                        self.log.info(f"{k} = {match['pname']} = {match['asn']}")
+                else:
+                    self.log_error(k, 'IMAGE')
+            except Exception as e:
+                self.errs['IMAGE'][k] = str(e)
+        nresults = len(self.product_matches["IMAGE"])
+        self.log.info(f"{nresults} of {len(image_products)} matched.")
+
+    def match_spec_asn(self, input_data):
+        if input_data["SPEC"] is None:
+            return
+        spec_products = list(input_data["SPEC"].index)
+        self.log.info(f"Querying MAST for {len(spec_products)} L3 spec products")
+        self.product_matches["SPEC"] = dict()
+        self.errs['SPEC'] = dict()
+        for k in spec_products:
+            try:
+                obsid = self.get_obsid(k, spec=True)
+                filt_prod, targname = self.run_query(obsid, wildcard=True, limit=1)
+                if len(filt_prod) > 0:
+                    match = self.add_match(filt_prod, targname)
+                    self.product_matches["SPEC"][k] = match
+                    if self.verbose:
+                        self.log.info(f"{k} = {match['pname']} = {match['asn']}")
+                else:
+                    self.log_error(k, 'SPEC')
+            except Exception as e:
+                self.errs['SPEC'][k] = str(e)
+        nresults = len(self.product_matches["SPEC"])
+        self.log.info(f"{nresults} of {len(spec_products)} matched.")
+
+    def match_tac_asn(self, input_data):
+        if input_data["TAC"] is None:
+            return
+        tac_products = list(input_data["TAC"].index)
+        self.log.info(f"Querying MAST for {len(tac_products)} L3 tac products")
+        self.product_matches["TAC"] = dict()
+        self.errs['TAC'] = dict()
+        for k in tac_products:
+            try:
+                obsid = self.get_obsid(k)
+                filt_prod, targname = self.run_query(obsid)
+                if len(filt_prod) > 0:
+                    match = self.add_match(filt_prod, targname)
+                    self.product_matches["TAC"][k] = match
+                    if self.verbose:
+                        self.log.info(f"{k} = {match['pname']} = {match['asn']}")
+                else:
+                    self.log_error(k, 'TAC')
+            except Exception as e:
+                self.errs['TAC'][k] = str(e)
+        nresults = len(self.product_matches["TAC"])
+        self.log.info(f"{nresults} of {len(tac_products)} matched.")

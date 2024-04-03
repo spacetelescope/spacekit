@@ -6,6 +6,8 @@ new features
 
 - `architect.builder.Builder.save_model` uses preferred keras archive format by default [#50]
 
+- `extractor.radio.JwstCalRadio` subclass for scraping datasets from MAST using ASN metadata [#51]
+
 
 1.0.1 (2024-04-03)
 ==================
