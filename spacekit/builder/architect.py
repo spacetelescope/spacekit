@@ -382,18 +382,6 @@ class Builder:
                 for filename in files:
                     print("{}{}".format(indent + "    ", filename))
             self.model_path = model_path
-    
-        
-        weights_path = f"{model_path}/weights/ckpt"
-        self.model.save(model_path)
-        if weights is True:
-            self.model.save_weights(weights_path)
-        for root, _, files in os.walk(model_path):
-            indent = "    " * root.count(os.sep)
-            print("{}{}/".format(indent, os.path.basename(root)))
-            for filename in files:
-                print("{}{}".format(indent + "    ", filename))
-        self.model_path = model_path
 
     def model_diagram(
         self,
