@@ -1064,7 +1064,7 @@ class NaNdler:
                 print(f"\nNaNs to be NaNdled:\n{self.df[cols].isna().sum()}\n")
             df_cat = self.df[cols].copy()
             for col in cols:
-                df_cat.loc[df_cat[col].isin(["N/A", "NaN"]), col] = np.nan
+                df_cat.loc[df_cat[col].isin(["N/A", "NaN", "NAN", "nan"]), col] = np.nan
                 if df_cat[col].isna().sum() > 0:
                     truevals = list(df_cat[col].value_counts().index)
                     df_cat[col] = df_cat[col].apply(
