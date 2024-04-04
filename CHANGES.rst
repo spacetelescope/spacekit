@@ -10,7 +10,7 @@ new features
 
 - `extractor.scrape.FitsScraper.scrape_dataframe` method added for scraping Fits data from dataframe [#52]
 
-- `preprocessor.transform.SkyTransformer` set offsets to 0 for gs/targ fiducial NaN values; custom filename for tx_file [#53]
+- `preprocessor.transform.SkyTransformer` set offsets to 0 for gs/targ fiducial NaN values; custom filename for tx_file [#54]
 
 bug fixes
 ---------
