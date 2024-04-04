@@ -527,11 +527,34 @@ class JwstCalScrubber(Scrubber):
         dropnans=False,
         save_raw=True,
         encoding_pairs=None,
+        mode='fits',
         **log_kws,
     ):
+        """Initializes a JwstCalScrubber class object.
+        Parameters
+        ----------
+        input_path : str or path
+            path on local disk where L1 input exposures are located
+        data : pd.DataFrame, optional
+            dataframe of exposures to be preprocessed, by default None
+        pfx : str, optional
+            limit scrape search to files starting with a given prefix such as 'jw01018', by default ""
+        sfx : str, optional
+            limit scrape search to files ending with a given suffix, by default "_uncal.fits"
+        dropnans : bool, optional
+            drop null value columns, by default False
+        save_raw : bool, optional
+            save a copy of the dataframe before encoding, by default True
+        encoding_pairs : dict, optional
+            preset key-value pairs for encoding categorical data, by default None
+        """
         self.input_path = input_path
         self.exp_headers = None
         self.products = dict()
+        self.img_products = dict()
+        self.spec_products = dict()
+        self.tac_products = dict()
+        self.fgs_products = dict()
         self.imgpix = None
         self.specpix = None
         self.tacpix = None
@@ -548,6 +571,7 @@ class JwstCalScrubber(Scrubber):
         )
         self.xcols = self.set_col_order()
         self.encoding_pairs = encoding_pairs
+        self.mode = mode
         self.scrape_inputs()
         self.get_level3_products()
         self.pixel_offsets()
@@ -581,22 +605,32 @@ class JwstCalScrubber(Scrubber):
             "crowdfld",
         ]
 
+    @property
     def level3_types(self):
+        return self._level3_types()
+
+    def _level3_types(self):
+        """Exposure types included in Level 3 data processing.
+        Returns
+        -------
+        list
+            Level 3 exposure types
+        """
         return [
             "FGS_IMAGE",
             "MIR_IMAGE",  # (TSO & Non-TSO)
             "NRC_IMAGE",
             "MIR_LRS-FIXEDSLIT",
             "MIR_MRS",
-            "MIR_LYOT",
-            "MIR_4QPM",
+            "MIR_LYOT",  # coron
+            "MIR_4QPM",  # coron
             "MIR_LRS-SLITLESS",  # (only IF TSO)
-            "NRC_CORON",
+            "NRC_CORON",  # coron
             "NRC_WFSS",
             "NRC_TSIMAGE",  # TSO always
             "NRC_TSGRISM",  # TSO always
             "NIS_IMAGE",
-            "NIS_AMI",
+            "NIS_AMI",  # AMI
             "NIS_WFSS",
             "NIS_SOSS",  # (TSO & Non-TSO)
             "NRS_FIXEDSLIT",
@@ -606,11 +640,16 @@ class JwstCalScrubber(Scrubber):
         ]
 
     def scrape_inputs(self):
+        """Scrape input exposure header metadata from fits files on local disk located at `self.input_path`.
+        """
         self.scraper = JwstFitsScraper(
             self.input_path, data=self.df, pfx=self.pfx, sfx=self.sfx
         )
         self.fpaths = self.scraper.fpaths
-        self.exp_headers = self.scraper.scrape_fits()
+        if self.mode == 'df':
+            self.exp_headers = self.scraper.scrape_dataframe()
+        else:
+            self.exp_headers = self.scraper.scrape_fits()
 
     def pixel_offsets(self):
         sky = SkyTransformer("JWST")
