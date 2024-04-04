@@ -579,7 +579,6 @@ class JwstCalScrubber(Scrubber):
         self.xcols = self.xcol_order
         self.encoding_pairs = encoding_pairs
         self.mode = mode
-        self.tso_ami_coron = ["MIR_4QPM","MIR_LYOT", "NRC_CORON","NIS_AMI","NRS_BRIGHTOBJ","NRC_TSGRISM","NRC_TSIMAGE"]
         self.scrape_inputs()
         self.get_level3_products()
         self.pixel_offsets()
@@ -657,6 +656,21 @@ class JwstCalScrubber(Scrubber):
             "NRS_IFU",
             "NRS_MSASPEC",
             "NRS_BRIGHTOBJ",  # TSO always
+        ]
+
+    @property
+    def tso_ami_coron(self):
+        return self._tso_ami_coron()
+
+    def _tso_ami_coron(self):
+        return [
+            "MIR_4QPM",
+            "MIR_LYOT",
+            "NRC_CORON",
+            "NIS_AMI",
+            "NRS_BRIGHTOBJ",
+            "NRC_TSGRISM",
+            "NRC_TSIMAGE"
         ]
 
     @property
