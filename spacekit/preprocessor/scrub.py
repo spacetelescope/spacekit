@@ -699,6 +699,7 @@ class JwstCalScrubber(Scrubber):
         self.products.update(self.imgpix)
         sky.set_keys(ra="RA_REF", dec="DEC_REF")
         self.specpix = sky.calculate_offsets(self.spec_products)
+        self.rename_miri_mrs()
         self.products.update(self.specpix)
         if self.mode != 'df': # use fits data
             sky.count_exposures = False
@@ -718,81 +719,219 @@ class JwstCalScrubber(Scrubber):
         tnum : str
             number assigned to each unique target (targ_ra) within a program
         """
-        if v["PUPIL"] == "CLEAR":
-            p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['PUPIL']}-{v['FILTER']}"
-        elif v["PUPIL"] not in ["NaN", "N/A", "NONE"]:
-            p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['FILTER']}-{v['PUPIL']}"
+        pupil = f"{v['PUPIL']}" if v["PUPIL"] not in NANVALS else ""
+        fltr = f"{v['FILTER']}" if v["FILTER"] not in NANVALS else ""
+        subarray = f"-{v['SUBARRAY']}" if v["SUBARRAY"] not in SUBNAN else ""
+        if not pupil:
+            optelem = fltr
+        elif pupil in ["CLEAR", "CLEARP", "F405N"]:
+            optelem = f"{pupil}-{fltr}"
         else:
-            p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['FILTER']}"
-        p = p.lower()
-        del v["NEXPOSUR"]
-        if p in self.img_products:
-            self.img_products[p][k] = v
+            optelem =  f"{fltr}-{pupil}"
+
+        if 'WFSC' in v['VISITYPE']:
+            if not subarray:
+                p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}_{tnum}_{v['INSTRUME']}_{optelem}-{v['DETECTOR']}".lower()
+            else: # ignore nrca3 target acquisition exposures (subarray != "FULL")
+                return
         else:
-            self.img_products[p] = {k: v}
+            p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}_{tnum}_{v['INSTRUME']}_{optelem}{subarray}".lower()
+
+        if v['EXP_TYPE'] in self.tso_ami_coron or v["TSOVISIT"] in TRUEVALS:
+            self.make_tac_product_name(k, v, p)
+            return
+        elif v["INSTRUME"] == "FGS":
+            self.make_fgs_product_name(k, v, p)
+            return
+        else:
+            del v["NEXPOSUR"]
+            if p in self.img_products:
+                self.img_products[p][k] = v
+            else:
+                self.img_products[p] = {k: v}
 
     def make_spec_product_name(self, k, v, tnum):
-        if v["EXP_TYPE"] == "MIR_LRS-SLITLESS" and v["TSOVISIT"] is False:
+        """Parse through exposure metadata to create expected L3 spectroscopy products. 
+        NOTE: Although the pipeline would create multiple products for either source-based exposures
+        or (channel-based) MIRI MRS exposures, only one product name will be created since the model is
+        concerned with RAM, i.e. how large the memory footprint is to calibrate a set of input exposures.
+        Source-based products use "s00001" for the source; MIR_MRS exposures default to "ch4" for channel.
+        Parameters
+        ----------
+        k : str
+            exposure header key (L1 exposure name)
+        v : dict
+            exposure header data
+        tnum : str
+            number assigned to each unique target (targ_ra) within a program
+        """
+        exptype = v["EXP_TYPE"]
+        if exptype == "MIR_LRS-SLITLESS" and v["TSOVISIT"] in FALSEVALS:
+            # L3 product only if TSO
             return
-        fltr = f"_{v['FILTER']}" if v["FILTER"] not in ["NaN", "N/A", "NONE"] else ""
+        if exptype in self.source_based:
+            tnum = "s00001" # source-based exposure naming convention
+        pupil = f"{v['PUPIL']}" if v["PUPIL"] not in NANVALS else ""
+        fltr = f"{v['FILTER']}" if v["FILTER"] not in NANVALS else ""
         grating = (
-            f"_{v['GRATING']}" if v["GRATING"] not in ["NaN", "N/A", "NONE"] else ""
+            f"{v['GRATING']}" if v["GRATING"] not in NANVALS else ""
         )
-        if fltr and grating:
-            grating = f"-{v['GRATING']}"
-        p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}{fltr}{grating}"
-        p = p.lower()
-        del v["NEXPOSUR"]
-        if p in self.spec_products:
-            self.spec_products[p][k] = v
+        if pupil:
+            optelem = f"{fltr}-{pupil}" if exptype in ["NRC_WFSS", "NIS_SOSS", "NRC_TSGRISM"] else f"{pupil}-{fltr}"
+        elif grating: 
+            optelem = f"{grating}-{fltr}" if exptype == "NRS_IFU" else f"{fltr}-{grating}"
         else:
-            self.spec_products[p] = {k: v}
+            optelem = fltr # mir_mrs: fltr = ""
 
-    def make_fgs_product_name(self, k, v, tnum):
-        p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_clear"
-        p = p.lower()
-        if p in self.fgs_products:
-            self.fgs_products[p][k] = v
+        slit = f"-{v['FXD_SLIT']}" if v["FXD_SLIT"] not in NANVALS else ""
+        subarray = f"-{v['SUBARRAY']}" if v["SUBARRAY"] not in SUBNAN else ""
+
+        p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}_{tnum}_{v['INSTRUME']}_{optelem}{slit}{subarray}".lower()
+
+        if exptype in self.tso_ami_coron or v["TSOVISIT"] in TRUEVALS:
+            if fltr == 'CLEAR' and grating == 'PRISM':
+                # drop fxd slit from product name
+                p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}_{tnum}_{v['INSTRUME']}_{optelem}{subarray}".lower()
+            self.make_tac_product_name(k, v, p)
+            return
         else:
-            self.fgs_products[p] = {k: v}
+            del v["NEXPOSUR"]
+            if p in self.spec_products:
+                self.spec_products[p][k] = v
+            else:
+                self.spec_products[p] = {k: v}
 
-    def make_tac_product_name(self, k, v, tnum):
-        fltr = f"_{v['FILTER']}"
-        subarray = f"-{v['SUBARRAY']}"
-        pupil = f"-{v['PUPIL']}" if v["PUPIL"] not in ["NaN", "N/A", "NONE"] else ""
-        p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}{fltr}{pupil}{subarray}"
-        p = p.lower()
+    def make_tac_product_name(self, k, v, p):
+        """If an image or spec product meets the required conditions, it is added
+        instead to the TAC products dictionary (Time-series, AMI, Coronagraph).
+        Parameters
+        ----------
+        k : str
+            exposure header key (L1 exposure name)
+        v : dict
+            exposure header data
+        p : str
+            product name
+        """
+        if self.mode != 'fits':
+            del v["NEXPOSUR"]
+        if v['EXP_TYPE'] == 'NRC_CORON':
+            p += '-image3'
         if p in self.tac_products:
             self.tac_products[p][k] = v
         else:
             self.tac_products[p] = {k: v}
 
-    def get_level3_products(self):
-        # determine potential L3 products based on obs, filters, detectors, etc
-        # group by target+obs num+filter (+pupil)
-        l3_types = self.level3_types()
-        targetnames = list(set([v["TARGNAME"] for v in self.exp_headers.values()]))
+    def make_fgs_product_name(self, k, v, p):
+        if p in self.fgs_products:
+            self.fgs_products[p][k] = v
+        else:
+            self.fgs_products[p] = {k: v}
+
+    def fake_target_ids(self):
+        """Assigns a fake target ID using TARGNAME, TARG_RA or GS_MAG. These IDs are fake in that
+        they're unlikely to match actual target IDs assigned later in the pipeline. For source-based exposures, 
+        the id is always "s00001". Exposures with TARGNAME=NaN are grouped by TARG_RA if VISITYPE="PRIME_TARGETED_FIXED"; the remainder by GS_MAG except those where GS_MAG=NaN (typically VISITYPE=PARALLEL_PURE) which default to 't0'.
+        """
+        targ_exptypes = [t for t in self.level3_types if t not in self.source_based]
+        # TARG_RA:  Fixed Targets
+        targra = list(set([
+                np.round(v['TARG_RA'], 6) for v in self.exp_headers.values() \
+                    if v['EXP_TYPE'] in targ_exptypes and \
+                        v['VISITYPE'] == "PRIME_TARGETED_FIXED"
+            ]
+        ))
+        rnums = [f"t{i+1}" for i, _ in enumerate(targra)]
+        rn = dict(zip(targra, rnums))
+
+        # TARGNAME: NON Fixed Target grouping strategy (if TARGNAME)
+        targetnames = list(set(
+            [
+                v['TARGNAME'] for v in self.exp_headers.values() \
+                    if v['EXP_TYPE'] in targ_exptypes and \
+                        v['TARGNAME'] not in NANVALS and \
+                            v['VISITYPE'] != "PRIME_TARGETED_FIXED"
+            ]
+        ))
         tnums = [f"t{i+1}" for i, _ in enumerate(targetnames)]
-        targs = dict(zip(targetnames, tnums))
-        self.img_products = dict()
-        self.spec_products = dict()
-        self.fgs_products = dict()
-        self.tac_products = dict()
-        coron_ami = ["MIR_4QPM", "MIR_LYOT", "NRC_CORON", "NIS_AMI"]
+        tn = dict(zip(targetnames, tnums))
+
+        # GS_MAG : Non-Fixed Targets, No Targname (if GS_MAG)
+        # mainly PRIME_WFSC_ROUTINE, PRIME_WFSC_SENSING_CONTROL, PRIME_UNTARGETED
+        gstargs = list(set(
+            [
+                v['GS_MAG'] for v in self.exp_headers.values() \
+                    if v['GS_MAG'] not in NANVALS and \
+                        v['EXP_TYPE'] in targ_exptypes and \
+                            v['TARGNAME'] not in targetnames and \
+                                v['VISITYPE'] not in ["PRIME_TARGETED_FIXED", "PARALLEL_PURE"]
+            ]
+        ))
+        gnums = [f"t{i+1}" for i, _ in enumerate(gstargs)]
+        gn = dict(zip(gstargs, gnums))
+
+        self.targetnames = targetnames
+        self.tn = tn
+        return tn, rn, gn
+
+    def get_level3_products(self):
+        """Determines potential L3 products based on groups of input exposures 
+        with matching Fits keywords prog+obs+optelem+fxd_slit+subarray. These groups
+        are further subdivided and assigned a fake target ID by TARGNAME, GS_MAG or TARG_RA.
+        """
+        tn, rn, gn = self.fake_target_ids()
 
         for k, v in self.exp_headers.items():
             exp_type = v["EXP_TYPE"]
-            if exp_type in l3_types:
-                tnum = targs.get(v["TARGNAME"])
-                if exp_type in coron_ami or v["TSOVISIT"] in [True, "t", "T", "True"]:
-                    self.make_tac_product_name(k, v, tnum)
-                elif v["INSTRUME"] == "FGS":
-                    if exp_type == "FGS_IMAGE":
-                        self.make_fgs_product_name(k, v, tnum)
-                elif exp_type.split("_")[-1] == "IMAGE":
+            if exp_type in self.level3_types:
+                if exp_type in self.source_based:
+                    tnum = 's00001'         
+                else:
+                    tnum = tn.get(v['TARGNAME'], rn.get(np.round(v['TARG_RA'], 6), gn.get(v['GS_MAG'], 't0')))
+                if "IMAGE" in exp_type.split("_")[-1]:
                     self.make_image_product_name(k, v, tnum)
                 else:
                     self.make_spec_product_name(k, v, tnum)
+        self.verify_target_groups()
+
+    def verify_target_groups(self):
+        """Certain L3 products need to be further defined by their L1 input TARG_RA
+        values in addition to all other parameters. This only affects PRIME_TARGETED_FIXED
+        visit types where TARGNAME is not NaN. If multiple unique TARG_RA/DEC values (rounded to 6 digits) 
+        are identified within the group of exposures, we can assume each TARG grouping is a unique L3 product.
+        """
+        revised = dict()
+        for expmode, data in self.expdata.items():
+            multitra = [
+                k for k, v in data.items() \
+                    if np.unique([np.round(j['TARG_RA'], 6) for j in v.values()]).size > 1 and \
+                        np.unique([np.round(j['TARG_DEC'], 6) for j in v.values()]).size > 1 and \
+                            list(v.values())[0]['VISITYPE'] == 'PRIME_TARGETED_FIXED' and \
+                                list(v.values())[0]['TARGNAME'] in self.targetnames
+            ]
+            if multitra:
+                revised[expmode] = multitra
+
+        tgroups = {k:{} for k in list(revised.keys())}
+        for expmode, products in revised.items():
+            for k in products:
+                tgroups[expmode][k] = dict()
+                v = self.expdata[expmode][k]
+                tname = list(v.values())[0]['TARGNAME']
+                targras = np.unique([np.round(j['TARG_RA'], 6) for j in v.values()])
+                tnum = self.tn.get(tname)
+                for i, t in enumerate(targras):
+                    exposures = [x for x, y in v.items() if np.round(y['TARG_RA'], 6) == t]
+                    k2 = k.replace(tnum, tnum+f"x{i}")
+                    tgroups[expmode][k][k2] = {e:v[e] for e in exposures}
+
+        for expmode in tgroups.keys():
+            expdata = self.expdata[expmode]
+            ks = list(tgroups[expmode].keys())
+            for k in ks:
+                for k2, grp in tgroups[expmode][k].items():
+                    expdata.update({k2:grp})
+                del expdata[k]
 
     def update_fgs(self):
         self.fgspix = dict()
@@ -832,7 +971,24 @@ class JwstCalScrubber(Scrubber):
         self.df = encoder.df[xcols]
         return self.df
 
+    def rename_miri_mrs(self):
+        mirmrs = {}
+        for k, v in self.specpix.items():
+            if k[-1] == '_':
+                bands = ''.join(v['BAND'].split('|'))
+                if bands:
+                    mirmrs[k] = k + f'ch1-{bands.lower()}'
+        for k, v in mirmrs.items():
+            self.specpix[v] = self.specpix.pop(k)
+            self.spec_products[v] = self.spec_products.pop(k)
+
     def get_dtype_keys(self):
+        """Group input metadata into pre-set data types before applying NaNdlers.
+        Returns
+        -------
+        dict
+            key-value pairs of data type and exposure header / column name
+        """
         return dict(
             continuous=[
                 "nexposur",
@@ -857,6 +1013,7 @@ class JwstCalScrubber(Scrubber):
                 "grating",
                 "exp_type",
                 "channel",
+                "band",
                 "subarray",
                 "visitype",
             ],
