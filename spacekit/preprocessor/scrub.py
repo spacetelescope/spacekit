@@ -78,7 +78,6 @@ class Scrubber:
             new = self.col_splitter()
         hc = dict(zip(old, new))
         self.df.rename(hc, axis="columns", inplace=True)
-        self.log.debug(f"New column names: {self.df.columns}")
 
     def drop_nans(self, save_backup=True):
         if self.dropnans is True:
