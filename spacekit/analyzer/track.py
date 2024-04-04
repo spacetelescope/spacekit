@@ -201,3 +201,14 @@ def record_metrics(
     with open(log_file, "w") as lf:
         for k, v in metrics.items():
             lf.write(f"{k}: {v}\n")
+
+
+def xtimer(fn):
+    def inner(*args, **kwargs):
+        start_time = time.perf_counter()
+        to_execute = fn(*args, **kwargs)
+        end_time = time.perf_counter()
+        execution_time = end_time - start_time
+        print('{0} took {1:.8f}s to execute'.format(fn.__name__, execution_time))
+        return to_execute
+    return inner
