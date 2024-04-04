@@ -4,6 +4,8 @@
 new features
 ------------
 
+- `preprocessor.ingest.JwstCalIngest` class and cmdline script for automated training data ingest [#57]
+
 - `extractor.radio.JwstCalRadio` subclass for scraping datasets from MAST using ASN metadata [#51]
 
 - `extractor.scrape.FitsScraper.scrape_dataframe` method added for scraping Fits data from dataframe [#52]
