@@ -20,6 +20,9 @@ enhancements
     - save tx_file name with "-{expmode}" to differentiate between image and spec normalization params
     - rename target attributes: y_img_train, y_img_test to y_reg_train, y_reg_test
 
+- `preprocessor.scrub.JwstCalScrubber` more sophisticated exposure grouping and L3 product naming [#56]
+
+
 bug fixes
 ---------
 
