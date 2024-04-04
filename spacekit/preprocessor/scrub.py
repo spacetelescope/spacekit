@@ -995,7 +995,7 @@ class JwstCalScrubber(Scrubber):
         dtype_keys = self.get_dtype_keys()
         nandler = NaNdler(self.df, dtype_keys, allow_neg=False, verbose=False)
         self.df = nandler.apply_nandlers()
-        # self.group_nircam_detectors()
+        # self.group_nircam_detectors() # FUTURE ENCODINGS
         self.log.info(f"Encoding categorical features [{exp_type}]")
         encoder = JwstEncoder(
             self.df, fkeys=dtype_keys["categorical"], encoding_pairs=self.encoding_pairs
