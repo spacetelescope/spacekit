@@ -108,12 +108,13 @@ class PairEncoder:
         return self.invpairs
 
     def handle_unknowns(self, unknowns):
-        self.log.warning(f"Found unknown values:\n {self.arr[unknowns]}")
-        add_encoding = max(list(self.keypairs.values())) + 1
+        uvals = np.unique(self.arr[unknowns])
+        self.log.warning(f"Found unknown values:\n {uvals}")
         try:
-            self.keypairs[self.arr[unknowns][0]] = add_encoding
-            self.classes_ = list(self.keypairs.keys())
-            self.log.info("Successfully added encoding for unknown values.")
+            for u in uvals:
+                add_encoding = max(list(self.keypairs.values())) + 1
+                self.keypairs[u] = add_encoding
+                self.classes_ = list(self.keypairs.keys())
         except Exception as e:
             self.log.error("Unable to add encoding for unknown value(s)", e)
 
@@ -236,16 +237,17 @@ class CategoricalEncoder:
                 "encoding_pairs attr must be instantiated with key-value pairs"
             )
             return
-        self.log.info("Encoding categorical features...")
+        self.log.debug("Encoding categorical features...")
         for col, name in self.encodings.items():
             keypairs = self.encoding_pairs[col]
             enc = PairEncoder()
             enc.fit_transform(self.df, keypairs, axiscol=col)
             self.df[name] = enc.transformed
-            self.log.debug(f"*** {col} --> {name} ***")
-            self.log.debug(
-                f"\n\nORIGINAL:\n{self.df[col].value_counts()}\n\nENCODED:\n{self.df[name].value_counts()}\n"
-            )
+            if self.verbose:
+                self.log.debug(f"*** {col} --> {name} ***")
+                self.log.debug(
+                    f"\n\nORIGINAL:\n{self.df[col].value_counts()}\n\nENCODED:\n{self.df[name].value_counts()}\n"
+                )
         self.rejoin_original()
         return self.df
 
