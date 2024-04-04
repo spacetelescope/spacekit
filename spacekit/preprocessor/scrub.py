@@ -13,6 +13,11 @@ from spacekit.preprocessor.encode import HstSvmEncoder, JwstEncoder, encode_bool
 from spacekit.logger.log import Logger
 
 
+TRUEVALS = [True, "t", "T", "True", "true", "TRUE"]
+FALSEVALS = [False, 'f', 'F', 'False', 'false', 'FALSE', 'NONE', 'None', 'none', 'nan', 'NaN', None]
+NANVALS = ["NaN", "N/A", "NONE"]
+SUBNAN = NANVALS + ["FULL"]
+
 class Scrubber:
     """Base parent class for preprocessing data. Includes some basic column scrubbing methods for pandas dataframes. The heavy
     lifting is done via subclasses below."""
@@ -53,11 +58,6 @@ class Scrubber:
             self.log.error("data must be dict, dataframe or None")
 
     def extract_matching_columns(self, cols):
-        # print("\n*** Extracting FITS header prefix columns ***")
-        # extracted = []
-        # for c in cols:
-        #     extracted += [col for col in self.df if c in col]
-        # return extracted
         extract = [c for c in cols if c in self.df.columns]
         self.log.info(f"Extract matching columns: {extract}")
         self.df = self.df[extract]
@@ -77,7 +77,6 @@ class Scrubber:
             new = self.col_splitter()
         hc = dict(zip(old, new))
         self.df.rename(hc, axis="columns", inplace=True)
-        self.log.debug(f"New column names: {self.df.columns}")
 
     def drop_nans(self, save_backup=True):
         if self.dropnans is True:
@@ -518,6 +517,12 @@ class HstCalScrubber(Scrubber):
 
 
 class JwstCalScrubber(Scrubber):
+    """Class for invoking initial preprocessing of JWST calibration input data.
+    Parameters
+    ----------
+    Scrubber : class
+        spacekit.preprocessor.scrub.Scrubber parent class
+    """
     def __init__(
         self,
         input_path,
@@ -527,11 +532,36 @@ class JwstCalScrubber(Scrubber):
         dropnans=False,
         save_raw=True,
         encoding_pairs=None,
+        mode='fits',
         **log_kws,
     ):
+        """Initializes a JwstCalScrubber class object.
+        Parameters
+        ----------
+        input_path : str or path
+            path on local disk where L1 input exposures are located
+        data : pd.DataFrame, optional
+            dataframe of exposures to be preprocessed, by default None
+        pfx : str, optional
+            limit scrape search to files starting with a given prefix such as 'jw01018', by default ""
+        sfx : str, optional
+            limit scrape search to files ending with a given suffix, by default "_uncal.fits"
+        dropnans : bool, optional
+            drop null value columns, by default False
+        save_raw : bool, optional
+            save a copy of the dataframe before encoding, by default True
+        encoding_pairs : dict, optional
+            preset key-value pairs for encoding categorical data, by default None
+        mode : str, optional
+            determines how data is scraped and handled ('fits' for files or 'df' for dataframe), by default 'fits'
+        """
         self.input_path = input_path
         self.exp_headers = None
         self.products = dict()
+        self.img_products = dict()
+        self.spec_products = dict()
+        self.tac_products = dict()
+        self.fgs_products = dict()
         self.imgpix = None
         self.specpix = None
         self.tacpix = None
@@ -540,19 +570,30 @@ class JwstCalScrubber(Scrubber):
         self.sfx = sfx
         super().__init__(
             data=data,
-            col_order=self.set_col_order(),
+            col_order=self.xcol_order,
             dropnans=dropnans,
             save_raw=save_raw,
             name="JwstCalScrubber",
             **log_kws,
         )
-        self.xcols = self.set_col_order()
+        self.xcols = self.xcol_order
         self.encoding_pairs = encoding_pairs
+        self.mode = mode
         self.scrape_inputs()
         self.get_level3_products()
         self.pixel_offsets()
 
-    def set_col_order(self):
+    @property
+    def xcol_order(self):
+        return self._xcol_order()
+
+    def _xcol_order(self):
+        """Used for resetting the order of columns in the final preprocessed dataframe.
+        Returns
+        -------
+        list
+            complete list of columns to include for JWST modeling
+        """
         return [
             "instr",
             "detector",
@@ -561,6 +602,7 @@ class JwstCalScrubber(Scrubber):
             "filter",
             "pupil",
             "grating",
+            "fxd_slit",
             "channel",
             "subarray",
             "bkgdtarg",
@@ -568,6 +610,7 @@ class JwstCalScrubber(Scrubber):
             "tsovisit",
             "nexposur",
             "numdthpt",
+            "band",
             "targ_max_offset",
             "offset",
             "max_offset",
@@ -581,22 +624,32 @@ class JwstCalScrubber(Scrubber):
             "crowdfld",
         ]
 
+    @property
     def level3_types(self):
+        return self._level3_types()
+
+    def _level3_types(self):
+        """Exposure types included in Level 3 data processing.
+        Returns
+        -------
+        list
+            Level 3 exposure types
+        """
         return [
             "FGS_IMAGE",
             "MIR_IMAGE",  # (TSO & Non-TSO)
             "NRC_IMAGE",
             "MIR_LRS-FIXEDSLIT",
             "MIR_MRS",
-            "MIR_LYOT",
-            "MIR_4QPM",
+            "MIR_LYOT",  # coron
+            "MIR_4QPM",  # coron
             "MIR_LRS-SLITLESS",  # (only IF TSO)
-            "NRC_CORON",
+            "NRC_CORON",  # coron
             "NRC_WFSS",
             "NRC_TSIMAGE",  # TSO always
             "NRC_TSGRISM",  # TSO always
             "NIS_IMAGE",
-            "NIS_AMI",
+            "NIS_AMI",  # AMI
             "NIS_WFSS",
             "NIS_SOSS",  # (TSO & Non-TSO)
             "NRS_FIXEDSLIT",
@@ -605,101 +658,293 @@ class JwstCalScrubber(Scrubber):
             "NRS_BRIGHTOBJ",  # TSO always
         ]
 
+    @property
+    def tso_ami_coron(self):
+        return self._tso_ami_coron()
+
+    def _tso_ami_coron(self):
+        return [
+            "MIR_4QPM",
+            "MIR_LYOT",
+            "NRC_CORON",
+            "NIS_AMI",
+            "NRS_BRIGHTOBJ",
+            "NRC_TSGRISM",
+            "NRC_TSIMAGE"
+        ]
+
+    @property
+    def source_based(self):
+        return self._source_based()
+
+    def _source_based(self):
+        return ["NRC_WFSS", "NIS_WFSS", "NRS_MSASPEC", "NRS_FIXEDSLIT"]
+
+    @property
+    def expdata(self):
+        return self._expdata()
+
+    def _expdata(self):
+        return dict(
+            IMAGE=self.img_products,
+            SPEC=self.spec_products,
+            TAC=self.tac_products,
+            FGS=self.fgs_products
+        )
+
     def scrape_inputs(self):
+        """Scrape input exposure header metadata from fits files on local disk located at `self.input_path`.
+        """
         self.scraper = JwstFitsScraper(
             self.input_path, data=self.df, pfx=self.pfx, sfx=self.sfx
         )
         self.fpaths = self.scraper.fpaths
-        self.exp_headers = self.scraper.scrape_fits()
+        if self.mode == 'df':
+            self.exp_headers = self.scraper.scrape_dataframe()
+        else:
+            self.exp_headers = self.scraper.scrape_fits()
 
     def pixel_offsets(self):
+        """Generate the pixel offset between exposure reference pixels and the estimated L3 fiducial.
+        """
         sky = SkyTransformer("JWST")
         self.imgpix = sky.calculate_offsets(self.img_products)
         self.products.update(self.imgpix)
         sky.set_keys(ra="RA_REF", dec="DEC_REF")
         self.specpix = sky.calculate_offsets(self.spec_products)
+        self.rename_miri_mrs()
         self.products.update(self.specpix)
+        if self.mode != 'df': # use fits data
+            sky.count_exposures = False
         sky.count_exposures = False  # use fits data
         self.tacpix = sky.calculate_offsets(self.tac_products)
         self.products.update(self.tacpix)
         self.update_fgs()
 
     def make_image_product_name(self, k, v, tnum):
-        if v["PUPIL"] == "CLEAR":
-            p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['PUPIL']}-{v['FILTER']}"
-        elif v["PUPIL"] not in ["NaN", "N/A", "NONE"]:
-            p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['FILTER']}-{v['PUPIL']}"
+        """Parse through exposure metadata to create expected L3 image products.
+        Parameters
+        ----------
+        k : str
+            exposure header key (L1 exposure name)
+        v : dict
+            exposure header data
+        tnum : str
+            number assigned to each unique target (targ_ra) within a program
+        """
+        pupil = f"{v['PUPIL']}" if v["PUPIL"] not in NANVALS else ""
+        fltr = f"{v['FILTER']}" if v["FILTER"] not in NANVALS else ""
+        subarray = f"-{v['SUBARRAY']}" if v["SUBARRAY"] not in SUBNAN else ""
+        if not pupil:
+            optelem = fltr
+        elif pupil in ["CLEAR", "CLEARP", "F405N"]:
+            optelem = f"{pupil}-{fltr}"
         else:
-            p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['FILTER']}"
-        p = p.lower()
-        del v["NEXPOSUR"]
-        if p in self.img_products:
-            self.img_products[p][k] = v
+            optelem =  f"{fltr}-{pupil}"
+
+        if 'WFSC' in v['VISITYPE']:
+            if not subarray:
+                p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}_{tnum}_{v['INSTRUME']}_{optelem}-{v['DETECTOR']}".lower()
+            else: # ignore nrca3 target acquisition exposures (subarray != "FULL")
+                return
         else:
-            self.img_products[p] = {k: v}
+            p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}_{tnum}_{v['INSTRUME']}_{optelem}{subarray}".lower()
+
+        if v['EXP_TYPE'] in self.tso_ami_coron or v["TSOVISIT"] in TRUEVALS:
+            self.make_tac_product_name(k, v, p)
+            return
+        elif v["INSTRUME"] == "FGS":
+            self.make_fgs_product_name(k, v, p)
+            return
+        else:
+            del v["NEXPOSUR"]
+            if p in self.img_products:
+                self.img_products[p][k] = v
+            else:
+                self.img_products[p] = {k: v}
 
     def make_spec_product_name(self, k, v, tnum):
-        if v["EXP_TYPE"] == "MIR_LRS-SLITLESS" and v["TSOVISIT"] is False:
+        """Parse through exposure metadata to create expected L3 spectroscopy products. 
+        NOTE: Although the pipeline would create multiple products for either source-based exposures
+        or (channel-based) MIRI MRS exposures, only one product name will be created since the model is
+        concerned with RAM, i.e. how large the memory footprint is to calibrate a set of input exposures.
+        Source-based products use "s00001" for the source; MIR_MRS exposures default to "ch4" for channel.
+        Parameters
+        ----------
+        k : str
+            exposure header key (L1 exposure name)
+        v : dict
+            exposure header data
+        tnum : str
+            number assigned to each unique target (targ_ra) within a program
+        """
+        exptype = v["EXP_TYPE"]
+        if exptype == "MIR_LRS-SLITLESS" and v["TSOVISIT"] in FALSEVALS:
+            # L3 product only if TSO
             return
-        fltr = f"_{v['FILTER']}" if v["FILTER"] not in ["NaN", "N/A", "NONE"] else ""
+        if exptype in self.source_based:
+            tnum = "s00001" # source-based exposure naming convention
+        pupil = f"{v['PUPIL']}" if v["PUPIL"] not in NANVALS else ""
+        fltr = f"{v['FILTER']}" if v["FILTER"] not in NANVALS else ""
         grating = (
-            f"_{v['GRATING']}" if v["GRATING"] not in ["NaN", "N/A", "NONE"] else ""
+            f"{v['GRATING']}" if v["GRATING"] not in NANVALS else ""
         )
-        if fltr and grating:
-            grating = f"-{v['GRATING']}"
-        p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}{fltr}{grating}"
-        p = p.lower()
-        del v["NEXPOSUR"]
-        if p in self.spec_products:
-            self.spec_products[p][k] = v
+        if pupil:
+            optelem = f"{fltr}-{pupil}" if exptype in ["NRC_WFSS", "NIS_SOSS", "NRC_TSGRISM"] else f"{pupil}-{fltr}"
+        elif grating: 
+            optelem = f"{grating}-{fltr}" if exptype == "NRS_IFU" else f"{fltr}-{grating}"
         else:
-            self.spec_products[p] = {k: v}
+            optelem = fltr # mir_mrs: fltr = ""
 
-    def make_fgs_product_name(self, k, v, tnum):
-        p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_clear"
-        p = p.lower()
-        if p in self.fgs_products:
-            self.fgs_products[p][k] = v
+        slit = f"-{v['FXD_SLIT']}" if v["FXD_SLIT"] not in NANVALS else ""
+        subarray = f"-{v['SUBARRAY']}" if v["SUBARRAY"] not in SUBNAN else ""
+
+        p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}_{tnum}_{v['INSTRUME']}_{optelem}{slit}{subarray}".lower()
+
+        if exptype in self.tso_ami_coron or v["TSOVISIT"] in TRUEVALS:
+            if fltr == 'CLEAR' and grating == 'PRISM':
+                # drop fxd slit from product name
+                p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}_{tnum}_{v['INSTRUME']}_{optelem}{subarray}".lower()
+            self.make_tac_product_name(k, v, p)
+            return
         else:
-            self.fgs_products[p] = {k: v}
+            del v["NEXPOSUR"]
+            if p in self.spec_products:
+                self.spec_products[p][k] = v
+            else:
+                self.spec_products[p] = {k: v}
 
-    def make_tac_product_name(self, k, v, tnum):
-        fltr = f"_{v['FILTER']}"
-        subarray = f"-{v['SUBARRAY']}"
-        pupil = f"-{v['PUPIL']}" if v["PUPIL"] not in ["NaN", "N/A", "NONE"] else ""
-        p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}{fltr}{pupil}{subarray}"
-        p = p.lower()
+    def make_tac_product_name(self, k, v, p):
+        """If an image or spec product meets the required conditions, it is added
+        instead to the TAC products dictionary (Time-series, AMI, Coronagraph).
+        Parameters
+        ----------
+        k : str
+            exposure header key (L1 exposure name)
+        v : dict
+            exposure header data
+        p : str
+            product name
+        """
+        if self.mode != 'fits':
+            del v["NEXPOSUR"]
+        if v['EXP_TYPE'] == 'NRC_CORON':
+            p += '-image3'
         if p in self.tac_products:
             self.tac_products[p][k] = v
         else:
             self.tac_products[p] = {k: v}
 
-    def get_level3_products(self):
-        # determine potential L3 products based on obs, filters, detectors, etc
-        # group by target+obs num+filter (+pupil)
-        l3_types = self.level3_types()
-        targetnames = list(set([v["TARGNAME"] for v in self.exp_headers.values()]))
+    def make_fgs_product_name(self, k, v, p):
+        if p in self.fgs_products:
+            self.fgs_products[p][k] = v
+        else:
+            self.fgs_products[p] = {k: v}
+
+    def fake_target_ids(self):
+        """Assigns a fake target ID using TARGNAME, TARG_RA or GS_MAG. These IDs are fake in that
+        they're unlikely to match actual target IDs assigned later in the pipeline. For source-based exposures, 
+        the id is always "s00001". Exposures with TARGNAME=NaN are grouped by TARG_RA if VISITYPE="PRIME_TARGETED_FIXED"; the remainder by GS_MAG except those where GS_MAG=NaN (typically VISITYPE=PARALLEL_PURE) which default to 't0'.
+        """
+        targ_exptypes = [t for t in self.level3_types if t not in self.source_based]
+        # TARG_RA:  Fixed Targets
+        targra = list(set([
+                np.round(v['TARG_RA'], 6) for v in self.exp_headers.values() \
+                    if v['EXP_TYPE'] in targ_exptypes and \
+                        v['VISITYPE'] == "PRIME_TARGETED_FIXED"
+            ]
+        ))
+        rnums = [f"t{i+1}" for i, _ in enumerate(targra)]
+        rn = dict(zip(targra, rnums))
+
+        # TARGNAME: NON Fixed Target grouping strategy (if TARGNAME)
+        targetnames = list(set(
+            [
+                v['TARGNAME'] for v in self.exp_headers.values() \
+                    if v['EXP_TYPE'] in targ_exptypes and \
+                        v['TARGNAME'] not in NANVALS and \
+                            v['VISITYPE'] != "PRIME_TARGETED_FIXED"
+            ]
+        ))
         tnums = [f"t{i+1}" for i, _ in enumerate(targetnames)]
-        targs = dict(zip(targetnames, tnums))
-        self.img_products = dict()
-        self.spec_products = dict()
-        self.fgs_products = dict()
-        self.tac_products = dict()
-        coron_ami = ["MIR_4QPM", "MIR_LYOT", "NRC_CORON", "NIS_AMI"]
+        tn = dict(zip(targetnames, tnums))
+
+        # GS_MAG : Non-Fixed Targets, No Targname (if GS_MAG)
+        # mainly PRIME_WFSC_ROUTINE, PRIME_WFSC_SENSING_CONTROL, PRIME_UNTARGETED
+        gstargs = list(set(
+            [
+                v['GS_MAG'] for v in self.exp_headers.values() \
+                    if v['GS_MAG'] not in NANVALS and \
+                        v['EXP_TYPE'] in targ_exptypes and \
+                            v['TARGNAME'] not in targetnames and \
+                                v['VISITYPE'] not in ["PRIME_TARGETED_FIXED", "PARALLEL_PURE"]
+            ]
+        ))
+        gnums = [f"t{i+1}" for i, _ in enumerate(gstargs)]
+        gn = dict(zip(gstargs, gnums))
+
+        self.targetnames = targetnames
+        self.tn = tn
+        return tn, rn, gn
+
+    def get_level3_products(self):
+        """Determines potential L3 products based on groups of input exposures 
+        with matching Fits keywords prog+obs+optelem+fxd_slit+subarray. These groups
+        are further subdivided and assigned a fake target ID by TARGNAME, GS_MAG or TARG_RA.
+        """
+        tn, rn, gn = self.fake_target_ids()
 
         for k, v in self.exp_headers.items():
             exp_type = v["EXP_TYPE"]
-            if exp_type in l3_types:
-                tnum = targs.get(v["TARGNAME"])
-                if exp_type in coron_ami or v["TSOVISIT"] in [True, "t", "T", "True"]:
-                    self.make_tac_product_name(k, v, tnum)
-                elif v["INSTRUME"] == "FGS":
-                    if exp_type == "FGS_IMAGE":
-                        self.make_fgs_product_name(k, v, tnum)
-                elif exp_type.split("_")[-1] == "IMAGE":
+            if exp_type in self.level3_types:
+                if exp_type in self.source_based:
+                    tnum = 's00001'         
+                else:
+                    tnum = tn.get(v['TARGNAME'], rn.get(np.round(v['TARG_RA'], 6), gn.get(v['GS_MAG'], 't0')))
+                if "IMAGE" in exp_type.split("_")[-1]:
                     self.make_image_product_name(k, v, tnum)
                 else:
                     self.make_spec_product_name(k, v, tnum)
+        self.verify_target_groups()
+
+    def verify_target_groups(self):
+        """Certain L3 products need to be further defined by their L1 input TARG_RA
+        values in addition to all other parameters. This only affects PRIME_TARGETED_FIXED
+        visit types where TARGNAME is not NaN. If multiple unique TARG_RA/DEC values (rounded to 6 digits) 
+        are identified within the group of exposures, we can assume each TARG grouping is a unique L3 product.
+        """
+        revised = dict()
+        for expmode, data in self.expdata.items():
+            multitra = [
+                k for k, v in data.items() \
+                    if np.unique([np.round(j['TARG_RA'], 6) for j in v.values()]).size > 1 and \
+                        np.unique([np.round(j['TARG_DEC'], 6) for j in v.values()]).size > 1 and \
+                            list(v.values())[0]['VISITYPE'] == 'PRIME_TARGETED_FIXED' and \
+                                list(v.values())[0]['TARGNAME'] in self.targetnames
+            ]
+            if multitra:
+                revised[expmode] = multitra
+
+        tgroups = {k:{} for k in list(revised.keys())}
+        for expmode, products in revised.items():
+            for k in products:
+                tgroups[expmode][k] = dict()
+                v = self.expdata[expmode][k]
+                tname = list(v.values())[0]['TARGNAME']
+                targras = np.unique([np.round(j['TARG_RA'], 6) for j in v.values()])
+                tnum = self.tn.get(tname)
+                for i, t in enumerate(targras):
+                    exposures = [x for x, y in v.items() if np.round(y['TARG_RA'], 6) == t]
+                    k2 = k.replace(tnum, tnum+f"x{i}")
+                    tgroups[expmode][k][k2] = {e:v[e] for e in exposures}
+
+        for expmode in tgroups.keys():
+            expdata = self.expdata[expmode]
+            ks = list(tgroups[expmode].keys())
+            for k in ks:
+                for k2, grp in tgroups[expmode][k].items():
+                    expdata.update({k2:grp})
+                del expdata[k]
 
     def update_fgs(self):
         self.fgspix = dict()
@@ -712,7 +957,14 @@ class JwstCalScrubber(Scrubber):
             if product not in self.products:
                 self.products[product] = exp_data
 
+    @property
     def input_data(self):
+        """Preprocessed input data grouped by exposure type
+        Returns
+        -------
+        dict
+            input data grouped by exp_type (IMAGE, SPEC, FGS, TAC)
+        """
         return dict(
             IMAGE=self.imgpix,
             SPEC=self.specpix,
@@ -721,9 +973,20 @@ class JwstCalScrubber(Scrubber):
         )
 
     def scrub_inputs(self, exp_type="IMAGE"):
-        data = self.input_data()[exp_type]
+        """Main calling function for preprocessing input exposures of a given exposure type.
+        Parameters
+        ----------
+        exp_type : str, optional
+            Exposure type, by default "IMAGE"
+        Returns
+        -------
+        pd.DataFrame
+            preprocessed data with renamed columns, NaNs scrubbed and categorical data encoded
+        """
+        data = self.input_data[exp_type]
         if not data:
             return None
+        # Set df as attr to utilize super methods
         self.df = pd.DataFrame.from_dict(data, orient="index")
         super().rename_cols(new=[c.lower() for c in self.df.columns])
         super().rename_cols(old=["instrume"], new=["instr"])
@@ -732,6 +995,8 @@ class JwstCalScrubber(Scrubber):
         dtype_keys = self.get_dtype_keys()
         nandler = NaNdler(self.df, dtype_keys, allow_neg=False, verbose=False)
         self.df = nandler.apply_nandlers()
+        # self.group_nircam_detectors() # FUTURE ENCODINGS
+        self.log.info(f"Encoding categorical features [{exp_type}]")
         encoder = JwstEncoder(
             self.df, fkeys=dtype_keys["categorical"], encoding_pairs=self.encoding_pairs
         )
@@ -739,7 +1004,37 @@ class JwstCalScrubber(Scrubber):
         self.df = encoder.df[xcols]
         return self.df
 
+    def group_nircam_detectors(self):
+        detectors = list(self.df['detector'].unique())
+        nrca = [d for d in detectors if 'NRCA' in d and 'NRCB' not in d]
+        nrcb = [d for d in detectors if 'NRCB' in d and 'NRCA' not in d]
+        nrcs = [d for d in nrca + nrcb if '|' not in d] # single (any)
+        multi_nrca = [d for d in nrca if '|' in d] # multiple A
+        multi_nrcb = [d for d in nrcb if '|' in d] # multiple B
+        multi_nrcab = [d for d in detectors if 'NRCA' in d and 'NRCB' in d] # A + B
+        self.df.loc[self.df['detector'].isin(nrcs), 'detector'] = 'NRC-S'
+        self.df.loc[self.df['detector'].isin(multi_nrca), 'detector'] = 'NRCA-M'
+        self.df.loc[self.df['detector'].isin(multi_nrcb), 'detector'] = 'NRCB-M'
+        self.df.loc[self.df['detector'].isin(multi_nrcab), 'detector'] = 'NRC-M'
+
+    def rename_miri_mrs(self):
+        mirmrs = {}
+        for k, v in self.specpix.items():
+            if k[-1] == '_':
+                bands = ''.join(v['BAND'].split('|'))
+                if bands:
+                    mirmrs[k] = k + f'ch1-{bands.lower()}'
+        for k, v in mirmrs.items():
+            self.specpix[v] = self.specpix.pop(k)
+            self.spec_products[v] = self.spec_products.pop(k)
+
     def get_dtype_keys(self):
+        """Group input metadata into pre-set data types before applying NaNdlers.
+        Returns
+        -------
+        dict
+            key-value pairs of data type and exposure header / column name
+        """
         return dict(
             continuous=[
                 "nexposur",
@@ -764,6 +1059,7 @@ class JwstCalScrubber(Scrubber):
                 "grating",
                 "exp_type",
                 "channel",
+                "band",
                 "subarray",
                 "visitype",
             ],
@@ -814,7 +1110,7 @@ class NaNdler:
                 print(f"\nNaNs to be NaNdled:\n{self.df[cols].isna().sum()}\n")
             df_cat = self.df[cols].copy()
             for col in cols:
-                df_cat.loc[df_cat[col].isin(["N/A", "NaN"]), col] = np.nan
+                df_cat.loc[df_cat[col].isin(["N/A", "NaN", "NAN", "nan"]), col] = np.nan
                 if df_cat[col].isna().sum() > 0:
                     truevals = list(df_cat[col].value_counts().index)
                     df_cat[col] = df_cat[col].apply(

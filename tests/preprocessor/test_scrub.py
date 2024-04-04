@@ -3,7 +3,7 @@ from spacekit.preprocessor.scrub import HstSvmScrubber, JwstCalScrubber
 from spacekit.skopes.jwst.cal.config import KEYPAIR_DATA
 import os
 
-SCRUBBED_COLS = [
+SVM_SCRUBBED_COLS = [
     "detector",
     "dataset",
     "targname",
@@ -16,7 +16,7 @@ SCRUBBED_COLS = [
     "gaia",
 ]
 
-FINAL_COLS = [
+SVM_FINAL_COLS = [
     "numexp",
     "rms_ra",
     "rms_dec",
@@ -56,6 +56,7 @@ JWST_SCRUBBED_COLS = [
     'filter',
     'pupil',
     'grating',
+    'fxd_slit',
     'channel',
     'subarray',
     'bkgdtarg',
@@ -63,6 +64,7 @@ JWST_SCRUBBED_COLS = [
     'tsovisit',
     'nexposur',
     'numdthpt',
+    'band',
     'targ_max_offset',
     'offset',
     'max_offset',
@@ -92,7 +94,7 @@ def test_svm_scrubber(raw_svm_data, single_visit_path):
     assert scrubber.df.shape[1] == 9
     scrubber.preprocess_data()
     assert scrubber.df.shape[1] == 10
-    assert list(scrubber.df.columns) == FINAL_COLS
+    assert list(scrubber.df.columns) == SVM_FINAL_COLS
     assert os.path.exists(scrubber.data_path)
     base_path = os.path.dirname(scrubber.data_path)
     raw_file = "raw_" + os.path.basename(scrubber.data_path)
@@ -105,7 +107,7 @@ def test_svm_scrubber(raw_svm_data, single_visit_path):
 @mark.svm
 @mark.preprocessor
 @mark.scrub
-def test_scrub_cols(raw_svm_data, single_visit_path):
+def test_svm_scrub_cols(raw_svm_data, single_visit_path):
     scrubber = HstSvmScrubber(
         single_visit_path,
         data=raw_svm_data,
@@ -115,7 +117,7 @@ def test_scrub_cols(raw_svm_data, single_visit_path):
     )
     scrubber.scrub_columns()
     assert scrubber.df.shape == (1, 10)
-    for col in SCRUBBED_COLS:
+    for col in SVM_SCRUBBED_COLS:
         if col in list(scrubber.df.columns):
             assert True
         else:
