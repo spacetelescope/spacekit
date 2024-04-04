@@ -676,7 +676,7 @@ class JwstCalIngest:
             self.df.drop(l3.index, axis=0, inplace=True)
             self.log.info(f"Training file updated and {len(l3)} L3 repro products removed from dataframe.")
         else:
-            self.log.warning(f"0 repro candidates matched.")
+            self.log.warning("0 repro candidates matched.")
 
     def save_training_sets(self):
         for exp in self.exp_types:
