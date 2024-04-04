@@ -48,6 +48,7 @@ class SkyTransformer:
         * instr="INSTRUME"
         * detector="DETECTOR"
         * channel="CHANNEL"
+        * band="BAND"
         * exp_type="EXP_TYPE"
         * ra="CRVAL1" / could also use "RA_REF"
         * dec="CRVAL2" / could also use "DEC_REF"
@@ -55,9 +56,12 @@ class SkyTransformer:
         self.instr_key = kwargs.get("instr", "INSTRUME")
         self.detector_key = kwargs.get("detector", "DETECTOR")
         self.channel_key = kwargs.get("channel", "CHANNEL")
+        self.band_key = kwargs.get("band", "BAND")
         self.exp_key = kwargs.get("exp_type", "EXP_TYPE")
         self.ra_key = kwargs.get("ra", "CRVAL1")
         self.dec_key = kwargs.get("dec", "CRVAL2")
+        self.ra_key2 = "RA_REF" if self.ra_key == "CRVAL1" else "CRVAL1"
+        self.dec_key2 = "DEC_REF" if self.dec_key == "CRVAL2" else "CRVAL2"
 
     def calculate_offsets(self, product_exp_headers):
         """Given key-value pairs of header info from a set of input exposures,
@@ -89,19 +93,40 @@ class SkyTransformer:
             product_refpix[product] = self.get_pixel_offsets(exp_headers)
         return product_refpix
 
+    def validate_fiducial(self, fiducial, exp):
+        (ra, dec) = fiducial
+        if isinstance(ra, float) and isinstance(dec, float):
+            return True
+        else:
+            warning_message = f"Invalid RA/DEC fiducial value ({ra}, {dec}) in {str(exp)}"
+            if exp == "TARG_RA/TARG_DEC":
+                self.log.debug(warning_message)
+            else:
+                self.log.warning(warning_message)
+            return False
+
     def get_pixel_offsets(self, exp_data):
         if self.count_exposures is True:
             refpix = dict(NEXPOSUR=len(list(exp_data.keys())))
         else:
             refpix = dict()
-        offsets, targ_offsets, detectors = [], [], []
+        offsets, targ_offsets, detectors, bands = [], [], [], []
         targ_radec = None
+        bad_fiducials = {}
         for exp, data in exp_data.items():
+            fiducial = (data.get(self.ra_key, self.ra_key2), data.get(self.dec_key, self.dec_key2))
+            # only need to set once bc consisent across exposures
+            if targ_radec is None:
+                targ_radec = (data.get("TARG_RA", ''), data.get("TARG_DEC", ''))
+            # validate fiducials
+            if self.validate_fiducial(fiducial, exp) is False:
+                bad_fiducials[exp] = str(exp)
+                continue
             instr = data[self.instr_key]
             detector = data.get(self.detector_key, None)
             channel = data.get(self.channel_key, None)
+            band = data.get(self.band_key, None)
             exp_type = data.get(self.exp_key, None)
-            fiducial = (data[self.ra_key], data[self.dec_key])
             scale = self.get_scale(
                 instr, channel=channel, detector=detector, exp_type=exp_type
             )
@@ -115,25 +140,37 @@ class SkyTransformer:
                     scale=scale,
                 )
             )
-            if targ_radec is None:
-                targ_radec = (data["TARG_RA"], data["TARG_DEC"])
             if detector is not None and detector.upper() not in detectors:
                 detectors.append(detector.upper())
+            # MIRI MRS: determine bands used: short, long, shortmedium, shortmediumlong
+            if band is not None:
+                bands.extend([b.upper() for b in band.split('-') if b.upper() not in bands])
+        # Throw out any exposures with invalid data
+        for k in bad_fiducials.keys():
+            del exp_data[k]
+            if 'NEXPOSUR' in refpix:
+                refpix['NEXPOSUR'] -= 1
+        # if all exposures were bad, return empty dict
+        if len(exp_data) < 1:
+            return {}
         # find fiducial (final product)
         footprints = [v["footprint"] for v in exp_data.values()]
         lon_fiducial, lat_fiducial = self.estimate_fiducial(footprints)
         refpix["fx_ra"], refpix["fy_dec"] = lon_fiducial, lat_fiducial
         # pixel sky sep offsets from estimated fiducial
         pcoord = SkyCoord(lon_fiducial, lat_fiducial, unit="deg")
-        tcoord = SkyCoord(targ_radec[0], targ_radec[1], unit="deg")
+        tcoord = None
+        if self.validate_fiducial(targ_radec, 'TARG_RA/TARG_DEC') is True:
+            tcoord = SkyCoord(targ_radec[0], targ_radec[1], unit="deg")
         for exp, data in exp_data.items():
             (ra, dec) = data["fiducial"]
             pixel = self.pixel_sky_separation(ra, dec, pcoord, data["scale"])
-            targ_pixel = self.pixel_sky_separation(ra, dec, tcoord, data["scale"])
             exp_data[exp]["offset"] = pixel
-            exp_data[exp]["targ_offset"] = targ_pixel
             offsets.append(pixel)
-            targ_offsets.append(targ_pixel)
+            if tcoord:
+                targ_pixel = self.pixel_sky_separation(ra, dec, tcoord, data["scale"])
+                exp_data[exp]["targ_offset"] = targ_pixel
+                targ_offsets.append(targ_pixel)
         # fill in metadata for product using reference exposure (usually vals are equal across inputs)
         ref_exp = [
             k for k, v in exp_data.items() if v["offset"] == np.min(np.asarray(offsets))
@@ -141,7 +178,7 @@ class SkyTransformer:
         keys = [
             k
             for k in list(exp_data[ref_exp].keys())
-            if k not in ["DETECTOR", "footprint", "fiducial"]
+            if k not in ["DETECTOR", "BAND", "footprint", "fiducial"]
         ]
         for k in keys:
             refpix[k] = exp_data[ref_exp][k]
@@ -149,18 +186,31 @@ class SkyTransformer:
             refpix["DETECTOR"] = "|".join(sorted([d for d in detectors]))
         else:
             refpix["DETECTOR"] = detectors[0]
+        if len(bands) > 1:
+            refpix["BAND"] = "|".join(sorted([b for b in bands], reverse=True))
+        elif len(bands) == 1:
+            refpix["BAND"] = bands[0]
+        else:
+            refpix["BAND"] = 'NONE'
         # offset statistics
         offset_stats = self.offset_statistics(offsets)
-        targ_offset_stats = self.offset_statistics(targ_offsets, pfx="targ_")
         refpix.update(offset_stats)
-        refpix.update(targ_offset_stats)
+        if targ_offsets:
+            targ_offset_stats = self.offset_statistics(targ_offsets, pfx="targ_")
+            refpix.update(targ_offset_stats)
         # experimental
-        refpix["t_offset"] = self.pixel_sky_separation(
-            refpix["TARG_RA"], refpix["TARG_DEC"], pcoord, refpix["scale"]
-        )
-        refpix["gs_offset"] = self.pixel_sky_separation(
-            refpix["GS_RA"], refpix["GS_DEC"], pcoord, refpix["scale"]
-        )
+        try:
+            # set default to 0.0 as fallback if calculation fails
+            refpix["t_offset"] = 0.0
+            refpix["gs_offset"] = 0.0
+            refpix["gs_offset"] = self.pixel_sky_separation(
+                refpix["GS_RA"], refpix["GS_DEC"], pcoord, refpix["scale"]
+            )
+            refpix["t_offset"] = self.pixel_sky_separation(
+                refpix["TARG_RA"], refpix["TARG_DEC"], pcoord, refpix["scale"]
+            )
+        except ValueError:
+            self.log.debug("TARG/GS RA DEC vals missing or NaN - setting to 0.0")
         return refpix
 
     def image_pixel_scales(self):
@@ -283,7 +333,7 @@ class Transformer:
         name="Transformer",
         **log_kws,
     ):
-        """Instantiates a Transformer class object. Unless the `cols` attribute is empty, it will automatically instantiate some
+        """Initializes a Transformer class object. Unless the `cols` attribute is empty, it will automatically instantiate some
         of the other attributes needed to transform the data. Using the Transformer subclasses instead is recommended (this
         class is mainly used as an object with general methods to load or save the transform data as well as instantiate some of
         the initial attributes).
@@ -359,7 +409,7 @@ class Transformer:
         else:
             return None
 
-    def save_transformer_data(self, tx=None):
+    def save_transformer_data(self, tx=None, fname="tx_data.json"):
         """Save the transform metadata to a json file on local disk. Typical use-case is when you need to transform new inputs
         prior to generating a prediction but don't have access to the original dataset used to train the model.
 
@@ -378,7 +428,7 @@ class Transformer:
             self.output_path = os.getcwd()
         else:
             os.makedirs(self.output_path, exist_ok=True)
-        self.tx_file = f"{self.output_path}/tx_data.json"
+        self.tx_file = f"{self.output_path}/{fname}"
         with open(self.tx_file, "w") as j:
             if tx is None:
                 json.dump(self.tx_data, j)
@@ -537,6 +587,7 @@ class PowerX(Transformer):
         tx_data=None,
         tx_file=None,
         save_tx=False,
+        save_as="tx_data.json",
         output_path=None,
         join_data=1,
         rename="_scl",
@@ -555,6 +606,7 @@ class PowerX(Transformer):
             name="PowerX",
             **log_kws,
         )
+        self.fname = save_as
         self.calculate_power()
         self.normalized = self.apply_power_matrix()
         self.Xt = super().normalizeX(self.normalized)
@@ -627,7 +679,7 @@ class PowerX(Transformer):
                 tx2 = {}
                 for k, v in self.tx_data.items():
                     tx2[k] = list(v)
-                _ = super().save_transformer_data(tx=tx2)
+                _ = super().save_transformer_data(tx=tx2, fname=self.fname)
                 del tx2
         return self
 
