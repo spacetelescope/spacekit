@@ -107,14 +107,14 @@ class Prep:
         return encode_target_data(y_train, y_test)
 
     def apply_normalization(
-        self, T=PowerX, cols=[], ncols=[], rename=None, join=1, save_tx=True
+        self, T=PowerX, cols=[], ncols=[], rename=None, join=1, save_tx=True, save_as="tx_data.json",
     ):
         if len(cols) == 0:
             cols = self.X_cols
         if len(ncols) == 0:
             ncols = [i for i, c in enumerate(self.X_cols) if c in cols]
         self.Tx = T(
-            self.X, cols, ncols=ncols, save_tx=save_tx, rename=rename, join_data=join
+            self.X, cols, ncols=ncols, save_tx=save_tx, rename=rename, join_data=join, save_as=save_as,
         )
         self.X_train = T(
             self.X_train,
