@@ -10,7 +10,7 @@ from spacekit.extractor.scrape import JsonScraper
 from spacekit.preprocessor.scrub import HstSvmScrubber, JwstCalScrubber
 from spacekit.generator.draw import DrawMosaics
 from spacekit.skopes.jwst.cal.config import KEYPAIR_DATA, KEYPAIR_DATA_V2, L3_TYPES
-from spacekit.analyzer.track import timer, record_metrics
+from spacekit.analyzer.track import timer, record_metrics, xtimer
 
 
 class SvmAlignmentIngest:
@@ -285,6 +285,7 @@ class JwstCalIngest:
         self.rempath =  self.outpath + "/rem-{}.csv"
         self.rawpath = self.outpath + "/raw-{}.csv"
 
+    @xtimer
     def run_ingest(self, save_l1=True):
         self.ingest_data()
         if len(self.files) == 0:
@@ -495,10 +496,11 @@ class JwstCalIngest:
         self.df.drop('mosaic', axis=1, inplace=True)
 
     def scrub_exposures(self):
+        KEYPAIR_DATA.update(KEYPAIR_DATA_V2) # TEMP
         self.scrb = JwstCalScrubber(
                 self.input_path,
                 data=self.df.loc[self.df[self.dag].isin(self.l1_dags)],
-                encoding_pairs=KEYPAIR_DATA.update(KEYPAIR_DATA_V2),
+                encoding_pairs=KEYPAIR_DATA,
                 mode='df'
         )
         for exp_type in self.exp_types:
