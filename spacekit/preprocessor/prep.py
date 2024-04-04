@@ -107,14 +107,14 @@ class Prep:
         return encode_target_data(y_train, y_test)
 
     def apply_normalization(
-        self, T=PowerX, cols=[], ncols=[], rename=None, join=1, save_tx=True
+        self, T=PowerX, cols=[], ncols=[], rename=None, join=1, save_tx=True, save_as="tx_data.json",
     ):
         if len(cols) == 0:
             cols = self.X_cols
         if len(ncols) == 0:
             ncols = [i for i, c in enumerate(self.X_cols) if c in cols]
         self.Tx = T(
-            self.X, cols, ncols=ncols, save_tx=save_tx, rename=rename, join_data=join
+            self.X, cols, ncols=ncols, save_tx=save_tx, rename=rename, join_data=join, save_as=save_as,
         )
         self.X_train = T(
             self.X_train,
@@ -248,10 +248,11 @@ class JwstCalPrep(Prep):
             encode_targets=encode_targets,
         )
         self.target_data = data[self.y_target]
-        self.y_img_train = None
-        self.y_img_test = None
+        self.y_reg_train = None
+        self.y_reg_test = None
         self.y_bin_train = None
         self.y_bin_test = None
+
 
     def set_X_cols(self, X_cols):
         if len(X_cols) == 0:
@@ -281,13 +282,13 @@ class JwstCalPrep(Prep):
                     "detector",
                     "visitype",
                     "filter",
+                    "pupil",
                     "grating",
                     "subarray",
-                    "bkgdtarg",
-                    "is_imprt",
+                    "band",
                     "nexposur",
                     "numdthpt",
-                    "max_targ_offset",
+                    "targ_max_offset",
                     "offset",
                     "max_offset",
                     "mean_offset",
@@ -317,7 +318,7 @@ class JwstCalPrep(Prep):
                     "subarray",
                     "nexposur",
                     "numdthpt",
-                    "max_targ_offset",
+                    "targ_max_offset",
                     "offset",
                     "max_offset",
                     "mean_offset",
@@ -341,6 +342,15 @@ class JwstCalPrep(Prep):
                     "err_offset",
                     "sigma1_mean",
                 ],
+                spec=[
+                    "targ_max_offset",
+                    "offset",
+                    "max_offset",
+                    "mean_offset",
+                    "sigma_offset",
+                    "err_offset",
+                    "sigma1_mean",
+                ]
             )[self.exp_mode]
         self.norm_cols = [c for c in norm_cols if c in self.X_cols]
 
@@ -355,14 +365,15 @@ class JwstCalPrep(Prep):
         else:
             super().stratify_split(y_target=self.y_target, stratify=False)
         self.X_train, self.X_test = super().get_X_train_test()
-        super().apply_normalization(T=PowerX, cols=self.norm_cols, rename=None, join=1)
+        fname = f"tx_data-{self.exp_mode}.json"
+        super().apply_normalization(T=PowerX, cols=self.norm_cols, rename=None, join=1, save_as=fname)
         self.X_train = self.X_train[self.X_cols]
         self.X_test = self.X_test[self.X_cols]
 
     def prep_targets(self):
         """main calling function"""
         y_train, y_test = super().get_y_train_test(self.y_target)
-        self.y_img_train, self.y_img_test = y_tensors(
+        self.y_reg_train, self.y_reg_test = y_tensors(
             y_train.values, y_test.values, reshape=True
         )
 
