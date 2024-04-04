@@ -10,6 +10,11 @@ new features
 
 - `extractor.scrape.FitsScraper.scrape_dataframe` method added for scraping Fits data from dataframe [#52]
 
+bug fixes
+---------
+
+- `preprocessor.encode.PairEncoder.handle_unknowns` create single new encoding value per unidentified variable [#53]
+
 
 1.0.1 (2024-04-03)
 ==================
