@@ -23,7 +23,7 @@ def test_jwst_cal_predict(jwstcal_input_path):
     assert len(jcal.input_data['IMAGE']) == 3
     assert jcal.inputs['IMAGE'].shape == (3, 18)
     for k, v in jcal.predictions.items():
-        instr = k.split("_")[1]
+        instr = k.split("_")[2]
         assert EXPECTED[instr]["gbSize"] == v["gbSize"]
 
 
@@ -33,5 +33,5 @@ def test_jwst_cal_predict_handler(jwstcal_input_path):
     jcal = predict_handler(jwstcal_input_path)
     assert len(jcal.predictions) == 3
     for k, v in jcal.predictions.items():
-        instr = k.split("_")[1]
+        instr = k.split("_")[2]
         assert EXPECTED[instr]["gbSize"] == v["gbSize"]
