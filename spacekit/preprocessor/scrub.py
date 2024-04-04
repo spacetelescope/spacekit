@@ -1,6 +1,5 @@
 import os
 import glob
-import re
 import time
 import pandas as pd
 import numpy as np
@@ -944,7 +943,14 @@ class JwstCalScrubber(Scrubber):
             if product not in self.products:
                 self.products[product] = exp_data
 
+    @property
     def input_data(self):
+        """Preprocessed input data grouped by exposure type
+        Returns
+        -------
+        dict
+            input data grouped by exp_type (IMAGE, SPEC, FGS, TAC)
+        """
         return dict(
             IMAGE=self.imgpix,
             SPEC=self.specpix,
@@ -953,9 +959,20 @@ class JwstCalScrubber(Scrubber):
         )
 
     def scrub_inputs(self, exp_type="IMAGE"):
-        data = self.input_data()[exp_type]
+        """Main calling function for preprocessing input exposures of a given exposure type.
+        Parameters
+        ----------
+        exp_type : str, optional
+            Exposure type, by default "IMAGE"
+        Returns
+        -------
+        pd.DataFrame
+            preprocessed data with renamed columns, NaNs scrubbed and categorical data encoded
+        """
+        data = self.input_data[exp_type]
         if not data:
             return None
+        # Set df as attr to utilize super methods
         self.df = pd.DataFrame.from_dict(data, orient="index")
         super().rename_cols(new=[c.lower() for c in self.df.columns])
         super().rename_cols(old=["instrume"], new=["instr"])
@@ -964,12 +981,27 @@ class JwstCalScrubber(Scrubber):
         dtype_keys = self.get_dtype_keys()
         nandler = NaNdler(self.df, dtype_keys, allow_neg=False, verbose=False)
         self.df = nandler.apply_nandlers()
+        # self.group_nircam_detectors()
+        self.log.info(f"Encoding categorical features [{exp_type}]")
         encoder = JwstEncoder(
             self.df, fkeys=dtype_keys["categorical"], encoding_pairs=self.encoding_pairs
         )
         encoder.encode_features()
         self.df = encoder.df[xcols]
         return self.df
+
+    def group_nircam_detectors(self):
+        detectors = list(self.df['detector'].unique())
+        nrca = [d for d in detectors if 'NRCA' in d and 'NRCB' not in d]
+        nrcb = [d for d in detectors if 'NRCB' in d and 'NRCA' not in d]
+        nrcs = [d for d in nrca + nrcb if '|' not in d] # single (any)
+        multi_nrca = [d for d in nrca if '|' in d] # multiple A
+        multi_nrcb = [d for d in nrcb if '|' in d] # multiple B
+        multi_nrcab = [d for d in detectors if 'NRCA' in d and 'NRCB' in d] # A + B
+        self.df.loc[self.df['detector'].isin(nrcs), 'detector'] = 'NRC-S'
+        self.df.loc[self.df['detector'].isin(multi_nrca), 'detector'] = 'NRCA-M'
+        self.df.loc[self.df['detector'].isin(multi_nrcb), 'detector'] = 'NRCB-M'
+        self.df.loc[self.df['detector'].isin(multi_nrcab), 'detector'] = 'NRC-M'
 
     def rename_miri_mrs(self):
         mirmrs = {}
