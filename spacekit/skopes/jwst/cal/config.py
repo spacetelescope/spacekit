@@ -4,7 +4,8 @@ GENKEYS = [
     "PROGRAM",  # Program number
     "OBSERVTN",  # Observation number
     "BKGDTARG",  # Background target
-    "IS_IMPRT" "VISITYPE",  # NIRSpec imprint exposure  # Visit type
+    "IS_IMPRT",  # NIRSpec imprint exposure
+    "VISITYPE",  # Visit type
     "TSOVISIT",  # Time Series Observation visit indicator
     "TARGNAME",  # Standard astronomical catalog name for target
     "TARG_RA",  # Target RA at mid time of exposure
