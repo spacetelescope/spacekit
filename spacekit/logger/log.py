@@ -68,7 +68,7 @@ class Logger:
         self.short_name = script_name
         self.console = console
         self.logfile = logfile
-        self.log_level = logging.DEBUG
+        self.log_level = logging.INFO
         self.console_log_output = console_log_output.lower()
         self.console_log_level = console_log_level.upper()
         self.console_log_color = console_log_color
