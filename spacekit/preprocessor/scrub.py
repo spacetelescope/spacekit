@@ -1,5 +1,6 @@
 import os
 import glob
+import re
 import time
 import pandas as pd
 import numpy as np
@@ -12,6 +13,11 @@ from spacekit.extractor.scrape import (
 from spacekit.preprocessor.encode import HstSvmEncoder, JwstEncoder, encode_booleans
 from spacekit.logger.log import Logger
 
+
+TRUEVALS = [True, "t", "T", "True", "true", "TRUE"]
+FALSEVALS = [False, 'f', 'F', 'False', 'false', 'FALSE', 'NONE', 'None', 'none', 'nan', 'NaN', None]
+NANVALS = ["NaN", "N/A", "NONE"]
+SUBNAN = NANVALS + ["FULL"]
 
 class Scrubber:
     """Base parent class for preprocessing data. Includes some basic column scrubbing methods for pandas dataframes. The heavy
