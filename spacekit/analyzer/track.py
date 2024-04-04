@@ -4,7 +4,7 @@ import datetime as dt
 import os
 import glob
 import time
-from spacekit.logger.log import Logger
+from spacekit.logger.log import Logger, SPACEKIT_LOG
 
 
 class Stopwatch:
@@ -31,7 +31,6 @@ class Stopwatch:
             result = self.func(*args, **kwargs)
             self.stop()
             return result
-
         return wrap
 
     def start(self):
@@ -186,7 +185,6 @@ def clockit(func):
         stopwatch(ps, t0=start, t1=end)
         print(end - start)
         return result
-
     return wrap
 
 
@@ -201,3 +199,14 @@ def record_metrics(
     with open(log_file, "w") as lf:
         for k, v in metrics.items():
             lf.write(f"{k}: {v}\n")
+
+
+def xtimer(fn):
+    def inner(*args, **kwargs):
+        start_time = time.perf_counter()
+        to_execute = fn(*args, **kwargs)
+        end_time = time.perf_counter()
+        execution_time = end_time - start_time
+        SPACEKIT_LOG.info('{0} took {1:.8f}s to execute'.format(fn.__name__, execution_time))
+        return to_execute
+    return inner

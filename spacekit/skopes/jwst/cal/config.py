@@ -129,7 +129,7 @@ NORM_COLS = {
     ],
     "FGS": ["gs_mag"],
     "TAC": [
-        # "targ_max_offset",
+        "targ_max_offset",
         "offset",
         "max_offset",
         "mean_offset",
@@ -413,5 +413,51 @@ KEYPAIR_DATA = {
         "PRIME_WFSC_ROUTINE": 7,
         "PRIME_WFSC_SENSING_CONTROL": 8,
         "PRIME_WFSC_SENSING_ONLY": 9,
+    },
+}
+
+
+KEYPAIR_DATA_V2 = {
+    "detector": {
+        "NONE": 0,
+        "GUIDER1": 1,
+        "GUIDER1|GUIDER2": 2,
+        "GUIDER2": 3,
+        "MIRIFULONG": 4,
+        "MIRIFULONG|MIRIFUSHORT": 5,
+        "MIRIFULONG|MIRIFUSHORT|MIRIMAGE": 6,
+        "MIRIFUSHORT": 7,
+        "MIRIMAGE": 8,
+        "NIS": 9,
+        "NRC-M": 10, # multiple A and B
+        "NRC-S": 11, # single A or B
+        "NRCA-M": 12, # multiple A
+        "NRCB-M": 13, # multiple B
+        "NRS1": 14,
+        "NRS1|NRS2": 15,
+        "NRS2": 16,
+    },
+    "exp_type": {
+        "NONE": 0, 
+        "FGS_IMAGE": 1, 
+        "MIR_4QPM": 2, 
+        "MIR_IMAGE": 3, 
+        "MIR_LRS-FIXEDSLIT": 4, 
+        "MIR_LRS-SLITLESS": 5, 
+        "MIR_LYOT": 6, 
+        "MIR_MRS": 7, 
+        "NIS_AMI": 8, 
+        "NIS_IMAGE": 9, 
+        "NIS_SOSS": 10, 
+        "NIS_WFSS": 11, 
+        "NRC_CORON": 12, 
+        "NRC_IMAGE": 13, 
+        "NRC_TSGRISM": 14, 
+        "NRC_TSIMAGE": 15, 
+        "NRC_WFSS": 16, 
+        "NRS_BRIGHTOBJ": 17, 
+        "NRS_FIXEDSLIT": 18, 
+        "NRS_IFU": 19, 
+        "NRS_MSASPEC": 20,
     },
 }
