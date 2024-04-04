@@ -4,13 +4,21 @@
 new features
 ------------
 
-- `architect.builder.Builder.save_model` uses preferred keras archive format by default [#50]
-
 - `extractor.radio.JwstCalRadio` subclass for scraping datasets from MAST using ASN metadata [#51]
 
 - `extractor.scrape.FitsScraper.scrape_dataframe` method added for scraping Fits data from dataframe [#52]
 
+enhancements
+------------
+
+- `architect.builder.Builder.save_model` uses preferred keras archive format by default [#50]
+
 - `preprocessor.transform.SkyTransformer` set offsets to 0 for gs/targ fiducial NaN values; custom filename for tx_file [#54]
+
+- `preprocessor.prep.JwstCalPrep` updates in preparation for preprocessing spectroscopic data [#55]
+    - revise spectroscopic data columns
+    - save tx_file name with "-{expmode}" to differentiate between image and spec normalization params
+    - rename target attributes: y_img_train, y_img_test to y_reg_train, y_reg_test
 
 bug fixes
 ---------
