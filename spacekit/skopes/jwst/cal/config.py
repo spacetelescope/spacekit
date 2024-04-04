@@ -16,7 +16,9 @@ GENKEYS = [
     "PUPIL",  # Name of the pupil element used
     "GRATING",  # Name of the grating element used
     "EXP_TYPE",  # Type of data in the exposure
+    "FXD_SLIT", # Name of fixed slit aperture used 
     "CHANNEL",  # Instrument channel
+    "BAND", # MRS Wavelength band
     "SUBARRAY",  # Subarray used
     "NUMDTHPT",  # Total number of points in pattern
     "GS_RA",  # guide star right ascension
@@ -60,10 +62,10 @@ COLUMN_ORDER = {
         "detector",
         "visitype",
         "filter",
+        "pupil",
         "grating",
         "subarray",
-        "bkgdtarg",
-        "is_imprt",
+        "band",
         "nexposur",
         "numdthpt",
         "targ_max_offset",
@@ -96,7 +98,7 @@ COLUMN_ORDER = {
         "subarray",
         "nexposur",
         "numdthpt",
-        "max_targ_offset",
+        "targ_max_offset",
         "offset",
         "max_offset",
         "mean_offset",
@@ -117,7 +119,7 @@ NORM_COLS = {
         "sigma1_mean",
     ],
     "SPEC": [
-        # "targ_max_offset",
+        "targ_max_offset",
         "offset",
         "max_offset",
         "mean_offset",
@@ -141,17 +143,18 @@ NORM_COLS = {
 L3_TYPES = [
     "FGS_IMAGE",
     "MIR_IMAGE",  # (TSO & Non-TSO)
-    "NRC_IMAGE" "MIR_LRS-FIXEDSLIT",
+    "NRC_IMAGE",
+    "MIR_LRS-FIXEDSLIT",
     "MIR_MRS",
-    "MIR_LYOT",
-    "MIR_4QPM",
+    "MIR_LYOT",  # coron
+    "MIR_4QPM",  # coron
     "MIR_LRS-SLITLESS",  # (only IF TSO)
-    "NRC_CORON",
+    "NRC_CORON",  # coron
     "NRC_WFSS",
     "NRC_TSIMAGE",  # TSO always
     "NRC_TSGRISM",  # TSO always
     "NIS_IMAGE",
-    "NIS_AMI",
+    "NIS_AMI",  # AMI
     "NIS_WFSS",
     "NIS_SOSS",  # (TSO & Non-TSO)
     "NRS_FIXEDSLIT",
@@ -336,6 +339,7 @@ KEYPAIR_DATA = {
         "NRS_MSASPEC": 39,
     },
     "channel": {"NONE": 0, "12": 1, "34": 2, "LONG": 3, "SHORT": 4},
+    "band": {"NONE": 0, "LONG": 0, "MEDIUM": 0, "SHORT": 0, "SHORT|LONG": 0, "SHORT|MEDIUM": 0, "MEDIUM|LONG": 0, "SHORT|MEDIUM|LONG": 1},
     "subarray": {
         "NONE": 0,
         "ALLSLITS": 1,
@@ -392,6 +396,7 @@ KEYPAIR_DATA = {
         "SUBSTRIP96": 6,
         "SUBTAAMI": 6,
         "SUBTASOSS": 6,
+        "SUB400X256ALWB": 6,
         "WFSS128C": 7,
         "WFSS128R": 7,
         "WFSS64C": 7,
