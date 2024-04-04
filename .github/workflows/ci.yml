@@ -34,6 +34,10 @@ jobs:
           - name: python 3.9
             toxenv: py39
             python-version: 3.9
+          
+          - name: python 3.10
+            toxenv: py310
+            python-version: '3.10'
             
           - name: python 3.11
             toxenv: py311

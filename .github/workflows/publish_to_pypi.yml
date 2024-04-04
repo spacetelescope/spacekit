@@ -42,10 +42,10 @@ jobs:
 
   publish_testpypi:
     needs: [ build_artifacts ]
+    if: ${{ inputs.test == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       id-token: write
-    if: ${{ inputs.test }}
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -65,10 +65,10 @@ jobs:
 
   publish_pypi:
     needs: [ build_artifacts ]
+    if: ${{ inputs.test == 'false' }}
     runs-on: ubuntu-latest
     permissions:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
-    if: ${{ inputs.test == 'false' }}
     steps:
       - uses: actions/download-artifact@v4
         with:
