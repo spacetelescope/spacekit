@@ -518,6 +518,12 @@ class HstCalScrubber(Scrubber):
 
 
 class JwstCalScrubber(Scrubber):
+    """Class for invoking initial preprocessing of JWST calibration input data.
+    Parameters
+    ----------
+    Scrubber : class
+        spacekit.preprocessor.scrub.Scrubber parent class
+    """
     def __init__(
         self,
         input_path,
@@ -547,6 +553,8 @@ class JwstCalScrubber(Scrubber):
             save a copy of the dataframe before encoding, by default True
         encoding_pairs : dict, optional
             preset key-value pairs for encoding categorical data, by default None
+        mode : str, optional
+            determines how data is scraped and handled ('fits' for files or 'df' for dataframe), by default 'fits'
         """
         self.input_path = input_path
         self.exp_headers = None
@@ -563,20 +571,31 @@ class JwstCalScrubber(Scrubber):
         self.sfx = sfx
         super().__init__(
             data=data,
-            col_order=self.set_col_order(),
+            col_order=self.xcol_order,
             dropnans=dropnans,
             save_raw=save_raw,
             name="JwstCalScrubber",
             **log_kws,
         )
-        self.xcols = self.set_col_order()
+        self.xcols = self.xcol_order
         self.encoding_pairs = encoding_pairs
         self.mode = mode
+        self.tso_ami_coron = ["MIR_4QPM","MIR_LYOT", "NRC_CORON","NIS_AMI","NRS_BRIGHTOBJ","NRC_TSGRISM","NRC_TSIMAGE"]
         self.scrape_inputs()
         self.get_level3_products()
         self.pixel_offsets()
 
-    def set_col_order(self):
+    @property
+    def xcol_order(self):
+        return self._xcol_order()
+
+    def _xcol_order(self):
+        """Used for resetting the order of columns in the final preprocessed dataframe.
+        Returns
+        -------
+        list
+            complete list of columns to include for JWST modeling
+        """
         return [
             "instr",
             "detector",
@@ -585,6 +604,7 @@ class JwstCalScrubber(Scrubber):
             "filter",
             "pupil",
             "grating",
+            "fxd_slit",
             "channel",
             "subarray",
             "bkgdtarg",
@@ -592,6 +612,7 @@ class JwstCalScrubber(Scrubber):
             "tsovisit",
             "nexposur",
             "numdthpt",
+            "band",
             "targ_max_offset",
             "offset",
             "max_offset",
@@ -639,6 +660,25 @@ class JwstCalScrubber(Scrubber):
             "NRS_BRIGHTOBJ",  # TSO always
         ]
 
+    @property
+    def source_based(self):
+        return self._source_based()
+
+    def _source_based(self):
+        return ["NRC_WFSS", "NIS_WFSS", "NRS_MSASPEC", "NRS_FIXEDSLIT"]
+
+    @property
+    def expdata(self):
+        return self._expdata()
+
+    def _expdata(self):
+        return dict(
+            IMAGE=self.img_products,
+            SPEC=self.spec_products,
+            TAC=self.tac_products,
+            FGS=self.fgs_products
+        )
+
     def scrape_inputs(self):
         """Scrape input exposure header metadata from fits files on local disk located at `self.input_path`.
         """
@@ -652,18 +692,32 @@ class JwstCalScrubber(Scrubber):
             self.exp_headers = self.scraper.scrape_fits()
 
     def pixel_offsets(self):
+        """Generate the pixel offset between exposure reference pixels and the estimated L3 fiducial.
+        """
         sky = SkyTransformer("JWST")
         self.imgpix = sky.calculate_offsets(self.img_products)
         self.products.update(self.imgpix)
         sky.set_keys(ra="RA_REF", dec="DEC_REF")
         self.specpix = sky.calculate_offsets(self.spec_products)
         self.products.update(self.specpix)
+        if self.mode != 'df': # use fits data
+            sky.count_exposures = False
         sky.count_exposures = False  # use fits data
         self.tacpix = sky.calculate_offsets(self.tac_products)
         self.products.update(self.tacpix)
         self.update_fgs()
 
     def make_image_product_name(self, k, v, tnum):
+        """Parse through exposure metadata to create expected L3 image products.
+        Parameters
+        ----------
+        k : str
+            exposure header key (L1 exposure name)
+        v : dict
+            exposure header data
+        tnum : str
+            number assigned to each unique target (targ_ra) within a program
+        """
         if v["PUPIL"] == "CLEAR":
             p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}-{tnum}_{v['INSTRUME']}_{v['PUPIL']}-{v['FILTER']}"
         elif v["PUPIL"] not in ["NaN", "N/A", "NONE"]:
