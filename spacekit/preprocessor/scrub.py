@@ -59,11 +59,6 @@ class Scrubber:
             self.log.error("data must be dict, dataframe or None")
 
     def extract_matching_columns(self, cols):
-        # print("\n*** Extracting FITS header prefix columns ***")
-        # extracted = []
-        # for c in cols:
-        #     extracted += [col for col in self.df if c in col]
-        # return extracted
         extract = [c for c in cols if c in self.df.columns]
         self.log.info(f"Extract matching columns: {extract}")
         self.df = self.df[extract]
