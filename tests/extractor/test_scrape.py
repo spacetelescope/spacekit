@@ -14,7 +14,7 @@ JSON_COL_EXPECTED = [
     "number_of_sources.segment",
 ]
 
-FITS_COL_EXPECTED = [
+SVM_FITS_COL_EXPECTED = [
     "detector",
     "dataset",
     "targname",
@@ -31,7 +31,7 @@ FITS_COL_EXPECTED = [
     "wcstype",
 ]
 
-JWST_EXPECTED_HEADERS = dict(
+JWST_CAL_EXPECTED_HEADERS = dict(
     jw02732001005_02103_00005_nrcb1 = {
         'PROGRAM': '02732',
         'OBSERVTN': '001',
@@ -163,14 +163,14 @@ def test_json_scraper(raw_csv_file, single_visit_path):
 @mark.svm
 @mark.extractor
 @mark.scrape
-def test_scrape_drizzle_fits(scrubbed_svm_data, single_visit_path):
+def test_hst_svm_scrape_drizzle_fits(scrubbed_svm_data, single_visit_path):
     scraper = SvmFitsScraper(scrubbed_svm_data, single_visit_path)
     assert scraper.fpaths == {
         "hst_12286_38_wfc3_ir_total_ibl738": f"{single_visit_path}/ibl738/hst_12286_38_wfc3_ir_total_ibl738_drz.fits"
     }
     scraper.scrape_drizzle_fits()
     assert scraper.df.shape == (1, 14)
-    for col in FITS_COL_EXPECTED:
+    for col in SVM_FITS_COL_EXPECTED:
         if col in list(scraper.df.columns):
             assert True
         else:
@@ -182,14 +182,30 @@ def test_scrape_drizzle_fits(scrubbed_svm_data, single_visit_path):
 @mark.scrape
 def test_jwst_cal_scraper(jwstcal_input_path):
     scraper = JwstFitsScraper(jwstcal_input_path, data=None, sfx="_uncal.fits")
-    assert len(scraper.fpaths) == 10
+    assert len(scraper.fpaths) == 26
     exp_headers = scraper.scrape_fits()
-    assert len(exp_headers) == 10
+    assert len(exp_headers) == 26
     assert sorted(list(exp_headers.keys())) == [
         'jw01018006001_02101_00001_nis',
         'jw01018006001_02101_00002_nis',
         'jw01018006001_02101_00003_nis',
         'jw01018006001_02101_00004_nis',
+        'jw01022016001_03101_00001_nrs1',
+        'jw01022016001_03101_00001_nrs2',
+        'jw01192011001_02101_00001_mirifulong',
+        'jw01192011001_02101_00001_mirifushort',
+        'jw01192011001_02101_00002_mirifulong',
+        'jw01192011001_02101_00002_mirifushort',
+        'jw01192011001_02103_00001_mirifulong',
+        'jw01192011001_02103_00001_mirifushort',
+        'jw01192011001_02103_00002_mirifulong',
+        'jw01192011001_02103_00002_mirifushort',
+        'jw01192011001_02105_00001_mirifulong',
+        'jw01192011001_02105_00001_mirifushort',
+        'jw01192011001_02105_00002_mirifulong',
+        'jw01192011001_02105_00002_mirifushort',
+        'jw01309023001_02101_00001_nrcalong',
+        'jw01309023001_02101_00002_nrcalong',
         'jw02732001005_02103_00005_nrcb1',
         'jw02732001005_02103_00005_nrcb2',
         'jw02732001005_02103_00005_nrcb3',
@@ -204,4 +220,4 @@ def test_jwst_cal_scraper(jwstcal_input_path):
     ]
     for key in keys:
         for k, v in exp_headers[key].items():
-            assert JWST_EXPECTED_HEADERS[key][k] == v
+            assert JWST_CAL_EXPECTED_HEADERS[key][k] == v

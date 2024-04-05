@@ -7,7 +7,7 @@ from spacekit.analyzer.explore import HstCalPlots, HstSvmPlots
 from spacekit.analyzer.scan import HstSvmScanner, HstCalScanner, import_dataset
 from spacekit.extractor.load import load_datasets, extract_file
 from spacekit.skopes.jwst.cal.config import KEYPAIR_DATA
-
+from spacekit.preprocessor.scrub import JwstCalScrubber
 
 TESTED_VERSIONS = {}
 
@@ -52,7 +52,7 @@ class Config:
         self.kwargs = {
             "svm": dict(index_col="index"), 
             "hstcal": dict(index_col="ipst"),
-            "jwstcal": dict(index_col="img_name")
+            "jwstcal": dict(index_col="Dataset")
         }[env]
 
         self.decoder = {
@@ -97,7 +97,7 @@ class Config:
         self.rename_cols = {
             "svm": "_scl",
             "hstcal": ["x_files", "x_size"],
-            "jwstcal": "_scl"
+            "jwstcal": None
         }[env]
 
         self.enc_cols = {
@@ -125,7 +125,7 @@ class Config:
         self.tx_file = {
             "svm": "tests/data/svm/tx_data.json",
             "hstcal": "tests/data/hstcal/tx_data.json",
-            "jwstcal": "tests/data/jwstcal/tx_data.json"
+            "jwstcal": "tests/data/jwstcal/tx_data-{}.json"
         }[env]
 
         self.visits = {
@@ -139,24 +139,7 @@ class Config:
 
 
 def pytest_addoption(parser):
-    # parser.addoption("--env", action="store", default="hstcal", help="Environment to run tests against")
     parser.addoption("--env", action="store", default=None, help="Environment to run tests against")
-
-# def pytest_configure(config):
-#     config.addinivalue_line("markers", "skope_svm: only run in svm skope")
-#     config.addinivalue_line("markers", "skope_cal: only run in cal skope")
-
-# def pytest_collection_modifyitems(config, items, skope):
-#     if skope.env == "hstcal"
-    # env_param = config.getoption("--env")
-    # if env_param:
-    #     skope_param = pytest.mark.parametrize("skope", [(env_param)], indirect=True)
-    # else:
-    #     skope_param = pytest.mark.parametrize("skope", [("hstcal", "svm")], indirect=True)
-    #     # skip_param = pytest.mark.skipif(reason="skip params based on --env")
-    # for item in items:
-    #     if "skopes" in item.keywords:
-    #         item.add_marker(skope_param)
 
 
 @fixture(scope="session")
@@ -348,3 +331,79 @@ def hst_cal_predict_visits():
 @fixture(scope="function")
 def jwstcal_input_path():
     return "tests/data/jwstcal/predict/inputs"
+
+
+@fixture(scope="module")
+def jwstcal_scrub_filepath():
+    return "tests/data/jwstcal/scrub/{}-inputs.csv"
+
+
+@fixture(scope="module")
+def jwst_cal_img_data(jwstcal_scrub_filepath):
+    data = pd.read_csv(jwstcal_scrub_filepath.format('img'), index_col="Dataset")
+    data['PROGRAM'] = data['PROGRAM'].apply(lambda x: '{:0>5}'.format(x))
+    data['OBSERVTN'] = data['OBSERVTN'].apply(lambda x: '{:0>3}'.format(x))
+    return data
+
+
+@fixture(scope="function")
+def jwst_cal_wfsc_data(jwstcal_scrub_filepath):
+    data = pd.read_csv(jwstcal_scrub_filepath.format('wfsc'), index_col="Dataset")
+    data['PROGRAM'] = data['PROGRAM'].apply(lambda x: '{:0>5}'.format(x))
+    data['OBSERVTN'] = data['OBSERVTN'].apply(lambda x: '{:0>3}'.format(x))
+    return data
+
+
+@fixture(scope="module")
+def jwst_cal_spec_data(jwstcal_scrub_filepath):
+    data = pd.read_csv(jwstcal_scrub_filepath.format('spec'), index_col="Dataset")
+    data['PROGRAM'] = data['PROGRAM'].apply(lambda x: '{:0>5}'.format(x))
+    data['OBSERVTN'] = data['OBSERVTN'].apply(lambda x: '{:0>3}'.format(x))
+    return data
+
+
+@fixture(scope="module")
+def jwst_cal_tac_data(jwstcal_scrub_filepath):
+    data = pd.read_csv(jwstcal_scrub_filepath.format('tac'), index_col="Dataset")
+    data['PROGRAM'] = data['PROGRAM'].apply(lambda x: '{:0>5}'.format(x))
+    data['OBSERVTN'] = data['OBSERVTN'].apply(lambda x: '{:0>3}'.format(x))
+    return data
+
+
+@fixture(scope="module")
+def jwst_cal_img_df(jwst_cal_img_data):
+    scrubber = JwstCalScrubber(
+        "tmp",
+        data=jwst_cal_img_data, 
+        mode='df',
+        encoding_pairs=KEYPAIR_DATA
+    )
+    df = pd.DataFrame.from_dict(scrubber.imgpix, orient='index')
+    df['name'] = ['_'.join([n.split('_')[0]] + n.split('_')[2:]) for n in list(df.index)]
+    return df
+
+
+@fixture(scope="module")
+def jwst_cal_spec_df(jwst_cal_spec_data):
+    scrubber = JwstCalScrubber(
+        "tmp",
+        data=jwst_cal_spec_data, 
+        mode='df',
+        encoding_pairs=KEYPAIR_DATA
+    )
+    df = pd.DataFrame.from_dict(scrubber.specpix, orient='index')
+    df['name'] = ['_'.join([n.split('_')[0]] + n.split('_')[2:]) for n in list(df.index)]
+    return df
+
+
+@fixture(scope="module")
+def jwst_cal_tac_df(jwst_cal_tac_data):
+    scrubber = JwstCalScrubber(
+        "tmp",
+        data=jwst_cal_tac_data, 
+        mode='df',
+        encoding_pairs=KEYPAIR_DATA
+    )
+    df = pd.DataFrame.from_dict(scrubber.tacpix, orient='index')
+    df['name'] = ['_'.join([n.split('_')[0]] + n.split('_')[2:]) for n in list(df.index)]
+    return df

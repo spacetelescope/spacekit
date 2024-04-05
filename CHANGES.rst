@@ -4,6 +4,8 @@
 new features
 ------------
 
+- `builder.trained_networks` jwst_cal.zip includes updated (v2) `img3_reg` and new `spec3_reg` predictive models for image and spectroscopic data [#58]
+
 - `preprocessor.ingest.JwstCalIngest` class and cmdline script for automated training data ingest [#57]
 
 - `extractor.radio.JwstCalRadio` subclass for scraping datasets from MAST using ASN metadata [#51]
@@ -12,6 +14,11 @@ new features
 
 enhancements
 ------------
+
+- `skopes.jwst.cal.predict` generates predictions for spectrosopic datasets in addition to image data. This update also allows further customization of user arguments: [#58]
+    - `obs` to specify selection of a program ID + observation number
+    - `input_path` accepts either a directory (default) or a filename. If filename, the script will try to find any input exposures that belong to the same program and observation number as that file.
+    - `sfx` attribute is now customizable on instantiation of the class object (default is '_uncal.fits')
 
 - `architect.builder.Builder.save_model` uses preferred keras archive format by default [#50]
 
@@ -29,6 +36,7 @@ bug fixes
 ---------
 
 - `preprocessor.encode.PairEncoder.handle_unknowns` create single new encoding value per unidentified variable [#53]
+
 
 
 1.0.1 (2024-04-03)

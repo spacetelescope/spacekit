@@ -20,12 +20,23 @@ from spacekit.builder.architect import Builder
 
 # build from local filepath
 # MODEL_PATH = os.environ.get("MODEL_PATH", "./models/jwst_cal")
-# TX_FILE = os.path.join(MODEL_PATH, "tx_data.json")
+# TX_FILE = MODEL_PATH + "/tx_data-{}.json"
 
+global JWST_CAL_MODELS
+JWST_CAL_MODELS = {}
 
 def load_pretrained_model(**builder_kwargs):
+    """_summary_
+
+    Returns
+    -------
+    _type_
+        _description_
+    """
     builder = Builder(**builder_kwargs)
     builder.load_saved_model(arch="jwst_cal")
+    model_name = builder_kwargs.get("name")
+    JWST_CAL_MODELS[model_name] = builder
     return builder
 
 
@@ -53,6 +64,31 @@ class JwstCalPredict:
         expmodes=["IMAGE", "SPEC"],
         **log_kws,
     ):
+        """Initializes JwstCalPredict class object. This class can be used to estimate the memory footprint of Level 3 products based on metadata scraped from uncalibrated (Level 1) exposures.
+
+        Parameters
+        ----------
+        input_path : str or Path, optional
+            path to input exposure fits files, by default None
+        pid : int, optional
+            restrict to exposures matching a specific program ID e.g. 1018, by default None
+        obs : str or int, optional
+            restrict to exposures matching a specific observation number (requires `pid`), by default None
+        model_path : str or Path, optional
+            path to saved model directory, by default None
+        models : dict, optional
+            dictionary of spacekit.builder.architect.Builder type objects, by default {}
+        tx_file : str or Path, optional
+            path to transformer metadata json file, by default None
+        norm : int, optional
+            apply normalization and scaling (bool), by default 1
+        norm_cols : list, optional
+            index of input columns on which to apply normalization, by default [ "offset", "max_offset", "mean_offset", "sigma_offset", "err_offset", "sigma1_mean"]
+        sfx : str, optional
+            restrict to exposures matching a specifc filename suffix, by default "uncal.fits"
+        expmodes : list, optional
+            specifies which exposure modes to turn on for inference, by default ["IMAGE", "SPEC"]
+        """
         self.input_path = input_path
         self.pid = pid
         self.obs = obs
@@ -69,7 +105,8 @@ class JwstCalPredict:
         self.X = None
         self.img3_reg = None
         self.spec3_reg = None
-        # self.img3_clf = None
+        # self.tac3_reg = None
+        # self.jmem_clf = None
         self.__name__ = "JwstCalPredict"
         self.log = Logger(self.__name__, **log_kws).setup_logger(logger=SPACEKIT_LOG)
         self.log_kws = dict(log=self.log, **log_kws)
@@ -78,21 +115,41 @@ class JwstCalPredict:
         self.initialize_models()
 
     def initialize_models(self):
+        """Initializes pre-trained models used for inference. Once loaded initially,
+        the models are stored in the global variable `JWST_CAL_MODELS` to avoid unnecessary reloads over
+        multiple iterations of object instantiation.
+        """
         self.log.info("Initializing prediction models...")
         if self.models is None and not os.path.exists(self.model_path):
             self.log.warning(
                 f"models path not found: {self.model_path} - defaulting to latest in spacekit-collection"
             )
             self.model_path = None
+        if JWST_CAL_MODELS:
+            self.models = JWST_CAL_MODELS
         self.load_models(models=self.models)
         self.log.info("Initialized.")
 
     def normalize_inputs(self, inputs, order="IMAGE"):
+        """Applies normalization and scaling to continuous data type feature inputs.
+
+        Parameters
+        ----------
+        inputs : pandas.DataFrame
+            _description_
+        order : str, optional
+            inference exposure mode matching L3 data group, by default "IMAGE"
+
+        Returns
+        -------
+        np.array
+            array of input features preprocessed and normalized for ML inference
+        """
         xcols = COLUMN_ORDER.get(order, list(inputs.columns))
         norm_cols = NORM_COLS.get(order, self.norm_cols)
         if self.norm:
-            tx_file = self.tx_file.format(order.lower())
             self.log.info(f"Applying normalization [{order}]...")
+            tx_file = self.tx_file.format(order.lower())
             Px = PowerX(
                 inputs, cols=norm_cols, tx_file=tx_file, rename=None, join_data=1
             )
@@ -143,6 +200,8 @@ class JwstCalPredict:
             return
 
     def preprocess(self):
+        """Runs necessary preprocessing steps on input exposure data prior to inference.
+        """
         self.input_data = dict(
             IMAGE=None,
             SPEC=None,
@@ -171,10 +230,17 @@ class JwstCalPredict:
                 self.inputs[exp_type] = self.normalize_inputs(inputs, order=exp_type)
 
     def load_models(self, models={}):
-        # self.img3_clf = models.get(
-        #     "img3_clf",
+        """_summary_
+
+        Parameters
+        ----------
+        models : dict, optional
+            Builder objects with pre-loaded functional models, by default {}
+        """
+        # self.jmem_clf = models.get(
+        #     "jmem_clf",
         #     load_pretrained_model(
-        #         model_path=self.model_path, name="img3_clf", **self.log_kws
+        #         model_path=self.model_path, name="jmem_clf", **self.log_kws
         #     ),
         # )
         self.img3_reg = models.get(
@@ -211,7 +277,7 @@ class JwstCalPredict:
     #     self.log.info(f"Estimating memory bin : L3 {expmode}")
     #     product_index = list(input_data.index)
     #     if expmode == "IMAGE":
-    #         imgbin, pred_proba = self.classifier(self.img3_clf.model, X)
+    #         imgbin, pred_proba = self.classifier(self.jmem_clf.model, X)
     #     for i, _ in enumerate(X):
     #         self.predictions[product_index[i]] = {
     #             "imgBin": imgbin[0]
@@ -220,7 +286,20 @@ class JwstCalPredict:
     #     # self.log.info(f"probabilities: {self.probabilities}")
 
     def regressor(self, model, data):
-        """Returns Regression model prediction"""
+        """_summary_
+
+        Parameters
+        ----------
+        model : tf.keras.model
+            keras functional model
+        data : numpy.array or tf.tensors
+            input data on which to run inference
+
+        Returns
+        -------
+        numpy.array
+            Returns Regression model prediction
+        """
         reshape = True if len(data.shape) == 1 else False
         shape = (1, -1) if reshape is True else data.shape
         X = array_to_tensor(data, reshape=reshape, shape=shape)
@@ -228,6 +307,8 @@ class JwstCalPredict:
         return pred
 
     def run_image_inference(self):
+        """Run inference for L3 Image exposure datasets
+        """
         input_data = self.input_data.get("IMAGE", None)
         X = self.inputs.get("IMAGE", None)
         if X is None or input_data is None:
@@ -242,6 +323,8 @@ class JwstCalPredict:
             }
 
     def run_spec_inference(self):
+        """Run inference for L3 Spectroscopy exposure datasets
+        """
         input_data = self.input_data.get("SPEC", None)
         X = self.inputs.get("SPEC", None)
         if X is None or input_data is None:
@@ -257,6 +340,8 @@ class JwstCalPredict:
             }
 
     def run_inference(self):
+        """Main calling function to preprocess input exposures and generate estimated memory footprints.
+        """
         if not self.inputs:
             self.preprocess()
         if self.img3_reg:
@@ -311,6 +396,20 @@ if __name__ == "__main__":
         help="comma-separated index of input columns to apply normalization",
     )
     parser.add_argument(
+        "-s",
+        "--sfx",
+        type=str,
+        default="_uncal.fits",
+        help="restrict to exposures matching a specific filename suffix",
+    )
+    parser.add_argument(
+        "-e",
+        "--expmodes",
+        type=str,
+        default="IMAGE,SPEC",
+        help="comma-separated string of exposure modes to turn on for inference",
+    )
+    parser.add_argument(
         "-m",
         "--model_path",
         type=str,
@@ -349,4 +448,5 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     args.norm_cols = [str(i) for i in args.norm_cols.split(",")]
+    args.expmodes = sorted([str(i).upper() for i in args.expmodes.split(",")])
     predict_handler(**vars(args))

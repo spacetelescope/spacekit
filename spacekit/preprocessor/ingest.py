@@ -237,6 +237,8 @@ class JwstCalIngest:
             filename start pattern (e.g. "2023" or "*-12-), by default ""
         outpath : str (path), optional
             directory path to save (and/or update) preprocessed files on local disk, by default None (current working directory)
+        save_l1 : bool, optional
+            save matched level 1 input data to separate file, by default True
         """
         self.input_path = input_path.rstrip("/") if input_path is not None else os.getcwd()
         self.pfx = "" if pfx is None else pfx
