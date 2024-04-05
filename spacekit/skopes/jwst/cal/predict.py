@@ -36,6 +36,7 @@ class JwstCalPredict:
         self,
         input_path=None,
         pid=None,
+        obs=None,
         model_path=None,
         models={},
         tx_file=None,
@@ -48,22 +49,27 @@ class JwstCalPredict:
             "err_offset",
             "sigma1_mean",
         ],
+        sfx="uncal.fits",
+        expmodes=["IMAGE", "SPEC"],
         **log_kws,
     ):
         self.input_path = input_path
         self.pid = pid
+        self.obs = obs
         self.model_path = model_path
         self.models = models
         self.tx_file = tx_file
         self.norm = norm
         self.norm_cols = norm_cols
+        self.sfx = sfx
+        self.expmodes = expmodes
         self.input_data = None  # dict of dataframes
         self.inputs = None  # dict of (normalized) arrays
         self.tx_data = None
         self.X = None
         self.img3_reg = None
+        self.spec3_reg = None
         # self.img3_clf = None
-        # self.spec3_reg = None
         self.__name__ = "JwstCalPredict"
         self.log = Logger(self.__name__, **log_kws).setup_logger(logger=SPACEKIT_LOG)
         self.log_kws = dict(log=self.log, **log_kws)
@@ -85,9 +91,10 @@ class JwstCalPredict:
         xcols = COLUMN_ORDER.get(order, list(inputs.columns))
         norm_cols = NORM_COLS.get(order, self.norm_cols)
         if self.norm:
+            tx_file = self.tx_file.format(order.lower())
             self.log.info(f"Applying normalization [{order}]...")
             Px = PowerX(
-                inputs, cols=norm_cols, tx_file=self.tx_file, rename=None, join_data=1
+                inputs, cols=norm_cols, tx_file=tx_file, rename=None, join_data=1
             )
             X = Px.Xt
             self.tx_data = Px.tx_data
@@ -98,6 +105,42 @@ class JwstCalPredict:
             X = inputs[xcols]
             X = np.asarray(X)
         return X
+
+    def verify_input_path(self):
+        """Verifies input path exists and checks if file or directory.
+        If input_path is a directory, check/set self.pid value
+        If self.obs is not None, validate format (1-3 digits) and append to self.pid
+        If input_path is a file, any files matching first 9 chars and suffix 
+        (typically detector, e.g. "nrcb4_uncal.fits")
+        found in the same directory will be included automatically (assumes
+        standard naming convention of JWST input exposures).
+        - self.input_path is reset to top/parent directory
+        - self.pid is set to the first 9 characters
+        NB these variables are passed through to the Scrubber and Scraper classes
+        to handle the actual searching on local disk for input files.
+        """
+        if not os.path.exists(self.input_path):
+            self.log.error(f"No files/directories found at the specified path: {self.input_path}")
+            raise FileNotFoundError
+        elif os.path.isfile(self.input_path):
+            fname = str(os.path.basename(self.input_path))
+            self.log.debug("Acquiring data from single input file")
+            # reset input path to parent directory
+            self.input_path = os.path.dirname(self.input_path)
+            prefix = fname.split("_")[0][:10]
+            self.pid = prefix
+            return
+        if self.pid is not None:
+            self.pid = 'jw{:0>5}'.format(str(self.pid).lstrip('jw'))
+            if self.obs:
+                try:
+                    self.obs = '{:0>3}'.format(int(self.obs))
+                except ValueError:
+                    self.obs = ''
+                self.pid += self.obs
+        else:
+            self.pid = ""
+            return
 
     def preprocess(self):
         self.input_data = dict(
@@ -113,22 +156,15 @@ class JwstCalPredict:
             TAC=None,
         )
         self.log.info("Preprocessing inputs...")
-        if self.pid is not None:
-            program_id = str(self.pid)
-            program_id = (
-                f"jw0{program_id}" if len(program_id) == 4 else f"jw{program_id}"
-            )
-            self.pid = program_id
-        else:
-            self.pid = ""
+        self.verify_input_path()
         scrubber = JwstCalScrubber(
             self.input_path,
             pfx=self.pid,
-            sfx="_uncal.fits",
+            sfx=self.sfx,
             encoding_pairs=KEYPAIR_DATA,
             **self.log_kws,
         )
-        for exp_type in ["IMAGE"]:  # ["IMAGE", "SPEC", "TAC", "FGS"]:
+        for exp_type in self.expmodes:
             inputs = scrubber.scrub_inputs(exp_type=exp_type)
             if inputs is not None:
                 self.input_data[exp_type] = inputs
@@ -147,17 +183,16 @@ class JwstCalPredict:
                 model_path=self.model_path, name="img3_reg", **self.log_kws
             ),
         )
-        # self.spec3_reg = models.get(
-        #     "spec3_reg",
-        #     load_pretrained_model(
-        #         model_path=self.model_path, name="spec3_reg", **self.log_kws
-        #     ),
-        # )
+        self.spec3_reg = models.get(
+            "spec3_reg",
+            load_pretrained_model(
+                model_path=self.model_path, name="spec3_reg", **self.log_kws
+            ),
+        )
         if self.model_path is None:
             self.model_path = os.path.dirname(self.img3_reg.model_path)
         if self.tx_file is None or not os.path.exists(self.tx_file):
-            self.img3_reg.find_tx_file()
-            self.tx_file = self.img3_reg.tx_file
+            self.tx_file = self.model_path + "/tx_data-{}.json"
 
     def classifier(self, model, data):
         """Returns class prediction"""
@@ -167,6 +202,22 @@ class JwstCalPredict:
         pred_proba = model.predict(X)
         pred = int(np.argmax(pred_proba, axis=-1))
         return pred, pred_proba
+
+    # def run_classifier(self, expmode):
+    #     input_data = self.input_data.get(expmode, None)
+    #     X = self.inputs.get(expmode, None)
+    #     if X is None or input_data is None:
+    #         return
+    #     self.log.info(f"Estimating memory bin : L3 {expmode}")
+    #     product_index = list(input_data.index)
+    #     if expmode == "IMAGE":
+    #         imgbin, pred_proba = self.classifier(self.img3_clf.model, X)
+    #     for i, _ in enumerate(X):
+    #         self.predictions[product_index[i]] = {
+    #             "imgBin": imgbin[0]
+    #         } 
+    #         self.probabilities[product_index[i]] = {"probabilities": pred_proba[0]}
+    #     # self.log.info(f"probabilities: {self.probabilities}")
 
     def regressor(self, model, data):
         """Returns Regression model prediction"""
@@ -181,39 +232,38 @@ class JwstCalPredict:
         X = self.inputs.get("IMAGE", None)
         if X is None or input_data is None:
             return
+        self.log.info("Estimating memory footprints : L3 IMAGE")
         product_index = list(input_data.index)
         imgsize = self.regressor(self.img3_reg.model, X)
-        # imgbin, pred_proba = self.classifier(self.img3_clf.model, X)
         for i, _ in enumerate(X):
-            rpred = np.round(float(imgsize[i]), 2)
+            rpred = np.round(float(np.squeeze(imgsize[i])), 2)
             self.predictions[product_index[i]] = {
                 "gbSize": rpred
-            }  # "imgBin": imgbin[0]
-            # self.probabilities[product_index[i]] = {"probabilities": pred_proba[0]}
+            }
 
     def run_spec_inference(self):
         input_data = self.input_data.get("SPEC", None)
         X = self.inputs.get("SPEC", None)
         if X is None or input_data is None:
             return
+        self.log.info("Estimating memory footprints : L3 SPEC")
         product_index = list(input_data.index)
         imgsize = self.regressor(self.spec3_reg.model, X)
-        # imgbin, pred_proba = self.classifier(self.img3_clf.model, X)
+        
         for i, _ in enumerate(X):
-            rpred = np.round(float(imgsize[i]), 2)
+            rpred = np.round(float(np.squeeze(imgsize[i])), 2)
             self.predictions[product_index[i]] = {
                 "gbSize": rpred
-            }  # "imgBin": imgbin[0]
-            # self.probabilities[product_index[i]] = {"probabilities": pred_proba[0]}
+            }
 
     def run_inference(self):
         if not self.inputs:
             self.preprocess()
-        self.log.info("Estimating Level 3 output image sizes...")
-        self.run_image_inference()
-        # self.run_spec_inference()
+        if self.img3_reg:
+            self.run_image_inference()
+        if self.spec3_reg:
+            self.run_spec_inference()
         self.log.info(f"predictions: {self.predictions}")
-        # self.log.info(f"probabilities: {self.probabilities}")
 
 
 def predict_handler(input_path, **kwargs):
@@ -237,7 +287,14 @@ if __name__ == "__main__":
         "--pid",
         type=int,
         default=None,
-        help="restrict to input files matching a specific program ID e.g. 1018",
+        help="restrict to exposures matching a specific program ID e.g. 1018",
+    )
+    parser.add_argument(
+        "-o",
+        "--obs",
+        type=int,
+        default=None,
+        help="restrict to exposures matching a specific observation number (requires --pid)",
     )
     parser.add_argument(
         "-n",
