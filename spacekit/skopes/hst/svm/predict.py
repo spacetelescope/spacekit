@@ -215,7 +215,7 @@ def predict_alignment(
     """
     builder = BuilderEnsemble(model_path=model_path)
     builder.load_saved_model(
-        arch="svm_align", extract_to=extract_to, keras_archive=False
+        arch="svm_align", extract_to=extract_to, keras_archive=True
     )
     builder.find_tx_file()
     X = load_mixed_inputs(data_file, img_path, tx=builder.tx_file, size=size, norm=norm)

@@ -164,7 +164,7 @@ def load_ensemble_data(
 
 
 def train_ensemble(
-    XTR, YTR, XTS, YTS, model_name="ensembleSVM", params=None, output_path=None, keras=False,
+    XTR, YTR, XTS, YTS, model_name="ensembleSVM", params=None, output_path=None, keras=True,
 ):
     """Build, compile and fit an ensemble model with regression test data and image input arrays.
 
@@ -267,7 +267,7 @@ def run_training(
     model_name="ensembleSVM",
     params=None,
     output_path=None,
-    keras=False,
+    keras=True,
 ):
     """Main calling function to load and prep the data, train the model, compute results and save to disk.
 
