@@ -377,14 +377,13 @@ KEYPAIR_DATA = {
     },
     "visitype": {
         "NONE": 0,
-        ".+WFSC.+": 1,
+        "PRIME_WFSC_ROUTINE": 1,
+        "PRIME_WFSC_SENSING_CONTROL": 1,
+        "PRIME_WFSC_SENSING_ONLY": 1,
         "PARALLEL_PURE": 2,
         "PARALLEL_SLEW_CALIBRATION": 3,
         "PRIME_TARGETED_FIXED": 4,
         "PRIME_TARGETED_MOVING": 5,
         "PRIME_UNTARGETED": 6,
-        "PRIME_WFSC_ROUTINE": 7,
-        "PRIME_WFSC_SENSING_CONTROL": 8,
-        "PRIME_WFSC_SENSING_ONLY": 9,
     },
 }
