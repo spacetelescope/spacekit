@@ -3,12 +3,12 @@ from spacekit.skopes.jwst.cal.predict import JwstCalPredict, predict_handler
 
 
 EXPECTED = {
-    "jw01018-o006_niriss": {'gbSize': 2.24},
-    "jw02732-o001_nircam": {'gbSize': 1.46},
-    "jw02732-o005_miri": {'gbSize': 3.5},
-    "jw01022-o016_nirspec": {'gbSize': 1.34},
-    "jw01192-o011_miri": {'gbSize': 3.54},
-    "jw01309-o023_nircam": {'gbSize': 11.38},
+    "jw01018-o006_niriss": {'gbSize': 2.44},
+    "jw02732-o001_nircam": {'gbSize': 3.8},
+    "jw02732-o005_miri": {'gbSize': 3.01},
+    "jw01022-o016_nirspec": {'gbSize': 4.28},
+    "jw01192-o011_miri": {'gbSize': 3.22},
+    "jw01309-o023_nircam": {'gbSize': 6.52},
 }
 
 
@@ -21,10 +21,10 @@ def test_jwst_cal_predict(jwstcal_input_path):
     assert jcal.tx_file == 'models/jwst_cal/tx_data-{}.json'
     assert jcal.img3_reg.blueprint == "jwst_img3_reg"
     assert jcal.img3_reg.model.name == 'img3_reg'
-    assert len(jcal.img3_reg.model.layers) == 11
+    assert len(jcal.img3_reg.model.layers) == 10
     assert jcal.spec3_reg.blueprint == "jwst_spec3_reg"
     assert jcal.spec3_reg.model.name == 'spec3_reg'
-    assert len(jcal.spec3_reg.model.layers) == 13
+    assert len(jcal.spec3_reg.model.layers) == 11
     jcal.run_inference()
     assert jcal.input_data['IMAGE'].shape == (3, 27)
     assert jcal.inputs['IMAGE'].shape == (3, 18)
