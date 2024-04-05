@@ -32,10 +32,10 @@ calcloud = {
     },
     "model": {
         "fname": "hst_cal.zip",
-        "hash": "370f9950c6f0f0412af039617eebea93",
+        "hash": "ffe7d00504ad5d6ebc79488abe612474",
         "desc": "hst calcloud resource prediction models",
         "key": "hst_cal",
-        "size": "2.1MB",
+        "size": "385.42kB",
     },
 }
 
@@ -80,10 +80,10 @@ svm = {
     },
     "model": {
         "fname": "svm_align.zip",
-        "hash": "01468fae74ceb6b31fd073ed3b9b599f",
+        "hash": "af3b019cc3079cb29fd01bae58e9560d",
         "desc": "hst svm alignment prediction models",
         "key": "svm_align",
-        "size": "17.9MB",
+        "size": "4.92MB",
     },
 }
 
@@ -101,10 +101,10 @@ jwst_cal = {
     },
     "model": {
         "fname": "jwst_cal.zip",
-        "hash": "92a32f33468807793b51a0b5e761dcfb",
+        "hash": "f3b6dbcc3fc92a6f806f5b5464e68c02",
         "desc": "JWST Calibration Processing Resource Prediction Models",
         "key": "jwst_cal",
-        "size": "110kB",
+        "size": "1.5MB",
     },
 }
 
@@ -142,19 +142,19 @@ networks = {
     "calcloud": {
         "basepath": "spacekit.builder.trained_networks",
         "fname": "hst_cal.zip",
-        "hash": "84abd317355c73667e5c08ada6868f0ca9563bd87717abe0680200d05457937b",
-        "size": "2.1MB",
+        "hash": "f3422c98d93520898e10d068a1e434dd5caf40e632760687df377c1b2bccff57",
+        "size": "385.42kB",
     },
     "svm": {
         "basepath": "spacekit.builder.trained_networks",
         "fname": "svm_align.zip",
-        "hash": "09550dc36499422453079ba7d1536cff2154373d7f0f6d0126e9002ce9ce3ed9",
-        "size": "17.9MB",
+        "hash": "577a87fab157fdadc657af0dcd67b55af2d89d855d5597bd96671b20ff135636",
+        "size": "4.92MB",
     },
     "jwst_cal": {
         "basepath": "spacekit.builder.trained_networks",
         "fname": "jwst_cal.zip",
-        "hash": "e9880f2e33fe9ab6d5aee066ab9e957abef1154fddc1297dcbaee495367ac222",
-        "size": "110kB",
+        "hash": "b61d0281fd149e2b0ffcded81ba54b24b479c5b7191072be2bfb59464d779187",
+        "size": "1.5MB",
     },
 }
