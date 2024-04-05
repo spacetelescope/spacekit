@@ -16,6 +16,7 @@ class Blueprint:
             "hst_mem_reg": self.hst_mem_reg,
             "hst_wall_reg": self.hst_wall_reg,
             "jwst_img3_reg": self.jwst_img3_reg,
+            "jwst_spec3_reg": self.jwst_spec3_reg,
         }[self.architecture]
 
     def fit_params(self):
@@ -26,6 +27,7 @@ class Blueprint:
             "hst_mem_reg": self.draft_hst_mem_reg,
             "hst_wall_reg": self.draft_hst_wall_reg,
             "jwst_img3_reg": self.draft_jwst_img3_reg,
+            "jwst_spec3_reg": self.draft_jwst_spec3_reg,
         }[self.architecture]
 
     def svm_mlp(self):
@@ -172,6 +174,33 @@ class Blueprint:
         )
 
     def draft_jwst_img3_reg(self):
+        return dict(
+            batch_size=32,
+            epochs=2000,
+            lr=1e-4,
+            decay=[100000, 0.96],
+            early_stopping=None,
+            verbose=0,
+        )
+
+    def jwst_spec3_reg(self):
+        return dict(
+            input_shape=18,
+            output_shape=1,
+            layers=[18, 36, 72, 144, 288, 144, 72, 36, 18],
+            activation="relu",
+            cost_function="linear",
+            lr_sched=True,
+            optimizer=Adam,
+            loss="mse",
+            metrics=[RMSE(name="rmse")],
+            input_name="jwst_cal_spec3",
+            output_name="spec3_regressor",
+            name="spec3_reg",
+            algorithm="linreg",
+        )
+
+    def draft_jwst_spec3_reg(self):
         return dict(
             batch_size=32,
             epochs=2000,
