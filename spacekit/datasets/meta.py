@@ -1,5 +1,5 @@
 calcloud = {
-    "uri": "https://zenodo.org/record/8231215/files",
+    "uri": "https://zenodo.org/record/10895592/files",
     "data": {
         "2022-02-14": {
             "fname": "hst_cal_std_2022-02-14.zip?download=1",
@@ -40,7 +40,7 @@ calcloud = {
 }
 
 svm = {
-    "uri": "https://zenodo.org/record/8231215/files",
+    "uri": "https://zenodo.org/record/10895592/files",
     "data": {
         "2022-02-14": {
             "fname": "hst_drz_svm_2022-02-14.zip?download=1",
@@ -89,7 +89,7 @@ svm = {
 
 
 jwst_cal = {
-    "uri": "https://zenodo.org/record/8231215/files",
+    "uri": "https://zenodo.org/record/10895592/files",
     "data": {
         "2023-08-02": {
             "fname": "",
@@ -110,7 +110,7 @@ jwst_cal = {
 
 
 k2 = {
-    "uri": "https://zenodo.org/record/8231215/files",
+    "uri": "https://zenodo.org/record/10895592/files",
     "data": {
         "test": {
             "fname": "k2-exo-flux-ts-test.csv.zip?download=1",
