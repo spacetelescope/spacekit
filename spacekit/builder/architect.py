@@ -340,6 +340,7 @@ class Builder:
 
     def save_keras_model(self, model_path):
         dpath = os.path.dirname(model_path)
+        os.makedirs(dpath, exist_ok=True)
         name = os.path.basename(model_path)
         if not name.endswith("keras"):
             name += ".keras"
@@ -347,7 +348,7 @@ class Builder:
         self.model.save(keras_model_path)
         self.model_path = keras_model_path
 
-    def save_model(self, weights=True, output_path=".", keras_archive=True):
+    def save_model(self, weights=True, output_path=".", keras_archive=True, parent_dir=""):
         """The model architecture, and training configuration (including the optimizer, losses, and metrics)
         are stored in saved_model.pb. The weights are saved in the variables/ directory.
 
@@ -367,7 +368,7 @@ class Builder:
         else:
             model_name = self.name
 
-        model_path = os.path.join(output_path, "models", model_name)
+        model_path = os.path.join(output_path, "models", parent_dir, model_name)
 
         if keras_archive is True:
             self.save_keras_model(model_path)

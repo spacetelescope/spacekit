@@ -43,14 +43,14 @@ def pytest_configure(config):
             tmp_path_factory = TempPathFactory(
                 config.option.basetemp, trace=config.trace.get("tmpdir"), _ispytest=True
             )
-        data_uri = "https://zenodo.org/record/8231215/files/pytest_data.tgz?download=1"
+        data_uri = "https://zenodo.org/record/10895592/files/pytest_data.tgz?download=1"
         basepath = tmp_path_factory.getbasetemp()
         target_path = os.path.join(basepath, "pytest_data.tgz")
         with open(target_path, "wb") as f:
             response = requests.get(data_uri, stream=True)
             if response.status_code == 200:
                 f.write(response.raw.read())
-        chksum = "27ac6590056b1c9266cca75658563a7f0c1153bc2f7bad8cce2023a4e075608a"
+        chksum = "dc06a7d9af875153bf46e27be3724be63a6643fa44cfbf40d83dfc109d7ac4c3"
         with open(target_path, "rb") as f:
             digest = hashlib.sha256(f.read())
             if digest.hexdigest() == chksum:
