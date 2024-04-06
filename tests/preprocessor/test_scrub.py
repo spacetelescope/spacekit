@@ -399,7 +399,7 @@ def test_jwst_cal_scrubber_l3_tac_name(jwst_cal_tac_df):
     for name in list(jwst_cal_tac_df.index):
         exptype = jwst_cal_tac_df.loc[name]['EXP_TYPE']
         tsovisit = jwst_cal_tac_df.loc[name]['TSOVISIT']
-        if tsovisit is not True:
+        if not tsovisit:
             assert exptype in tso_ami_coron
 
     # only if tso
