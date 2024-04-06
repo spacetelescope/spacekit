@@ -54,7 +54,7 @@ def test_svm_ensemble_builder_without_data(skope):
     ens.load_saved_model(arch="svm_align", keras_archive=True)
     assert ens.model is not None
     assert len(ens.model.layers) == 28
-    assert ens.model_path == "models/svm_align/ensembleSVM"
+    assert ens.model_path == "models/svm_align/ensembleSVM.keras"
     ens.find_tx_file()
     assert ens.tx_file == "models/svm_align/tx_data.json"
 
@@ -71,7 +71,7 @@ def test_hst_cal_builder_without_data(skope):
     assert builder.blueprint == "hst_mem_clf"
     builder.get_blueprint(builder.blueprint)
     assert len(builder.model.layers) == 8
-    assert builder.model_path == "models/hst_cal/mem_clf"
+    assert builder.model_path == "models/hst_cal/mem_clf.keras"
     builder.find_tx_file()
     assert builder.tx_file == "models/hst_cal/tx_data.json"
 

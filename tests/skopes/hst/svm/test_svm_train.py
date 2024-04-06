@@ -45,7 +45,9 @@ def test_svm_training(skope, labeled_dataset, svm_train_npz, norm):
         model_name="ensembleSVM",
         params=PARAMS,
         output_path=output_path,
+        keras=True,
     )
+    assert os.path.exists(f"{output_path}/models/svm_align/ensembleSVM.keras")
     # model arch
     assert str(type(ens.mlp)) == "<class 'spacekit.builder.architect.BuilderMLP'>"
     assert str(type(ens.cnn)) == "<class 'spacekit.builder.architect.BuilderCNN3D'>"

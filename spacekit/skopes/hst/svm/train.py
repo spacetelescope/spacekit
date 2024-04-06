@@ -214,8 +214,7 @@ def train_ensemble(
     ens.batch_fit()
     if output_path is None:
         output_path = os.getcwd()
-    model_outpath = os.path.join(output_path, os.path.dirname(model_name))
-    ens.save_model(weights=True, output_path=model_outpath, keras_archive=keras)
+    ens.save_model(weights=True, output_path=output_path, parent_dir="svm_align", keras_archive=keras)
     return ens
 
 
