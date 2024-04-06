@@ -844,10 +844,16 @@ class JwstCalScrubber(Scrubber):
     def fake_target_ids(self):
         """Assigns a fake target ID using TARGNAME, TARG_RA or GS_MAG. These IDs are fake in that
         they're unlikely to match actual target IDs assigned later in the pipeline. For source-based exposures, 
-        the id is always "s00001". Exposures with TARGNAME=NaN are grouped by TARG_RA if VISITYPE="PRIME_TARGETED_FIXED"; the remainder by GS_MAG except those where GS_MAG=NaN (typically VISITYPE=PARALLEL_PURE) which default to 't0'.
+        the id is always "s00001".
+
+        Grouping logic:
+        - TARG_RA (rounded to 6 decimals): VISITYPE=PRIME_TARGETED_FIXED, TARGNAME=NaN
+        - TARGNAME: VISITYPE != PRIME_TARGETED_FIXED, TARGNAME != NaN
+        - GS_MAG :  TARGNAME=NaN, GSMAG != NaN, VISITYPE != "PRIME_TARGETED_FIXED", "PARALLEL_PURE"
+
+        Remaining groups not matching above parameters default to 't0' (typically 'parallel_pure' visitypes).
         """
         targ_exptypes = [t for t in self.level3_types if t not in self.source_based]
-        # TARG_RA:  Fixed Targets
         targra = list(set([
                 np.round(v['TARG_RA'], 6) for v in self.exp_headers.values() \
                     if v['EXP_TYPE'] in targ_exptypes and \
@@ -857,7 +863,6 @@ class JwstCalScrubber(Scrubber):
         rnums = [f"t{i+1}" for i, _ in enumerate(targra)]
         rn = dict(zip(targra, rnums))
 
-        # TARGNAME: NON Fixed Target grouping strategy (if TARGNAME)
         targetnames = list(set(
             [
                 v['TARGNAME'] for v in self.exp_headers.values() \
@@ -869,8 +874,6 @@ class JwstCalScrubber(Scrubber):
         tnums = [f"t{i+1}" for i, _ in enumerate(targetnames)]
         tn = dict(zip(targetnames, tnums))
 
-        # GS_MAG : Non-Fixed Targets, No Targname (if GS_MAG)
-        # mainly PRIME_WFSC_ROUTINE, PRIME_WFSC_SENSING_CONTROL, PRIME_UNTARGETED
         gstargs = list(set(
             [
                 v['GS_MAG'] for v in self.exp_headers.values() \
@@ -882,7 +885,6 @@ class JwstCalScrubber(Scrubber):
         ))
         gnums = [f"t{i+1}" for i, _ in enumerate(gstargs)]
         gn = dict(zip(gstargs, gnums))
-
         self.targetnames = targetnames
         self.tn = tn
         return tn, rn, gn
@@ -893,7 +895,6 @@ class JwstCalScrubber(Scrubber):
         are further subdivided and assigned a fake target ID by TARGNAME, GS_MAG or TARG_RA.
         """
         tn, rn, gn = self.fake_target_ids()
-
         for k, v in self.exp_headers.items():
             exp_type = v["EXP_TYPE"]
             if exp_type in self.level3_types:
@@ -910,7 +911,7 @@ class JwstCalScrubber(Scrubber):
     def verify_target_groups(self):
         """Certain L3 products need to be further defined by their L1 input TARG_RA
         values in addition to all other parameters. This only affects PRIME_TARGETED_FIXED
-        visit types where TARGNAME is not NaN. If multiple unique TARG_RA/DEC values (rounded to 6 digits) 
+        visit types where TARGNAME != NaN. If multiple unique TARG_RA/DEC values (rounded to 6 digits) 
         are identified within the group of exposures, we can assume each TARG grouping is a unique L3 product.
         """
         revised = dict()
@@ -951,9 +952,9 @@ class JwstCalScrubber(Scrubber):
         if len(self.fgs_products) == 0:
             return
         for product, exp_data in self.fgs_products.items():
-            # self.fgspix[product] = dict(nexposur=len(list(exp_data.keys())))
             first_key = list(exp_data.keys())[0]
             self.fgspix[product] = exp_data[first_key]
+            self.fgspix[product].update(dict(nexposur=len(list(exp_data.keys()))))
             if product not in self.products:
                 self.products[product] = exp_data
 
@@ -986,7 +987,6 @@ class JwstCalScrubber(Scrubber):
         data = self.input_data[exp_type]
         if not data:
             return None
-        # Set df as attr to utilize super methods
         self.df = pd.DataFrame.from_dict(data, orient="index")
         super().rename_cols(new=[c.lower() for c in self.df.columns])
         super().rename_cols(old=["instrume"], new=["instr"])
@@ -995,9 +995,7 @@ class JwstCalScrubber(Scrubber):
         dtype_keys = self.get_dtype_keys()
         nandler = NaNdler(self.df, dtype_keys, allow_neg=False, verbose=False)
         self.df = nandler.apply_nandlers()
-        # TEMP until encoding keypairs updated for v2
-        if self.mode != 'fits':
-            self.group_nircam_detectors()
+        self.group_nircam_detectors()
         self.log.info(f"Encoding categorical features [{exp_type}]")
         encoder = JwstEncoder(
             self.df, fkeys=dtype_keys["categorical"], encoding_pairs=self.encoding_pairs

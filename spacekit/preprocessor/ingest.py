@@ -9,14 +9,14 @@ from spacekit.logger.log import Logger
 from spacekit.extractor.scrape import JsonScraper
 from spacekit.preprocessor.scrub import HstSvmScrubber, JwstCalScrubber
 from spacekit.generator.draw import DrawMosaics
-from spacekit.skopes.jwst.cal.config import KEYPAIR_DATA, KEYPAIR_DATA_V2, L3_TYPES
+from spacekit.skopes.jwst.cal.config import KEYPAIR_DATA, L3_TYPES
 from spacekit.analyzer.track import timer, record_metrics, xtimer
 
 
 class SvmAlignmentIngest:
-    def __init__(self, input_path, batch_out):
-        self.input_path = input_path
-        self.batch_out = os.getcwd() if batch_out is None else batch_out
+    def __init__(self, input_path=None, outpath=None):
+        self.input_path = os.getcwd() if input_path is None else input_path
+        self.batch_out = os.getcwd() if outpath is None else outpath
         self.log_dir = None
         self.clean = True
         self.visit_data = []
@@ -32,11 +32,9 @@ class SvmAlignmentIngest:
         wall, clock = timer(t0=t0, clock=start)
         record_metrics(self.log_dir, visit, wall, clock, ps=ps)
 
-    def prep_svm_batch(self, batch_name=None, drz_ver="3.4.1"):
-        batch_name = "drz" if batch_name is None else batch_name
+    def prep_svm_batch(self, batch_name="drz", drz_ver="3.4.1"):
         if drz_ver:
-            drz = "".join(drz_ver.split("."))
-            batch_name += f"_{drz}"
+            batch_name += f"_{''.join(drz_ver.split('.'))}"
         self.run_preprocessing(self, fname=batch_name, output_path=self.batch_out)
 
     def prep_single_visit(self, visit_path):
@@ -182,7 +180,8 @@ class SvmAlignmentIngest:
 
 
 class JwstCalIngest:
-    def __init__(self, input_path=None, pfx="", outpath=None, **log_kws):
+
+    def __init__(self, input_path=None, pfx="", outpath=None, save_l1=True, **log_kws):
         """Loads raw JWST Calibration Pipeline metadata from local disk (`input_path`)
         and runs initial ML preprocessing steps necessary prior to model training. The resulting 
         dataframes will be "ingested" into any pre-existing training sets located in `outpath`. 
@@ -238,9 +237,12 @@ class JwstCalIngest:
             filename start pattern (e.g. "2023" or "*-12-), by default ""
         outpath : str (path), optional
             directory path to save (and/or update) preprocessed files on local disk, by default None (current working directory)
+        save_l1 : bool, optional
+            save matched level 1 input data to separate file, by default True
         """
         self.input_path = input_path.rstrip("/") if input_path is not None else os.getcwd()
-        self.pfx = pfx
+        self.pfx = "" if pfx is None else pfx
+        self.save_l1 = save_l1
         self.set_outpath(value=outpath)
         self.exp_types = ["IMAGE", "SPEC", "TAC", "FGS"]
         self.files = []
@@ -295,7 +297,7 @@ class JwstCalIngest:
         self.scrub_exposures()
         self.extrapolate()
         if self.l3 is None:
-            self.save_ingest_data(save_l1=save_l1)
+            self.save_ingest_data()
             self.save_training_sets()
 
     def ingest_data(self):
@@ -496,7 +498,6 @@ class JwstCalIngest:
         self.df.drop('mosaic', axis=1, inplace=True)
 
     def scrub_exposures(self):
-        KEYPAIR_DATA.update(KEYPAIR_DATA_V2) # TEMP
         self.scrb = JwstCalScrubber(
                 self.input_path,
                 data=self.df.loc[self.df[self.dag].isin(self.l1_dags)],
@@ -694,7 +695,7 @@ class JwstCalIngest:
                 self.rem[exp].to_csv(rpath, index=False)
                 self.log.info(f"Remaining {exp} data saved to: {rpath}")
 
-    def save_ingest_data(self, save_l1=True):
+    def save_ingest_data(self):
         self.df[self.idxcol] = self.df.index
         if 'pname' not in self.df.columns:
             di = self.df.loc[self.df.dag.isin(self.l1_dags)]
@@ -705,7 +706,7 @@ class JwstCalIngest:
         self.log.info(f"Remaining Ingest data saved to: {self.ingest_file}")
         dp = self.df.drop(di.index, axis=0)
         if len(dp) > 0:
-            if save_l1 is True:
+            if self.save_l1 is True:
                 l1 = dp.loc[dp.dag.isin(self.l1_dags)]
                 l1_path = f"{self.outpath}/level1.csv"
                 l1.to_csv(l1_path, **self.save_kwargs(l1_path))
@@ -716,23 +717,52 @@ class JwstCalIngest:
             self.log.info(f"{len(dp)} L3 products added to: {ppath}")
 
 
+def hst_svm_ingest(**kwargs):
+    visit_path = kwargs.pop('visit_path', None)
+    batch_name = kwargs.pop('batch_name', None)
+    drz_ver = kwargs.pop('drz_ver', None)
+    svi = SvmAlignmentIngest(**kwargs)
+    if visit_path is not None:
+        svi.prep_single_visit(visit_path)
+    else:
+        svi.prep_svm_batch(batch_name=batch_name, drz_ver=drz_ver)
+
+
+def jwst_cal_ingest(**kwargs):
+    jc = JwstCalIngest(**kwargs)
+    jc.run_ingest()
+
+
 if __name__ == "__main__":
-    parser = ArgumentParser(
-        prog="spacekit", usage="spacekit.preprocessor.ingest input_path [options: --skope, -p, -o]"
+    parser = ArgumentParser(prog="spacekit.preprocessor.ingest")
+    subparsers = parser.add_subparsers(title="skope", help="application skope")
+    parser_jcal = subparsers.add_parser(
+        "jcal",
+        add_help=False, 
+        parents=[parser],
+        help="jwst calibration training data",
+        usage="spacekit.preprocessor.ingest skope [options]"
     )
-    parser.add_argument("input_path", type=str, help="")
-    parser.add_argument("--skope", type=str, default="jwst", choices=["jwst", "hst-svm"], help="jwst or hst-svm")
-    parser.add_argument("--pfx", "-p", type=str, default="", help="file name prefix to limit search on local disk")
-    parser.add_argument("--outpath", "-o", type=str, default=None, help="path to save preprocessed ingest files on local disk")
-    parser.add_argument("--skipl1", action="store_true", help="do NOT save matched level 1 input data to separate file")
-    args = parser.parse_args()
-    if args.skope.lower() == "jwst":
-        os.makedirs(args.outpath, exist_ok=True)
-        kwargs = dict(input_path=args.input_path, pfx=args.pfx, outpath=args.outpath)
-        jc = JwstCalIngest(**kwargs)
-        save_l1 = False if args.skipl1 else True
-        jc.run_ingest(save_l1=save_l1)
-    # experimental
-    elif args.skope.lower() == "hst-svm":
-        svi = SvmAlignmentIngest(args.input_path, args.outpath)
-        svi.prep_svm_batch()
+    parser_hsvm = subparsers.add_parser(
+        "hsvm", 
+        add_help=False, 
+        parents=[parser], 
+        help="hst svm alignment training data",
+        usage="spacekit.preprocessor.ingest skope [options]"
+    )
+    for subparser in [parser_jcal, parser_hsvm]:
+        subparser.add_argument("-i", "--input_path", default=os.getcwd(), type=str, help="data filepath to be ingested")
+        subparser.add_argument("-o", "--outpath", type=str, default=None, help="path to save ingested data on local disk")
+
+    parser_jcal.add_argument("-p","--pfx", type=str, default=None, help="file name prefix to limit search on local disk")
+    parser_jcal.add_argument("-s", "--save_l1", type=bool, default=True, help="save matched level 1 input data to separate file")
+    parser_jcal.set_defaults(func=jwst_cal_ingest)
+
+    parser_hsvm.add_argument("-b", "--batch_name", type=str, default=None)
+    parser_hsvm.add_argument("-d", "--drz_ver", type=str, default="")
+    parser_hsvm.add_argument("-z", "--visit_path", type=str, default=None)
+    parser_hsvm.set_defaults(func=hst_svm_ingest)
+
+    kwargs = {**vars(parser.parse_args())}
+    func = kwargs.pop('func')
+    func(**kwargs)
