@@ -3,7 +3,8 @@ CRVAL1 and CRVAL2 give the center coordinate as right ascension and declination 
 
 CRPIX1 and CRPIX2 are the pixel coordinates of the reference point to which the projection and the rotation refer.
 
-The default corruption method is on CRVAL1 and/or CRVAL2 only. Corruption can also be performed on CRPIX values; this would allow a machine learning algorithm to be trained on an alternative (albeit more rare) cause of single visit mosaic misalignment.
+The default corruption method is on CRVAL1 and/or CRVAL2 only. Corruption can also be performed on CRPIX values; this would allow 
+a machine learning algorithm to be trained on an alternative (albeit more rare) cause of single visit mosaic misalignment.
 
 """
 import os
@@ -456,7 +457,10 @@ if __name__ == "__main__":
         type=str,
         choices=["rex", "rfi", "mfi", "multi"],
         default="multi",
-        help="`multi` (default) creates sub- and all- MFI permutations; `rex`: randomly select subset of exposures from any filter; `rfi`: select all exposures from randomly selected filter; `mfi`: exposures of one filter repeated for every filter in dataset; by default, `multi`",
+        help="`multi` (default) creates sub- and all- MFI permutations; \
+            `rex`: randomly select subset of exposures from any filter; \
+            `rfi`: select all exposures from randomly selected filter; \
+            `mfi`: exposures of one filter repeated for every filter in dataset; by default, `multi`",
     )
     parser.add_argument(
         "-s",
@@ -495,7 +499,8 @@ if __name__ == "__main__":
         type=str,
         choices=["block", "pipe"],
         default="block",
-        help="block (default): run all datasets through one process before starting next (if using more than one); pipe: run the entire workflow one dataset at a time",
+        help="block (default): run all datasets through one process before starting next (if using more than one); \
+            pipe: run the entire workflow one dataset at a time",
     )
     parser.add_argument(
         "-c",

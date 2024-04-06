@@ -15,10 +15,10 @@ Astronomical Data Science and Machine Learning Toolkit
 **Install with pip**
 
 ```bash
-# install full deps for using analysis / data viz / non-pipeline tools
+# install extra deps for all non-pipeline tools (analysis, training, data viz)
 $ pip install spacekit[x]
 
-# for minimal STScI pipeline operations (skopes module) install:
+# for bare-minimum dependencies (STScI/SDP pipeline operations):
 $ pip install spacekit
 ```
 
@@ -38,9 +38,11 @@ See `tox.ini` for a list of test suite markers.
 # run all tests
 $ pytest
 
-# some tests, like the `scan` module rely on the test `env` option 
-$ pytest --env svm -m scan
-$ pytest --env cal -m scan
+# specify the `env` option to limit tests to a specific 'skope'
+# env options: "svm", "hstcal", "jwstcal"
+$ pytest --env svm -m svm
+$ pytest --env hstcal -m cal
+$ pytest --env jwstcal -m jwst
 ```
 
 
@@ -51,6 +53,34 @@ $ pytest --env cal -m scan
 [JWST CAL Docs](https://spacekit.readthedocs.io/en/latest/skopes/jwst/cal.html)
 
 * Inference ``spacekit.skopes.jwst.cal.predict``
+
+*From the command line:*
+
+```bash
+$ python -m spacekit.skopes.jwst.cal.predict /path/to/inputs
+
+# optionally specify a Program ID
+$ python -m spacekit.skopes.jwst.cal.predict /path/to/inputs --pid 1076
+```
+
+*From python:*
+
+```python
+> from spacekit.skopes.jwst.cal.predict import JwstCalPredict
+> input_path = "/path/to/level1/exposures"
+# optionally specify a Program ID `pid` (default is None)
+> jcal = JwstCalPredict(input_path, pid=1076)
+> jcal.run_inference()
+# estimations for L3 product memory footprints (GB) are stored in a dict under the `predictions` attribute. Ground truth values (latest actual footprints recorded) are shown as inline comments. The baseline model for Image exposure types was trained on ~3000 datasets and has an RMSE of ~4.84.
+> jcal.predictions
+{
+    'jw01076-o101-t1_nircam_clear-f212n': {'gbSize': 10.02}, # actual: 10.553384 
+    'jw01076-o101-t1_nircam_clear-f210m': {'gbSize': 8.72},  # actual: 11.196752
+    'jw01076-o101-t1_nircam_clear-f356w': {'gbSize': 7.38}, # actual: 6.905737
+}
+# NOTE: the target number "t1" is auto-generated based on how many unique targets there are within a program. They do not match actual target IDs used by the pipeline.
+```
+
 
 **Single Visit Mosaic Alignment (HST)**
 
@@ -139,8 +169,14 @@ spacekit
     └── builder
         └── architect.py
         └── blueprints.py
+        └── trained_networks
     └── dashboard
+        └── cal
+        └── svm
     └── datasets
+        └── _base.py
+        └── beam.py
+        └── meta.py
     └── extractor
         └── load.py
         └── radio.py
@@ -148,25 +184,49 @@ spacekit
     └── generator
         └── augment.py
         └── draw.py
+    └── logger
+        └── log.py
     └── preprocessor
         └── encode.py
+        └── ingest.py
+        └── prep.py
         └── scrub.py
         └── transform.py
     └── skopes
         └── hst
             └── cal
+                └── config.py
+                └── predict.py
+                └── train.py
+                └── validate.py
             └── svm
                 └── corrupt.py
                 └── predict.py
                 └── prep.py
                 └── train.py
+        └── jwst
+            └── cal
+                └── config.py
+                └── predict.py
         └── kepler
-        └── trained_networks
-└── setup.py
+            └── light_curves.py
+        
+└── pyproject.toml
+└── setup.cfg
+└── tox.ini
 └── tests
 └── docker
+└── docs
+└── scripts
 └── LICENSE
 └── README.md
+└── CONTRIBUTING.md
+└── CODE_OF_CONDUCT.md
+└── MANIFEST.in
+└── bandit.yml
+└── readthedocs.yaml
+└── conftest.py
+└── CHANGES.rst
 ```
 
 

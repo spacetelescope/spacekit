@@ -1,0 +1,77 @@
+name: Tag and release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version (must have matching CHANGES.rst entry)
+        required: true
+
+      draft:
+        description: set as draft release (do not publish)
+        required: false
+        default: false
+
+      prerelease:
+        description: set as prerelease (do not publish)
+        required: false
+        default: false
+
+jobs:
+  changelog_entry:
+    name:  Changelog Entry
+    runs-on: ubuntu-latest
+    steps:
+      - id: changelog
+        run:
+          echo "desc=$(scripts/get_changelog)" >> $GITHUB_OUTPUT
+    outputs:
+      changes: ${{ steps.changelog.outputs.desc }}
+
+  release:
+    name: Tag and release
+    needs: [ changelog_entry ]
+    runs-on: ubuntu-latest
+    env:
+      CHANGELOG: ${{ needs.changelog_entry.outputs.changes }}
+      GH_USER: ${{ secrets.GH_USERNAME }}
+      GH_EMAIL: ${{ secrets.GH_EMAIL }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.SPACEKIT_RELEASE_TOKEN }}
+          ref: main
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config --local user.name ${{ env.GH_USER }}
+          git config --local user.email ${{ env.GH_EMAIL }}
+
+      - name: Set changelog release date
+        run:
+          scripts/set_release_date ${{ github.event.inputs.version }}
+
+      - name: Commit changelog and tag release
+        run: |
+          git add CHANGES.rst
+          git commit -m "Set ${{ github.event.inputs.version }} release date"
+          git push origin HEAD
+          git tag -a ${{ github.event.inputs.version }} -m "release version ${{ github.event.inputs.version }}"
+          git push origin ${{ github.event.inputs.version }}
+
+      - name: Create GitHub release (triggers publish-to-pypi workflow)
+        uses: zendesk/action-create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.SPACEKIT_RELEASE_TOKEN }}
+        with:
+          tag_name: ${{ github.event.inputs.version }}
+          release_name: ${{ github.event.inputs.version }}
+          body: ${{ env.CHANGELOG }}
+          draft: ${{ github.event.inputs.draft }}
+          prerelease: ${{ github.event.inputs.prerelease }}
+
+    # outputs:
+    #   draft: ${{ github.event.inputs.draft }}
+    #   prerelease: ${{ github.event.inputs.prerelease }}

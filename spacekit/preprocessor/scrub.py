@@ -9,13 +9,13 @@ from spacekit.extractor.scrape import (
     JwstFitsScraper,
     scrape_catalogs,
 )
-from spacekit.extractor.radio import HstSvmRadio
 from spacekit.preprocessor.encode import HstSvmEncoder, JwstEncoder, encode_booleans
 from spacekit.logger.log import Logger
 
 
 class Scrubber:
-    """Base parent class for preprocessing data. Includes some basic column scrubbing methods for pandas dataframes. The heavy lifting is done via subclasses below."""
+    """Base parent class for preprocessing data. Includes some basic column scrubbing methods for pandas dataframes. The heavy
+    lifting is done via subclasses below."""
 
     def __init__(
         self,
@@ -189,6 +189,11 @@ class HstSvmScrubber(Scrubber):
         self.make_subsamples = make_subsamples
         self.set_new_cols()
         self.set_prefix_cols()
+        self.initialize_radio()
+
+    def initialize_radio(self):
+        from spacekit.extractor.radio import HstSvmRadio
+        self.radio = HstSvmRadio
 
     def preprocess_data(self):
         """Main calling function to run each preprocessing step for SVM regression data."""
@@ -199,7 +204,7 @@ class HstSvmScrubber(Scrubber):
         n_retries = 3
         while n_retries > 0:
             try:
-                self.df = HstSvmRadio(self.df).scrape_mast()
+                self.df = self.radio(self.df).scrape_mast()
                 n_retries = 0
             except Exception as e:
                 self.log.warning(e)
@@ -261,7 +266,7 @@ class HstSvmScrubber(Scrubber):
         self.scrub_columns()
         # STAGE 2 initial encoding
         self.df = SvmFitsScraper(self.df, self.input_path).scrape_fits()
-        self.df = HstSvmRadio(self.df).scrape_mast()
+        self.df = self.radio(self.df).scrape_mast()
 
     def scrub_qa_summary(self, csvfile="single_visit_mosaics*.csv", idx=0):
         """Alternative if no .json files available (QA step not run during processing)"""
@@ -376,7 +381,8 @@ class HstSvmScrubber(Scrubber):
         return index_df
 
     def make_pos_label_list(self):
-        """Looks for target class labels in dataframe and saves a text file listing index names of positive class. Originally this was to automate moving images into class labeled directories."""
+        """Looks for target class labels in dataframe and saves a text file listing index names of positive class. Originally
+        this was to automate moving images into class labeled directories."""
         if self.make_pos_list is True:
             if "label" in self.df.columns:
                 pos = list(self.df.loc[self.df["label"] == 1].index.values)
@@ -403,7 +409,8 @@ class HstSvmScrubber(Scrubber):
             return self.df
 
     def find_subsamples(self):
-        """Gets a varied sampling of dataframe observations and saves to local text file. This is one way of identifying a small subset for synthetic data generation."""
+        """Gets a varied sampling of dataframe observations and saves to local text file. This is one way of identifying a small
+        subset for synthetic data generation."""
         if self.make_subsamples:
             if "label" not in self.df.columns:
                 return

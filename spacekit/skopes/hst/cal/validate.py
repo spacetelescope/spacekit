@@ -5,20 +5,30 @@ from spacekit.builder.architect import (
 )
 import numpy as np
 import time
-from tensorflow.keras.wrappers.scikit_learn import KerasClassifier, KerasRegressor
 from sklearn.model_selection import StratifiedKFold, KFold, cross_val_score
 from sklearn.preprocessing import LabelEncoder
 from spacekit.skopes.hst.cal.config import COLUMN_ORDER
 from spacekit.extractor.scrape import S3Scraper
-from spacekit.extractor.load import save_to_pickle
+from spacekit.extractor.load import save_multitype_data, zip_subdirs
+from spacekit.logger.log import SPACEKIT_LOG
+
+try:
+    from scikeras.wrappers import KerasClassifier, KerasRegressor
+except ImportError:
+    KerasClassifier, KerasRegressor = None, None
+
+
+def check_scikeras():
+    return KerasClassifier is not None
 
 
 def k_estimator(buildClass, n_splits=10, y=None, stratify=False):
     bld = buildClass()
+    bld.build()
 
     if stratify is True:
         estimator = KerasClassifier(
-            build_fn=bld.build,
+            model=bld.model,
             epochs=bld.epochs,
             batch_size=bld.batch_size,
             verbose=bld.verbose,
@@ -26,7 +36,7 @@ def k_estimator(buildClass, n_splits=10, y=None, stratify=False):
         kfold = StratifiedKFold(n_splits=n_splits, shuffle=True)
     else:
         estimator = KerasRegressor(
-            build_fn=bld.build,
+            build_fn=bld.model,
             epochs=bld.epochs,
             batch_size=bld.batch_size,
             verbose=bld.verbose,
@@ -70,11 +80,12 @@ def kfold_cross_val(data, target_col, s3=None, data_path=None, verbose=2, n_jobs
     print(f"\nMean Score: {score}\n")
 
     kfold_dict = {"kfold": {"results": list(results), "score": score, "time": duration}}
-    keys = save_to_pickle(kfold_dict, target_col=target_col)
+
+    save_multitype_data(kfold_dict, target_col)
+    zip_subdirs(target_col, zipname="kfold.zip")
     if s3 is not None:
         prefix = "training" if data_path is None else data_path
-        S3Scraper.s3_upload(keys, s3, f"{prefix}/results/{target_col}")
-
+        S3Scraper.s3_upload(["kfold.zip"], s3, f"{prefix}/results/{target_col}")
     return kfold_dict
 
 
@@ -94,5 +105,12 @@ def run_kfold(data, s3=None, data_path=None, models=[], n_jobs=-2):
     n_jobs : int, optional
         kfold njobs, by default -2
     """
+    if not check_scikeras():
+        SPACEKIT_LOG.error("scikeras not installed.")
+        raise ImportError(
+            "You must install scikeras (`pip install scikeras`) "
+            "for the validation module to work."
+            "\n\nInstall extra deps via `pip install spacekit[x]`"
+        )
     for target in models:
         kfold_cross_val(data, target, s3=s3, data_path=data_path, n_jobs=n_jobs)

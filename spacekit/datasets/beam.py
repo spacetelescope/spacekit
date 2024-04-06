@@ -6,10 +6,10 @@ For more customized control of dataset retrieval (such as your own), use the spa
 Examples:
 "datasets": if set, chooses specific archive dataset filenames to retrieve and extract
 
-src: "git" -> Fetch and extract from one of the spacekit data archives:
+src: "web" -> Fetch and extract from one of the spacekit data archives:
 archive: name of collection (see ``spacekit.datasets.meta``)
-download(scrape="git:calcloud")
-download(scrape="git:svm")
+download(scrape="web:calcloud")
+download(scrape="web:svm")
 
 src: "file" -> Fetch and extract from path on local disk
 archive: path
@@ -20,8 +20,6 @@ archive: bucketname
 "datasets" -> string of S3 archive file basenames separated by comma (without the .zip or .tgz suffix)
 download(scrape="s3:mybucketname", "2021-11-04-1636048291,2021-10-28-1635457222,2021-08-22-1629663047")
 
-# TODO
-src: "web" -> Fetch and extract from web (experimental)
 archive: json filepath containing metadata structured similar to dictionaries in ``spacekit.datasets.meta``
 """
 import argparse
@@ -98,7 +96,10 @@ if __name__ == "__main__":
         "-s",
         "--scrape",
         default="web:calcloud",
-        help="Uses a key:uri format where options for the key are limited to web, s3, or file. The uri could be your own custom location if not using the default datasets.  Examples are web:calcloud, web:custom.json, s3:mybucket, file:myfolder. Visit spacekit.readthedocs.io for more info.",
+        help="Uses a key:uri format where options for the key are limited to web, s3, or file. \
+        The uri could be your own custom location if not using the default datasets.  \
+        Examples are web:calcloud, web:custom.json, s3:mybucket, file:myfolder. \
+        Visit spacekit.readthedocs.io for more info.",
     )
     parser.add_argument(
         "-d",

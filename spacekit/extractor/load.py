@@ -4,7 +4,7 @@ import glob
 import pandas as pd
 import numpy as np
 import json
-import pickle
+# import pickle
 from zipfile import ZipFile
 import time
 from sklearn.model_selection import train_test_split
@@ -28,6 +28,23 @@ def check_tqdm():
 
 
 def find_local_dataset(source_path, fname=None, date_key=None):
+    """Walks through local directories for .csv file. The search is narrowed to find
+    a filename matching ``date_key``, if one is specified.
+
+    Parameters
+    ----------
+    source_path : str, os.path
+        top directory path to walk through
+    fname : str, optional
+        filename to locate, by default None
+    date_key : str, optional
+        isoformatted date string to match in filename, by default None
+
+    Returns
+    -------
+    str
+        absolute path to a .csv dataset file, if one is found
+    """
     fpath = []
     for root, _, files in os.walk(source_path):
         if fname is not None:
@@ -59,7 +76,9 @@ def find_local_dataset(source_path, fname=None, date_key=None):
 
 
 def load_datasets(filenames, index_col="index", column_order=None, verbose=1):
-    """Import one or more dataframes from csv files and merge along the 0 axis (rows / horizontal). Assumes the datasets use the same index_col name and identical column names (although this is not strictly required) since this function does not handle missing data or NaNs.
+    """Import one or more dataframes from csv files and merge along the 0 axis (rows / horizontal).
+    Assumes the datasets use the same index_col name and identical column names (although this is not
+    strictly required) since this function does not handle missing data or NaNs.
 
     Parameters
     ----------
@@ -141,6 +160,20 @@ def stratified_splits(df, target="label", v=0.85):
 
 
 def load_npz(npz_file="data/img_data.npz"):
+    """Load data from a compressed npz file. Stored data must be formatted with an index,
+    image data, and image labels using the following keys: "index", "images", "labels".
+    This function is a specific counterpart to ``save_npz``.
+
+    Parameters
+    ----------
+    npz_file : str, optional
+        path to the compressed npz file, by default "data/img_data.npz"
+
+    Returns
+    -------
+    tuple
+        tuple of 3 arrays: index, X (image data), and y (image labels)
+    """
     try:
         img_data = np.load(npz_file)
         X = img_data["images"]
@@ -154,7 +187,19 @@ def load_npz(npz_file="data/img_data.npz"):
 
 
 def save_npz(i, X, y, npz_file="data/img_data.npz"):
-    """Store compressed data to disk"""
+    """Store compressed data to disk
+
+    Parameters
+    ----------
+    i : array
+        index data
+    X : array
+        image data
+    y : array
+        image labels
+    npz_file : str, optional
+        path-like string or filename to save to, by default "data/img_data.npz"
+    """
     np.savez(npz_file, index=i, images=X, labels=y)
 
 
@@ -174,7 +219,8 @@ def read_channels(channels, w, h, d, exp=None, color_mode="rgb"):
     exp : int, optional
         expand array dimensions ie reshape to (exp, w, h, 3), by default None
     color_mode : str, optional
-        RGB (3 channel images) or grayscale (1 channel), by default "rgb". SVM predictions requires exp=3; set to None for training.
+        RGB (3 channel images) or grayscale (1 channel), by default "rgb". \
+        SVM predictions requires exp=3; set to None for training.
 
     Returns
     -------
@@ -208,7 +254,8 @@ class ImageIO:
             )
 
     def check_format(self, format):
-        """Checks the format type of ``img_path`` (``png``, ``jpg`` or ``npz``) and initializes the ``format`` attribute accordingly.
+        """Checks the format type of ``img_path`` (``png``, ``jpg`` or ``npz``) and
+        initializes the ``format`` attribute accordingly.
 
         Parameters
         ----------
@@ -227,6 +274,21 @@ class ImageIO:
             return format
 
     def load_npz(self, npz_file=None, keys=["index", "images", "labels"]):
+        """_summary_
+
+        Parameters
+        ----------
+        npz_file : str, optional
+            path-like string to the saved file if different from ``self.img_path``, by default None
+        keys : list, optional
+            keys identifying each array component, by default ["index", "images", "labels"]
+
+        Returns
+        -------
+        arrays or tuple of arrays
+            If three keys are passed into the keyword arg ``keys``, a tuple of 3 arrays matching
+            these keys is returned. If only 2 keys are passed, returns 2 arrays matching the 2 keys.
+        """
         if npz_file is None:
             npz_file = self.img_path
             try:
@@ -245,7 +307,27 @@ class ImageIO:
                 return None
 
     def load_multi_npz(self, i="img_index.npz", X="img_data.npz", y="img_labels.npz"):
-        """Load numpy arrays from individual feature/image data, label and index compressed files on disk"""
+        """Load numpy arrays from individual feature/image data, label and index compressed files on disk.
+        As the counterpart function to ``save_multi_npz``, keys within each file are expected to be named
+        as follows:
+        i: "train_idx", "test_idx", "val_idx"
+        X: "X_train, "X_test", "X_val"
+        y: "y_train", "y_test", "y_val"
+
+        Parameters
+        ----------
+        i : str, optional
+            image index filename, by default "img_index.npz"
+        X : str, optional
+            image data filename, by default "img_data.npz"
+        y : str, optional
+            image labels filename, by default "img_labels.npz"
+
+        Returns
+        -------
+        tuples of arrays
+            train, test, val tuples of arrays
+        """
         (X_train, X_test, X_val) = self.load_npz(
             npz_file=X, keys=["X_train", "X_test", "X_val"]
         )
@@ -279,6 +361,22 @@ class ImageIO:
         )
 
     def split_arrays(self, data, t=0.6, v=0.85):
+        """Split arrays into test and validation sample groups.
+
+        Parameters
+        ----------
+        data : pd.DataFrame or np.array
+            training data
+        t : float, optional
+            test sample size as a fraction of 1, by default 0.6
+        v : float, optional
+            validation sample size as a fraction of 1, by default 0.85
+
+        Returns
+        -------
+        arrays
+            split sampled arrays
+        """
         if type(data) == pd.DataFrame:
             sample = data.sample(frac=1)
         else:
@@ -291,12 +389,14 @@ class ImageIO:
             return arrs
 
     def split_arrays_from_npz(self, v=0.85):
-        """Loads images (X), labels (y) and index (i) from a single .npz compressed numpy file. Splits into train, test, val sets using 70-20-10 ratios.
+        """Loads images (X), labels (y) and index (i) from a single .npz compressed numpy file.
+        Splits into train, test, val sets using 70-20-10 ratios.
 
         Returns
         -------
         tuples
-            train, test, val tuples of numpy arrays. Each tuple consists of an index, feature data (X, for images these are the actual pixel values) and labels (y).
+            train, test, val tuples of numpy arrays. Each tuple consists of an index,
+            feature data (X, for images these are the actual pixel values) and labels (y).
         """
         (index, X, y) = self.load_npz()
         train_idx, test_idx, val_idx = self.split_arrays(index, v=v)
@@ -324,7 +424,9 @@ class ImageIO:
 
 
 class SVMImageIO(ImageIO):
-    """Subclass for loading Single Visit Mosaic total detection .png images from local disk into numpy arrays and performing initial preprocessing and labeling for training a CNN or generating predictions on unlabeled data.
+    """Subclass for loading Single Visit Mosaic total detection .png images from local disk
+    into numpy arrays and performing initial preprocessing and labeling for training a CNN
+    or generating predictions on unlabeled data.
 
     Parameters
     ----------
@@ -345,7 +447,7 @@ class SVMImageIO(ImageIO):
         v=0.85,
         **log_kws,
     ):
-        """Instantiates an SVMFileIO object.
+        """Instantiates an SVMImageIO object.
 
         Parameters
         ----------
@@ -431,7 +533,13 @@ class SVMImageIO(ImageIO):
         return train, test, val
 
     def get_labeled_image_paths(self, i):
-        """Creates lists of negative and positive image filepaths, assuming the image files are in subdirectories named according to the class labels e.g. "0" and "1" (Similar to how Keras ``flow_from_directory`` works). Note: this method expects 3 images in the subdirectory, two of which have suffices _source and _gaia appended, and a very specific path format: ``{img_path}/{label}/{i}/{i}_{suffix}.png`` where ``i`` is typically the full name of the visit. This may be made more flexible in future versions but for now is more or less hardcoded for SVM images generated by ``spacekit.skopes.hst.svm.prep`` or ``corrupt`` modules.
+        """Creates lists of negative and positive image filepaths, assuming the image files are in
+        subdirectories named according to the class labels e.g. "0" and "1" (Similar to how Keras
+        ``flow_from_directory`` works). Note: this method expects 3 images in the subdirectory, two of which
+        have suffices _source and _gaia appended, and a very specific path format:
+        ``{img_path}/{label}/{i}/{i}_{suffix}.png`` where ``i`` is typically the full name of the visit.
+        This may be made more flexible in future versions but for now is more or less hardcoded for SVM
+        images generated by ``spacekit.skopes.hst.svm.prep`` or ``corrupt`` modules.
 
         Parameters
         ----------
@@ -457,7 +565,8 @@ class SVMImageIO(ImageIO):
         return neg, pos
 
     def detector_training_images(self, X_data, exp=None):
-        """Load image files from class-labeled folders containing pngs into numpy arrays. Image arrays are **not** reshaped since this assumes data augmentation will be performed at training time.
+        """Load image files from class-labeled folders containing pngs into numpy arrays. Image arrays are
+        **not** reshaped since this assumes data augmentation will be performed at training time.
 
         Parameters
         ----------
@@ -492,7 +601,8 @@ class SVMImageIO(ImageIO):
         return (idx, X, y)
 
     def detector_prediction_images(self, X_data, exp=3):
-        """Load image files from pngs into numpy arrays. Image arrays are reshaped into the appropriate dimensions for generating predictions in a pre-trained image CNN (no data augmentation is performed).
+        """Load image files from pngs into numpy arrays. Image arrays are reshaped into the appropriate
+        dimensions for generating predictions in a pre-trained image CNN (no data augmentation is performed).
 
         Parameters
         ----------
@@ -537,7 +647,8 @@ class SVMImageIO(ImageIO):
 
 
 def save_dct_to_txt(data_dict):
-    """Saves the key-value pairs of a dictionary to text files on local disk, with each key as a filename and its value(s) as the contents of that file.
+    """Saves the key-value pairs of a dictionary to text files on local disk, with each key as a filename
+    and its value(s) as the contents of that file.
 
     Parameters
     ----------
@@ -591,22 +702,22 @@ def save_dataframe(df, df_key, index_col="ipst"):
     return df
 
 
-def save_to_pickle(data_dict, target_col=None, df_key=None):
-    keys = []
-    for k, v in data_dict.items():
-        if target_col is not None:
-            os.makedirs(f"{target_col}", exist_ok=True)
-            key = f"{target_col}/{k}"
-        else:
-            key = k
-        with open(key, "wb") as file_pi:
-            pickle.dump(v, file_pi)
-            print(f"{k} saved as {key}")
-            keys.append(key)
-    if df_key is not None:
-        keys.append(df_key)
-    print(f"File keys:\n {keys}")
-    return keys
+# def save_to_pickle(data_dict, target_col=None, df_key=None):
+#     keys = []
+#     for k, v in data_dict.items():
+#         if target_col is not None:
+#             os.makedirs(f"{target_col}", exist_ok=True)
+#             key = f"{target_col}/{k}"
+#         else:
+#             key = k
+#         with open(key, "wb") as file_pi:
+#             pickle.dump(v, file_pi)
+#             print(f"{k} saved as {key}")
+#             keys.append(key)
+#     if df_key is not None:
+#         keys.append(df_key)
+#     print(f"File keys:\n {keys}")
+#     return keys
 
 
 def zip_subdirs(top_path, zipname="models.zip"):
@@ -738,14 +849,12 @@ def load_multitype_data(input_path, index_names=["index", "ipst"]):
                     outputs[key][k] = npzd[k]
         elif not sfx:
             if os.path.isfile(f):
-                try:
-                    with open(f, "rb") as pyfi:
-                        outputs[key] = pickle.load(pyfi)
-                except ModuleNotFoundError:
-                    print(
-                        "Results were saved with an older version of Pandas "
-                        " (<2.x). Downgrade to Pandas 1.x and try again."
-                    )
+                print(
+                        "Use of Pickle for results files is no longer supported."
+                        "Please re-save results using `save_multitype_data` and "
+                        "try again. Supported types: .npy, .npz, .csv, .json, .txt"
+                )
+                raise ModuleNotFoundError
         else:
             print(
                 f"Unrecognized file format: {sfx}. Allowed types are: csv, txt, json, npy, npz."

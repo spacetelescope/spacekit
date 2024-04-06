@@ -1,4 +1,32 @@
-1.0.0 (unreleased)
+1.0.1 (2024-04-03)
+==================
+
+bugfixes
+--------
+
+- move HstSvmRadio import inside class method to avoid importing astroquery unnecessarily [#49]
+
+- temporarily pin tf max version to 2.15 to ensure compatibility with models saved in 2.13 or older
+
+- matplotlib style setting looks for "seaborn-v0_8-bright" if "seaborn-bright" unavailable, fallback uses default style
+
+
+installation / automation
+-------------------------
+
+- GA workflow minor revision: pypi publish [#46]
+
+- Replace flake8 with ruff, replace deprecated tf.keras.wrappers.scikit_learn with scikeras, add GA workflows [#45]
+
+documentation
+-------------
+
+- Update readthedocs.yaml for compatibility with latest formatting requirements [#44]
+
+- RTD: Install graphviz before building docs [#47]
+
+
+1.0.0 (2023-08-10)
 ==================
 
 - New feature: JWST Calibration Processing resource prediction model and skope (prediction script) added under the architecture name "jwst_cal"

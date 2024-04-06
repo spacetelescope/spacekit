@@ -1,0 +1,117 @@
+# GitHub Actions workflow for testing and continuous integration.
+# This file performs testing using tox and tox.ini to define and configure the test environments.
+
+name: CI
+
+on:
+  push:
+    branches:
+    - main
+  #  tags: # run CI if specific tags are pushed
+  pull_request:
+    branches: # only build on PRs against 'main' if you need to further limit when CI is run.
+    - develop
+
+  workflow_dispatch:
+
+jobs:
+  # Github Actions supports ubuntu, windows, and macos virtual environments:
+  # https://help.github.com/en/actions/reference/virtual-environments-for-github-hosted-runners
+  unit_tests:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    env:
+      TF_CPP_MIN_LOG_LEVEL: 2
+      LD_LIBRARY_PATH: /usr/local/lib
+    strategy:
+      fail-fast: true
+      matrix:
+        # runs-on:
+        #   - ubuntu-latest
+          # - macos-latest
+          # - windows-latest
+        include:
+          - name: python 3.9
+            toxenv: py39
+            python-version: 3.9
+          
+          - name: python 3.10
+            toxenv: py310
+            python-version: '3.10'
+            
+          - name: python 3.11
+            toxenv: py311
+            python-version: 3.11
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up python #on ${{ matrix.runs-on }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version}}
+
+      - name: Install base dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install tox
+      - name: Run unit tests
+        run:
+          tox -e ${{ matrix.toxenv }}
+
+  ci_tests:
+    name: CICD Tests
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - 3.11
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install graphviz
+        run:
+          sudo apt-get install -y graphviz
+
+      - name: Set up python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install base dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install tox
+
+      - name: Check Style
+        run: |
+          tox -e check-style
+
+      - name: Security audit
+        run:
+          tox -e check-security
+
+      - name: pep517
+        run:
+          tox -e pep517
+
+      - name: Build Docs
+        run:
+          tox -e build-docs
+      
+      - name: Build dist
+        run:
+          tox -e build-dist
+
+    # # Activate your repo on codecov.io first.
+    # - name: Upload coverage to codecov
+    #   if: "contains(matrix.toxenv, '-cov')"
+    #   uses: codecov/codecov-action@v1
+    #   with:
+    #     file: ./coverage.xml

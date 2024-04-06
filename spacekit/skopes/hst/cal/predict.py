@@ -17,7 +17,9 @@ This module loads a pre-trained ANN to predict job resource requirements for HST
 # 3 - load models and generate predictions
 # 4 - return preds as json to parent lambda function
 
-MEMORY BIN: classifier predicts which of 4 memory bins is most likely to be needed to process an HST dataset (ipppssoot) successfully. The probabilities of each bin are output to Cloudwatch logs and the highest bin probability is returned to the Calcloud job submit lambda invoking this one. Bin sizes are as follows:
+MEMORY BIN: classifier predicts which of 4 memory bins is most likely to be needed to process an HST dataset (ipppssoot) 
+successfully. The probabilities of each bin are output to Cloudwatch logs and the highest bin probability is returned to the 
+Calcloud job submit lambda invoking this one. Bin sizes are as follows:
 
 Memory Bins:
 0: < 2GB
@@ -25,9 +27,12 @@ Memory Bins:
 2: 8-16GB
 3: >16GB
 
-WALLCLOCK REGRESSION: regression generates estimate for specific number of seconds needed to process the dataset using the same input data. This number is then tripled in Calcloud for the sake of creating an extra buffer of overhead in order to prevent larger jobs from being killed unnecessarily.
+WALLCLOCK REGRESSION: regression generates estimate for specific number of seconds needed to process the dataset using the same 
+input data. This number is then tripled in Calcloud for the sake of creating an extra buffer of overhead in order to prevent 
+larger jobs from being killed unnecessarily.
 
-MEMORY REGRESSION: A third regression model is used to estimate the actual value of memory needed for the job. This is mainly for the purpose of logging/future analysis and is not currently being used for allocating memory in calcloud jobs.
+MEMORY REGRESSION: A third regression model is used to estimate the actual value of memory needed for the job. This is mainly for 
+the purpose of logging/future analysis and is not currently being used for allocating memory in calcloud jobs.
 """
 import os
 import argparse
@@ -182,7 +187,10 @@ def local_handler(dataset, **kwargs):
 
 
 def lambda_handler(event, context):
-    """Predict Resource Allocation requirements for memory (GB) and max execution `kill time` / `wallclock` (seconds) using three pre-trained neural networks. This lambda is invoked from the Job Submit lambda which json.dumps the s3 bucket and key to the file containing job input parameters. The path to the text file in s3 assumes the following format: `control/ipppssoot/ipppssoot_MemModelFeatures.txt`."""
+    """Predict Resource Allocation requirements for memory (GB) and max execution `kill time` / `wallclock` (seconds) using three
+    pre-trained neural networks. This lambda is invoked from the Job Submit lambda which json.dumps the s3 bucket and key to the
+    file containing job input parameters. The path to the text file in s3 assumes the following format: `control/ipppssoot/
+    ipppssoot_MemModelFeatures.txt`."""
     MODEL_PATH = os.environ.get(
         "MODEL_PATH", "./models"
     )  # "data/2022-02-14-1644848448/models"

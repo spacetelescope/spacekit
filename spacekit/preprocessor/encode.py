@@ -88,11 +88,17 @@ class PairEncoder:
 
     def lambda_func(self, inverse=False):
         if inverse is False:
-            L = lambda x: self.keypairs[x]
+
+            def L(x):
+                return self.keypairs[x]
+
             return [L(a) for a in self.arr]
         else:
             self.inverse_pairs()
-            inv = lambda i: self.invpairs[i]
+
+            def inv(i):
+                return self.invpairs[i]
+
             return [inv(b) for b in self.transformed]
 
     def inverse_pairs(self):
@@ -323,7 +329,11 @@ class HstSvmEncoder(CategoricalEncoder):
         return super()._encode_features()
 
     def make_keypairs(self):
-        """Instantiates key-pair dictionaries for each of the categorical features listed in `fkeys`. Except for the target classification "category" feature, each string value is assigned an integer in alphabetical and increasing order, respectively. For the image target category feature, an integer is assigned to each abbreviated version of strings collected from the MAST archive). The extra abbreviation step is done to allow for debugging and analysis purposes (value-count of abbreviated versions are printed to stdout before the final encoding).
+        """Instantiates key-pair dictionaries for each of the categorical features listed in `fkeys`. Except for the target
+        classification "category" feature, each string value is assigned an integer in alphabetical and increasing order,
+        respectively. For the image target category feature, an integer is assigned to each abbreviated version of strings
+        collected from the MAST archive). The extra abbreviation step is done to allow for debugging and analysis purposes
+        (value-count of abbreviated versions are printed to stdout before the final encoding).
 
         Returns
         -------
@@ -354,7 +364,8 @@ class HstSvmEncoder(CategoricalEncoder):
         }
 
     def init_categories(self):
-        """Assigns abbreviated character code as key-pair value for each type of target category classification (as determined by data on MAST archive).
+        """Assigns abbreviated character code as key-pair value for each type of target category classification (as determined by
+        data on MAST archive).
 
         Returns
         -------
@@ -368,19 +379,20 @@ class HstSvmEncoder(CategoricalEncoder):
             "EXT-MEDIUM": "I",
             "STAR": "S",
             "EXT-STAR": "S",
-            "CALIBRATION": "C",
             "UNIDENTIFIED": "U",
             "STELLAR CLUSTER": "SC",
             "EXT-CLUSTER": "SC",
-            "STAR": "S",
-            "EXT-STAR": "S",
             "CLUSTER OF GALAXIES": "GC",
             "GALAXY": "G",
             "None": "U",
         }
 
     def encode_categories(self, cname="category", sep=";"):
-        """Transforms the raw string inputs from MAST target category naming conventions into an abbreviated form. For example, `CLUSTER OF GALAXIES;GRAVITATIONA` becomes `GC` for galaxy cluster; and `STELLAR CLUSTER;GLOBULAR CLUSTER` becomes `SC` for stellar cluster. This serves to group similar but differently named objects into a discrete set of 8 possible categorizations. The 8 categories will then be encoded into integer values in the final encoding step (machine learning inputs must be numeric).
+        """Transforms the raw string inputs from MAST target category naming conventions into an abbreviated form. For example,
+        `CLUSTER OF GALAXIES;GRAVITATIONA` becomes `GC` for galaxy cluster; and `STELLAR CLUSTER;GLOBULAR CLUSTER` becomes `SC`
+        for stellar cluster. This serves to group similar but differently named objects into a discrete set of 8 possible
+        categorizations. The 8 categories will then be encoded into integer values in the final encoding step (machine learning
+        inputs must be numeric).
 
         Returns
         -------

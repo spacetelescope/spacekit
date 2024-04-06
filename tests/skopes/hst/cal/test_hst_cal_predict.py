@@ -1,7 +1,7 @@
 import os
 from pytest import mark
-from moto import mock_s3
-from spacekit.skopes.hst.cal.predict import Predict, local_handler, lambda_handler
+from moto import mock_aws
+from spacekit.skopes.hst.cal.predict import local_handler, lambda_handler
 import boto3
 
 
@@ -27,7 +27,7 @@ def put_moto_s3_object(dataset, bucketname):
 @mark.cal
 @mark.predict
 @mark.parametrize("pipeline", [("asn")])
-@mock_s3
+@mock_aws
 def test_local_predict_handler(hst_cal_predict_visits, pipeline):
     bucketname = "spacekit_bucket"
     s3 = boto3.resource("s3", region_name="us-east-1")
@@ -43,7 +43,7 @@ def test_local_predict_handler(hst_cal_predict_visits, pipeline):
 @mark.cal
 @mark.predict
 @mark.parametrize("pipeline", [("asn")])
-@mock_s3
+@mock_aws
 def test_local_handler_multiple(hst_cal_predict_visits, pipeline):
     bucketname = "spacekit_bucket"
     s3 = boto3.resource("s3", region_name="us-east-1")
@@ -62,7 +62,7 @@ def test_local_handler_multiple(hst_cal_predict_visits, pipeline):
 @mark.cal
 @mark.predict
 @mark.parametrize("pipeline", [("asn")])
-@mock_s3
+@mock_aws
 def test_lambda_handler(hst_cal_predict_visits, pipeline):
     bucketname = "spacekit_bucket"
     s3 = boto3.resource("s3", region_name="us-east-1")

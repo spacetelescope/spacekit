@@ -14,7 +14,7 @@ __pycache__
 */cython_version.py
 htmlcov
 .benchmarks
-.coverage
+.coverage*
 MANIFEST
 .ipynb_checkpoints
 .bashrc
@@ -43,6 +43,7 @@ distribute-*.tar.gz
 .aws
 .cache
 .tox
+.ruff_cache
 .*.sw[op]
 *~
 .project
