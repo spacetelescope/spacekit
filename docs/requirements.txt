@@ -2,7 +2,7 @@ setuptools==69.2.0
 Sphinx==6.2.1
 sphinx-automodapi==0.17.0
 sphinx_rtd_theme==1.2.2
-matplotlib==3.5.1
+matplotlib==3.8.4
 tensorflow==2.13.0
 numpy==1.24.3
 numpydoc==1.5.0
