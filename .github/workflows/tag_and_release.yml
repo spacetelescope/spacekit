@@ -15,10 +15,14 @@ on:
       prerelease:
         description: Pre-Release
         required: false
+        type: boolean
+        default: false
 
       draft:
         description: Draft Release (do not publish)
         required: false
+        type: boolean
+        default: false
 
 jobs:
 
