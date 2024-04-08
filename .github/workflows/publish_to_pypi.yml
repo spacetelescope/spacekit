@@ -10,12 +10,14 @@ on:
       test:
         description: testpypi
         required: false
-        default: 'false'
+        default: false
+        type: boolean
 
       debug:
         description: verbose logging
         required: false
-        default: 'false'
+        default: false
+        type: boolean
 
   # Change to this once workflow has been tested
   # on:
