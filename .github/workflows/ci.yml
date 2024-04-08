@@ -7,7 +7,8 @@ on:
   push:
     branches:
     - main
-  #  tags: # run CI if specific tags are pushed
+    tags:
+    - '*'
   pull_request:
     branches: # only build on PRs against 'main' if you need to further limit when CI is run.
     - develop
