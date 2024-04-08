@@ -59,6 +59,8 @@ jobs:
     env:
       url: https://pypi.org/p/spacekit
       test_url: https://test.pypi.org/legacy/
+      password: ${{ secrets.PYPI_PASSWORD_SPACEKIT_MAINTAINER }}
+      test_password: ${{ secrets.PYPI_PASSWORD_SPACEKIT_MAINTAINER_TEST }}
     environment: 
         name: pypi_release
         url:  ${{ (github.event.inputs.test && env.test_url) || env.url }}
@@ -73,6 +75,7 @@ jobs:
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
+          password: ${{ (inputs.test && env.test_password) || env.password }}
           repository-url: ${{ (github.event.inputs.test && env.test_url) || env.url }}
           verify-metadata: true
           skip-existing: false
