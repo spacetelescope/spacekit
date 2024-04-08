@@ -57,8 +57,7 @@ jobs:
     needs: [ build_artifacts ]
     runs-on: ubuntu-latest
     env:
-      # url: https://pypi.org/p/spacekit # TEMP for testing
-      url: https://test.pypi.org/legacy/
+      url: https://pypi.org/p/spacekit
       test_url: https://test.pypi.org/legacy/
     environment: 
         name: pypi_release
@@ -74,7 +73,6 @@ jobs:
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          name: pypi
           repository-url: ${{ (github.event.inputs.test && env.test_url) || env.url }}
           verify-metadata: true
           skip-existing: false
