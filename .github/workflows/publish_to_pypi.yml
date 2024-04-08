@@ -6,8 +6,7 @@ on:
       test:
         description: publish to test pypi
         required: false
-        default: false
-        type: boolean
+        default: 'false'
 
   # Change to this once workflow has been tested
   # on:
@@ -42,8 +41,9 @@ jobs:
 
   publish_testpypi:
     needs: [ build_artifacts ]
-    if: ${{ inputs.test == 'true' }}
+    if: inputs.test == 'true'
     runs-on: ubuntu-latest
+    environment: pypi_release
     permissions:
       id-token: write
     steps:
@@ -53,11 +53,9 @@ jobs:
           path: dist
       
       - name: Publish package distributions to TEST PyPI
-        uses: pypa/gh-action-pypi-publish@v1.8.10
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
           name: testpypi
-          user: ${{ secrets.PYPI_USERNAME_SPACEKIT_MAINTAINER }}
-          password: ${{ secrets.PYPI_PASSWORD_SPACEKIT_MAINTAINER_TEST }}
           repository-url: https://test.pypi.org/legacy/
           verify-metadata: true
           skip-existing: false
@@ -65,8 +63,9 @@ jobs:
 
   publish_pypi:
     needs: [ build_artifacts ]
-    if: ${{ inputs.test == 'false' }}
+    if: inputs.test == 'false'
     runs-on: ubuntu-latest
+    environment: pypi_release
     permissions:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
@@ -76,11 +75,9 @@ jobs:
           path: dist
 
       - name: Publish package distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@v1.8.10
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
           name: pypi
-          user: ${{ secrets.PYPI_USERNAME_SPACEKIT_MAINTAINER }}
-          password: ${{ secrets.PYPI_PASSWORD_SPACEKIT_MAINTAINER }}
           repository-url: https://pypi.org/p/spacekit
           verify-metadata: true
           skip-existing: false
