@@ -3,8 +3,18 @@ name: Publish to PyPI
 on:
   workflow_dispatch:
     inputs:
+      version:
+        description: Version (tag)
+        required: true
+
       test:
-        description: publish to test pypi
+        description: testpypi
+        required: false
+        default: false
+        type: boolean
+
+      debug:
+        description: verbose logging
         required: false
         default: false
         type: boolean
@@ -19,8 +29,18 @@ jobs:
   build_artifacts:
     runs-on: ubuntu-latest
     steps:
+
+    - name: Get tag name
+      id: get_tag_name
+      env:
+        tagname: ${{ github.event.inputs.version }}
+      run: echo "VERSION=refs/tags/${env.tagname}" >> $GITHUB_OUTPUT
+
     - uses: actions/checkout@v4
+      env:
+        VERSION: ${{ steps.get_tag_name.outputs.VERSION }}
       with:
+        ref: ${{ env.VERSION }}
         fetch-depth: 0
 
     - uses: actions/setup-python@v5
@@ -40,33 +60,17 @@ jobs:
       with:
         path: dist/*
 
-  publish_testpypi:
-    needs: [ build_artifacts ]
-    if: ${{ inputs.test == 'true' }}
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: artifact
-          path: dist
-      
-      - name: Publish package distributions to TEST PyPI
-        uses: pypa/gh-action-pypi-publish@v1.8.10
-        with:
-          name: testpypi
-          user: ${{ secrets.PYPI_USERNAME_SPACEKIT_MAINTAINER }}
-          password: ${{ secrets.PYPI_PASSWORD_SPACEKIT_MAINTAINER_TEST }}
-          repository-url: https://test.pypi.org/legacy/
-          verify-metadata: true
-          skip-existing: false
-          verbose: true
 
   publish_pypi:
     needs: [ build_artifacts ]
-    if: ${{ inputs.test == 'false' }}
     runs-on: ubuntu-latest
+    env:
+      url: https://pypi.org/p/spacekit
+      test_url: https://test.pypi.org/legacy/
+      verbose_debug: true
+    environment: 
+        name: pypi_release
+        url:  ${{ ( github.event.inputs.test == 'true' && env.test_url) || env.url }}
     permissions:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
@@ -76,12 +80,10 @@ jobs:
           path: dist
 
       - name: Publish package distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@v1.8.10
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
           name: pypi
-          user: ${{ secrets.PYPI_USERNAME_SPACEKIT_MAINTAINER }}
-          password: ${{ secrets.PYPI_PASSWORD_SPACEKIT_MAINTAINER }}
-          repository-url: https://pypi.org/p/spacekit
+          repository-url: ${{ (github.event.inputs.test == 'true' && env.test_url) || env.url }}
           verify-metadata: true
           skip-existing: false
-          verbose: false
+          verbose:  ${{ github.event.inputs.debug == 'true' && env.verbose_debug }}
