@@ -30,17 +30,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-    - name: Get tag name
-      id: get_tag_name
-      env:
-        tagname: ${{ github.event.inputs.version }}
-      run: echo "VERSION=refs/tags/${env.tagname}" >> $GITHUB_OUTPUT
-
     - uses: actions/checkout@v4
-      env:
-        VERSION: ${{ steps.get_tag_name.outputs.VERSION }}
       with:
-        ref: ${{ env.VERSION }}
+        ref: ${{ github.event.inputs.version }}
         fetch-depth: 0
 
     - uses: actions/setup-python@v5
