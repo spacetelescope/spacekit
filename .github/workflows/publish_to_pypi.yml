@@ -7,6 +7,10 @@ on:
         description: publish to test pypi
         required: false
         default: 'false'
+      debug:
+        description: verbose logging
+        required: false
+        default: 'false'
 
   # Change to this once workflow has been tested
   # on:
@@ -39,33 +43,17 @@ jobs:
       with:
         path: dist/*
 
-  publish_testpypi:
-    needs: [ build_artifacts ]
-    if: inputs.test == 'true'
-    runs-on: ubuntu-latest
-    environment: pypi_release
-    permissions:
-      id-token: write
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: artifact
-          path: dist
-      
-      - name: Publish package distributions to TEST PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          name: testpypi
-          repository-url: https://test.pypi.org/legacy/
-          verify-metadata: true
-          skip-existing: false
-          verbose: true
 
   publish_pypi:
     needs: [ build_artifacts ]
-    if: inputs.test == 'false'
     runs-on: ubuntu-latest
-    environment: pypi_release
+    env:
+      url: https://pypi.org/p/spacekit
+      test_url: https://test.pypi.org/legacy/
+      verbose_debug: true
+    environment: 
+        name: pypi_release
+        url:  ${{ (inputs.test == 'true' && env.test_url) || env.url }}
     permissions:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
@@ -78,7 +66,7 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           name: pypi
-          repository-url: https://pypi.org/p/spacekit
+          repository-url: ${{ (inputs.test == 'true' && env.test_url) || env.url }}
           verify-metadata: true
           skip-existing: false
-          verbose: false
+          verbose:  ${{ inputs.debug == 'true' && env.verbose_debug }}
