@@ -48,8 +48,10 @@ jobs:
           echo "EOF" >> "${GITHUB_OUTPUT}"
 
       - name: Get output
+        env:
+            DESC: ${{ steps.changelog.outputs.CHANGELOG }}
         run:
-            echo ${{ steps.changelog.outputs.CHANGELOG }}
+            echo ${{ env.DESC }}
 
       - name: Create GitHub release (triggers publish-to-pypi workflow)
         uses: zendesk/action-create-release@v2
