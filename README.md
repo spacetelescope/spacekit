@@ -1,7 +1,6 @@
 # spacekit
 
 [![Powered by Astropy](http://img.shields.io/badge/powered%20by-AstroPy-orange.svg?style=flat)](http://www.astropy.org)
-![GitHub repo size](https://img.shields.io/github/repo-size/spacetelescope/spacekit)
 ![GitHub license](https://img.shields.io/github/license/spacetelescope/spacekit?color=black)
 [![CodeFactor](https://www.codefactor.io/repository/github/spacetelescope/spacekit/badge)](https://www.codefactor.io/repository/github/spacetelescope/spacekit)
 
@@ -71,14 +70,14 @@ $ python -m spacekit.skopes.jwst.cal.predict /path/to/inputs --pid 1076
 # optionally specify a Program ID `pid` (default is None)
 > jcal = JwstCalPredict(input_path, pid=1076)
 > jcal.run_inference()
-# estimations for L3 product memory footprints (GB) are stored in a dict under the `predictions` attribute. Ground truth values (latest actual footprints recorded) are shown as inline comments. The baseline model for Image exposure types was trained on ~3000 datasets and has an RMSE of ~4.84.
+# estimations for L3 product memory footprints (GB) are stored in a dict under the `predictions` attribute. Ground truth values (latest actual footprints recorded) are shown as inline comments.
 > jcal.predictions
 {
     'jw01076-o101-t1_nircam_clear-f212n': {'gbSize': 10.02}, # actual: 10.553384 
     'jw01076-o101-t1_nircam_clear-f210m': {'gbSize': 8.72},  # actual: 11.196752
     'jw01076-o101-t1_nircam_clear-f356w': {'gbSize': 7.38}, # actual: 6.905737
 }
-# NOTE: the target number "t1" is auto-generated based on how many unique targets there are within a program. They do not match actual target IDs used by the pipeline.
+# NOTE: the target number "t1" is not intended to match actual target IDs used by the pipeline.
 ```
 
 
