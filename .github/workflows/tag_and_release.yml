@@ -15,14 +15,14 @@ on:
       prerelease:
         description: Pre-Release
         required: false
-        type: boolean
         default: false
+        type: boolean
 
       draft:
         description: Draft Release (do not publish)
         required: false
-        type: boolean
         default: false
+        type: boolean
 
 jobs:
 
@@ -45,12 +45,12 @@ jobs:
           git config --local user.email ${{ secrets.GH_EMAIL }}
 
       - name: Set changelog release date
-        if: !github.event.inputs.prerelease
+        if: ${{ github.event.inputs.prerelease == 'false' }}
         run:
           scripts/set_release_date ${{ github.event.inputs.version }}
 
       - name: Commit changelog and tag release
-        if: !github.event.inputs.prerelease
+        if: ${{ github.event.inputs.prerelease == 'false' }}
         run: |
           git add CHANGES.rst
           git commit -m "Set ${{ github.event.inputs.version }} release date"
@@ -59,7 +59,7 @@ jobs:
           git push origin ${{ github.event.inputs.version }}
       
       - name: Tag Pre-release
-        if: github.event.inputs.prerelease
+        if: ${{ github.event.inputs.prerelease  == 'true' }}
         run: |
           git tag -a ${{ github.event.inputs.version }} -m "prerelease ${{ github.event.inputs.version }}"
           git push origin ${{ github.event.inputs.ref }} --tags
