@@ -288,7 +288,7 @@ class JwstCalIngest:
         self.rawpath = self.outpath + "/raw-{}.csv"
 
     @xtimer
-    def run_ingest(self, save_l1=True):
+    def run_ingest(self):
         self.ingest_data()
         if len(self.files) == 0:
             return

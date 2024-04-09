@@ -2,10 +2,10 @@
 spacekit - JWST calibration pipeline resource prediction modeling
 *****************************************************************
 
-How-To
--------
+Inference
+---------
 
-* Generate Predictions (unlabeled data)
+Generate estimated memory footprints on unlabeled data.
 
 .. toctree::
    :maxdepth: 2
@@ -13,7 +13,8 @@ How-To
    predict <cal/predict.rst>
 
 
-## Setup
+Setup
+-----
 
 **Install with pip**
 
@@ -29,9 +30,8 @@ How-To
     $ pip install -e .
 
 
-## Run
-
-1. Generate predictions
+Run Inference
+-------------
 
 ***from the command line***
 
@@ -48,6 +48,11 @@ How-To
     input_path = "/path/to/level1/exposures"
     jcal = JwstCalPredict(input_path)
     jcal.run_inference()
+    jcal.predictions
+    {
+        'jw01076-o101-t1_nircam_clear-f212n': {'gbSize': 10.02},
+        'jw01076-o101-t1_nircam_clear-f210m': {'gbSize': 8.72},
+        'jw01076-o101-t1_nircam_clear-f356w': {'gbSize': 7.38},
+    }
 
-Outputs:
-* jcal.predictions : dictionary of level 3 products and estimated memory footprint (GB)
+Outputs: dictionary of level 3 products and estimated memory footprint (GB)

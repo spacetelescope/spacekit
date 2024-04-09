@@ -15,14 +15,14 @@ on:
       prerelease:
         description: Pre-Release
         required: false
-        type: boolean
         default: false
+        type: boolean
 
       draft:
         description: Draft Release (do not publish)
         required: false
-        type: boolean
         default: false
+        type: boolean
 
 jobs:
 
@@ -31,9 +31,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Changelog Entry
-        id: changelog
-        run: echo "DESC=$(scripts/get_changelog)" >> $GITHUB_OUTPUT
 
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -42,18 +39,26 @@ jobs:
           ref: ${{ github.event.inputs.ref }}
           fetch-depth: 0
 
+      - name: Changelog Entry
+        id: changelog
+        run: |
+          CHANGELOG="$(scripts/get_changelog)"
+          echo "CHANGELOG<<EOF" >> "${GITHUB_OUTPUT}"
+          echo "$CHANGELOG" >> "${GITHUB_OUTPUT}"
+          echo "EOF" >> "${GITHUB_OUTPUT}"
+
       - name: Configure git
         run: |
           git config --local user.name ${{ secrets.GH_USERNAME }}
           git config --local user.email ${{ secrets.GH_EMAIL }}
 
       - name: Set changelog release date
-        if: ${{ !github.event.inputs.prerelease }}
+        if: ${{ github.event.inputs.prerelease == 'false' }}
         run:
           scripts/set_release_date ${{ github.event.inputs.version }}
 
       - name: Commit changelog and tag release
-        if: ${{ !github.event.inputs.prerelease }}
+        if: ${{ github.event.inputs.prerelease == 'false' }}
         run: |
           git add CHANGES.rst
           git commit -m "Set ${{ github.event.inputs.version }} release date"
@@ -62,16 +67,16 @@ jobs:
           git push origin ${{ github.event.inputs.version }}
       
       - name: Tag Pre-release
-        if: ${{ github.event.inputs.prerelease }}
+        if: ${{ github.event.inputs.prerelease  == 'true' }}
         run: |
           git tag -a ${{ github.event.inputs.version }} -m "prerelease ${{ github.event.inputs.version }}"
           git push origin ${{ github.event.inputs.ref }} --tags
 
       - name: Create GitHub release (triggers publish-to-pypi workflow)
-        uses: zendesk/action-create-release@v1
+        uses: zendesk/action-create-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.SPACEKIT_RELEASE_TOKEN }}
-          CHANGELOG: ${{ steps.changelog.outputs.DESC }}
+          CHANGELOG: ${{ steps.changelog.outputs.CHANGELOG }}
         with:
           tag_name: ${{ github.event.inputs.version }}
           release_name: ${{ github.event.inputs.version }}

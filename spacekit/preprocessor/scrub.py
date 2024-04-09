@@ -716,7 +716,6 @@ class JwstCalScrubber(Scrubber):
         self.products.update(self.specpix)
         if self.mode != 'df': # use fits data
             sky.count_exposures = False
-        sky.count_exposures = False  # use fits data
         self.tacpix = sky.calculate_offsets(self.tac_products)
         self.products.update(self.tacpix)
         self.update_fgs()
@@ -836,6 +835,8 @@ class JwstCalScrubber(Scrubber):
             self.tac_products[p] = {k: v}
 
     def make_fgs_product_name(self, k, v, p):
+        if self.mode != 'fits':
+            del v["NEXPOSUR"]
         if p in self.fgs_products:
             self.fgs_products[p][k] = v
         else:
@@ -954,7 +955,7 @@ class JwstCalScrubber(Scrubber):
         for product, exp_data in self.fgs_products.items():
             first_key = list(exp_data.keys())[0]
             self.fgspix[product] = exp_data[first_key]
-            self.fgspix[product].update(dict(nexposur=len(list(exp_data.keys()))))
+            self.fgspix[product].update(dict(NEXPOSUR=len(list(exp_data.keys()))))
             if product not in self.products:
                 self.products[product] = exp_data
 
@@ -969,8 +970,8 @@ class JwstCalScrubber(Scrubber):
         return dict(
             IMAGE=self.imgpix,
             SPEC=self.specpix,
-            FGS=self.fgspix,
             TAC=self.tacpix,
+            FGS=self.fgspix,
         )
 
     def scrub_inputs(self, exp_type="IMAGE"):
@@ -1084,7 +1085,7 @@ class NaNdler:
             if self.verbose:
                 print(f"\nNaNs to be NaNdled:\n{self.df[cols].isna().sum()}\n")
             for n in cols:
-                self.df.loc[self.df[n].isna() == True, n] = 0.0
+                self.df.loc[self.df[n].isna(), n] = 0.0
 
     def discrete_nandler(self, nanval=0.0):
         if self.discrete:
@@ -1094,7 +1095,7 @@ class NaNdler:
             for n in cols:
                 if self.allow_neg is True and 0.0 in self.df[n].value_counts().index:
                     nanval = -1.0
-                self.df.loc[self.df[n].isna() == True, n] = nanval
+                self.df.loc[self.df[n].isna(), n] = nanval
 
     @staticmethod
     def nandle_cats(x, truevals):
