@@ -31,9 +31,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Changelog Entry
-        id: changelog
-        run: echo "DESC=$(scripts/get_changelog)" >> $GITHUB_OUTPUT
 
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -48,12 +45,12 @@ jobs:
           git config --local user.email ${{ secrets.GH_EMAIL }}
 
       - name: Set changelog release date
-        if: ${{ !github.event.inputs.prerelease }}
+        if: !github.event.inputs.prerelease
         run:
           scripts/set_release_date ${{ github.event.inputs.version }}
 
       - name: Commit changelog and tag release
-        if: ${{ !github.event.inputs.prerelease }}
+        if: !github.event.inputs.prerelease
         run: |
           git add CHANGES.rst
           git commit -m "Set ${{ github.event.inputs.version }} release date"
@@ -62,16 +59,25 @@ jobs:
           git push origin ${{ github.event.inputs.version }}
       
       - name: Tag Pre-release
-        if: ${{ github.event.inputs.prerelease }}
+        if: github.event.inputs.prerelease
         run: |
           git tag -a ${{ github.event.inputs.version }} -m "prerelease ${{ github.event.inputs.version }}"
           git push origin ${{ github.event.inputs.ref }} --tags
 
+      - name: Changelog Entry
+        id: changelog
+        run: |
+          CHANGELOG="$(scripts/get_changelog)"
+          delimiter="$(openssl rand -hex 8)"
+          echo "CHANGELOG<<${delimiter}" >> "${GITHUB_OUTPUT}"
+          echo "$CHANGELOG" >> "${GITHUB_OUTPUT}"
+          echo "{delimiter}" >> "${GITHUB_OUTPUT}"
+
       - name: Create GitHub release (triggers publish-to-pypi workflow)
-        uses: zendesk/action-create-release@v1
+        uses: zendesk/action-create-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.SPACEKIT_RELEASE_TOKEN }}
-          CHANGELOG: ${{ steps.changelog.outputs.DESC }}
+          CHANGELOG: ${{ steps.changelog.outputs.CHANGELOG }}
         with:
           tag_name: ${{ github.event.inputs.version }}
           release_name: ${{ github.event.inputs.version }}
