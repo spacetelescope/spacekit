@@ -3,13 +3,9 @@
 
 new features
 ------------
-
 - `builder.trained_networks` jwst_cal.zip includes updated (v2) `img3_reg` and new `spec3_reg` predictive models for image and spectroscopic data [#58]
-
 - `preprocessor.ingest.JwstCalIngest` class and cmdline script for automated training data ingest [#57]
-
 - `extractor.radio.JwstCalRadio` subclass for scraping datasets from MAST using ASN metadata [#51]
-
 - `extractor.scrape.FitsScraper.scrape_dataframe` method added for scraping Fits data from dataframe [#52]
 
 enhancements
@@ -19,22 +15,16 @@ enhancements
     - `obs` to specify selection of a program ID + observation number
     - `input_path` accepts either a directory (default) or a filename. If filename, the script will try to find any input exposures that belong to the same program and observation number as that file.
     - `sfx` attribute is now customizable on instantiation of the class object (default is '_uncal.fits')
-
 - `architect.builder.Builder.save_model` uses preferred keras archive format by default [#50]
-
 - `preprocessor.transform.SkyTransformer` set offsets to 0 for gs/targ fiducial NaN values; custom filename for tx_file [#54]
-
 - `preprocessor.prep.JwstCalPrep` updates in preparation for preprocessing spectroscopic data [#55]
     - revise spectroscopic data columns
     - save tx_file name with "-{expmode}" to differentiate between image and spec normalization params
     - rename target attributes: y_img_train, y_img_test to y_reg_train, y_reg_test
-
 - `preprocessor.scrub.JwstCalScrubber` more sophisticated exposure grouping and L3 product naming [#56]
-
 
 bug fixes
 ---------
-
 - `preprocessor.encode.PairEncoder.handle_unknowns` create single new encoding value per unidentified variable [#53]
 
 
