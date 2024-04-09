@@ -73,7 +73,7 @@ jobs:
           git push origin ${{ github.event.inputs.ref }} --tags
 
       - name: Create GitHub release (triggers publish-to-pypi workflow)
-        uses: zendesk/action-create-release@v2
+        uses: zendesk/action-create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.SPACEKIT_RELEASE_TOKEN }}
           CHANGELOG: ${{ steps.changelog.outputs.CHANGELOG }}

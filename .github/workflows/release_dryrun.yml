@@ -47,14 +47,8 @@ jobs:
           echo "$CHANGELOG" >> "${GITHUB_OUTPUT}"
           echo "EOF" >> "${GITHUB_OUTPUT}"
 
-      - name: Get output
-        env:
-            DESC: ${{ steps.changelog.outputs.CHANGELOG }}
-        run:
-            echo ${{ env.DESC }}
-
       - name: Create GitHub release (triggers publish-to-pypi workflow)
-        uses: zendesk/action-create-release@v2
+        uses: zendesk/action-create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.SPACEKIT_RELEASE_TOKEN }}
           CHANGELOG: ${{ steps.changelog.outputs.CHANGELOG }}
