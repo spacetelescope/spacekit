@@ -57,7 +57,7 @@ jobs:
     needs: [ build_artifacts ]
     runs-on: ubuntu-latest
     env:
-      url: https://pypi.org/p/spacekit
+      url: https://pypi.org/p/spacekit/
       test_url: https://test.pypi.org/legacy/
       password: ${{ secrets.PYPI_PASSWORD_SPACEKIT_MAINTAINER }}
       test_password: ${{ secrets.PYPI_PASSWORD_SPACEKIT_MAINTAINER_TEST }}
