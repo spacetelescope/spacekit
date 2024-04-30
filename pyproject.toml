@@ -1,9 +1,90 @@
+[project]
+name = "spacekit"
+version = "1.1.0"
+description = "Astronomical Data Science and Machine Learning Toolkit"
+requires-python = ">=3.10"
+author = "Ru Keïn"
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Astronomy",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "tensorflow<2.16",
+    "astropy",
+    "boto3",
+    "numpy>=1.22",
+    "pandas",
+    "scikit-learn>=1.3.2",
+]
+
+[project.readme]
+file = "README.md"
+content-type = "text/markdown"
+
+[project.license]
+file = "LICENSE"
+content-type = "text/plain"
+
+[project.urls]
+Source = "https://github.com/spacetelescope/spacekit"
+Documentation = "https://spacekit.readthedocs.io"
+Tracker = "https://github.com/spacetelescope/spacekit/issues"
+
+[project.optional-dependencies]
+x = [
+    "astroquery",
+    "matplotlib<4",
+    "pydot",
+    "graphviz",
+    "plotly",
+    "progressbar",
+    "scikeras",
+    "tables",
+    "tqdm",
+]
+test = [
+    "pytest",
+    "pytest-cov",
+    "pytest-profiling",
+    "tox",
+    "bandit",
+    "moto",
+    "black",
+    "ruff",
+]
+docs = [
+    "sphinx"
+    "sphinx_rtd_theme"
+    "pydot"
+    "graphviz"
+    "sphinx-automodapi"
+    "numpydoc"
+]
+
+[project.package-data]
+spacekit = "builder/trained_networks/*"
+
 [build-system]
 requires = [
-    "setuptools>=42",
-    "wheel"
+    "setuptools>=61.2",
+    "setuptools_scm[toml]>=3.4",
+    "wheel",
 ]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+zip-safe = false
+include-package-data = true
+
+[tool.build-sphinx]
+builder = "html"
+warning-is-error = "1"
 
 [tool.ruff]
 line-length = 130
@@ -25,3 +106,33 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
     'spacekit/preprocessor/scrub.py' = ['E712']
+
+[tool.pytest.ini_options]
+testpaths = "spacekit/tests"
+doctest_plus = "enabled"
+text_file_format = "md"
+
+[tool.coverage.run]
+omit = [
+    "spacekit/*setup_package*",
+    "spacekit/tests/*",
+    "spacekit/*/tests/*",
+    "spacekit/version*",
+    "*/spacekit/*setup_package*",
+    "*/spacekit/tests/*",
+    "*/spacekit/*/tests/*",
+    "docs/*",
+    "spacekit/__init__.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "except ImportError",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "def main\(.*\):",
+    "pragma: py{ignore_python_version}",
+    "def _ipython_key_completions_",
+    "if __name__ == '__main__':",
+]

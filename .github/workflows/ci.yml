@@ -32,9 +32,6 @@ jobs:
           # - macos-latest
           # - windows-latest
         include:
-          - name: python 3.9
-            toxenv: py39
-            python-version: 3.9
           
           - name: python 3.10
             toxenv: py310
@@ -43,6 +40,10 @@ jobs:
           - name: python 3.11
             toxenv: py311
             python-version: 3.11
+
+          - name: python 3.12
+            toxenv: py312
+            python-version: 3.12
 
     steps:
       - name: Checkout code
