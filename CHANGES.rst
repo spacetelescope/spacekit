@@ -1,3 +1,12 @@
+1.1.1 (unreleased)
+==================
+
+installation
+------------
+- Set minimum python version to 3.10, include py312 in test suite, replace deprecated pkg_resources with importlib.metadata [#73]
+
+
+
 1.1.0 (2024-04-09)
 ==================
 
