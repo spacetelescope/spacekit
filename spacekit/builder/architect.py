@@ -327,7 +327,7 @@ class Builder:
         list
             [callbacks.ModelCheckpoint, callbacks.EarlyStopping]
         """
-        model_name = str(self.model.name_scope().rstrip("/"))
+        model_name = str(self.model.name)
         checkpoint_cb = callbacks.ModelCheckpoint(
             f"{model_name}_checkpoint.h5", save_best_only=True
         )
@@ -361,7 +361,7 @@ class Builder:
             save model using new (preferred) keras archive format, by default True
         """
         if self.name is None:
-            self.name = str(self.model.name_scope().rstrip("/"))
+            self.name = str(self.model.name)
             datestamp = dt.datetime.now().isoformat().split("T")[0]
             model_name = f"{self.name}_{datestamp}"
         else:
@@ -439,7 +439,7 @@ class Builder:
         tf.keras.model.history
             Keras training history
         """
-        model_name = str(self.model.name_scope().rstrip("/").upper())
+        model_name = str(self.model.name).upper()
         self.log.info("FITTING MODEL...")
         validation_data = (
             (self.X_test, self.y_test) if self.X_test is not None else None
@@ -482,7 +482,7 @@ class Builder:
         """
         if params is not None:
             self.fit_params(**params)
-        model_name = str(self.model.name_scope().rstrip("/").upper())
+        model_name = str(self.model.name).upper()
         self.log.info("FITTING MODEL...")
         validation_data = (
             (self.X_test, self.y_test) if self.X_test is not None else None
