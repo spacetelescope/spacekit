@@ -1,12 +1,12 @@
 calcloud = {
-    "uri": "https://zenodo.org/record/10895592/files",
+    "uri": "https://zenodo.org/record/11169350/files",
     "data": {
         "2022-02-14": {
             "fname": "hst_cal_std_2022-02-14.zip?download=1",
-            "hash": "e9375c65feb413a660cb737a9a8a3a73",
+            "hash": "3ca674b0d81e98e319f6e80d78ce8db8",
             "desc": "data, model and training results",
             "key": "2022-02-14-1644848448",
-            "size": "11.4MB",
+            "size": "9.7MB",
         },
         "2021-11-04": {
             "fname": "hst_cal_std_2021-11-04.zip?download=1",
@@ -32,29 +32,29 @@ calcloud = {
     },
     "model": {
         "fname": "hst_cal.zip",
-        "hash": "ffe7d00504ad5d6ebc79488abe612474",
+        "hash": "acb07516b9385ce7182577ef7216ae75",
         "desc": "hst calcloud resource prediction models",
         "key": "hst_cal",
-        "size": "385.42kB",
+        "size": "385.47kB",
     },
 }
 
 svm = {
-    "uri": "https://zenodo.org/record/10895592/files",
+    "uri": "https://zenodo.org/record/11169350/files",
     "data": {
         "2022-02-14": {
             "fname": "hst_drz_svm_2022-02-14.zip?download=1",
-            "hash": "3d6ade5510cc7aad4c2c45329c0751fe",
+            "hash": "2660e4457b19ce01b625d7a668d04e89",
             "desc": "latest model, data and training results",
             "key": "2022-02-14-1644850390",
-            "size": "18MB",
+            "size": "5MB",
         },
         "2022-01-30": {
             "fname": "hst_drz_svm_2022-01-30.zip?download=1",
-            "hash": "9ad9b95c20b82877f1ea7b0fa64b10a1",
+            "hash": "370fdbdb8d2b45b2ded998dbcc6927a5",
             "desc": "updated model, data and training results",
             "key": "2022-01-30-1643523529",
-            "size": "18MB",
+            "size": "5MB",
         },
         "2022-01-16": {
             "fname": "hst_drz_svm_2022-01-16.zip?download=1",
@@ -80,7 +80,7 @@ svm = {
     },
     "model": {
         "fname": "svm_align.zip",
-        "hash": "af3b019cc3079cb29fd01bae58e9560d",
+        "hash": "c98492b1e729407c72a69d2c739232be",
         "desc": "hst svm alignment prediction models",
         "key": "svm_align",
         "size": "4.92MB",
@@ -89,7 +89,7 @@ svm = {
 
 
 jwst_cal = {
-    "uri": "https://zenodo.org/record/10895592/files",
+    "uri": "https://zenodo.org/record/11169350/files",
     "data": {
         "2023-08-02": {
             "fname": "",
@@ -101,16 +101,16 @@ jwst_cal = {
     },
     "model": {
         "fname": "jwst_cal.zip",
-        "hash": "f3b6dbcc3fc92a6f806f5b5464e68c02",
+        "hash": "c2c6764bcf1092e993d061be43075e3d",
         "desc": "JWST Calibration Processing Resource Prediction Models",
         "key": "jwst_cal",
-        "size": "1.5MB",
+        "size": "526.89kB",
     },
 }
 
 
 k2 = {
-    "uri": "https://zenodo.org/record/10895592/files",
+    "uri": "https://zenodo.org/record/11169350/files",
     "data": {
         "test": {
             "fname": "k2-exo-flux-ts-test.csv.zip?download=1",
@@ -142,19 +142,19 @@ networks = {
     "calcloud": {
         "basepath": "spacekit.builder.trained_networks",
         "fname": "hst_cal.zip",
-        "hash": "f3422c98d93520898e10d068a1e434dd5caf40e632760687df377c1b2bccff57",
-        "size": "385.42kB",
+        "hash": "3dcfd4760154dee890f7943e237e679a43eef82d3c0838ff62ecf17e4c3702fb",
+        "size": "385.47kB",
     },
     "svm": {
         "basepath": "spacekit.builder.trained_networks",
         "fname": "svm_align.zip",
-        "hash": "577a87fab157fdadc657af0dcd67b55af2d89d855d5597bd96671b20ff135636",
+        "hash": "cda062ba768374802e4e8b919c0dcce79ce3b72e29004cc09601a67da454b008",
         "size": "4.92MB",
     },
     "jwst_cal": {
         "basepath": "spacekit.builder.trained_networks",
         "fname": "jwst_cal.zip",
-        "hash": "b61d0281fd149e2b0ffcded81ba54b24b479c5b7191072be2bfb59464d779187",
-        "size": "1.5MB",
+        "hash": "31142d47e5fc31650b49edb44dfa3db5f1d09380864b9560e2dded456723dfe6",
+        "size": "526.89kB",
     },
 }
