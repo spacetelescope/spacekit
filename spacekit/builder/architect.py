@@ -982,7 +982,7 @@ class BuilderEnsemble(Builder):
             for i in range(self.batch_size):
                 xa[i] = augment_data(xa[i])
                 xb[i] = augment_image(xb[i])
-            yield [xa, xb], yb
+            yield (xa, xb), yb
 
 
 class BuilderCNN2D(Builder):
