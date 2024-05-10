@@ -21,7 +21,6 @@ from tensorflow.keras.layers import (
     MaxPool3D,
     GlobalAveragePooling3D,
 )
-
 from tensorflow.keras.metrics import RootMeanSquaredError as RMSE
 from spacekit.generator.augment import augment_data, augment_image
 from spacekit.analyzer.track import stopwatch
@@ -86,7 +85,7 @@ class Builder:
         """Load saved keras model from local disk (located at the ``model_path`` attribute) or a pre-trained model from 
         spacekit.skopes.trained_networks (if ``model_path`` attribute is None). Example for ``compile_params``:
         ``dict(loss="binary_crossentropy",metrics=["accuracy"],\
-        optimizer=Adam(learning_rate=optimizers.schedules.ExponentialDecay(lr=1e-4, \
+        optimizer=Adam(learning_rate=optimizers.schedules.ExponentialDecay(1e-4, \
         decay_steps=100000, decay_rate=0.96, staircase=True)))``
 
         Parameters
@@ -328,7 +327,7 @@ class Builder:
         list
             [callbacks.ModelCheckpoint, callbacks.EarlyStopping]
         """
-        model_name = str(self.model.name_scope().rstrip("/"))
+        model_name = str(self.model.name)
         checkpoint_cb = callbacks.ModelCheckpoint(
             f"{model_name}_checkpoint.h5", save_best_only=True
         )
@@ -362,7 +361,7 @@ class Builder:
             save model using new (preferred) keras archive format, by default True
         """
         if self.name is None:
-            self.name = str(self.model.name_scope().rstrip("/"))
+            self.name = str(self.model.name)
             datestamp = dt.datetime.now().isoformat().split("T")[0]
             model_name = f"{self.name}_{datestamp}"
         else:
@@ -440,7 +439,7 @@ class Builder:
         tf.keras.model.history
             Keras training history
         """
-        model_name = str(self.model.name_scope().rstrip("/").upper())
+        model_name = str(self.model.name).upper()
         self.log.info("FITTING MODEL...")
         validation_data = (
             (self.X_test, self.y_test) if self.X_test is not None else None
@@ -483,7 +482,7 @@ class Builder:
         """
         if params is not None:
             self.fit_params(**params)
-        model_name = str(self.model.name_scope().rstrip("/").upper())
+        model_name = str(self.model.name).upper()
         self.log.info("FITTING MODEL...")
         validation_data = (
             (self.X_test, self.y_test) if self.X_test is not None else None
@@ -983,7 +982,7 @@ class BuilderEnsemble(Builder):
             for i in range(self.batch_size):
                 xa[i] = augment_data(xa[i])
                 xb[i] = augment_image(xb[i])
-            yield [xa, xb], yb
+            yield (xa, xb), yb
 
 
 class BuilderCNN2D(Builder):
