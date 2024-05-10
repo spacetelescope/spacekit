@@ -4,7 +4,9 @@
 installation
 ------------
 - Set minimum python version to 3.10, include py312 in test suite, replace deprecated pkg_resources with importlib.metadata [#73]
-
+- Set minimum tensorflow version to 2.16.1 [#73]
+- Pre-trained neural networks updated for compatibility with Keras 3 [#73]
+- Dockerfile images now use debian bookworm [#73]
 
 
 1.1.0 (2024-04-09)

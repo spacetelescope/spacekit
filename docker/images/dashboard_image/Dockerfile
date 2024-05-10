@@ -1,4 +1,4 @@
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 ENV DEV_HOME=/home/developer
 
 RUN apt update && \

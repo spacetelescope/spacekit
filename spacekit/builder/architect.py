@@ -21,7 +21,6 @@ from tensorflow.keras.layers import (
     MaxPool3D,
     GlobalAveragePooling3D,
 )
-
 from tensorflow.keras.metrics import RootMeanSquaredError as RMSE
 from spacekit.generator.augment import augment_data, augment_image
 from spacekit.analyzer.track import stopwatch
@@ -86,7 +85,7 @@ class Builder:
         """Load saved keras model from local disk (located at the ``model_path`` attribute) or a pre-trained model from 
         spacekit.skopes.trained_networks (if ``model_path`` attribute is None). Example for ``compile_params``:
         ``dict(loss="binary_crossentropy",metrics=["accuracy"],\
-        optimizer=Adam(learning_rate=optimizers.schedules.ExponentialDecay(lr=1e-4, \
+        optimizer=Adam(learning_rate=optimizers.schedules.ExponentialDecay(1e-4, \
         decay_steps=100000, decay_rate=0.96, staircase=True)))``
 
         Parameters
