@@ -1,5 +1,5 @@
 setuptools==70.2.0
-Sphinx==6.2.1
+Sphinx==8.0.2
 sphinx-automodapi==0.17.0
 sphinx_rtd_theme==2.0.0
 matplotlib==3.8.4
