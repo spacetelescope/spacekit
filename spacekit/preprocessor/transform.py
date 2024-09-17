@@ -869,7 +869,7 @@ def tensors_to_arrays(X_train, y_train, X_test, y_test):
 
 
 def hypersonic_pliers(
-    path_to_train, path_to_test, y_col=[0], skip=1, dlm=",", encoding=bytes, subtract_y=0.0
+    path_to_train, path_to_test, y_col=[0], skip=1, dlm=",", encoding='bytes', subtract_y=0.0, reshape=False
 ):
     """Extracts data into 1-dimensional arrays, using separate target classes (y) for training and test data. Assumes y (target)
     is first column in dataframe. If the target (y) classes in the raw data are 0 and 2, but you'd like them to be binaries (0
@@ -900,16 +900,15 @@ def hypersonic_pliers(
     Train = np.loadtxt(path_to_train, skiprows=skip, delimiter=dlm, encoding=encoding)
     cols = list(range(Train.shape[1]))
     xcols = [c for c in cols if c not in y_col]
-    # X_train = Train[:, 1:]
     X_train = Train[:, xcols]
-    # y_train = Train[:, 0, np.newaxis] - subtract_y
     y_train = Train[:, y_col, np.newaxis] - subtract_y
 
     Test = np.loadtxt(path_to_test, skiprows=skip, delimiter=dlm, encoding=encoding)
     X_test = Test[:, xcols]
     y_test = Test[:, y_col, np.newaxis] - subtract_y
-    # X_test = Test[:, 1:]
-    # y_test = Test[:, 0, np.newaxis] - subtract_y
+    if reshape is True:
+        y_train = y_train.reshape(y_train.shape[0], 1)
+        y_test = y_test.reshape(y_test.shape[0], 1)
 
     del Train, Test
     print("X_train: ", X_train.shape)

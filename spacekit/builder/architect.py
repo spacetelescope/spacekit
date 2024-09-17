@@ -898,7 +898,7 @@ class BuilderEnsemble(Builder):
         self.cnn.output_name = "svm_image_output"
         self.cnn.name = "svm_cnn"
         self.cnn.ensemble = True
-        self.cnn.input_shape = self.X_train[1].shape[1:] if self.X_train else None
+        self.cnn.input_shape = self.X_train[1].shape[1:] if self.X_train is not None else None
         self.cnn.output_shape = 1
         self.cnn.layers = [18, 32, 64, 32, 18]
         self.cnn.activation = "leaky_relu"
@@ -1016,7 +1016,7 @@ class BuilderCNN2D(Builder):
             **builder_kwargs,
         )
         self.blueprint = blueprint
-        self.input_shape = self.X_train.shape[1:] if self.X_train else None
+        self.input_shape = self.X_train.shape[1:] if self.X_train is not None else None
         self.output_shape = 1
         self.input_name = "cnn2d_inputs"
         self.output_name = "cnn2d_output"
@@ -1035,7 +1035,7 @@ class BuilderCNN2D(Builder):
         self.early_stopping = None
         self.batch_size = 32
         self.cost_function = "sigmoid"
-        self.step_size = X_train.shape[1] if X_train else None
+        self.step_size = X_train.shape[1] if X_train is not None else None
         self.steps_per_epoch = self.step_size // self.batch_size
         self.batch_maker = self.batch
 
@@ -1054,17 +1054,17 @@ class BuilderCNN2D(Builder):
         )(inputs)
         x = MaxPool1D(strides=self.strides)(x)
         x = BatchNormalization()(x)
-        count = 1
-        for f in self.filters[1:]:
+        for f in list(range(len(self.filters))):
+            if f == 0:
+                continue
             x = Conv1D(
                 filters=self.filters[f],
                 kernel_size=self.kernel,
                 activation=self.activation,
             )(x)
             x = MaxPool1D(strides=self.strides)(x)
-            if count < len(self.filters):
+            if f < len(self.filters) - 1:
                 x = BatchNormalization()(x)
-                count += 1
             else:
                 x = Flatten()(x)
         self.log.info("DROPOUT")

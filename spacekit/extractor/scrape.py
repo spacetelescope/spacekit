@@ -325,10 +325,10 @@ class WebScraper(Scraper):
         self.fpaths = []
 
     def scrape(self):
-        """Using the key-pair values in `dataset` dictionary attribute, download the files from a github
-        repo and check the hash keys match before extracting. Extraction and hash-key checking is handled
-        externally by the `keras.utils.data_utils.get_file` method. If extraction is successful, the
-        archive file will be deleted.
+        """Using the key-pair values in `dataset` dictionary attribute, download the files from a website
+        (such as zenodo) and check the hash keys match before extracting. Extraction and hash-key checking 
+        is handled externally by the `keras.utils.data_utils.get_file` method. If extraction is successful, 
+        the archive file will be deleted. See spacekit.datasets.meta for dictionary formatting examples.
 
         Returns
         -------
