@@ -9,6 +9,7 @@ import json
 import csv
 from zipfile import ZipFile
 from astropy.io import fits, ascii
+from astropy.table import Table
 from botocore.config import Config
 from decimal import Decimal
 from boto3.dynamodb.conditions import Attr
@@ -1428,10 +1429,7 @@ class JsonScraper(FileScraper):
                 ingest_key = fd_key.replace(" ", "_")
                 key_suffix = ingest_key.split(".")[-1]
                 if key_suffix not in ["data", "unit", "format", "dtype"]:
-                    if (
-                        str(type(json_data_item))
-                        == "<class 'astropy.table.table.Table'>"
-                    ):
+                    if isinstance(json_data_item, Table):
                         for coltitle in json_data_item.colnames:
                             ingest_value = json_data_item[coltitle].tolist()
                             id_key = title_suffix + ingest_key + "." + coltitle
@@ -1439,7 +1437,7 @@ class JsonScraper(FileScraper):
                     else:
                         ingest_value = json_data_item
                         id_key = title_suffix + ingest_key
-                        if str(type(ingest_value)) == "<class 'list'>":
+                        if isinstance(ingest_value, list):
                             ingest_dict["data"][id_key] = [ingest_value]
                         else:
                             ingest_dict["data"][id_key] = ingest_value

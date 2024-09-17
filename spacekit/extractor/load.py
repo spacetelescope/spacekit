@@ -377,7 +377,7 @@ class ImageIO:
         arrays
             split sampled arrays
         """
-        if type(data) == pd.DataFrame:
+        if isinstance(data, pd.DataFrame):
             sample = data.sample(frac=1)
         else:
             sample = data

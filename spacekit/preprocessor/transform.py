@@ -775,7 +775,7 @@ def normalize_training_images(X_tr, X_ts, X_vl=None):
 
 
 def array_to_tensor(arr, reshape=False, shape=(-1, 1)):
-    if type(arr) == tf.Tensor:
+    if isinstance(arr, tf.Tensor):
         return arr
     if reshape is True:
         arr = arr.reshape(shape[0], shape[1])
