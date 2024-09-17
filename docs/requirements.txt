@@ -3,7 +3,7 @@ Sphinx==6.2.1
 sphinx-automodapi==0.17.0
 sphinx_rtd_theme==2.0.0
 matplotlib==3.8.4
-tensorflow==2.13.0
+tensorflow==2.17.0
 numpy==1.24.3
 numpydoc==1.7.0
 astropy==6.1.1
