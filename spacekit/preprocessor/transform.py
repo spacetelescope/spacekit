@@ -775,7 +775,7 @@ def normalize_training_images(X_tr, X_ts, X_vl=None):
 
 
 def array_to_tensor(arr, reshape=False, shape=(-1, 1)):
-    if type(arr) == tf.Tensor:
+    if isinstance(arr, tf.Tensor):
         return arr
     if reshape is True:
         arr = arr.reshape(shape[0], shape[1])
@@ -869,7 +869,7 @@ def tensors_to_arrays(X_train, y_train, X_test, y_test):
 
 
 def hypersonic_pliers(
-    path_to_train, path_to_test, y_col=[0], skip=1, dlm=",", subtract_y=0.0
+    path_to_train, path_to_test, y_col=[0], skip=1, dlm=",", encoding=bytes, subtract_y=0.0
 ):
     """Extracts data into 1-dimensional arrays, using separate target classes (y) for training and test data. Assumes y (target)
     is first column in dataframe. If the target (y) classes in the raw data are 0 and 2, but you'd like them to be binaries (0
@@ -887,6 +887,8 @@ def hypersonic_pliers(
         skiprows parameter for np.loadtxt, by default 1
     dlm : str, optional
         delimiter, by default ","
+    encoding: str, optional
+        explicitly passed encoding type to numpy.loadtxt, by default bytes
     subtract_y : float, optional
         subtract this value from all y-values, by default 1.0
 
@@ -895,7 +897,7 @@ def hypersonic_pliers(
     np.ndarrays
         X_train, X_test, y_train, y_test
     """
-    Train = np.loadtxt(path_to_train, skiprows=skip, delimiter=dlm)
+    Train = np.loadtxt(path_to_train, skiprows=skip, delimiter=dlm, encoding=encoding)
     cols = list(range(Train.shape[1]))
     xcols = [c for c in cols if c not in y_col]
     # X_train = Train[:, 1:]
@@ -903,7 +905,7 @@ def hypersonic_pliers(
     # y_train = Train[:, 0, np.newaxis] - subtract_y
     y_train = Train[:, y_col, np.newaxis] - subtract_y
 
-    Test = np.loadtxt(path_to_test, skiprows=skip, delimiter=dlm)
+    Test = np.loadtxt(path_to_test, skiprows=skip, delimiter=dlm, encoding=encoding)
     X_test = Test[:, xcols]
     y_test = Test[:, y_col, np.newaxis] - subtract_y
     # X_test = Test[:, 1:]

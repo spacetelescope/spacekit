@@ -980,7 +980,7 @@ class SignalPlots:
             x_units = x_units
 
         # Scatter Plot
-        if type(signal) == np.array:
+        if isinstance(signal, np.array):
             series_index = list(range(len(signal)))
 
             converted_array = pd.Series(signal.ravel(), index=series_index)
