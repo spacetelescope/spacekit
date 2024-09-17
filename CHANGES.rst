@@ -1,3 +1,11 @@
+1.1.2 (unreleased)
+==================
+
+preprocessor
+------------
+- explicitly pass `encoding=bytes` in transform.hypersonic_pliers for numpy 2 compatibility where this will no longer be the default for np.loadtxt [#92]
+
+
 1.1.1 (2024-07-11)
 ==================
 
