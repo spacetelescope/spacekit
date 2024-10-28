@@ -483,8 +483,11 @@ class Computer(object):
             fig.show()
         return fig
 
-    def resid_plot(self):
+    def resid_plot(self, desc=""):
         """Plot the residual error for a regression model.
+
+        desc: str, optional
+            Append custom text to title 
 
         Returns
         -------
@@ -498,12 +501,15 @@ class Computer(object):
             np_config.enable_numpy_behavior()
             y = self.y_test.reshape(1, -1)
             p = self.y_pred
-
+        
+        title = "Residual Error"
+        if desc:
+            title += f" - {desc}"
         data = go.Scatter(
             x=y, y=p, name="y-y_hat", mode="markers", marker=dict(color="red")
         )
         layout = go.Layout(
-            title="Residual Error",
+            title=title,
             xaxis={"title": "y (ground truth)"},
             yaxis={"title": "y_hat (prediction)"},
             width=800,
