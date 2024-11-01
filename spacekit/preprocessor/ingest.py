@@ -613,10 +613,11 @@ class JwstCalIngest:
                     self.rem[exp] = self.raw[exp].loc[self.raw[exp]['imagesize'].isna()].copy()
                 else:
                     self.rem[exp] = self.raw[exp].copy()
-                n = len(self.data[exp])
+                n = self.df.loc[(self.df.dag.isin(self.l3_dags)) & (self.df.expmode == exp)]['expmode'].size
                 self.data[exp].drop(self.rem[exp].index, axis=0, inplace=True)
                 self.raw[exp].drop(self.rem[exp].index, axis=0, inplace=True)
-                self.log.info(f"[{exp}] L3 matched: {len(self.data[exp])} | {np.round((len(self.data[exp])/n)*100)}%")
+                if n > 0:
+                    self.log.info(f"[{exp}] L3 matched: {len(self.data[exp])} | {np.round((len(self.data[exp])/n)*100)}%")
             except KeyError:
                 continue
 

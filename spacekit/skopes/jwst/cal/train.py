@@ -4,9 +4,9 @@ import pandas as pd
 from sklearn.model_selection import KFold
 from spacekit.preprocessor.prep import JwstCalPrep
 from spacekit.builder.architect import BuilderMLP
+from spacekit.analyzer.compute import ComputeRegressor
 from spacekit.logger.log import SPACEKIT_LOG, Logger
-from spacekit.skopes.jwst.cal.config import KEYPAIR_DATA, COLUMN_ORDER, NORM_COLS
-from spacekit.preprocessor.scrub import JwstCalScrubber
+
 
 class JwstCalTrain:
 
@@ -19,6 +19,7 @@ class JwstCalTrain:
         self.nfolds
         self.data = None
         self.splits = dict()
+        self.jp = None
         self.__name__ = "JwstCalTrain"
         self.log = Logger(self.__name__, **log_kws).setup_logger(logger=SPACEKIT_LOG)
         self.log_kws = dict(log=self.log, **log_kws)
@@ -39,13 +40,11 @@ class JwstCalTrain:
             return
         self.data = pd.read_csv(fpath, index_col="Dataset")
 
-    def generate_kfolds(self, jp):
-        jp.prep_data()
-        for t in ['train', 'test']:
-            imgmax = jp.data.loc[jp.data['split'] == t].imgsize_gb.max()
+    def generate_kfolds(self):
+        # TODO
         kfold = KFold(n_splits=self.nfolds, shuffle=True)
+        self.jp.prep_data(existing_splits=True)
         # for train, test in kfold.split(X, y)
-
 
     def prep_train_test(self, **prep_kwargs):
         if self.data is None:
@@ -53,13 +52,52 @@ class JwstCalTrain:
         if len(self.data.loc[self.data.duplicated(subset='pname')]) > 0:
             self.log.info("Dropping duplicates")
             self.data = self.data.sort_values(by=['date', 'imagesize']).drop_duplicates(subset='pname', keep='last')
-        jp = JwstCalPrep(self.data, exp_mode=self.expmode, **prep_kwargs)
-        self.generate_kfolds(jp)
+        self.jp = JwstCalPrep(data=self.data, exp_mode=self.expmode, **prep_kwargs)
+        self.jp.prep_data()
+        self.jp.prep_targets()
+        #TODO
+        # if self.cross_val is True:
+        #     self.generate_kfolds()
+
+    def architectures(self):
+        return dict(
+            image="jwst_img3_reg",
+            spec="jwst_spec3_reg"
+        )[self.expmode]
+
+    def train_models(self):
+        self.builder = BuilderMLP(
+            X_train=self.jp.X_train,
+            y_train=self.jp.y_reg_train,
+            X_test=self.jp.X_test,
+            y_test=self.jp.y_reg_test,
+            blueprint="mlp",
+        )
+        self.builder.get_blueprint(self.architectures())
+        self.builder.model = self.builder.build()
+        self.builder.model_diagram(output_path=MODELS, show_layer_names=True)
+        self.builder.fit()
+        self.builder.save_model()
+
+    def compute_cache(self):
+        self.builder.test_idx = list(self.jp.test_idx)
+        self.com = ComputeRegressor(
+            builder=self.builder,
+            algorithm="linreg",
+            res_path=RESULTS,
+            show=True,
+            validation=False,
+        )
+        self.com.calculate_results()
+        outputs = self.com.make_outputs()
+        print(outputs.keys())
        
 
     def main(self):
         self.initialize()
         self.prep_train_test()
+        self.train_models()
+        self.compute_cache()
 
 if __name__ == "__main__":
     parser = ArgumentParser(prog="spacekit hst calibration model training")
