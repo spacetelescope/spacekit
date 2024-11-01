@@ -37,6 +37,10 @@ def download(scrape="file:data", datasets="2022-02-14,2021-11-04,2021-10-28", de
     if len(dest.split("/")) > 1:
         cache_dir = os.path.abspath(dest.split("/")[0])
         cache_subdir = "/".join(dest.split("/")[1:])
+    elif dest in [None, "none", "None"]:
+        cache_dir, cache_subdir ="~", "data"
+    elif dest in [".", "data"]:
+        cache_dir, cache_subdir = ".", "data"
     else:
         cache_dir, cache_subdir = dest, "data"
     src, archive = scrape.split(":")
@@ -77,6 +81,8 @@ def download(scrape="file:data", datasets="2022-02-14,2021-11-04,2021-10-28", de
         scraper = FileScraper(
             patterns=p, clean=False, cache_dir=cache_dir, cache_subdir=cache_subdir
         )
+    else:
+        SPACEKIT_LOG.error("Unrecognized scrape arg. Must begin with web, s3, or file.")
     if scraper:
         try:
             scraper.scrape()
