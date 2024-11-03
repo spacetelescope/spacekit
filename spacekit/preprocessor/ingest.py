@@ -181,7 +181,7 @@ class SvmAlignmentIngest:
 
 class JwstCalIngest:
 
-    def __init__(self, input_path=None, pfx="", outpath=None, save_l1=True, **log_kws):
+    def __init__(self, input_path=None, pfx="", outpath=None, save_l1=False, **log_kws):
         """Loads raw JWST Calibration Pipeline metadata from local disk (`input_path`)
         and runs initial ML preprocessing steps necessary prior to model training. The resulting 
         dataframes will be "ingested" into any pre-existing training sets located in `outpath`. 
@@ -419,7 +419,7 @@ class JwstCalIngest:
     def update_dags(self):
         alldags = sorted(list(self.df[self.dag].value_counts().index))
         self.l1_dags = [d for d in alldags if '1' in d]
-        self.l3_dags = [d for d in alldags if '3' in d]
+        self.l3_dags = [d for d in alldags if '3' in d and 'MEMORY' not in d]
 
     def set_params(self):
         wftypes= ['PRIME_WFSC_SENSING_ONLY', 'PRIME_WFSC_ROUTINE', 'PRIME_WFSC_SENSING_CONTROL']
