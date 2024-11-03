@@ -756,7 +756,7 @@ if __name__ == "__main__":
         subparser.add_argument("-o", "--outpath", type=str, default=None, help="path to save ingested data on local disk")
 
     parser_jcal.add_argument("-p","--pfx", type=str, default=None, help="file name prefix to limit search on local disk")
-    parser_jcal.add_argument("-s", "--save_l1", type=bool, default=True, help="save matched level 1 input data to separate file")
+    parser_jcal.add_argument("-s", "--save_l1", type=bool, default=False, help="save matched level 1 input data to separate file")
     parser_jcal.set_defaults(func=jwst_cal_ingest)
 
     parser_hsvm.add_argument("-b", "--batch_name", type=str, default=None)
