@@ -98,6 +98,20 @@ jwst_cal = {
             "key": "",
             "size": "",
         },
+        "2024-03-28": {
+            "fname": "",
+            "hash": "",
+            "desc": "",
+            "key": "",
+            "size": "",
+        },
+        "2024-11-11": {
+            "fname": "",
+            "hash": "",
+            "desc": "",
+            "key": "",
+            "size": "",
+        }
     },
     "model": {
         "fname": "jwst_cal.zip",
