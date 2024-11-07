@@ -14,7 +14,6 @@ class JwstCalTrain:
 
     def __init__(self, training_data=None, output_path=None, expmode="image", norm=1, cross_val=False, nfolds=10, **log_kws):
         self.training_data = training_data
-        self.output_path = self.set_outpath(out=output_path)
         self.expmode = expmode.lower()
         self.norm = norm
         self.cross_val = cross_val
@@ -26,6 +25,7 @@ class JwstCalTrain:
         self.__name__ = "JwstCalTrain"
         self.log = Logger(self.__name__, **log_kws).setup_logger(logger=SPACEKIT_LOG)
         self.log_kws = dict(log=self.log, **log_kws)
+        self.output_path = self.set_outpath(out=output_path)
         self.initialize()
 
     def set_outpath(self, out=None):
