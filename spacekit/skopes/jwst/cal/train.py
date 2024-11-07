@@ -112,7 +112,7 @@ class JwstCalTrain:
             spec="jwst_spec3_reg"
         )[self.expmode]
 
-    def train_models(self, save_diagram=True):
+    def train_models(self, save_diagram=True, early_stopping=None):
         self.builder = BuilderMLP(
             X_train=self.jp.X_train,
             y_train=self.jp.y_reg_train,
@@ -124,21 +124,24 @@ class JwstCalTrain:
         self.builder.model = self.builder.build()
         if save_diagram is True:
             self.builder.model_diagram(output_path=MODELS, show_layer_names=True)
+        self.builder.early_stopping = early_stopping
         self.builder.fit()
         self.builder.save_model(output_path=MODELS, parent_dir=self.iteration)
 
     def compute_cache(self):
         self.builder.test_idx = list(self.jp.test_idx)
+        it = "" if not self.iteration else f"/{self.iteration}"
         self.com = ComputeRegressor(
             builder=self.builder,
             algorithm="linreg",
-            res_path=RESULTS+f"/{self.iteration}",
+            res_path=RESULTS+it,
             show=True,
             validation=False,
         )
         self.com.calculate_results()
-        outputs = self.com.make_outputs()
-        print(outputs.keys())
+        _ = self.com.make_outputs()
+        self.res_fig = self.com.resid_plot(desc=f"{self.expmode} tts_{self.iteration}")
+        self.loss_fig = self.com.keras_loss_plot()
         self.record_metrics()
 
     def load_metrics(self):
@@ -161,12 +164,11 @@ class JwstCalTrain:
             ts_lrg_max=self.jp.data.loc[(self.jp.data.split == 'test') & (self.jp.data.imgsize_gb>100)].imgsize_gb.max(),
         )
         itr_metrics.update(self.com.loss)
-
         if self.metrics is None:
             self.iteration = "0"
             self.metrics = {self.iteration:itr_metrics}
         else:
-            self.iteration = str(len(list(self.metrics.keys())) - 1)
+            self.iteration = str(len(list(self.metrics.keys())))
             self.metrics[self.iteration] = itr_metrics
         dm = pd.DataFrame.from_dict(self.metrics)
         dm['index'] = dm.index
@@ -175,7 +177,7 @@ class JwstCalTrain:
 
     def main(self):
         self.initialize()
-        self.prep_train_test(expmode=self.expmode)
+        self.prep_train_test(exp_mode=self.expmode)
         self.train_models()
         self.compute_cache()
 
