@@ -12,8 +12,9 @@ from spacekit.logger.log import SPACEKIT_LOG, Logger
 
 class JwstCalTrain:
 
-    def __init__(self, training_data=None, output_path=None, expmode="image", norm=1, cross_val=False, nfolds=10, **log_kws):
+    def __init__(self, training_data=None, out=None, expmode="image", norm=1, cross_val=False, nfolds=10, **log_kws):
         self.training_data = training_data
+        self.set_outpath(out=out)
         self.expmode = expmode.lower()
         self.norm = norm
         self.cross_val = cross_val
@@ -25,20 +26,28 @@ class JwstCalTrain:
         self.__name__ = "JwstCalTrain"
         self.log = Logger(self.__name__, **log_kws).setup_logger(logger=SPACEKIT_LOG)
         self.log_kws = dict(log=self.log, **log_kws)
-        self.output_path = self.set_outpath(out=output_path)
         self.initialize()
 
     def set_outpath(self, out=None):
-        base_out = "."
+        """Sets up the output directory for model training data, models and results.
+        If `out` is formatted as a {date}_{timestamp} string this becomes the output_path attr and
+        the directory for it is created if it does not exist already. Otherwise, `out` is used as the top directory,
+        under which a new {date}_{timestamp} folder is created using the current date/time. 
+
+        Parameters
+        ----------
+        out : str, optional
+            name of directory in which to save training outputs, by default None
+        """
+        base_out = "." if out is None else out
         if out:
             date_timestamp_re = re.compile('^[0-9]{4}\-[0-9]{2}\-[0-9]{2}\_[0-9]{10}')
-            existing = date_timestamp_re.match(str(os.path.basename(out)))
-            if existing:
-                self.output_path = out
-                self.log.info(f"Found existing outputs: {out}")
+            match_existing = date_timestamp_re.match(str(os.path.basename(out)))
+            if match_existing:
+                self.output_path = base_out
+                if not os.path.exists(self.output_path):
+                    os.makedirs(self.outpath, exist_ok=True)
                 return
-            else:
-                base_out = out
         today = dt.date.today().isoformat()
         timestamp = str(dt.datetime.now().timestamp()).split('.')[0]
         self.output_path = f"{base_out}/{today}_{timestamp}"
@@ -135,7 +144,7 @@ class JwstCalTrain:
     def load_metrics(self):
         metrics_file = f"{DATA}/training_metrics-{self.expmode}.csv"
         if os.path.exists(metrics_file):
-            dm = pd.read_csv(metrics_file)
+            dm = pd.read_csv(metrics_file, index_col="index")
             metrics = dm.to_dict()
             return metrics
         return None
@@ -160,7 +169,8 @@ class JwstCalTrain:
             self.iteration = str(len(list(self.metrics.keys())) - 1)
             self.metrics[self.iteration] = itr_metrics
         dm = pd.DataFrame.from_dict(self.metrics)
-        dm.to_csv(f"{DATA}/training_metrics-{self.expmode}.csv")
+        dm['index'] = dm.index
+        dm.to_csv(f"{DATA}/training_metrics-{self.expmode}.csv", index=False)
         self.iteration = str(int(self.iteration) + 1)
 
     def main(self):
