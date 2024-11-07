@@ -1,5 +1,7 @@
 import os
+import re
 from argparse import ArgumentParser
+import datetime as dt
 import pandas as pd
 from sklearn.model_selection import KFold
 from spacekit.preprocessor.prep import JwstCalPrep
@@ -10,20 +12,37 @@ from spacekit.logger.log import SPACEKIT_LOG, Logger
 
 class JwstCalTrain:
 
-    def __init__(self, training_data=None, output_path=None, expmode="IMAGE", norm=1, cross_val=False, nfolds=10, **log_kws):
+    def __init__(self, training_data=None, output_path=None, expmode="image", norm=1, cross_val=False, nfolds=10, **log_kws):
         self.training_data = training_data
-        self.output_path = "." if output_path is None else output_path
+        self.output_path = self.set_outpath(out=output_path)
         self.expmode = expmode.lower()
         self.norm = norm
         self.cross_val = cross_val
-        self.nfolds
+        self.nfolds = nfolds
         self.data = None
-        self.splits = dict()
+        self.iteration = ""
         self.jp = None
+        self.metrics = None
         self.__name__ = "JwstCalTrain"
         self.log = Logger(self.__name__, **log_kws).setup_logger(logger=SPACEKIT_LOG)
         self.log_kws = dict(log=self.log, **log_kws)
         self.initialize()
+
+    def set_outpath(self, out=None):
+        base_out = "."
+        if out:
+            date_timestamp_re = re.compile('^[0-9]{4}\-[0-9]{2}\-[0-9]{2}\_[0-9]{10}')
+            existing = date_timestamp_re.match(str(os.path.basename(out)))
+            if existing:
+                self.output_path = out
+                self.log.info(f"Found existing outputs: {out}")
+                return
+            else:
+                base_out = out
+        today = dt.date.today().isoformat()
+        timestamp = str(dt.datetime.now().timestamp()).split('.')[0]
+        self.output_path = f"{base_out}/{today}_{timestamp}"
+        os.makedirs(self.output_path, exist_ok=True)
     
     def initialize(self):
         global DATA, MODELS, RESULTS
@@ -32,9 +51,15 @@ class JwstCalTrain:
         RESULTS = os.path.join(self.output_path, "results")
         for p in [DATA, MODELS, RESULTS]:
             os.makedirs(p, exist_ok=True)
+        self.metrics = self.load_metrics()
+        if self.metrics is not None: # 1 higher than 0-valued list of iterations
+            self.iteration = str(len(list(self.metrics.keys())))
 
-    def load_data(self):
-        fpath = os.path.join(self.training_data, f"train-{self.expmode}.csv")
+    def load_data(self, tts=None):
+        if tts:
+            fpath = f"{DATA}/{self.expmode}-tts_{tts}.csv"
+        else:
+            fpath = os.path.join(self.training_data, f"train-{self.expmode}.csv")
         if not os.path.exists(fpath):
             self.log.error(f"Training data filepath not found: {fpath}")
             return
@@ -49,15 +74,28 @@ class JwstCalTrain:
     def prep_train_test(self, **prep_kwargs):
         if self.data is None:
             self.load_data()
-        if len(self.data.loc[self.data.duplicated(subset='pname')]) > 0:
-            self.log.info("Dropping duplicates")
+        ndupes = len(self.data.loc[self.data.duplicated(subset='pname')])
+        if ndupes > 0:
+            self.log.info(f"Dropping {ndupes} duplicates")
             self.data = self.data.sort_values(by=['date', 'imagesize']).drop_duplicates(subset='pname', keep='last')
-        self.jp = JwstCalPrep(data=self.data, exp_mode=self.expmode, **prep_kwargs)
+        self.jp = JwstCalPrep(self.data, **prep_kwargs)
         self.jp.prep_data()
         self.jp.prep_targets()
+        self.data['Dataset'] = self.data.index
+        it = "0" if not self.iteration else self.iteration
+        self.data.to_csv(f"{DATA}/{self.expmode}-tts_{it}.csv", index=False)
         #TODO
         # if self.cross_val is True:
         #     self.generate_kfolds()
+
+    def load_train_test(self, tts="0", **prep_kwargs):
+        if self.data is None:
+            self.load_data(tts=tts)
+        self.jp = JwstCalPrep(self.data, **prep_kwargs)
+        self.jp.prep_data(existing_splits=True)
+        self.jp.prep_targets()
+        if tts != self.iteration:
+            self.iteration = tts
 
     def architectures(self):
         return dict(
@@ -65,7 +103,7 @@ class JwstCalTrain:
             spec="jwst_spec3_reg"
         )[self.expmode]
 
-    def train_models(self):
+    def train_models(self, save_diagram=True):
         self.builder = BuilderMLP(
             X_train=self.jp.X_train,
             y_train=self.jp.y_reg_train,
@@ -75,27 +113,59 @@ class JwstCalTrain:
         )
         self.builder.get_blueprint(self.architectures())
         self.builder.model = self.builder.build()
-        self.builder.model_diagram(output_path=MODELS, show_layer_names=True)
+        if save_diagram is True:
+            self.builder.model_diagram(output_path=MODELS, show_layer_names=True)
         self.builder.fit()
-        self.builder.save_model()
+        self.builder.save_model(output_path=MODELS, parent_dir=self.iteration)
 
     def compute_cache(self):
         self.builder.test_idx = list(self.jp.test_idx)
         self.com = ComputeRegressor(
             builder=self.builder,
             algorithm="linreg",
-            res_path=RESULTS,
+            res_path=RESULTS+f"/{self.iteration}",
             show=True,
             validation=False,
         )
         self.com.calculate_results()
         outputs = self.com.make_outputs()
         print(outputs.keys())
-       
+        self.record_metrics()
+
+    def load_metrics(self):
+        metrics_file = f"{DATA}/training_metrics-{self.expmode}.csv"
+        if os.path.exists(metrics_file):
+            dm = pd.read_csv(metrics_file)
+            metrics = dm.to_dict()
+            return metrics
+        return None
+
+    def record_metrics(self):
+        itr_metrics = dict(
+            train_size=self.jp.data.loc[self.jp.data.split == 'train'].size,
+            test_size=self.jp.data.loc[self.jp.data.split == 'test'].size,
+            tr_lrg_ct=self.jp.data.loc[(self.jp.data.split == 'train') & (self.jp.data.imgsize_gb>100)].size,
+            ts_lrg_ct=self.jp.data.loc[(self.jp.data.split == 'test') & (self.jp.data.imgsize_gb>100)].size,
+            tr_lrg_mean=self.jp.data.loc[(self.jp.data.split == 'train') & (self.jp.data.imgsize_gb>100)].imgsize_gb.mean(),
+            ts_lrg_mean=self.jp.data.loc[(self.jp.data.split == 'test') & (self.jp.data.imgsize_gb>100)].imgsize_gb.mean(),
+            tr_lrg_max=self.jp.data.loc[(self.jp.data.split == 'train') & (self.jp.data.imgsize_gb>100)].imgsize_gb.max(),
+            ts_lrg_max=self.jp.data.loc[(self.jp.data.split == 'test') & (self.jp.data.imgsize_gb>100)].imgsize_gb.max(),
+        )
+        itr_metrics.update(self.com.loss)
+
+        if self.metrics is None:
+            self.iteration = "0"
+            self.metrics = {self.iteration:itr_metrics}
+        else:
+            self.iteration = str(len(list(self.metrics.keys())) - 1)
+            self.metrics[self.iteration] = itr_metrics
+        dm = pd.DataFrame.from_dict(self.metrics)
+        dm.to_csv(f"{DATA}/training_metrics-{self.expmode}.csv")
+        self.iteration = str(int(self.iteration) + 1)
 
     def main(self):
         self.initialize()
-        self.prep_train_test()
+        self.prep_train_test(expmode=self.expmode)
         self.train_models()
         self.compute_cache()
 
