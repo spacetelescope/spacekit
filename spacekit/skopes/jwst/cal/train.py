@@ -3,26 +3,61 @@ import re
 from argparse import ArgumentParser
 import datetime as dt
 import pandas as pd
+import numpy as np
+from collections import OrderedDict
 from sklearn.model_selection import KFold
 from spacekit.preprocessor.prep import JwstCalPrep
 from spacekit.builder.architect import BuilderMLP
 from spacekit.analyzer.compute import ComputeRegressor
 from spacekit.logger.log import SPACEKIT_LOG, Logger
 
+"""
+Training can be run in 1 of 2 modes: standard, or cross-validation.
+
+Standard:
+
+Single training iteration run on the dataset using a randomized 80-20 train-test split
+
+
+Cross-validation mode:
+
+Training is run on the dataset K times, where k is the number of randomly shuffled train-test split folds.
+Additional metrics are accumulated and recorded for evaluating overall model performance across iterations.
+
+
+"""
 
 class JwstCalTrain:
 
-    def __init__(self, training_data=None, out=None, expmode="image", norm=1, cross_val=False, nfolds=10, **log_kws):
+    def __init__(self, training_data=None, out=None, exp_mode="image", norm=1, cross_val=0, early_stopping=None, **log_kws):
+        """_summary_
+
+        Parameters
+        ----------
+        training_data : str or Path, optional
+            path on local disk to directory where training data files are stored, by default None
+        out : str or Path, optional
+            path on local disk for saving training results, saved models, and train-test splits, by default None
+        exp_mode : str, optional
+            image: specifies which model to train (image or spec), by default "image"
+        norm : int, optional
+            apply normalization and scaling, by default 1
+        cross_val : int, optional
+            Run cross-validation using k number of folds (10 recommended), by default 0
+        early_stopping : str, optional
+            Either 'val_loss' or 'val_rmse' ends training when this metric is no longer improving, by default None
+        """
         self.training_data = training_data
         self.set_outpath(out=out)
-        self.expmode = expmode.lower()
-        self.norm = norm
+        self.exp_mode = exp_mode.lower()
+        self.prep_kwargs = dict(exp_mode=self.exp_mode, normalize=norm)
         self.cross_val = cross_val
-        self.nfolds = nfolds
+        self.early_stopping = early_stopping
         self.data = None
-        self.iteration = ""
+        self.itn = ""
         self.jp = None
         self.metrics = None
+        self.dm = None
         self.__name__ = "JwstCalTrain"
         self.log = Logger(self.__name__, **log_kws).setup_logger(logger=SPACEKIT_LOG)
         self.log_kws = dict(log=self.log, **log_kws)
@@ -60,59 +95,72 @@ class JwstCalTrain:
         RESULTS = os.path.join(self.output_path, "results")
         for p in [DATA, MODELS, RESULTS]:
             os.makedirs(p, exist_ok=True)
-        self.metrics = self.load_metrics()
+        self.load_metrics()
         if self.metrics is not None: # 1 higher than 0-valued list of iterations
-            self.iteration = str(len(list(self.metrics.keys())))
+            self.itn = str(len(list(self.metrics.keys())))
 
     def load_data(self, tts=None):
         if tts:
-            fpath = f"{DATA}/{self.expmode}-tts_{tts}.csv"
+            fpath = f"{DATA}/{self.exp_mode}-tts_{tts}.csv"
         else:
-            fpath = os.path.join(self.training_data, f"train-{self.expmode}.csv")
+            fpath = os.path.join(self.training_data, f"train-{self.exp_mode}.csv")
         if not os.path.exists(fpath):
             self.log.error(f"Training data filepath not found: {fpath}")
             return
         self.data = pd.read_csv(fpath, index_col="Dataset")
-
-    def generate_kfolds(self):
-        # TODO
-        kfold = KFold(n_splits=self.nfolds, shuffle=True)
-        self.jp.prep_data(existing_splits=True)
-        # for train, test in kfold.split(X, y)
-
-    def prep_train_test(self, **prep_kwargs):
-        if self.data is None:
-            self.load_data()
         ndupes = len(self.data.loc[self.data.duplicated(subset='pname')])
         if ndupes > 0:
             self.log.info(f"Dropping {ndupes} duplicates")
             self.data = self.data.sort_values(by=['date', 'imagesize']).drop_duplicates(subset='pname', keep='last')
-        self.jp = JwstCalPrep(self.data, **prep_kwargs)
+
+    def generate_kfolds(self):
+        kfold = KFold(n_splits=self.cross_val, shuffle=True)
+        itn = 0
+        for _, test_idx in kfold.split(np.zeros(self.data.shape[0]), pd.concat(self.jp.get_y_train_test('imgsize_gb'), axis=0)):
+            self.data['split'] = 'train'
+            self.data.loc[self.data.iloc[test_idx].index, 'split'] = 'test'
+            self.data.to_csv(f"{DATA}/{self.exp_mode}-tts_{str(itn)}.csv", index=False)
+            itn += 1
+
+    def run_cross_val(self):
+        for i in list(range(self.cross_val)):
+            save_diagram = True if i == 0 else False
+            self.data = None
+            self.load_train_test(tts=str(i))
+            self.run_training(save_diagram=save_diagram)
+            self.compute_cache()
+
+    def prep_train_test(self):
+        if self.data is None:
+            self.load_data()
+        self.jp = JwstCalPrep(self.data, **self.prep_kwargs)
         self.jp.prep_data()
         self.jp.prep_targets()
-        self.data['Dataset'] = self.data.index
-        it = "0" if not self.iteration else self.iteration
-        self.data.to_csv(f"{DATA}/{self.expmode}-tts_{it}.csv", index=False)
-        #TODO
-        # if self.cross_val is True:
-        #     self.generate_kfolds()
-
-    def load_train_test(self, tts="0", **prep_kwargs):
+ 
+    def load_train_test(self, tts="0"):
         if self.data is None:
             self.load_data(tts=tts)
-        self.jp = JwstCalPrep(self.data, **prep_kwargs)
+        self.jp = JwstCalPrep(self.data, **self.prep_kwargs)
         self.jp.prep_data(existing_splits=True)
         self.jp.prep_targets()
-        if tts != self.iteration:
-            self.iteration = tts
+        if tts != self.itn:
+            self.itn = tts
 
-    def architectures(self):
+    @property
+    def architecture(self):
         return dict(
             image="jwst_img3_reg",
             spec="jwst_spec3_reg"
-        )[self.expmode]
+        )[self.exp_mode]
 
-    def train_models(self, save_diagram=True, early_stopping=None):
+    def run_training(self, save_diagram=True):
+        """Build, train and save a model
+
+        Parameters
+        ----------
+        save_diagram : bool, optional
+            Save a png diagram image of the model architecture, by default True
+        """
         self.builder = BuilderMLP(
             X_train=self.jp.X_train,
             y_train=self.jp.y_reg_train,
@@ -120,17 +168,17 @@ class JwstCalTrain:
             y_test=self.jp.y_reg_test,
             blueprint="mlp",
         )
-        self.builder.get_blueprint(self.architectures())
+        self.builder.get_blueprint(self.architecture)
         self.builder.model = self.builder.build()
         if save_diagram is True:
             self.builder.model_diagram(output_path=MODELS, show_layer_names=True)
-        self.builder.early_stopping = early_stopping
+        self.builder.early_stopping = self.early_stopping
         self.builder.fit()
-        self.builder.save_model(output_path=MODELS, parent_dir=self.iteration)
+        self.builder.save_model(output_path=MODELS, parent_dir=self.itn)
 
     def compute_cache(self):
         self.builder.test_idx = list(self.jp.test_idx)
-        it = "" if not self.iteration else f"/{self.iteration}"
+        it = "" if not self.itn else f"/{self.itn}"
         self.com = ComputeRegressor(
             builder=self.builder,
             algorithm="linreg",
@@ -140,46 +188,62 @@ class JwstCalTrain:
         )
         self.com.calculate_results()
         _ = self.com.make_outputs()
-        self.res_fig = self.com.resid_plot(desc=f"{self.expmode} tts_{self.iteration}")
+        self.res_fig = self.com.resid_plot(desc=f"{self.exp_mode} tts_{self.itn}")
         self.loss_fig = self.com.keras_loss_plot()
         self.record_metrics()
 
     def load_metrics(self):
-        metrics_file = f"{DATA}/training_metrics-{self.expmode}.csv"
+        metrics_file = f"{DATA}/training_metrics-{self.exp_mode}.csv"
         if os.path.exists(metrics_file):
-            dm = pd.read_csv(metrics_file, index_col="index")
-            metrics = dm.to_dict()
-            return metrics
-        return None
+            self.dm = pd.read_csv(metrics_file, index_col="index")
+            self.metrics = self.dm.to_dict()
+
+    @property
+    def itr_metrics(self):
+        return OrderedDict(
+            tr_size=0,
+            ts_size=0,
+            tr_lrg_ct=0,
+            ts_lrg_ct=0,
+            tr_lrg_mean=0,
+            ts_lrg_mean=0,
+            tr_lrg_max=0,
+            ts_lrg_max=0
+        )
 
     def record_metrics(self):
-        itr_metrics = dict(
-            train_size=self.jp.data.loc[self.jp.data.split == 'train'].size,
-            test_size=self.jp.data.loc[self.jp.data.split == 'test'].size,
-            tr_lrg_ct=self.jp.data.loc[(self.jp.data.split == 'train') & (self.jp.data.imgsize_gb>100)].size,
-            ts_lrg_ct=self.jp.data.loc[(self.jp.data.split == 'test') & (self.jp.data.imgsize_gb>100)].size,
-            tr_lrg_mean=self.jp.data.loc[(self.jp.data.split == 'train') & (self.jp.data.imgsize_gb>100)].imgsize_gb.mean(),
-            ts_lrg_mean=self.jp.data.loc[(self.jp.data.split == 'test') & (self.jp.data.imgsize_gb>100)].imgsize_gb.mean(),
-            tr_lrg_max=self.jp.data.loc[(self.jp.data.split == 'train') & (self.jp.data.imgsize_gb>100)].imgsize_gb.max(),
-            ts_lrg_max=self.jp.data.loc[(self.jp.data.split == 'test') & (self.jp.data.imgsize_gb>100)].imgsize_gb.max(),
+        itr_metrics = self.itr_metrics.copy()
+        dd = dict(
+            train=self.jp.data.loc[self.jp.data.split == 'train'],
+            test=self.jp.data.loc[self.jp.data.split == 'test']
         )
+        for s, g in dict(zip(['tr', 'ts'],['train', 'test'])):
+            itr_metrics[f'{s}_size'] = dd[g].shape[0]
+            itr_metrics[f'{s}_lrg_ct'] = dd[g].loc[dd[g].imgsize_gb>100].shape[0]
+            itr_metrics[f'{s}_lrg_mean'] = dd[g].loc[dd[g].imgsize_gb>100].imgsize_gb.mean()
+            itr_metrics[f'{s}_lrg_max'] = dd[g].loc[dd[g].imgsize_gb>100].imgsize_gb.max()
+
         itr_metrics.update(self.com.loss)
         if self.metrics is None:
-            self.iteration = "0"
-            self.metrics = {self.iteration:itr_metrics}
+            self.itn = "0"
+            self.metrics = {self.itn:itr_metrics}
         else:
-            self.iteration = str(len(list(self.metrics.keys())))
-            self.metrics[self.iteration] = itr_metrics
+            self.itn = str(len(list(self.metrics.keys())))
+            self.metrics[self.itn] = itr_metrics
         dm = pd.DataFrame.from_dict(self.metrics)
         dm['index'] = dm.index
-        dm.to_csv(f"{DATA}/training_metrics-{self.expmode}.csv", index=False)
-        self.iteration = str(int(self.iteration) + 1)
+        dm.to_csv(f"{DATA}/training_metrics-{self.exp_mode}.csv", index=False)
+        self.dm = dm.drop('index', axis=1, inplace=True)
 
     def main(self):
-        self.initialize()
-        self.prep_train_test(exp_mode=self.expmode)
-        self.train_models()
-        self.compute_cache()
+        self.prep_train_test()
+        if self.cross_val > 0:
+            self.generate_kfolds()
+            self.run_cross_val()
+        else:
+            self.run_training(save_diagram=True)
+            self.compute_cache()
+
 
 if __name__ == "__main__":
     parser = ArgumentParser(prog="spacekit hst calibration model training")
@@ -192,17 +256,17 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "-o",
-        "--output_path",
+        "--out",
         type=str,
         default=None,
         help="path on local disk for saving training results, saved models, and train-test splits",
     )
     parser.add_argument(
         "-e",
-        "--expmode",
-        choices=["IMAGE", "SPEC"],
-        default="IMAGE",
-        help="IMAGE: train image model, SPEC: train spec model"
+        "--exp_mode",
+        choices=["image", "spec"],
+        default="image",
+        help="image: train image model, spec: train spec model"
     )
     parser.add_argument(
         "-n",
@@ -217,11 +281,11 @@ if __name__ == "__main__":
         action="store_true",
     )
     parser.add_argument(
-        "-n",
-        "--nfolds",
-        type=int,
-        default=10,
-        help="Number of folds in Kfold cross validation. Requires `--cross_val`"
+        "-s",
+        "--early_stopping",
+        type=str,
+        default=None,
+        help="Either 'val_loss' or 'val_rmse' ends training when this metric is no longer improving"
     )
     parser.add_argument(
         "--console_log_level",
@@ -247,6 +311,4 @@ if __name__ == "__main__":
         action="store_true",
     )
     args = parser.parse_args()
-    args.norm_cols = [str(i) for i in args.norm_cols.split(",")]
-    args.expmodes = sorted([str(i).upper() for i in args.expmodes.split(",")])
     JwstCalTrain(**vars(args)).main()
