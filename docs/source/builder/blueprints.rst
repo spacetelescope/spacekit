@@ -1,10 +1,11 @@
-.. _blueprint:
+.. _blueprints:
 
 ***************************
 spacekit.builder.blueprints
 ***************************
 
 .. currentmodule:: spacekit.builder.blueprints
+
 
 .. autoclass:: Blueprint
    :members:

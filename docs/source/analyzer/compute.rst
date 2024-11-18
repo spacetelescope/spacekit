@@ -3,7 +3,7 @@
 *************************
 spacekit.analyzer.compute
 *************************
- 
+
 .. currentmodule:: spacekit.analyzer.compute
 
 .. inheritance-diagram:: spacekit.analyzer.compute

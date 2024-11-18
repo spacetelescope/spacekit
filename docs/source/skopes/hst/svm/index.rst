@@ -1,6 +1,12 @@
-*************************************************
-spacekit - single visit mosaic alignment modeling
-*************************************************
+.. _svm
+
+***********************
+spacekit.skopes.hst.svm
+***********************
+
+single visit mosaic alignment modeling
+
+.. currentmodule:: spacekit.skopes.hst.svm
 
 How-To
 -------
@@ -10,12 +16,12 @@ How-To
 * Generate Synthetic Corruption Images (artificial corruption data)
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
-   prep <svm/prep.rst>
-   predict <svm/predict.rst>
-   train <svm/train.rst>
-   corrupt <svm/corrupt.rst>
+   prep <prep.rst>
+   predict <predict.rst>
+   train <train.rst>
+   corrupt <corrupt.rst>
 
 Background Summary
 ------------------
@@ -53,7 +59,8 @@ Dataset
 
 --- 
 
-## Setup
+Setup
+-----
 
 **Install with pip**
 
@@ -69,22 +76,24 @@ Dataset
     $ pip install -e .
 
 
-## Run
+Run
+---
 
 **Example: HST Single Visit Mosaic Alignment Classification**
 
-### Classify new data using pre-trained model:
+Classify new data using pre-trained model:
+
 
 1. Preprocess data (scrape from regression test json and fits files, scrub/preprocess dataframe, generate png images for ML)
 
-***from the command line***
+**from the command line**
 
 .. code-block:: bash
 
     $ python -m spacekit.skopes.hst.svm.prep path/to/svmdata -f=svm_data.csv
 
 
-***from python***
+**from python**
 
 .. code-block:: python
 
@@ -104,14 +113,14 @@ Outputs:
 
 2. Generate predictions
 
-***from the command line***
+**from the command line**
 
 .. code-block:: bash
 
     $ python -m spacekit.skopes.hst.svm.predict svm_data.csv img
 
 
-***from python***
+**from python**
 
 .. code-block:: python
 
@@ -131,11 +140,12 @@ Outputs:
 
 ----
 
-### Build, train, evaluate new classifier from labeled data
+Build, train, evaluate new classifier from labeled data
+-------------------------------------------------------
 
 Run step 1 (prep) above, then:
 
-***from the command line***
+**from the command line**
 
 .. code-block:: bash
 
@@ -143,7 +153,7 @@ Run step 1 (prep) above, then:
     $ python -m spacekit.skopes.hst.svm.train svm_data.csv img
 
 
-***from Python***
+**from Python**
 
 .. code-block:: python
 
