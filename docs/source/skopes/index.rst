@@ -1,4 +1,4 @@
-.. _skopes
+.. _skopes:
 
 ***************
 spacekit.skopes
