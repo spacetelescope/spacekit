@@ -1,4 +1,4 @@
-.. _generator
+.. _generator:
 
 ******************
 spacekit.generator

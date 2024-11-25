@@ -1,4 +1,4 @@
-.. _svm
+.. _svm:
 
 ***********************
 spacekit.skopes.hst.svm
