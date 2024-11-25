@@ -4,6 +4,7 @@
 docs
 ----
 - Use furo as sphinx theme, improve page hierarchy and add custom domain [#104]
+- downgrade numpy for compatibility with tensorflow in docs [#105]
 
 preprocessor
 ------------
