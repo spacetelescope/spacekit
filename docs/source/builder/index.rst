@@ -1,4 +1,4 @@
-.. _builder
+.. _builder:
 
 *****************
 spacekit.builder

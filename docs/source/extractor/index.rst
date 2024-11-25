@@ -1,4 +1,4 @@
-.. _extractor
+.. _extractor:
 
 ******************
 spacekit.extractor

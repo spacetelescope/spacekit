@@ -1,4 +1,4 @@
-.. _datasets
+.. _datasets:
 
 *****************
 spacekit.datasets

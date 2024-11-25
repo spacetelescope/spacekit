@@ -1,8 +1,8 @@
-.. _dashboard
+.. _dashboard:
 
-*****************
+******************
 spacekit.dashboard
-*****************
+******************
 
 .. currentmodule:: spacekit.dashboard
 

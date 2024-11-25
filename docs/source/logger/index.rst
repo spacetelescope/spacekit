@@ -1,4 +1,4 @@
-.. _logger
+.. _logger:
 
 ***************
 spacekit.logger

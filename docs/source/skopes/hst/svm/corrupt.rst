@@ -1,4 +1,4 @@
-.. _corrupt
+.. _corrupt:
 
 *******************************
 spacekit.skopes.hst.svm.corrupt
