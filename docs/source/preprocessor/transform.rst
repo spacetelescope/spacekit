@@ -6,6 +6,9 @@ spacekit.preprocessor.transform
 
 .. currentmodule:: spacekit.preprocessor.transform
 
+.. toctree::
+   :maxdepth: 1
+
 .. inheritance-diagram:: spacekit.preprocessor.transform
    :parts: 3
 

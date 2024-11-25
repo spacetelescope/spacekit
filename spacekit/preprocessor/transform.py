@@ -209,7 +209,7 @@ class SkyTransformer:
             refpix["t_offset"] = self.pixel_sky_separation(
                 refpix["TARG_RA"], refpix["TARG_DEC"], pcoord, refpix["scale"]
             )
-        except ValueError:
+        except (ValueError, TypeError):
             self.log.debug("TARG/GS RA DEC vals missing or NaN - setting to 0.0")
         return refpix
 

@@ -1,16 +1,20 @@
-*****************************************************************
-spacekit - JWST calibration pipeline resource prediction modeling
-*****************************************************************
+************************
+spacekit.skopes.jwst.cal
+************************
 
-Inference
----------
+Resource Estimation for the JWST Calibration Pipeline
+-----------------------------------------------------
 
-Generate estimated memory footprints on unlabeled data.
+Inference: Generate estimated memory footprints on unlabeled data.
+
+Training: Build and train machine learning models for Image and Spec Level 3 pipelines
+
 
 .. toctree::
    :maxdepth: 2
 
-   predict <cal/predict.rst>
+   predict <predict.rst>
+   train <train.rst>
 
 
 Setup
@@ -33,14 +37,14 @@ Setup
 Run Inference
 -------------
 
-***from the command line***
+**from the command line**
 
 .. code-block:: bash
 
     $ python -m spacekit.skopes.jwst.cal.predict /path/to/inputs
 
 
-***from python***
+**from python**
 
 .. code-block:: python
 

@@ -16,8 +16,7 @@ import datetime
 import importlib
 from packaging.version import Version
 from configparser import ConfigParser
-# import sphinx
-# import stsci_rtd_theme
+
 
 
 def setup(app):
@@ -179,7 +178,7 @@ pygments_style = "sphinx"
 # a list of builtin themes.
 # html_theme = 'stsci_rtd_theme'
 # html_theme_path = [stsci_rtd_theme.get_html_theme_path()]
-html_theme = "sphinx_rtd_theme"
+html_theme = "furo"
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
@@ -208,7 +207,7 @@ html_last_updated_fmt = "%b %d, %Y"
 # html_use_smartypants = True
 
 # Custom sidebar templates, maps document names to template names.
-html_sidebars = {"**": ["globaltoc.html", "relations.html", "searchbox.html"]}
+# html_sidebars = {"**": ["globaltoc.html", "relations.html", "searchbox.html"]}
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
@@ -219,6 +218,8 @@ html_domain_indices = True
 
 # If false, no index is generated.
 html_use_index = True
+
+html_baseurl = "https://docs.spacekit.org"
 
 # If true, the index is split into individual pages for each letter.
 # html_split_index = False

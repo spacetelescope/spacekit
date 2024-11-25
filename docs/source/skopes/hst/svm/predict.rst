@@ -1,6 +1,9 @@
+.. _predict
+
 *******************************
 spacekit.skopes.hst.svm.predict
 *******************************
+
 
 .. currentmodule:: spacekit.skopes.hst.svm.predict
 

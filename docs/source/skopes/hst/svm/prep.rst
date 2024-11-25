@@ -1,6 +1,9 @@
+.. _prep
+
 ****************************
 spacekit.skopes.hst.svm.prep
 ****************************
+
 
 .. currentmodule:: spacekit.skopes.hst.svm.prep
 
