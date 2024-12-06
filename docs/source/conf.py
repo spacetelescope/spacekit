@@ -211,7 +211,9 @@ html_last_updated_fmt = "%b %d, %Y"
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
-# html_additional_pages = {}
+html_additional_pages = {
+    "index": "index.html",
+}
 
 # If false, no module index is generated.
 html_domain_indices = True
@@ -219,7 +221,7 @@ html_domain_indices = True
 # If false, no index is generated.
 html_use_index = True
 
-html_baseurl = "https://docs.spacekit.org"
+html_baseurl = "https://www.spacekit.org"
 
 # If true, the index is split into individual pages for each letter.
 # html_split_index = False

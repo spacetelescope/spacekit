@@ -1,0 +1,20 @@
+* {
+    margin: 0;
+    padding: 0;
+}
+html, body {
+    height: 100%;
+    width: 100%;
+}
+h1, p {
+    font-family: "Source Code Pro", sans-serif;
+    text-align: center;
+}
+canvas {
+    width:99%;
+    height:99%;
+    background-color: transparent;
+    position: fixed;
+    clear:both;
+    z-index: 10;
+}
