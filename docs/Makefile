@@ -26,6 +26,10 @@ PAPEROPT_a4     = -D latex_paper_size=a4
 PAPEROPT_letter = -D latex_paper_size=letter
 ALLSPHINXOPTS   = -d $(BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) source
 
+# Specify path to graphviz dot executable if not in your $PATH
+# You can set this in your env: export DOT=/Users/myname/homebrew/opt/graphviz/bin/dot
+GRAPHVIZDOT     = -D graphviz_dot=$(DOT)
+
 .PHONY: help clean html dirhtml pickle json htmlhelp qthelp latex changes linkcheck doctest
 
 help:
@@ -103,4 +107,4 @@ doctest:
 	      "results in $(BUILDDIR)/doctest/output.txt."
 
 livehtml:
-	sphinx-autobuild "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
+	sphinx-autobuild "$(SOURCEDIR)" "$(BUILDDIR)" $(GRAPHVIZDOT) $(SPHINXOPTS) $(O)

@@ -139,6 +139,12 @@ automodapi_toctreedirnm = "api"
 # the __init__ docstring
 autoclass_content = "both"
 
+# The command name with which to invoke dot. The default is 'dot'; you may need to set this to a full path if dot is not in the executable search path.
+# NOTE Since this setting is not portable from system to system, it is normally not useful to set it in conf.py; rather, giving it on the sphinx-build command line via the -D option should be preferable, like this:
+# sphinx-build -M html -D graphviz_dot=C:\graphviz\bin\dot.exe . _build
+
+# graphviz_dot = "dot"
+
 # Render inheritance diagrams in SVG
 graphviz_output_format = "svg"
 
@@ -147,6 +153,7 @@ graphviz_dot_args = [
     "-Nfontname=Helvetica Neue, Helvetica, Arial, sans-serif",
     "-Efontsize=10",
     "-Efontname=Helvetica Neue, Helvetica, Arial, sans-serif",
+    "-Gbgcolor=white",
     "-Gfontsize=10",
     "-Gfontname=Helvetica Neue, Helvetica, Arial, sans-serif",
 ]
@@ -163,7 +170,7 @@ graphviz_dot_args = [
 # show_authors = False
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = "sphinx"
+pygments_style = "monokai"
 
 # A list of ignored prefixes for module index sorting.
 # modindex_common_prefix = []

@@ -5,9 +5,11 @@ spacekit documentation
 This is the documentation for ``spacekit``,
 the Astronomical Data Science and Machine Learning Toolkit 
 
+
 .. toctree::
    :maxdepth: 1
 
+   Overview <overview.rst>
    Analyzer <analyzer/index.rst>
    Builder <builder/index.rst>
    Dashboard <dashboard/index.rst>
