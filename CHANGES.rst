@@ -7,6 +7,7 @@ docs
 - downgrade numpy for compatibility with tensorflow in docs [#106]
 - fix hyperlinks [#107]
 - add custom landing page html template [#111]
+- add overview page, dashboard images, and fix graphviz style for darkmode [#112]
 
 preprocessor
 ------------
