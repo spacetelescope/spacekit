@@ -441,8 +441,13 @@ class Computer(object):
             fig.show()
         return fig
 
-    def keras_loss_plot(self):
+    def keras_loss_plot(self, desc=""):
         """Line plot of training and test loss scores per epoch
+
+        Parameters
+        ----------
+        desc : str, optional
+            Append custom text to title
 
         Returns
         -------
@@ -453,6 +458,10 @@ class Computer(object):
         loss_train = self.history[keys[0]]
         loss_test = self.history[keys[2]]
         n_epochs = list(range(len(loss_train)))
+
+        title = f"{keys[0].title()}"
+        if desc:
+            title += f" - {desc}"
 
         data = [
             go.Scatter(
@@ -469,7 +478,7 @@ class Computer(object):
             ),
         ]
         layout = go.Layout(
-            title=f"{keys[0].title()}",
+            title=title,
             xaxis={"title": "n_epochs"},
             yaxis={"title": "score"},
             width=800,
@@ -486,6 +495,8 @@ class Computer(object):
     def resid_plot(self, desc=""):
         """Plot the residual error for a regression model.
 
+        Parameters
+        ----------
         desc: str, optional
             Append custom text to title 
 
