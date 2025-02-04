@@ -343,9 +343,9 @@ class Builder:
 
     def get_blueprint(self, architecture, fitting=True):
         draft = Blueprint(architecture=architecture)
-        self.set_build_params(**draft.building)
+        self.set_build_params(**draft.building())
         if fitting is True:
-            self.fit_params(**draft.fitting)
+            self.fit_params(**draft.fitting())
         return draft
 
     def decay_learning_rate(self):

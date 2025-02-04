@@ -28,11 +28,11 @@ class JwstCalTrain:
         training_data : str or Path, optional
             path on local disk to directory where training data files are stored, by default None
         out : str or Path, optional
-            path on local disk for saving training results, saved models, and train-test splits, by default None
+            path on local disk for saving outputs (leave blank to auto set using timestamp), by default None
         exp_mode : str, optional
-            image: specifies which model to train (image or spec), by default "image"
+            specifies which model to train ('image' or 'spec'), by default "image"
         norm : int, optional
-            apply normalization and scaling, by default 1
+            apply normalization and scaling, by default 1 (True)
         cross_val : int, optional
             Run cross-validation using k number of folds (10 recommended), by default 0
         early_stopping : str, optional
@@ -155,7 +155,7 @@ class JwstCalTrain:
             self.data.to_csv(f"{DATA}/{self.exp_mode}-tts_{str(itn)}.csv", index=False)
             itn += 1
 
-    def run_cross_val(self):
+    def run_cross_val(self, custom_arch=None):
         """Loops through k number of train/test splits to load data, run training, and record model performance metrics on each iteration.
         Requires attribute `cross_val` to be greater than 0 in order to run (standard practice is k=10)
         """
@@ -163,7 +163,7 @@ class JwstCalTrain:
             save_diagram = True if i == 0 else False
             self.data = None
             self.load_train_test(tts=str(i))
-            self.run_training(save_diagram=save_diagram)
+            self.run_training(save_diagram=save_diagram, custom_arch=custom_arch)
             self.compute_cache()
 
     def prep_train_test(self):
