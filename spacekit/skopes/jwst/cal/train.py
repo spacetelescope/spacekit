@@ -1,5 +1,6 @@
 import os
 import re
+import json
 from argparse import ArgumentParser
 import datetime as dt
 import pandas as pd
@@ -53,6 +54,7 @@ class JwstCalTrain:
         self.jp = None
         self.metrics = None
         self.dm = None
+        self.scores = None
         self.__name__ = "JwstCalTrain"
         self.log = Logger(self.__name__, **log_kws).setup_logger(logger=SPACEKIT_LOG)
         self.log_kws = dict(log=self.log, **log_kws)
@@ -166,6 +168,14 @@ class JwstCalTrain:
             self.load_train_test(tts=str(i))
             self.run_training(save_diagram=save_diagram, custom_arch=custom_arch)
             self.compute_cache()
+        self.scores = {}
+        self.dm = pd.DataFrame.from_dict(self.metrics)
+        for m in list(self.dm.index):
+            self.scores[m] = np.average(self.dm.loc[self.dm.index == m].values[0])
+        print(self.scores)
+        with open(f"{DATA}/scores.json", "w") as j:
+            json.dump(self.scores, j)
+            
 
     def prep_train_test(self):
         """Loads and splits training dataset into train and test sets.
@@ -349,6 +359,8 @@ class JwstCalTrain:
         else:
             self.run_training(save_diagram=True)
             self.compute_cache()
+        with open(f"{DATA}/hyperparameters.txt", "w") as f:
+            f.write(str(self))
 
 
 if __name__ == "__main__":
