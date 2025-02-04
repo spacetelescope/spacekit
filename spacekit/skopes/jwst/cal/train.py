@@ -320,7 +320,7 @@ class JwstCalTrain:
             train=self.jp.data.loc[self.jp.data.split == 'train'],
             test=self.jp.data.loc[self.jp.data.split == 'test']
         )
-        for s, g in dict(zip(['tr', 'ts'],['train', 'test'])):
+        for s, g in dict(zip(['tr', 'ts'],['train', 'test'])).items():
             itr_metrics[f'{s}_size'] = dd[g].shape[0]
             itr_metrics[f'{s}_lrg_ct'] = dd[g].loc[dd[g].imgsize_gb>self.threshold].shape[0]
             itr_metrics[f'{s}_lrg_mean'] = dd[g].loc[dd[g].imgsize_gb>self.threshold].imgsize_gb.mean()
