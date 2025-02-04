@@ -66,6 +66,8 @@ class Builder:
         self.mlp = None
         self.cnn = None
         self.ann = None
+        self.strides = None
+        self.kernel_size = None
         self.step_size = None
         self.steps_per_epoch = None
         self.batch_maker = None

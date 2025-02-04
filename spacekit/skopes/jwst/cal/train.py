@@ -152,6 +152,7 @@ class JwstCalTrain:
         for _, test_idx in kfold.split(np.zeros(self.data.shape[0]), pd.concat(self.jp.get_y_train_test('imgsize_gb'), axis=0)):
             self.data['split'] = 'train'
             self.data.loc[self.data.iloc[test_idx].index, 'split'] = 'test'
+            self.data['Dataset'] = self.data.index
             self.data.to_csv(f"{DATA}/{self.exp_mode}-tts_{str(itn)}.csv", index=False)
             itn += 1
 
@@ -233,10 +234,10 @@ class JwstCalTrain:
         if custom_arch is not None:
             try:
                 if "build_params" in custom_arch.keys():
-                    build_params = draft.building.update(custom_arch["build_params"])
+                    build_params = draft.building().update(custom_arch["build_params"])
                     self.builder.set_build_params(**build_params)
                 if "fit_params" in custom_arch.keys():
-                    fit_params = draft.fitting.update(custom_arch["fit_params"])
+                    fit_params = draft.fitting().update(custom_arch["fit_params"])
                     self.builder.fit_params(**fit_params)
             except Exception as e:
                 self.log.error(f"Custom architecture must be a nested dict with keys \
