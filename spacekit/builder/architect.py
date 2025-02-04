@@ -254,6 +254,32 @@ class Builder:
         self.name = name
         return self
 
+    def get_build_params(self):
+        """Build params for initialized model
+
+        Returns
+        -------
+        dict
+            dictionary of key-val pairs for initialized model's build parameters
+        """
+        return dict(
+            input_shape=self.input_shape,
+            output_shape=self.output_shape,
+            layers=self.layers,
+            kernel_size=self.kernel_size,
+            activation=self.activation,
+            cost_function=self.cost_function,
+            strides=self.strides,
+            optimizer=self.optimizer,
+            lr_sched=self.lr_sched,
+            loss=self.loss,
+            metrics=self.metrics,
+            input_name=self.input_name,
+            output_name=self.output_name,
+            name=self.name,
+            algorithm=self.algorithm
+        )
+
     def fit_params(
         self,
         batch_size=32,
@@ -297,12 +323,30 @@ class Builder:
         self.ensemble = ensemble
         return self
 
+    def get_fit_params(self):
+        """Fit parameters of built model
+
+        Returns
+        -------
+        dict
+            key-val pairs of model fitting hyperparameters
+        """
+        return dict(
+            batch_size=self.batch_size,
+            epochs=self.epochs,
+            lr=self.lr,
+            decay=self.decay,
+            early_stopping=self.early_stopping,
+            verbose=self.verbose,
+            ensemble=self.ensemble,
+        )
+
     def get_blueprint(self, architecture, fitting=True):
         draft = Blueprint(architecture=architecture)
-        self.set_build_params(**draft.building())
+        self.set_build_params(**draft.building)
         if fitting is True:
-            self.fit_params(**draft.fitting())
-        return self
+            self.fit_params(**draft.fitting)
+        return draft
 
     def decay_learning_rate(self):
         """Set learning schedule with exponential decay

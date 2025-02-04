@@ -69,7 +69,7 @@ def test_hst_cal_builder_without_data(skope):
     builder.load_saved_model(arch="hst_cal", keras_archive=True)
     assert builder.model is not None
     assert builder.blueprint == "hst_mem_clf"
-    builder.get_blueprint(builder.blueprint)
+    _ = builder.get_blueprint(builder.blueprint)
     assert len(builder.model.layers) == 8
     assert builder.model_path == "models/hst_cal/mem_clf.keras"
     builder.find_tx_file()
@@ -85,7 +85,7 @@ def test_jwst_cal_builder_without_data(skope):
     builder.load_saved_model("jwst_cal")
     assert builder.model is not None
     assert builder.blueprint == "jwst_img3_reg"
-    builder.get_blueprint(builder.blueprint)
+    _ = builder.get_blueprint(builder.blueprint)
     assert len(builder.model.layers) == 8
     assert builder.model_path == "models/jwst_cal/img3_reg"
     builder.find_tx_file()
