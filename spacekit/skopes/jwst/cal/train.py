@@ -55,6 +55,7 @@ class JwstCalTrain:
         self.metrics = None
         self.dm = None
         self.scores = None
+        self.metrics_file = f"{self.exp_mode}-cv-metrics.csv"
         self.__name__ = "JwstCalTrain"
         self.log = Logger(self.__name__, **log_kws).setup_logger(logger=SPACEKIT_LOG)
         self.log_kws = dict(log=self.log, **log_kws)
@@ -114,6 +115,7 @@ class JwstCalTrain:
         RESULTS = os.path.join(self.output_path, "results")
         for p in [DATA, MODELS, RESULTS]:
             os.makedirs(p, exist_ok=True)
+        self.metrics_file = f"{DATA}/" + self.metrics_file
         self.load_metrics()
         if self.metrics is not None:
             self.itn = str(len(list(self.metrics.keys())))
@@ -173,7 +175,7 @@ class JwstCalTrain:
         for m in list(self.dm.index):
             self.scores[m] = np.average(self.dm.loc[self.dm.index == m].values[0])
         print(self.scores)
-        with open(f"{DATA}/scores.json", "w") as j:
+        with open(f"{DATA}/{self.exp_mode}-cv-scores.json", "w") as j:
             json.dump(self.scores, j)
             
 
@@ -287,15 +289,14 @@ class JwstCalTrain:
         self.com.calculate_results()
         _ = self.com.make_outputs()
         self.res_fig = self.com.resid_plot(desc=f"{self.exp_mode} tts_{self.itn}")
-        self.loss_fig = self.com.keras_loss_plot()
+        self.loss_fig = self.com.keras_loss_plot(desc=f"{self.exp_mode} tts_{self.itn}")
         self.record_metrics()
 
     def load_metrics(self):
         """Loads a csv file from local disk (if it exists) to record results of subsequent model training iterations.
         """
-        metrics_file = f"{DATA}/training_metrics-{self.exp_mode}.csv"
-        if os.path.exists(metrics_file):
-            self.dm = pd.read_csv(metrics_file, index_col="index")
+        if os.path.exists(self.metrics_file):
+            self.dm = pd.read_csv(self.metrics_file, index_col="index")
             self.metrics = self.dm.to_dict()
 
     @property
@@ -345,7 +346,7 @@ class JwstCalTrain:
             self.metrics[self.itn] = itr_metrics
         dm = pd.DataFrame.from_dict(self.metrics)
         dm['index'] = dm.index
-        dm.to_csv(f"{DATA}/training_metrics-{self.exp_mode}.csv", index=False)
+        dm.to_csv(self.metrics_file, index=False)
         self.dm = dm.drop('index', axis=1, inplace=True)
 
     def main(self):
@@ -359,7 +360,7 @@ class JwstCalTrain:
         else:
             self.run_training(save_diagram=True)
             self.compute_cache()
-        with open(f"{DATA}/hyperparameters.txt", "w") as f:
+        with open(f"{DATA}/{self.exp_mode}-hyperparameters.txt", "w") as f:
             f.write(str(self))
 
 
