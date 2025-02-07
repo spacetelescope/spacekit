@@ -329,7 +329,7 @@ class JwstCalIngest:
     def drop_level2(self, df):
         alldags = sorted(list(df[self.dag].value_counts().index))
         l1_dags = [d for d in alldags if '1' in d]
-        l3_dags = [d for d in alldags if '3' in d]
+        l3_dags = [d for d in alldags if '3' in d and 'MEMORY' not in d]
         dags_l1_l3 = l1_dags + l3_dags
         df = df.loc[df[self.dag].isin(dags_l1_l3)]
         self.l1_dags.extend([l for l in l1_dags if l not in self.l1_dags])

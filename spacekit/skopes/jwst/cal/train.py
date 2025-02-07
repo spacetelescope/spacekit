@@ -6,6 +6,7 @@ import datetime as dt
 import pandas as pd
 import numpy as np
 from collections import OrderedDict
+from pprint import pprint
 from sklearn.model_selection import KFold
 from spacekit.preprocessor.prep import JwstCalPrep
 from spacekit.builder.architect import BuilderMLP
@@ -42,8 +43,8 @@ class JwstCalTrain:
             minimum value designating an observation's target value being classified as large/high, by default 100
         """
         self.training_data = training_data
-        self.set_outpath(out=out)
         self.exp_mode = exp_mode.lower()
+        self.set_outpath(out=out)
         self.prep_kwargs = dict(exp_mode=self.exp_mode, normalize=norm)
         self.cross_val = cross_val
         self.early_stopping = early_stopping
@@ -81,7 +82,7 @@ class JwstCalTrain:
 
     def set_outpath(self, out=None):
         """Sets up the output directory for model training data, models and results.
-        If `out` is formatted as a {date}_{timestamp} string whihc becomes the output_path attr and
+        If `out` is formatted as a {date}_{timestamp} string, it becomes the output_path attr and
         a directory is created if it doesn't exist. Otherwise, `out` is used as the top directory,
         under which a new {date}_{timestamp} folder is created using the current date/time. 
 
@@ -95,13 +96,13 @@ class JwstCalTrain:
             date_timestamp_re = re.compile('^[0-9]{4}\-[0-9]{2}\-[0-9]{2}\_[0-9]{10}')
             match_existing = date_timestamp_re.match(str(os.path.basename(out)))
             if match_existing:
-                self.output_path = base_out
+                self.output_path = os.path.join(base_out, self.exp_mode)
                 if not os.path.exists(self.output_path):
-                    os.makedirs(self.outpath, exist_ok=True)
+                    os.makedirs(self.output_path, exist_ok=True)
                 return
         today = dt.date.today().isoformat()
         timestamp = str(dt.datetime.now().timestamp()).split('.')[0]
-        self.output_path = f"{base_out}/{today}_{timestamp}"
+        self.output_path = f"{base_out}/{today}_{timestamp}/{self.exp_mode}"
         os.makedirs(self.output_path, exist_ok=True)
     
     def initialize(self):
@@ -109,13 +110,14 @@ class JwstCalTrain:
         is also loaded and instantiated into the `self.metrics` attribute, with `self.itn` initialized to a value 1 higher
         than the length of iterations in the file so far.
         """
-        global DATA, MODELS, RESULTS
+        global DATA, MODELS, RESULTS, SUMMARY
         DATA = os.path.join(self.output_path, "data")
         MODELS = os.path.join(self.output_path, "models")
         RESULTS = os.path.join(self.output_path, "results")
-        for p in [DATA, MODELS, RESULTS]:
+        SUMMARY = os.path.join(self.output_path, "summary")
+        for p in [DATA, MODELS, RESULTS, SUMMARY]:
             os.makedirs(p, exist_ok=True)
-        self.metrics_file = f"{DATA}/" + self.metrics_file
+        self.metrics_file = f"{SUMMARY}/" + self.metrics_file
         self.load_metrics()
         if self.metrics is not None:
             self.itn = str(len(list(self.metrics.keys())))
@@ -174,8 +176,8 @@ class JwstCalTrain:
         self.dm = pd.DataFrame.from_dict(self.metrics)
         for m in list(self.dm.index):
             self.scores[m] = np.average(self.dm.loc[self.dm.index == m].values[0])
-        print(self.scores)
-        with open(f"{DATA}/{self.exp_mode}-cv-scores.json", "w") as j:
+        pprint(self.scores)
+        with open(f"{SUMMARY}/{self.exp_mode}-cv-scores.json", "w") as j:
             json.dump(self.scores, j)
             
 
@@ -360,7 +362,7 @@ class JwstCalTrain:
         else:
             self.run_training(save_diagram=True)
             self.compute_cache()
-        with open(f"{DATA}/{self.exp_mode}-hyperparameters.txt", "w") as f:
+        with open(f"{SUMMARY}/{self.exp_mode}-hyperparameters.txt", "w") as f:
             f.write(str(self))
 
 
