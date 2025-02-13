@@ -1,6 +1,7 @@
 import os
 import re
 import json
+import shutil
 from argparse import ArgumentParser
 import datetime as dt
 import pandas as pd
@@ -275,6 +276,15 @@ class JwstCalTrain:
         self.builder.early_stopping = self.early_stopping
         self.builder.fit()
         self.builder.save_model(output_path=MODELS, parent_dir=self.itn)
+        # move any saved callbacks to same parent dir as model
+        if self.builder.callbacks is not None:
+            try:
+                cbpath = self.builder.callbacks[0].filepath
+                model_dir = os.path.dirname(self.builder.model_path)
+                cbdest = os.path.join(model_dir, os.path.basename(cbpath))
+                shutil.move(cbpath, cbdest)
+            except Exception as e:
+                self.log.error(e)
 
     def compute_cache(self):
         """Generates and stores model training results 

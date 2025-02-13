@@ -59,6 +59,7 @@ class Builder:
         self.lr = 1e-4
         self.decay = [100000, 0.96]
         self.early_stopping = None
+        self.patience = 15
         self.callbacks = None
         self.verbose = 2
         self.ensemble = False
@@ -363,10 +364,11 @@ class Builder:
         )
         return lr_schedule
 
-    def set_callbacks(self, patience=15):
+    def set_callbacks(self):
         """Set an early stopping callback by monitoring the model training for either
         accuracy or loss.  For classifiers, use 'val_accuracy' or 'val_loss'.
-        For regression use 'val_loss' or 'val_rmse'.
+        For regression use 'val_loss' or 'val_rmse'. Default patience is 15
+        and can be modified by setting the `self.patience` attribute to a custom value (int).
 
         Returns
         -------
@@ -387,7 +389,7 @@ class Builder:
             f"{model_name}_checkpoint.keras", save_best_only=True
         )
         early_stopping_cb = callbacks.EarlyStopping(
-            monitor=self.early_stopping, patience=patience
+            monitor=self.early_stopping, patience=self.patience
         )
         self.callbacks = [checkpoint_cb, early_stopping_cb]
         return self.callbacks
