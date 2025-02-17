@@ -361,16 +361,16 @@ class JwstCalTrain:
         dm.to_csv(self.metrics_file, index=False)
         self.dm = dm.drop('index', axis=1, inplace=True)
 
-    def main(self):
+    def main(self, custom_arch=None):
         """Main calling function used to run the full script of preprocessing, training, 
         cross-validation (if selected), and model evaluation scoring.
         """
         self.prep_train_test()
         if self.cross_val > 0:
             self.generate_kfolds()
-            self.run_cross_val()
+            self.run_cross_val(custom_arch=custom_arch)
         else:
-            self.run_training(save_diagram=True)
+            self.run_training(save_diagram=True, custom_arch=custom_arch)
             self.compute_cache()
         with open(f"{SUMMARY}/{self.exp_mode}-hyperparameters.txt", "w") as f:
             f.write(str(self))
