@@ -216,7 +216,7 @@ class JwstCalTrain:
             spec="jwst_spec3_reg"
         )[self.exp_mode]
     
-    def build_model(self, custom_arch=None):
+    def build_model(self, custom_arch=None, layer_kwargs={}):
         """Build the functional model using standard blueprint. Optionally customize hyperparameters using `custom_arch`.
         Ex:
         custom_arch=dict(
@@ -258,7 +258,7 @@ class JwstCalTrain:
                     self.builder.fit_params(**fit_params)
             except Exception as e:
                 self.log.error(f"{e}")
-        self.builder.model = self.builder.build()
+        self.builder.model = self.builder.build(layer_kwargs=layer_kwargs)
 
     def run_training(self, save_diagram=True, custom_arch=None):
         """Build, train and save a model
@@ -302,6 +302,8 @@ class JwstCalTrain:
         _ = self.com.make_outputs()
         self.res_fig = self.com.resid_plot(desc=f"{self.exp_mode} tts_{self.itn}")
         self.loss_fig = self.com.keras_loss_plot(desc=f"{self.exp_mode} tts_{self.itn}")
+        self.roc_fig = self.com.make_roc_curve(regression=True)
+        self.pr_fig = self.com.make_pr_curve(regression=True)
         self.record_metrics()
 
     def load_metrics(self):

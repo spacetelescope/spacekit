@@ -607,7 +607,7 @@ class BuilderMLP(Builder):
         self.steps_per_epoch = self.step_size // self.batch_size
         self.batch_maker = self.batch
 
-    def build(self, **layer_kwargs):
+    def build(self, layer_kwargs={}):
         """Build and compile an MLP network
 
         Returns
