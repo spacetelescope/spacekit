@@ -249,15 +249,17 @@ class JwstCalTrain:
         if custom_arch is not None:
             try:
                 if "build_params" in custom_arch.keys():
-                    build_params = draft.building().update(custom_arch["build_params"])
+                    build_params = draft.building()
+                    build_params.update(custom_arch["build_params"])
                     self.builder.set_build_params(**build_params)
                 if "fit_params" in custom_arch.keys():
-                    fit_params = draft.fitting().update(custom_arch["fit_params"])
+                    fit_params = draft.fitting()
+                    fit_params.update(custom_arch["fit_params"])
                     self.builder.fit_params(**fit_params)
             except Exception as e:
-                self.log.error(f"Custom architecture must be a nested dict with keys \
-                               `build_params` and `fit_params` using standard key-value pairs \
-                               for building and fitting a model. Logged Exception:\n {e}")
+                self.log.error(
+                    f"Custom architecture must be a nested dict with keys `build_params` and `fit_params` 
+                    using standard key-value pairs for building and fitting a model. Logged Exception:\n {e}")
         self.builder.model = self.builder.build()
 
     def run_training(self, save_diagram=True, custom_arch=None):
