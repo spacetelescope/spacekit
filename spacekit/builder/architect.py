@@ -607,7 +607,7 @@ class BuilderMLP(Builder):
         self.steps_per_epoch = self.step_size // self.batch_size
         self.batch_maker = self.batch
 
-    def build(self):
+    def build(self, **layer_kwargs):
         """Build and compile an MLP network
 
         Returns
@@ -623,7 +623,10 @@ class BuilderMLP(Builder):
         )(inputs)
         for i, layer in enumerate(self.layers[1:]):
             i += 1
-            x = Dense(layer, activation=self.activation, name=f"{i+1}_dense{layer}")(x)
+            if layer in layer_kwargs:
+                x = Dense(layer, activation=self.activation, name=f"{i+1}_dense{layer}", **layer_kwargs[layer])(x)
+            else:
+                x = Dense(layer, activation=self.activation, name=f"{i+1}_dense{layer}")(x)
         # output layer
         if self.blueprint == "ensemble":
             self.mlp = Model(inputs, x, name="mlp_ensemble")
