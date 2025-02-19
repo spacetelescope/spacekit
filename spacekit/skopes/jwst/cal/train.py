@@ -257,9 +257,7 @@ class JwstCalTrain:
                     fit_params.update(custom_arch["fit_params"])
                     self.builder.fit_params(**fit_params)
             except Exception as e:
-                self.log.error(
-                    f"Custom architecture must be a nested dict with keys `build_params` and `fit_params` 
-                    using standard key-value pairs for building and fitting a model. Logged Exception:\n {e}")
+                self.log.error(f"{e}")
         self.builder.model = self.builder.build()
 
     def run_training(self, save_diagram=True, custom_arch=None):
