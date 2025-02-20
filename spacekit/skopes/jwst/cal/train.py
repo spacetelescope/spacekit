@@ -216,27 +216,21 @@ class JwstCalTrain:
             spec="jwst_spec3_reg"
         )[self.exp_mode]
     
-    def build_model(self, custom_arch=None, layer_kwargs={}):
+    def build_model(self, custom_arch=None):
         """Build the functional model using standard blueprint. Optionally customize hyperparameters using `custom_arch`.
-        Ex:
+        Ex: To use a custom set of layer sizes with leaky_relu activation, run 200 epochs with verbose logging on, and
+        include an l2 regularization penalty on dense layer 4:
+
         custom_arch=dict(
-        build_params=dict(layers=[18, 36, 72, 144, 288, 144, 72, 36, 18],
-            activation="relu",
-            cost_function="linear",
-            lr_sched=True,
-            optimizer=Adam),
-        fit_params=dict(batch_size=32,
-            epochs=2000,
-            lr=1e-4,
-            decay=[100000, 0.96],
-            early_stopping=None,
-            verbose=0)
+        build_params=dict(layers=[18, 36, 72, 36, 18], activation="leaky_relu"),
+        fit_params=dict(epochs=200, verbose=2),
+        layer_kwargs=dict(4=kernel_regularizer='l2'),
         )
 
         Parameters
         ----------
         custom_arch : dict, optional
-            nested dict with keys `build_params`, `fit_params` as a way of tuning hyperparameters, by default None
+            nested dict with keys `build_params`, `fit_params`, `layer_kwargs` as a way of tuning hyperparameters, by default None
         """
         self.builder = BuilderMLP(
             X_train=self.jp.X_train,
@@ -246,15 +240,19 @@ class JwstCalTrain:
             blueprint="mlp",
         )
         draft = self.builder.get_blueprint(self.architecture)
+        layer_kwargs = {}
         if custom_arch is not None:
+            bp = custom_arch.get("build_params", None)
+            fp = custom_arch.get("fit_params", None)
+            layer_kwargs = custom_arch.get("layer_kwargs", {})
             try:
-                if "build_params" in custom_arch.keys():
+                if bp:
                     build_params = draft.building()
-                    build_params.update(custom_arch["build_params"])
+                    build_params.update(bp)
                     self.builder.set_build_params(**build_params)
-                if "fit_params" in custom_arch.keys():
+                if fp:
                     fit_params = draft.fitting()
-                    fit_params.update(custom_arch["fit_params"])
+                    fit_params.update(fp)
                     self.builder.fit_params(**fit_params)
             except Exception as e:
                 self.log.error(f"{e}")
