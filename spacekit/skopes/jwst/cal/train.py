@@ -223,13 +223,13 @@ class JwstCalTrain:
         custom_arch=dict(
         build_params=dict(layers=[18, 36, 72, 36, 18], activation="leaky_relu"),
         fit_params=dict(epochs=200, verbose=2),
-        layer_kwargs=dict(4=kernel_regularizer='l2'),
+        layer_kwargs={4:dict(kernel_regularizer='l2')},
         )
 
         Parameters
         ----------
         custom_arch : dict, optional
-            nested dict with keys `build_params`, `fit_params`, `layer_kwargs` as a way of tuning hyperparameters, by default None
+            nested dict with keys `build_params`, `fit_params`, `layer_kwargs` for tuning hyperparameters, by default None
         """
         self.builder = BuilderMLP(
             X_train=self.jp.X_train,
@@ -265,7 +265,7 @@ class JwstCalTrain:
         save_diagram : bool, optional
             Save a png diagram image of the model architecture, by default True
         custom_arch : dict, optional
-            pass in custom build_params and fit_params as a way of tuning hyperparameters, by default None
+            pass in custom build_params, fit_params, layer_kwargs for tuning hyperparameters, by default None
         """
         self.build_model(custom_arch=custom_arch)
         if save_diagram is True:
