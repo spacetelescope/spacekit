@@ -180,7 +180,6 @@ class JwstCalTrain:
         pprint(self.scores)
         with open(f"{SUMMARY}/{self.exp_mode}-cv-scores.json", "w") as j:
             json.dump(self.scores, j)
-            
 
     def prep_train_test(self):
         """Loads and splits training dataset into train and test sets.
@@ -372,6 +371,9 @@ class JwstCalTrain:
         else:
             self.run_training(save_diagram=True, custom_arch=custom_arch)
             self.compute_cache()
+            self.data['Dataset'] = self.data.index
+            self.data.to_csv(f"{DATA}/{self.exp_mode}-tts.csv", index=False)
+            self.data.drop('Dataset', axis=1, inplace=True)
         with open(f"{SUMMARY}/{self.exp_mode}-hyperparameters.txt", "w") as f:
             f.write(str(self))
 

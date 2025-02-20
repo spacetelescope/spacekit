@@ -339,7 +339,7 @@ class Computer(object):
         fig.add_shape(type="line", line=dict(dash="dash"), x0=0, x1=1, y0=0, y1=1)
 
         if regression is True:
-            if not self.y_pred_dummies:
+            if self.y_pred_dummies is None:
                 self.make_regression_dummies(**kwargs)
             fig = self.regression_roc(fig)
         else:
@@ -423,7 +423,7 @@ class Computer(object):
         fig.add_shape(type="line", line=dict(dash="dash"), x0=0, x1=1, y0=1, y1=0)
 
         if regression is True:
-            if not self.y_pred_dummies:
+            if self.y_pred_dummies is None:
                 self.make_regression_dummies(**kwargs)
             fig = self.regression_recall(fig)
         else:
