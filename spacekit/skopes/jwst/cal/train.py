@@ -17,7 +17,7 @@ from spacekit.logger.log import SPACEKIT_LOG, Logger
 
 class JwstCalTrain:
 
-    def __init__(self, training_data=None, out=None, exp_mode="image", norm=1, cross_val=0, early_stopping=None, threshold=100, **log_kws):
+    def __init__(self, training_data=None, out=None, exp_mode="image", norm=1, cross_val=0, early_stopping=None, threshold=100, layer_kwargs={}, **log_kws):
         """Training can be run in 1 of 2 modes: default or kfold cross-validation.
 
         Default: Single training iteration run on the dataset using a randomized 80-20 train-test split
@@ -25,6 +25,9 @@ class JwstCalTrain:
         Cross-validation: Training is run on the dataset K times, where k is the number of randomly shuffled train-test split folds 
         (initialized by the value passed into `cross_val` kwarg). Additional metrics are accumulated and recorded for evaluating 
         overall model performance across iterations.
+
+        The `layer_kwargs` optional arg accepts a dict for tuning hyperparameters on specific layers. For example, to add an 
+        L2 regularization penalty on dense layer 4: `layer_kwargs={4:dict(kernel_regularizer='l2')}`
 
         Parameters
         ----------
@@ -42,6 +45,9 @@ class JwstCalTrain:
             Either 'val_loss' or 'val_rmse' ends training when this metric is no longer improving, by default None
         threshold : int, optional
             minimum value designating an observation's target value being classified as large/high, by default 100
+        layer_kwargs: dict, optional
+            Add custom hyperparameters such as L2 regularization to specific model layers, by default {}
+                 
         """
         self.training_data = training_data
         self.exp_mode = exp_mode.lower()
@@ -50,6 +56,7 @@ class JwstCalTrain:
         self.cross_val = cross_val
         self.early_stopping = early_stopping
         self.threshold = threshold
+        self.layer_kwargs = layer_kwargs
         self.builder = None
         self.data = None
         self.itn = ""
@@ -74,7 +81,12 @@ class JwstCalTrain:
         for k,v in attrs.items():
             string += f"\n\t{k}: {v}"
         if self.builder is not None:
-            params=[self.builder.get_build_params(), self.builder.get_fit_params()]
+            params=[
+                self.builder.get_build_params(),
+                self.builder.get_fit_params(),
+                ]
+            if self.layer_kwargs:
+                params += self.layer_kwargs
             string += "\n\nModel Parameters:\n"
             for p in params:
                 for k,v in p.items():
@@ -217,19 +229,16 @@ class JwstCalTrain:
     
     def build_model(self, custom_arch=None):
         """Build the functional model using standard blueprint. Optionally customize hyperparameters using `custom_arch`.
-        Ex: To use a custom set of layer sizes with leaky_relu activation, run 200 epochs with verbose logging on, and
-        include an l2 regularization penalty on dense layer 4:
-
+        Ex: To use a custom set of layer sizes with leaky_relu activation and run 200 epochs with verbose logging on: 
         custom_arch=dict(
         build_params=dict(layers=[18, 36, 72, 36, 18], activation="leaky_relu"),
         fit_params=dict(epochs=200, verbose=2),
-        layer_kwargs={4:dict(kernel_regularizer='l2')},
         )
 
         Parameters
         ----------
         custom_arch : dict, optional
-            nested dict with keys `build_params`, `fit_params`, `layer_kwargs` for tuning hyperparameters, by default None
+            nested dict with keys `build_params`, `fit_params` for tuning hyperparameters, by default None
         """
         self.builder = BuilderMLP(
             X_train=self.jp.X_train,
@@ -239,11 +248,9 @@ class JwstCalTrain:
             blueprint="mlp",
         )
         draft = self.builder.get_blueprint(self.architecture)
-        layer_kwargs = {}
         if custom_arch is not None:
             bp = custom_arch.get("build_params", None)
             fp = custom_arch.get("fit_params", None)
-            layer_kwargs = custom_arch.get("layer_kwargs", {})
             try:
                 if bp:
                     build_params = draft.building()
@@ -255,7 +262,7 @@ class JwstCalTrain:
                     self.builder.fit_params(**fit_params)
             except Exception as e:
                 self.log.error(f"{e}")
-        self.builder.model = self.builder.build(layer_kwargs=layer_kwargs)
+        self.builder.model = self.builder.build(layer_kwargs=self.layer_kwargs)
 
     def run_training(self, save_diagram=True, custom_arch=None):
         """Build, train and save a model
@@ -265,7 +272,7 @@ class JwstCalTrain:
         save_diagram : bool, optional
             Save a png diagram image of the model architecture, by default True
         custom_arch : dict, optional
-            pass in custom build_params, fit_params, layer_kwargs for tuning hyperparameters, by default None
+            pass in custom build_params, fit_params for tuning hyperparameters, by default None
         """
         self.build_model(custom_arch=custom_arch)
         if save_diagram is True:
