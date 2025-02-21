@@ -356,6 +356,11 @@ class JwstCalTrain:
             itr_metrics[f'{s}_lrg_max'] = dd[g].loc[dd[g].imgsize_gb>self.threshold].imgsize_gb.max()
 
         itr_metrics.update(self.com.loss)
+        if self.com.roc_auc is not None:
+            itr_metrics.update(self.com.roc_auc)
+        if self.com.pr is not None:
+            itr_metrics.update(self.com.pr)
+
         if self.metrics is None:
             self.itn = "0"
             self.metrics = {self.itn:itr_metrics}

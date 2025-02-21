@@ -74,6 +74,7 @@ class Computer(object):
         self.cm_fig = None
         self.report = None
         self.roc_auc = None
+        self.pr = None
         self.acc_loss = None
         self.acc_fig = None
         self.loss_fig = None
@@ -394,22 +395,22 @@ class Computer(object):
         self.classes = y_onehot.columns
 
     def regression_roc(self, fig):
-        fpr, tpr, roc_auc = dict(), dict(), dict()
+        fpr, tpr, self.roc_auc = dict(), dict(), dict()
         for i in list(range(len(self.classes))):
             fpr[i], tpr[i], _ = roc_curve(self.y_test_dummies[:, i], self.y_pred_dummies.iloc[:, i])
-            roc_auc[i] = auc(fpr[i], tpr[i])
-            name = f"{self.classes[i]} (AUC={roc_auc[i]:.2f})"
+            self.roc_auc[i] = auc(fpr[i], tpr[i])
+            name = f"{self.classes[i]} (AUC={self.roc_auc[i]:.2f})"
             fig.add_trace(go.Scatter(x=fpr[i], y=tpr[i], mode="lines", name=name))
         return fig
 
     def regression_recall(self, fig):
-        precision, recall, aps = dict(), dict(), dict()
+        precision, recall, self.pr = dict(), dict(), dict()
         for i in list(range(len(self.classes))):
             y_true = self.y_test_dummies[:, i]
             y_hat = self.y_pred_dummies.iloc[:, i]
             precision[i], recall[i], _ = precision_recall_curve(y_true, y_hat)
-            aps[i] = average_precision_score(y_true, y_hat)
-            name = f"{self.classes[i]} (AP={aps[i]:.2f})"
+            self.pr[i] = average_precision_score(y_true, y_hat)
+            name = f"{self.classes[i]} (AP={self.pr[i]:.2f})"
             fig.add_trace(go.Scatter(x=recall[i], y=precision[i], name=name, mode="lines"))
         return fig
 
