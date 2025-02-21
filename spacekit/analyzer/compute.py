@@ -327,7 +327,7 @@ class Computer(object):
 
         return roc, fig
 
-    def make_roc_curve(self, regression=False, **kwargs):
+    def make_roc_curve(self, regression=False, desc="", **kwargs):
         """Plots the Receiver-Operator Characteristic (Area Under the Curve).
 
         Returns
@@ -353,8 +353,11 @@ class Computer(object):
                 name = f"{self.y_onehot.columns[i]} (AUC={auc_score:.2f})"
                 fig.add_trace(go.Scatter(x=fpr, y=tpr, name=name, mode="lines"))
 
+        title = "ROC-AUC"
+        if desc:
+            title += f" - {desc}"
         fig.update_layout(
-            title_text="ROC-AUC",
+            title_text=title,
             xaxis_title="False Positive Rate",
             yaxis_title="True Positive Rate",
             yaxis=dict(scaleanchor="x", scaleratio=1),
@@ -410,7 +413,7 @@ class Computer(object):
             fig.add_trace(go.Scatter(x=recall[i], y=precision[i], name=name, mode="lines"))
         return fig
 
-    def make_pr_curve(self, regression=False, **kwargs):
+    def make_pr_curve(self, regression=False, desc="", **kwargs):
         """Plots the Precision-Recall Curve
 
         Returns
@@ -437,8 +440,11 @@ class Computer(object):
                 name = f"{self.y_onehot.columns[i]} (AP={auc_score:.2f})"
                 fig.add_trace(go.Scatter(x=recall, y=precision, name=name, mode="lines"))
 
+        title = "Precision-Recall"
+        if desc:
+            title += f" - {desc}"
         fig.update_layout(
-            title_text="Precision-Recall",
+            title_text=title,
             xaxis_title="Recall",
             yaxis_title="Precision",
             yaxis=dict(scaleanchor="x", scaleratio=1),
