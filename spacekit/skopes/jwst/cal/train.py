@@ -85,12 +85,12 @@ class JwstCalTrain:
                 self.builder.get_build_params(),
                 self.builder.get_fit_params(),
                 ]
-            if self.layer_kwargs:
-                params += self.layer_kwargs
             string += "\n\nModel Parameters:\n"
             for p in params:
                 for k,v in p.items():
                     string += f"\n\t{k}: {v}"
+            if self.layer_kwargs:
+                string += f"\n\n\tlayers: {self.layer_kwargs}"
         return string
 
     def set_outpath(self, out=None):
@@ -358,10 +358,9 @@ class JwstCalTrain:
 
         itr_metrics.update(self.com.loss)
         if self.com.roc_auc is not None:
-            itr_metrics.update(self.com.roc_auc)
+            itr_metrics.update({'auc': np.average([n for n in list(self.com.roc_auc.values()) if not np.isnan(n)])})
         if self.com.pr is not None:
-            itr_metrics.update(self.com.pr)
-
+            itr_metrics.update({'pr': np.average([n for n in list(self.com.pr.values()) if not np.isnan(n)])})
         if self.metrics is None:
             self.itn = "0"
             self.metrics = {self.itn:itr_metrics}
