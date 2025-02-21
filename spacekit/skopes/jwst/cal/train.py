@@ -304,10 +304,11 @@ class JwstCalTrain:
         )
         self.com.calculate_results()
         _ = self.com.make_outputs()
-        self.res_fig = self.com.resid_plot(desc=f"{self.exp_mode} tts_{self.itn}")
-        self.loss_fig = self.com.keras_loss_plot(desc=f"{self.exp_mode} tts_{self.itn}")
-        self.roc_fig = self.com.make_roc_curve(regression=True)
-        self.pr_fig = self.com.make_pr_curve(regression=True)
+        desc = f"{self.exp_mode} tts_{self.itn}"
+        self.res_fig = self.com.resid_plot(desc=desc)
+        self.loss_fig = self.com.keras_loss_plot(desc=desc)
+        self.roc_fig = self.com.make_roc_curve(regression=True, desc=desc)
+        self.pr_fig = self.com.make_pr_curve(regression=True, desc=desc)
         self.record_metrics()
 
     def load_metrics(self):
