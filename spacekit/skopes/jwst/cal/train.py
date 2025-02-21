@@ -354,7 +354,7 @@ class JwstCalTrain:
             itr_metrics[f'{s}_size'] = dd[g].shape[0]
             itr_metrics[f'{s}_lrg_ct'] = dd[g].loc[dd[g].imgsize_gb>self.threshold].shape[0]
             itr_metrics[f'{s}_lrg_mean'] = dd[g].loc[dd[g].imgsize_gb>self.threshold].imgsize_gb.mean()
-            itr_metrics[f'{s}_lrg_max'] = dd[g].loc[dd[g].imgsize_gb>self.threshold].imgsize_gb.max()
+            itr_metrics[f'{s}_lrg_max'] = dd[g].loc[dd[g].imgsize_gb==dd[g].imgsize_gb.max()]
 
         itr_metrics.update(self.com.loss)
         if self.com.roc_auc is not None:

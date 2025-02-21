@@ -397,7 +397,9 @@ class Computer(object):
     def regression_roc(self, fig):
         fpr, tpr, self.roc_auc = dict(), dict(), dict()
         for i in list(range(len(self.classes))):
-            fpr[i], tpr[i], _ = roc_curve(self.y_test_dummies[:, i], self.y_pred_dummies.iloc[:, i])
+            y_true = self.y_test_dummies[:, i]
+            y_hat = self.y_pred_dummies.iloc[:, i]
+            fpr[i], tpr[i], _ = roc_curve(y_true, y_hat)
             self.roc_auc[i] = auc(fpr[i], tpr[i])
             name = f"{self.classes[i]} (AUC={self.roc_auc[i]:.2f})"
             fig.add_trace(go.Scatter(x=fpr[i], y=tpr[i], mode="lines", name=name))
