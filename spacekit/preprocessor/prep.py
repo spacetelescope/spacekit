@@ -124,14 +124,15 @@ class Prep:
             rename=rename,
             join_data=join,
         ).Xt
-        self.X_test = T(
-            self.X_test,
-            cols,
-            ncols=ncols,
-            tx_data=self.Tx.tx_data,
-            rename=rename,
-            join_data=join,
-        ).Xt
+        if self.X_test is not None:
+            self.X_test = T(
+                self.X_test,
+                cols,
+                ncols=ncols,
+                tx_data=self.Tx.tx_data,
+                rename=rename,
+                join_data=join,
+            ).Xt
 
 
 class HstCalPrep(Prep):
