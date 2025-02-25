@@ -46,8 +46,7 @@ class JwstCalTrain:
         threshold : int, optional
             minimum value designating an observation's target value being classified as large/high, by default 100
         layer_kwargs: dict, optional
-            Add custom hyperparameters such as L2 regularization to specific model layers, by default {}
-                 
+            Add custom hyperparameters such as L2 regularization to specific model layers, by default {}         
         """
         self.training_data = training_data
         self.exp_mode = exp_mode.lower()
@@ -176,8 +175,12 @@ class JwstCalTrain:
             itn += 1
 
     def run_cross_val(self, custom_arch=None):
-        """Loops through k number of train/test splits to load data, run training, and record model performance metrics on each iteration.
-        Requires attribute `cross_val` to be greater than 0 in order to run (standard practice is k=10)
+        """Loops through k number of train/test splits to load data, run training, and record model performance metrics on each iteration. Requires attribute `cross_val` to be greater than 0 in order to run (standard practice is k=10)
+
+        Parameters
+        ----------
+        custom_arch : dict, optional
+            nested dict with keys `build_params`, `fit_params` for tuning hyperparameters, by default None
         """
         for i in list(range(self.cross_val)):
             save_diagram = True if i == 0 else False
@@ -379,11 +382,18 @@ class JwstCalTrain:
         dm.to_csv(self.metrics_file, index=False)
         self.dm = dm.drop('index', axis=1, inplace=True)
 
-    def main(self, custom_arch=None):
+    def main(self, stratify=False, custom_arch=None):
         """Main calling function used to run the full script of preprocessing, training, 
         cross-validation (if selected), and model evaluation scoring.
+
+        Parameters
+        ----------
+        stratify : bool, optional
+            Splits data evenly across temporary target class distribution 'mem_bin', by default False
+        custom_arch : dict, optional
+            pass in custom build_params, fit_params for tuning hyperparameters, by default None
         """
-        self.prep_train_test()
+        self.prep_train_test(stratify=stratify)
         if self.cross_val > 0:
             self.generate_kfolds()
             self.run_cross_val(custom_arch=custom_arch)
