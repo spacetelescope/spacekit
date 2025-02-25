@@ -176,10 +176,10 @@ class Blueprint:
     def draft_jwst_img3_reg(self):
         return dict(
             batch_size=32,
-            epochs=2000,
+            epochs=200,
             lr=1e-4,
             decay=[100000, 0.96],
-            early_stopping=None,
+            early_stopping='val_rmse',
             verbose=0,
         )
 
@@ -203,9 +203,9 @@ class Blueprint:
     def draft_jwst_spec3_reg(self):
         return dict(
             batch_size=32,
-            epochs=2000,
+            epochs=200,
             lr=1e-4,
             decay=[100000, 0.96],
-            early_stopping=None,
+            early_stopping='val_rmse',
             verbose=0,
         )

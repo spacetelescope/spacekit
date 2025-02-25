@@ -188,18 +188,23 @@ class JwstCalTrain:
         self.scores = {}
         self.dm = pd.DataFrame.from_dict(self.metrics)
         for m in list(self.dm.index):
-            self.scores[m] = np.average(self.dm.loc[self.dm.index == m].values[0])
+            self.scores[m] = np.average([n for n in self.dm.loc[self.dm.index == m].values[0] if not np.isnan(n)])
         pprint(self.scores)
         with open(f"{SUMMARY}/{self.exp_mode}-cv-scores.json", "w") as j:
             json.dump(self.scores, j)
 
-    def prep_train_test(self):
+    def prep_train_test(self, stratify=False):
         """Loads and splits training dataset into train and test sets.
+
+        Parameters
+        ----------
+        stratify : bool, optional
+            Splits data evenly across temporary target class distribution 'mem_bin', by default False
         """
         if self.data is None:
             self.load_data()
         self.jp = JwstCalPrep(self.data, **self.prep_kwargs)
-        self.jp.prep_data()
+        self.jp.prep_data(stratify=stratify)
         self.jp.prep_targets()
  
     def load_train_test(self, tts="0"):
