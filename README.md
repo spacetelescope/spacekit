@@ -5,7 +5,7 @@
 ![Build Status](https://github.com/spacetelescope/spacekit/actions/workflows/ci.yml/badge.svg?branch=main)
 [![Powered by STScI Badge](https://img.shields.io/badge/powered%20by-STScI-blue.svg?colorA=707170&colorB=3e8ddd&style=flat)](http://www.stsci.edu)
 [![Powered by Astropy](http://img.shields.io/badge/powered%20by-AstroPy-orange.svg?style=flat)](http://www.astropy.org)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.11169350.svg)](https://doi.org/10.5281/zenodo.11169350)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.14941394.svg)](https://doi.org/10.5281/zenodo.14941394)
 
 Astronomical Data Science and Machine Learning Toolkit
 
