@@ -23,7 +23,7 @@ from tensorflow.keras.layers import (
 )
 from tensorflow.keras.metrics import RootMeanSquaredError as RMSE
 from spacekit.generator.augment import augment_data, augment_image
-from spacekit.analyzer.track import stopwatch
+from spacekit.analyzer.track import stopwatch, xtimer
 from spacekit.builder.blueprints import Blueprint
 from spacekit.logger.log import Logger
 
@@ -59,6 +59,7 @@ class Builder:
         self.lr = 1e-4
         self.decay = [100000, 0.96]
         self.early_stopping = None
+        self.patience = 15
         self.callbacks = None
         self.verbose = 2
         self.ensemble = False
@@ -66,6 +67,8 @@ class Builder:
         self.mlp = None
         self.cnn = None
         self.ann = None
+        self.strides = None
+        self.kernel_size = None
         self.step_size = None
         self.steps_per_epoch = None
         self.batch_maker = None
@@ -254,6 +257,32 @@ class Builder:
         self.name = name
         return self
 
+    def get_build_params(self):
+        """Build params for initialized model
+
+        Returns
+        -------
+        dict
+            dictionary of key-val pairs for initialized model's build parameters
+        """
+        return dict(
+            input_shape=self.input_shape,
+            output_shape=self.output_shape,
+            layers=self.layers,
+            kernel_size=self.kernel_size,
+            activation=self.activation,
+            cost_function=self.cost_function,
+            strides=self.strides,
+            optimizer=self.optimizer,
+            lr_sched=self.lr_sched,
+            loss=self.loss,
+            metrics=self.metrics,
+            input_name=self.input_name,
+            output_name=self.output_name,
+            name=self.name,
+            algorithm=self.algorithm
+        )
+
     def fit_params(
         self,
         batch_size=32,
@@ -297,12 +326,30 @@ class Builder:
         self.ensemble = ensemble
         return self
 
+    def get_fit_params(self):
+        """Fit parameters of built model
+
+        Returns
+        -------
+        dict
+            key-val pairs of model fitting hyperparameters
+        """
+        return dict(
+            batch_size=self.batch_size,
+            epochs=self.epochs,
+            lr=self.lr,
+            decay=self.decay,
+            early_stopping=self.early_stopping,
+            verbose=self.verbose,
+            ensemble=self.ensemble,
+        )
+
     def get_blueprint(self, architecture, fitting=True):
         draft = Blueprint(architecture=architecture)
         self.set_build_params(**draft.building())
         if fitting is True:
             self.fit_params(**draft.fitting())
-        return self
+        return draft
 
     def decay_learning_rate(self):
         """Set learning schedule with exponential decay
@@ -317,22 +364,32 @@ class Builder:
         )
         return lr_schedule
 
-    def set_callbacks(self, patience=15):
+    def set_callbacks(self):
         """Set an early stopping callback by monitoring the model training for either
         accuracy or loss.  For classifiers, use 'val_accuracy' or 'val_loss'.
-        For regression use 'val_loss' or 'val_rmse'.
+        For regression use 'val_loss' or 'val_rmse'. Default patience is 15
+        and can be modified by setting the `self.patience` attribute to a custom value (int).
 
         Returns
         -------
         list
             [callbacks.ModelCheckpoint, callbacks.EarlyStopping]
         """
+        if self.early_stopping not in ['val_accuracy', 'val_loss', 'val_rmse']:
+            warn_msg = f"Invalid `early_stopping` value: {self.early_stopping}."
+            if self.algorithm == "linreg" or self.loss == "mse":
+                self.early_stopping = 'val_rmse'
+            elif "accuracy" in self.metrics:
+                self.early_stopping = 'val_accuracy'
+            else:
+                self.early_stopping = 'val_loss'
+            self.log.warning(f"{warn_msg} Using default : {self.early_stopping}")
         model_name = str(self.model.name)
         checkpoint_cb = callbacks.ModelCheckpoint(
-            f"{model_name}_checkpoint.h5", save_best_only=True
+            f"{model_name}_checkpoint.keras", save_best_only=True
         )
         early_stopping_cb = callbacks.EarlyStopping(
-            monitor=self.early_stopping, patience=patience
+            monitor=self.early_stopping, patience=self.patience
         )
         self.callbacks = [checkpoint_cb, early_stopping_cb]
         return self.callbacks
@@ -347,18 +404,20 @@ class Builder:
         self.model.save(keras_model_path)
         self.model_path = keras_model_path
 
-    def save_model(self, weights=True, output_path=".", keras_archive=True, parent_dir=""):
+    def save_model(self, output_path=".", keras_archive=True, parent_dir="", weights=True):
         """The model architecture, and training configuration (including the optimizer, losses, and metrics)
         are stored in saved_model.pb. The weights are saved in the variables/ directory.
 
         Parameters
         ----------
-        weights : bool, optional
-            save weights learned by the model separately also, by default True
         output_path : str, optional
             where to save the model files, by default "."
         keras_archive : bool, optional
             save model using new (preferred) keras archive format, by default True
+        parent_dir : str, optional
+            store model in a subdirectory of output_path using this name, by default ""
+        weights : bool, optional
+            save weights learned by the model separately also, by default True
         """
         if self.name is None:
             self.name = str(self.model.name)
@@ -367,14 +426,17 @@ class Builder:
         else:
             model_name = self.name
 
-        model_path = os.path.join(output_path, "models", parent_dir, model_name)
+        if str(os.path.basename(output_path)).lower() == "models":
+            model_path = os.path.join(output_path, parent_dir, model_name)
+        else:
+            model_path = os.path.join(output_path, "models", parent_dir, model_name)
 
         if keras_archive is True:
             self.save_keras_model(model_path)
         else:
             self.model.save(model_path)
             if weights is True:
-                weights_path = f"{model_path}/weights/ckpt"
+                weights_path = f"{model_path}/weights/ckpt.keras"
                 self.model.save_weights(weights_path)
             for root, _, files in os.walk(model_path):
                 indent = "    " * root.count(os.sep)
@@ -417,19 +479,7 @@ class Builder:
                 "pydot and graphviz not installed: `pip install spacekit[viz]`"
             )
 
-    # TODO
-    # def timer(self, func, model_name):
-    #     def wrap():
-    #         start = time.time()
-    #         stopwatch(f"TRAINING ***{model_name}***", t0=start)
-    #         func()
-    #         end = time.time()
-    #         stopwatch(f"TRAINING ***{model_name}***", t0=start, t1=end)
-    #         return func
-    #     return wrap
-
-    # @timer
-
+    @xtimer
     def batch_fit(self):
         """
         Fits cnn using a batch generator of equal positive and negative number of samples, rotating randomly.
@@ -467,6 +517,7 @@ class Builder:
         self.model.summary()
         return self.history
 
+    @xtimer
     def fit(self, params=None):
         """Fit a model to the training data.
 
@@ -556,7 +607,7 @@ class BuilderMLP(Builder):
         self.steps_per_epoch = self.step_size // self.batch_size
         self.batch_maker = self.batch
 
-    def build(self):
+    def build(self, layer_kwargs={}):
         """Build and compile an MLP network
 
         Returns
@@ -572,7 +623,10 @@ class BuilderMLP(Builder):
         )(inputs)
         for i, layer in enumerate(self.layers[1:]):
             i += 1
-            x = Dense(layer, activation=self.activation, name=f"{i+1}_dense{layer}")(x)
+            if layer in layer_kwargs:
+                x = Dense(layer, activation=self.activation, name=f"{i+1}_dense{layer}", **layer_kwargs[layer])(x)
+            else:
+                x = Dense(layer, activation=self.activation, name=f"{i+1}_dense{layer}")(x)
         # output layer
         if self.blueprint == "ensemble":
             self.mlp = Model(inputs, x, name="mlp_ensemble")
@@ -594,11 +648,16 @@ class BuilderMLP(Builder):
             )
             return self.model
 
-    def batch(self):
+    def batch(self, augment=True):
         """Randomly rotates through positive and negative samples indefinitely,
         generating a single batch tuple of (inputs, targets) or (inputs, targets, sample_weights).
         If the size of the dataset is not divisible by the batch size, the last batch will be
         smaller than the others. An epoch finishes once `steps_per_epoch` have been seen by the model.
+
+        Parameters
+        ----------
+        augment : bool, optional
+            whether or not to apply stochastic data augmentation on input features, by default True
 
         Yields
         ------
@@ -625,8 +684,9 @@ class BuilderMLP(Builder):
             yb[:hb] = self.y_train[pos[:hb]]
             yb[hb:] = self.y_train[neg[hb : self.batch_size]]
 
-            for i in range(self.batch_size):
-                xb[i] = augment_data(xb[i])
+            if augment is True:
+                for i in range(self.batch_size):
+                    xb[i] = augment_data(xb[i])
 
             yield xb, yb
 

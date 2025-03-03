@@ -1,6 +1,10 @@
 1.1.2 (unreleased)
 ==================
 
+skopes
+------
+- Retrain JWST models on data collected through end of February 2025, add new jwst cal training submodule  [#114]
+
 docs
 ----
 - Use furo as sphinx theme, improve page hierarchy and add custom domain [#104]

@@ -124,14 +124,15 @@ class Prep:
             rename=rename,
             join_data=join,
         ).Xt
-        self.X_test = T(
-            self.X_test,
-            cols,
-            ncols=ncols,
-            tx_data=self.Tx.tx_data,
-            rename=rename,
-            join_data=join,
-        ).Xt
+        if self.X_test is not None:
+            self.X_test = T(
+                self.X_test,
+                cols,
+                ncols=ncols,
+                tx_data=self.Tx.tx_data,
+                rename=rename,
+                join_data=join,
+            ).Xt
 
 
 class HstCalPrep(Prep):
@@ -354,16 +355,47 @@ class JwstCalPrep(Prep):
             )[self.exp_mode]
         self.norm_cols = [c for c in norm_cols if c in self.X_cols]
 
-    def prep_data(self, existing_splits=False):
+    @property
+    def memory_classes(self):
+        return {
+            0: [0,12],
+            1: [12, 225],
+            2: [225, 950],
+            3: [950, 2000]
+        }
+
+    def classify_targets(self):
+        """Creates temporary target class 'mem_bin' based on max RAM levels specified by
+        `memory_classes` property.
+        """
+        y = self.y_target
+        for c, rng in self.memory_classes.items():
+            self.data.loc[(self.data[y] >= rng[0]) & (self.data[y] < rng[1]), 'mem_bin'] = c
+
+    def prep_data(self, existing_splits=False, stratify=False):
+        """Splits data into training (X_train) and test (X_test) sets and applies a PowerTransform
+        normalization to each.
+
+        Parameters
+        ----------
+        existing_splits : bool, optional
+            Split the data using values in 'split' column, by default False
+        stratify : bool, optional
+            Stratify splits according to target class distribution (mem_bin), by default False
+        """
         if existing_splits is True:
-            if "split" in self.data.columns:
-                self.test_idx = self.data.loc[self.data.split == "test"].index
-                self.train_idx = self.data.loc[self.data.split == "train"].index
-            else:
+            if "split" not in self.data.columns:
                 self.log.warning("'split' not found in data columns")
                 return
+            self.test_idx = self.data.loc[self.data.split == "test"].index
+            self.train_idx = self.data.loc[self.data.split == "train"].index
         else:
-            super().stratify_split(y_target=self.y_target, stratify=False)
+            y_target = self.y_target
+            if stratify is True:
+                y_target = 'mem_bin'
+                self.classify_targets()
+            super().stratify_split(y_target=y_target, stratify=stratify)
+
         self.X_train, self.X_test = super().get_X_train_test()
         fname = f"tx_data-{self.exp_mode}.json"
         super().apply_normalization(T=PowerX, cols=self.norm_cols, rename=None, join=1, save_as=fname)

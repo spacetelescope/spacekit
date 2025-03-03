@@ -1,5 +1,7 @@
+ZID = "14941394" # zenodo DOI record
+
 calcloud = {
-    "uri": "https://zenodo.org/record/11169350/files",
+    "uri": f"https://zenodo.org/record/{ZID}/files",
     "data": {
         "2022-02-14": {
             "fname": "hst_cal_std_2022-02-14.zip?download=1",
@@ -40,7 +42,7 @@ calcloud = {
 }
 
 svm = {
-    "uri": "https://zenodo.org/record/11169350/files",
+    "uri": f"https://zenodo.org/record/{ZID}/files",
     "data": {
         "2022-02-14": {
             "fname": "hst_drz_svm_2022-02-14.zip?download=1",
@@ -89,7 +91,7 @@ svm = {
 
 
 jwst_cal = {
-    "uri": "https://zenodo.org/record/11169350/files",
+    "uri": f"https://zenodo.org/record/{ZID}/files",
     "data": {
         "2023-08-02": {
             "fname": "",
@@ -98,19 +100,33 @@ jwst_cal = {
             "key": "",
             "size": "",
         },
+        "2024-03-28": {
+            "fname": "",
+            "hash": "",
+            "desc": "",
+            "key": "",
+            "size": "",
+        },
+        "2025-02-25": {
+            "fname": "",
+            "hash": "",
+            "desc": "",
+            "key": "",
+            "size": "",
+        }
     },
     "model": {
         "fname": "jwst_cal.zip",
-        "hash": "c2c6764bcf1092e993d061be43075e3d",
+        "hash": "e41d3480166e590d3dc08f34a3ce2a92",
         "desc": "JWST Calibration Processing Resource Prediction Models",
         "key": "jwst_cal",
-        "size": "526.89kB",
+        "size": "1.3MB",
     },
 }
 
 
 k2 = {
-    "uri": "https://zenodo.org/record/11169350/files",
+    "uri": f"https://zenodo.org/record/{ZID}/files",
     "data": {
         "test": {
             "fname": "k2-exo-flux-ts-test.csv.zip?download=1",
@@ -154,7 +170,7 @@ networks = {
     "jwst_cal": {
         "basepath": "spacekit.builder.trained_networks",
         "fname": "jwst_cal.zip",
-        "hash": "31142d47e5fc31650b49edb44dfa3db5f1d09380864b9560e2dded456723dfe6",
-        "size": "526.89kB",
+        "hash": "f6b3ba0f6ed9c42cedd932db4503f17e6763515da81c45cbcba667866cbaeaf9",
+        "size": "1.4MB",
     },
 }

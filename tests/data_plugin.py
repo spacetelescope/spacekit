@@ -4,6 +4,7 @@ import os
 import shutil
 from pytest import TempPathFactory
 from spacekit.extractor.load import extract_file
+from spacekit.datasets.meta import ZID
 
 RETENTION_COUNT=1
 RETENTION_POLICY='none'
@@ -43,14 +44,14 @@ def pytest_configure(config):
             tmp_path_factory = TempPathFactory(
                 config.option.basetemp, trace=config.trace.get("tmpdir"), _ispytest=True
             )
-        data_uri = "https://zenodo.org/record/11169350/files/pytest_data.tgz?download=1"
+        data_uri = f"https://zenodo.org/record/{ZID}/files/pytest_data.tgz?download=1"
         basepath = tmp_path_factory.getbasetemp()
         target_path = os.path.join(basepath, "pytest_data.tgz")
         with open(target_path, "wb") as f:
             response = requests.get(data_uri, stream=True)
             if response.status_code == 200:
                 f.write(response.raw.read())
-        chksum = "dc06a7d9af875153bf46e27be3724be63a6643fa44cfbf40d83dfc109d7ac4c3"
+        chksum = "3b4f8759b32ae76007988073d63156c3995f69a77925ff686a0e3fde785e2421"
         with open(target_path, "rb") as f:
             digest = hashlib.sha256(f.read())
             if digest.hexdigest() == chksum:

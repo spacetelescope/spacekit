@@ -210,6 +210,7 @@ spacekit
             └── cal
                 └── config.py
                 └── predict.py
+                └── train.py
         └── kepler
             └── light_curves.py
         

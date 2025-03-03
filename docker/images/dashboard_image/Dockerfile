@@ -11,9 +11,12 @@ RUN apt update && \
         python3 \
         python3-pip \
         python3-venv \
+        libhdf5-dev \
+        hdf5-tools \
         gcc \
         tar \
         curl \
+        pkg-config \
         time && \
     apt autoremove && \
     apt clean && \
@@ -37,7 +40,7 @@ WORKDIR /home/developer
 RUN python3 -m venv /home/developer/venv && \
   pip install --upgrade pip && \
   pip install \
-    spacekit[x] \
+    spacekit[x]~="${SPACEKIT_VERSION}" \
     dash \
     dash-cytoscape \
     dash-daq && \

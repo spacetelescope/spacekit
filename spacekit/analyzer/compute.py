@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import datetime as dt
 from sklearn.metrics import (
+    auc,
     roc_curve,
     roc_auc_score,
     precision_recall_curve,
@@ -66,12 +67,14 @@ class Computer(object):
         self.y_pred = None
         self.y_scores = None
         self.y_onehot = None
+        self.y_pred_dummies = None
         self.fnfp = None
         self.cmx = None
         self.cmx_norm = None
         self.cm_fig = None
         self.report = None
         self.roc_auc = None
+        self.pr = None
         self.acc_loss = None
         self.acc_fig = None
         self.loss_fig = None
@@ -325,7 +328,7 @@ class Computer(object):
 
         return roc, fig
 
-    def make_roc_curve(self):
+    def make_roc_curve(self, regression=False, desc="", **kwargs):
         """Plots the Receiver-Operator Characteristic (Area Under the Curve).
 
         Returns
@@ -336,18 +339,26 @@ class Computer(object):
         fig = go.Figure()
         fig.add_shape(type="line", line=dict(dash="dash"), x0=0, x1=1, y0=0, y1=1)
 
-        for i in range(self.y_scores.shape[1]):
-            y_true = self.y_onehot.iloc[:, i]
-            y_score = self.y_scores[:, i]
+        if regression is True:
+            if self.y_pred_dummies is None:
+                self.make_regression_dummies(**kwargs)
+            fig = self.regression_roc(fig)
+        else:
+            for i in range(self.y_scores.shape[1]):
+                y_true = self.y_onehot.iloc[:, i]
+                y_score = self.y_scores[:, i]
 
-            fpr, tpr, _ = roc_curve(y_true, y_score)
-            auc_score = roc_auc_score(y_true, y_score)
+                fpr, tpr, _ = roc_curve(y_true, y_score)
+                auc_score = roc_auc_score(y_true, y_score)
 
-            name = f"{self.y_onehot.columns[i]} (AUC={auc_score:.2f})"
-            fig.add_trace(go.Scatter(x=fpr, y=tpr, name=name, mode="lines"))
+                name = f"{self.y_onehot.columns[i]} (AUC={auc_score:.2f})"
+                fig.add_trace(go.Scatter(x=fpr, y=tpr, name=name, mode="lines"))
 
+        title = "ROC-AUC"
+        if desc:
+            title += f" - {desc}"
         fig.update_layout(
-            title_text="ROC-AUC",
+            title_text=title,
             xaxis_title="False Positive Rate",
             yaxis_title="True Positive Rate",
             yaxis=dict(scaleanchor="x", scaleratio=1),
@@ -362,7 +373,50 @@ class Computer(object):
             fig.show()
         return fig
 
-    def make_pr_curve(self):
+    @staticmethod
+    def get_bin_estimate(y_val, n_classes=4, thresholds=[0, 12, 225, 950]):
+        thresholds = sorted(thresholds, reverse=True)
+        for i in list(range(len(thresholds))):
+            if y_val >= thresholds[i]:
+                return n_classes - i - 1
+            else:
+                continue
+
+    def make_regression_dummies(self, **kwargs):
+        y_true = [self.get_bin_estimate(t, **kwargs) for t in self.predictions[:,1]]
+        y_scores = [self.get_bin_estimate(p, **kwargs) for p in self.predictions[:, 0]]
+        y_onehot = pd.get_dummies(y_true, drop_first=False, dtype=int, prefix="bin")
+        self.y_pred_dummies = pd.get_dummies(y_scores, drop_first=False, dtype=int, prefix="bin")
+        # add zero-val column for bin with no estimates
+        no_preds = [c for c in y_onehot.columns if c not in self.y_pred_dummies.columns]
+        for n in no_preds:
+            self.y_pred_dummies[n] = 0
+        self.y_test_dummies = y_onehot.values
+        self.classes = y_onehot.columns
+
+    def regression_roc(self, fig):
+        fpr, tpr, self.roc_auc = dict(), dict(), dict()
+        for i in list(range(len(self.classes))):
+            y_true = self.y_test_dummies[:, i]
+            y_hat = self.y_pred_dummies.iloc[:, i]
+            fpr[i], tpr[i], _ = roc_curve(y_true, y_hat)
+            self.roc_auc[i] = auc(fpr[i], tpr[i])
+            name = f"{self.classes[i]} (AUC={self.roc_auc[i]:.2f})"
+            fig.add_trace(go.Scatter(x=fpr[i], y=tpr[i], mode="lines", name=name))
+        return fig
+
+    def regression_recall(self, fig):
+        precision, recall, self.pr = dict(), dict(), dict()
+        for i in list(range(len(self.classes))):
+            y_true = self.y_test_dummies[:, i]
+            y_hat = self.y_pred_dummies.iloc[:, i]
+            precision[i], recall[i], _ = precision_recall_curve(y_true, y_hat)
+            self.pr[i] = average_precision_score(y_true, y_hat)
+            name = f"{self.classes[i]} (AP={self.pr[i]:.2f})"
+            fig.add_trace(go.Scatter(x=recall[i], y=precision[i], name=name, mode="lines"))
+        return fig
+
+    def make_pr_curve(self, regression=False, desc="", **kwargs):
         """Plots the Precision-Recall Curve
 
         Returns
@@ -374,18 +428,26 @@ class Computer(object):
         fig = go.Figure()
         fig.add_shape(type="line", line=dict(dash="dash"), x0=0, x1=1, y0=1, y1=0)
 
-        for i in range(self.y_scores.shape[1]):
-            y_true = self.y_onehot.iloc[:, i]
-            y_score = self.y_scores[:, i]
+        if regression is True:
+            if self.y_pred_dummies is None:
+                self.make_regression_dummies(**kwargs)
+            fig = self.regression_recall(fig)
+        else:
+            for i in range(self.y_scores.shape[1]):
+                y_true = self.y_onehot.iloc[:, i]
+                y_score = self.y_scores[:, i]
 
-            precision, recall, _ = precision_recall_curve(y_true, y_score)
-            auc_score = average_precision_score(y_true, y_score)
+                precision, recall, _ = precision_recall_curve(y_true, y_score)
+                auc_score = average_precision_score(y_true, y_score)
 
-            name = f"{self.y_onehot.columns[i]} (AP={auc_score:.2f})"
-            fig.add_trace(go.Scatter(x=recall, y=precision, name=name, mode="lines"))
+                name = f"{self.y_onehot.columns[i]} (AP={auc_score:.2f})"
+                fig.add_trace(go.Scatter(x=recall, y=precision, name=name, mode="lines"))
 
+        title = "Precision-Recall"
+        if desc:
+            title += f" - {desc}"
         fig.update_layout(
-            title_text="Precision-Recall",
+            title_text=title,
             xaxis_title="Recall",
             yaxis_title="Precision",
             yaxis=dict(scaleanchor="x", scaleratio=1),
@@ -441,8 +503,13 @@ class Computer(object):
             fig.show()
         return fig
 
-    def keras_loss_plot(self):
+    def keras_loss_plot(self, desc=""):
         """Line plot of training and test loss scores per epoch
+
+        Parameters
+        ----------
+        desc : str, optional
+            Append custom text to title
 
         Returns
         -------
@@ -453,6 +520,10 @@ class Computer(object):
         loss_train = self.history[keys[0]]
         loss_test = self.history[keys[2]]
         n_epochs = list(range(len(loss_train)))
+
+        title = f"{keys[0].title()}"
+        if desc:
+            title += f" - {desc}"
 
         data = [
             go.Scatter(
@@ -469,7 +540,7 @@ class Computer(object):
             ),
         ]
         layout = go.Layout(
-            title=f"{keys[0].title()}",
+            title=title,
             xaxis={"title": "n_epochs"},
             yaxis={"title": "score"},
             width=800,
@@ -483,8 +554,13 @@ class Computer(object):
             fig.show()
         return fig
 
-    def resid_plot(self):
+    def resid_plot(self, desc=""):
         """Plot the residual error for a regression model.
+
+        Parameters
+        ----------
+        desc: str, optional
+            Append custom text to title 
 
         Returns
         -------
@@ -498,12 +574,15 @@ class Computer(object):
             np_config.enable_numpy_behavior()
             y = self.y_test.reshape(1, -1)
             p = self.y_pred
-
+        
+        title = "Residual Error"
+        if desc:
+            title += f" - {desc}"
         data = go.Scatter(
             x=y, y=p, name="y-y_hat", mode="markers", marker=dict(color="red")
         )
         layout = go.Layout(
-            title="Residual Error",
+            title=title,
             xaxis={"title": "y (ground truth)"},
             yaxis={"title": "y_hat (prediction)"},
             width=800,

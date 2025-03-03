@@ -145,7 +145,7 @@ class Scraper:
         else:
             return os.path.abspath(cache)
 
-    def extract_archives(self):
+    def extract_archives(self, name_keys=[]):
         """Extract the contents of the compressed archive file(s).
 
         TODO: extract other archive types (.tar, .tgz)
@@ -161,18 +161,21 @@ class Scraper:
         elif str(self.fpaths[0]).split(".")[-1] != "zip":
             return self.fpaths
         os.makedirs(self.outpath, exist_ok=True)
-        for z in self.fpaths:
+        for i, z in enumerate(self.fpaths):
             with ZipFile(z, "r") as zip_ref:
                 zip_ref.extractall(self.outpath)
             # check successful extraction before deleting archive
-            fname = str(z).split(".")[0]
-            extracted = os.path.join(self.outpath, fname)
+            if isinstance(name_keys, list) and len(name_keys) == len(self.fpaths):
+                extracted = os.path.join(self.outpath, name_keys[i])
+            else:
+                extracted = os.path.join(self.outpath, str(z).split(".")[0])
             if os.path.exists(extracted):
                 extracted_fpaths.append(extracted)
                 if self.clean is True:
                     os.remove(z)
+                    if os.path.exists(z+'_archive'):
+                        os.remove(z+'_archive')
         self.fpaths = extracted_fpaths
-        return self.fpaths
 
     def compress_files(self, target_folder, fname=None, compression="zip"):
         if fname is None:
@@ -263,7 +266,7 @@ class FileScraper(Scraper):
                 for r in results:
                     self.fpaths.append(r)
         if self.extract is True:
-            self.fpaths = super().extract_archives
+            super().extract_archives
         return self.fpaths
 
 
@@ -335,6 +338,7 @@ class WebScraper(Scraper):
         list
             paths to downloaded and extracted files
         """
+        name_keys = []
         for _, data in self.dataset.items():
             fname = data["fname"]
             origin = f"{self.uri}/{fname}"
@@ -345,16 +349,13 @@ class WebScraper(Scraper):
                 hash_algorithm=self.hash_algorithm,
                 cache_dir=self.cache_dir,
                 cache_subdir=self.cache_subdir,
-                extract=self.extract,
+                extract=False,
                 archive_format=self.format,
             )
-            extracted = os.path.join(os.path.dirname(fpath), data["key"])
-            # extracted = str(os.path.relpath(fpath)).split(".")[0]
-            self.fpaths.append(os.path.relpath(extracted))
-            if self.clean is True and os.path.exists(
-                extracted
-            ):  # deletes archive if extraction was successful
-                os.remove(fpath)
+            self.fpaths.append(fpath)
+            name_keys.append(os.path.join(self.outpath, data['key']))
+        if self.extract is True:
+            self.extract_archives(name_keys=name_keys)
         return self.fpaths
 
 
@@ -485,7 +486,7 @@ class S3Scraper(Scraper):
             self.log.error(err)
         elif self.extract is True:
             if self.format == "zip":
-                self.fpaths = super().extract_archives()
+                super().extract_archives()
         return self.fpaths
 
     @staticmethod
