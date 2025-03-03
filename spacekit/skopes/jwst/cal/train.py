@@ -76,7 +76,7 @@ class JwstCalTrain:
             threshold=self.threshold,
             cross_val=self.cross_val, 
         )
-        string = f"JwstCalTrain attributes:\n\n"
+        string = "JwstCalTrain attributes:\n\n"
         for k,v in attrs.items():
             string += f"\n\t{k}: {v}"
         if self.builder is not None:
