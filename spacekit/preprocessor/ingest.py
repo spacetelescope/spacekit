@@ -290,6 +290,7 @@ class JwstCalIngest:
         if value is None:
             value = str(self.input_path)
         self.outpath = value.rstrip("/")
+        os.makedirs(self.outpath, exist_ok=True)
         self.ingest_file = os.path.join(self.outpath, "ingest.csv")
         self.trainpath = self.outpath + "/train-{}.csv"
         self.rempath =  self.outpath + "/rem-{}.csv"
