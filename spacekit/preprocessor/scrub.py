@@ -712,7 +712,7 @@ class JwstCalScrubber(Scrubber):
         self.products.update(self.imgpix)
         sky.set_keys(ra="RA_REF", dec="DEC_REF")
         self.specpix = sky.calculate_offsets(self.spec_products)
-        self.rename_miri_mrs()
+        # self.rename_miri_mrs()
         self.products.update(self.specpix)
         if self.mode != 'df': # use fits data
             sky.count_exposures = False
@@ -767,7 +767,8 @@ class JwstCalScrubber(Scrubber):
         NOTE: Although the pipeline would create multiple products for either source-based exposures
         or (channel-based) MIRI MRS exposures, only one product name will be created since the model is
         concerned with RAM, i.e. how large the memory footprint is to calibrate a set of input exposures.
-        Source-based products use "s00001" for the source; MIR_MRS exposures default to "ch4" for channel.
+        Source-based products use "s000000001" for the source; MIR_MRS exposures default to "ch1" for channel.
+
         Parameters
         ----------
         k : str
@@ -782,8 +783,9 @@ class JwstCalScrubber(Scrubber):
             # L3 product only if TSO
             return
         if exptype in self.source_based:
-            # TODO: 12/3/24 (jwst>=1.16) source ID is 9 digits
-            tnum = "s00001" # source-based exposure naming convention
+            # 12/3/24 (jwst>=1.16) source ID is 9 digits
+            # tnum = "s00001" # source-based exposure naming convention
+            tnum = "s000000001"
         pupil = f"{v['PUPIL']}" if v["PUPIL"] not in NANVALS else ""
         fltr = f"{v['FILTER']}" if v["FILTER"] not in NANVALS else ""
         grating = (
@@ -798,8 +800,9 @@ class JwstCalScrubber(Scrubber):
 
         slit = f"-{v['FXD_SLIT']}" if v["FXD_SLIT"] not in NANVALS else ""
         subarray = f"-{v['SUBARRAY']}" if v["SUBARRAY"] not in SUBNAN else ""
+        band = f"ch1-{v['BAND']}" if v["BAND"] not in NANVALS else "" # MIR_MRS IFU only
 
-        p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}_{tnum}_{v['INSTRUME']}_{optelem}{slit}{subarray}".lower()
+        p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}_{tnum}_{v['INSTRUME']}_{optelem}{slit}{subarray}{band}".lower()
 
         if exptype in self.tso_ami_coron or v["TSOVISIT"] in TRUEVALS:
             if fltr == 'CLEAR' and grating == 'PRISM':
@@ -901,8 +904,8 @@ class JwstCalScrubber(Scrubber):
             exp_type = v["EXP_TYPE"]
             if exp_type in self.level3_types:
                 if exp_type in self.source_based:
-                    # TODO: 12/3/24 jwst>=1.16: s000000001
-                    tnum = 's00001'
+                    # 12/3/24 jwst>=1.16: 's00001' -> 's000000001'
+                    tnum = 's000000001'
                 else:
                     tnum = tn.get(v['TARGNAME'], rn.get(np.round(v['TARG_RA'], 6), gn.get(v['GS_MAG'], 't0')))
                 if "IMAGE" in exp_type.split("_")[-1]:

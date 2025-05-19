@@ -256,7 +256,7 @@ class JwstCalIngest:
         self.product_matches = None
         self.exmatches = {}
         self.rem = {}
-        self.param_cols = ['pid', 'OBSERVTN', 'FILTER', 'GRATING', 'PUPIL', 'SUBARRAY', 'FXD_SLIT', 'EXP_TYPE']
+        self.param_cols = ['pid', 'OBSERVTN', 'FILTER', 'GRATING', 'PUPIL', 'SUBARRAY', 'FXD_SLIT', 'EXP_TYPE', 'BAND']
         self.scrb = None
         self.__name__ = "JwstCalIngest"
         self.log = Logger(self.__name__, **log_kws).spacekit_logger()
@@ -375,7 +375,7 @@ class JwstCalIngest:
         """Initial preprocessing renames and adds several columns, sets the df index to Dataset, recasts datatypes, 
         and drops the following:
         - older duplicates and exposure types known to be unrelated to Level 3 processing 
-        - redundant MIRI channels (only 1 channel per dataset is kept) 
+        - redundant MIRI IFU products (only 1 channel per dataset is kept) 
         - mosaics (estimates for L3 datasets used to create a mosaic accurately reflect compute requirements)
         """
         if self.df is None:
@@ -400,7 +400,7 @@ class JwstCalIngest:
 
     def drop_extra_miri_channels(self):
         """Keep only channel 1 of MIR_MRS L3 products, drop channels 2-4"""
-        ch234 = self.df.loc[
+        self.mm = self.df.loc[
             (
                 self.df['EXP_TYPE'] == "MIR_MRS"
             ) & (
@@ -409,8 +409,8 @@ class JwstCalIngest:
                 self.df['CHANNEL'] != '1'
             )
         ]
-        if len(ch234) > 0:
-            drops = ch234.index
+        if len(self.mm) > 0:
+            drops = self.mm.index
             self.log.info(f"Dropping channels 2-4 for {len(drops)/3} MIR_MRS L3 products")
             self.df.drop(drops, axis=0, inplace=True)
 
@@ -499,7 +499,7 @@ class JwstCalIngest:
     def set_params(self):
         """Creates a new dataframe column containing a concatenated string of keywords that uniquely identify a group of 
         related L1 inputs and their L3 output. This is used (in combination with other columns such as targ_ra/dec to match
-        L1 exposures with their L3 product). 
+        L1 exposures with their L3 product). WFSC params are generated separately.
         """
         wftypes= ['PRIME_WFSC_SENSING_ONLY', 'PRIME_WFSC_ROUTINE', 'PRIME_WFSC_SENSING_CONTROL']
         wfcols = ['pid', 'OBSERVTN', 'FILTER', 'PUPIL', 'DETECTOR']
@@ -669,6 +669,7 @@ class JwstCalIngest:
                     if qp == 'TARGNAME' and info['VISITYPE'] == 'PRIME_TARGETED_FIXED':
                         l3 = self.match_query(info, extra_param='targra')
                     if len(l3) > 1: # FALLBACK
+                        # check if miri ifu (l3 products identical for each band)
                         self.log.warning(f"MULTI MATCH ELIMINATION: {k}")
                         pnames = sorted(list(l3.index))
                         self.exmatches[exp_type][info['params']] = pnames
@@ -713,6 +714,9 @@ class JwstCalIngest:
                 continue
 
     def update_repro(self):
+        """Sometimes an L3 product is reprocessed and will not have any matching L1 inputs.
+        Updates the imagesize and date attributes of the previous record (if found) with that of the new one.
+        """
         l3 = self.df.loc[(self.df.pname.isna()) & (self.df.dag.isin(self.l3_dags))]
         if len(l3) == 0:
             return
