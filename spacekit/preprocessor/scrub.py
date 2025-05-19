@@ -25,8 +25,25 @@ from spacekit.logger.log import Logger
 # SUBNAN = NANVALS + ["FULL"]
 
 class Scrubber:
-    """Base parent class for preprocessing data. Includes some basic column scrubbing methods for pandas dataframes. The heavy
-    lifting is done via subclasses below."""
+    """Base parent class for preprocessing data. Includes some basic column scrubbing methods for pandas dataframes. The heavy lifting is done via subclasses.
+    
+        Parameters
+    ----------
+    data : _type_, optional
+        _description_, by default None
+    col_order : _type_, optional
+        _description_, by default None
+    output_path : _type_, optional
+        _description_, by default None
+    output_file : _type_, optional
+        _description_, by default None
+    dropnans : bool, optional
+        _description_, by default True
+    save_raw : bool, optional
+        _description_, by default True
+    name : str, optional
+        _description_, by default "Scrubber"
+    """
 
     def __init__(
         self,
@@ -39,6 +56,10 @@ class Scrubber:
         name="Scrubber",
         **log_kws,
     ):
+        """_summary_
+
+
+        """
         self.__name__ = name
         self.log = Logger(self.__name__, **log_kws).spacekit_logger()
         self.df = self.cache_data(cache=data)
