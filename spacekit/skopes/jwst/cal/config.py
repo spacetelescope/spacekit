@@ -149,6 +149,7 @@ L3_TYPES = [
     "MIR_LYOT",  # coron
     "MIR_4QPM",  # coron
     "MIR_LRS-SLITLESS",  # (only IF TSO)
+    "MIR_WFSS",
     "NRC_CORON",  # coron
     "NRC_WFSS",
     "NRC_TSIMAGE",  # TSO always
@@ -172,8 +173,8 @@ KEYPAIR_DATA = {
         "GUIDER1|GUIDER2": 2,
         "GUIDER2": 3,
         "MIRIFULONG": 4,
-        "MIRIFULONG|MIRIFUSHORT": 5,
-        "MIRIFULONG|MIRIFUSHORT|MIRIMAGE": 6,
+        "MIRIFULONG|MIRIFUSHORT": 5, # deprecate TBD
+        "MIRIFULONG|MIRIFUSHORT|MIRIMAGE": 6, # deprecate TBD
         "MIRIFUSHORT": 7,
         "MIRIMAGE": 8,
         "NIS": 9,

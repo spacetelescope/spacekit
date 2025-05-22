@@ -652,6 +652,7 @@ class JwstCalScrubber(Scrubber):
             "MIR_LYOT",  # coron
             "MIR_4QPM",  # coron
             "MIR_LRS-SLITLESS",  # (only IF TSO)
+            "MIR_WFSS", # expected in future release (cycle 5)
             "NRC_CORON",  # coron
             "NRC_WFSS",
             "NRC_TSIMAGE",  # TSO always
