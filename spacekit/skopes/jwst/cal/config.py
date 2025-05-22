@@ -318,11 +318,14 @@ KEYPAIR_DATA = {
         "ALLSLITS": 1,
         "BRIGHTSKY": 2,
         "FULL": 3,
+        "MASK": 4, # all mask
         "MASK1065": 4,
         "MASK1140": 4,
         "MASK1550": 4,
         "MASKLYOT": 4,
         "SLITLESSPRISM": 5,
+        "SUB": 6, # all sub
+        "SUB1024B": 6,
         "SUB128": 6,
         "SUB160": 6,
         "SUB160P": 6,
@@ -370,6 +373,7 @@ KEYPAIR_DATA = {
         "SUBTAAMI": 6,
         "SUBTASOSS": 6,
         "SUB400X256ALWB": 6,
+        "WFSS": 7, # all WFSS
         "WFSS128C": 7,
         "WFSS128R": 7,
         "WFSS64C": 7,

@@ -7,6 +7,7 @@ import numpy as np
 from argparse import ArgumentParser
 from spacekit.logger.log import Logger
 from spacekit.extractor.scrape import JsonScraper
+from spacekit.preprocessor import FALSEVALS
 from spacekit.preprocessor.scrub import HstSvmScrubber, JwstCalScrubber
 from spacekit.generator.draw import DrawMosaics
 from spacekit.skopes.jwst.cal.config import KEYPAIR_DATA, L3_TYPES
@@ -307,9 +308,11 @@ class JwstCalIngest:
         self.load_priors()
         self.scrub_exposures()
         self.extrapolate()
-        if self.l3 is None:
-            self.save_ingest_data()
-            self.save_training_sets()
+        if self.l3 is not None:
+            self.log.error(f"Houston, we have problem: {len(self.l3)} disconnected L3 product(s) floating in space")
+            sys.exit(1)
+        self.save_ingest_data()
+        self.save_training_sets()
 
     def ingest_data(self):
         """Loads all relevant files to be ingested into a single dataframe, adding columns for date, year and day of year (`doy`)
@@ -393,25 +396,33 @@ class JwstCalIngest:
         self.df.drop(nonsci.index, axis=0, inplace=True)
         self.log.info(f"Dropped {len(nonsci)} non-L3 exposure types")
         self.set_params()
-        self.drop_extra_miri_channels()
+        self.reduce_mirifu_channels()
         self.drop_mosaics()
         self.df['Dataset'] = self.df['dname']
         self.df.set_index('Dataset', inplace=True)
 
-    def drop_extra_miri_channels(self):
-        """Keep only channel 1 of MIR_MRS L3 products, drop channels 2-4"""
+    def reduce_mirifu_channels(self):
+        """Append channel info to `params` string; and drop channels 2,4 of MIR_MRS L3 products (keep channels 1 and 3).
+        Channels 1 and 2 use the same input exposures, and the same goes for channels 3 and 4. 
+        NOTE: The memory footprint for each L3 product is the same regardless of channel or subchannel ('band'), 
+        so the inclusion of L3 products from both channels 1 and 3 is likely to be redundant for ML training purposes.
+        The resulting metadata features will show some variability between ch1/2 and 3/4 L3 products because the input exposures
+        are distinct. Further analysis is needed to determine if such variability simply adds noise to the training set, and a decision should be made at training time whether or not to include both channels. Adjustments to inference preprocessing may need to be made so that the model simply ignores channel/subchannel altogether and treats the entire group of inputs as pertaining to a single L3 product (jw_PID_OBS_TRG_miri_). The memory footprint estimates for each individual channel/subchannel combination can be inferred from a single inference output and applied to all relevant 'subproducts'.
+        """
         self.mm = self.df.loc[
             (
                 self.df['EXP_TYPE'] == "MIR_MRS"
             ) & (
                 self.df[self.dag].isin(self.l3_dags)
             ) & (
-                self.df['CHANNEL'] != '1'
+                self.df['CHANNEL'].isin(['2','4'])
             )
         ]
         if len(self.mm) > 0:
+            for d, c in dict(zip(['MIRIFUSHORT', 'MIRIFULONG'],['-12', '-34'])).items():
+                self.df.loc[self.df['DETECTOR'] == d, 'params'] = self.df.loc[self.df['DETECTOR'] == d].params.values + c
             drops = self.mm.index
-            self.log.info(f"Dropping channels 2-4 for {len(drops)/3} MIR_MRS L3 products")
+            self.log.info(f"Ignoring MIRI IFU channels 2,4 for {len(drops)/2} L3 products")
             self.df.drop(drops, axis=0, inplace=True)
 
     def load_and_recast(self, dpath, idxcol=None):
@@ -508,7 +519,7 @@ class JwstCalIngest:
         if len(self.df) > 0:
             params = list(
                 map(
-                    lambda x: '-'.join([str(y) for y in x if str(y) not in  ["NONE", "NaN", "nan", "0", "False", "f"]]),  
+                    lambda x: '-'.join([str(y) for y in x if str(y) not in  FALSEVALS]),  
                     self.df[self.param_cols].values
                 )
             )
@@ -516,7 +527,7 @@ class JwstCalIngest:
         if len(wfsc) > 0:
             wfparams = list(
                 map(
-                    lambda x: '-'.join([str(y) for y in x if str(y) not in  ["NONE", "NaN", "nan", "0", "False", "f"]]),  
+                    lambda x: '-'.join([str(y) for y in x if str(y) not in  FALSEVALS]),  
                     wfsc[wfcols].values
                 )
             )
@@ -656,15 +667,13 @@ class JwstCalIngest:
             info = self.df.loc[exposures[0]]
             qp = 'TARGNAME'
             if info[qp] == "NONE" or isinstance(info[qp], float):
-                if info['VISITYPE'] == "PRIME_TARGETED_FIXED":
-                    qp = 'targra' # TARG_RA rounded to 6 decimals
-                else:
-                    qp = 'GS_MAG'
+                # TARG_RA rounded to 6 decimals for PTF
+                qp = 'targra' if info['VISITYPE'] == "PRIME_TARGETED_FIXED" else 'GS_MAG'
             l3 = self.match_query(info, extra_param=qp)
             if len(l3) == 0:
                 self.log.debug(f"No matching products identified: {k}")
                 continue
-            else: 
+            else:
                 if len(l3) > 1:
                     if qp == 'TARGNAME' and info['VISITYPE'] == 'PRIME_TARGETED_FIXED':
                         l3 = self.match_query(info, extra_param='targra')

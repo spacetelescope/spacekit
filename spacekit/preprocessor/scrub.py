@@ -3,20 +3,26 @@ import glob
 import time
 import pandas as pd
 import numpy as np
-from spacekit.preprocessor.transform import SkyTransformer
 from spacekit.extractor.scrape import (
     SvmFitsScraper,
     JwstFitsScraper,
     scrape_catalogs,
 )
+from spacekit.preprocessor import (
+    TRUEVALS,
+    NANVALS,
+    FALSEVALS,
+    SUBNAN
+)
+from spacekit.preprocessor.transform import SkyTransformer
 from spacekit.preprocessor.encode import HstSvmEncoder, JwstEncoder, encode_booleans
 from spacekit.logger.log import Logger
 
 
-TRUEVALS = [True, "t", "T", "True", "true", "TRUE"]
-FALSEVALS = [False, 'f', 'F', 'False', 'false', 'FALSE', 'NONE', 'None', 'none', 'nan', 'NaN', None]
-NANVALS = ["NaN", "N/A", "NONE"]
-SUBNAN = NANVALS + ["FULL"]
+# TRUEVALS = [True, "t", "T", "True", "true", "TRUE"]
+# NANVALS = ["NaN", 'nan', "N/A", "NONE", 'None', 'none', None]
+# FALSEVALS = [False, 'f', 'F', 'False', 'false', 'FALSE'] + NANVALS
+# SUBNAN = NANVALS + ["FULL"]
 
 class Scrubber:
     """Base parent class for preprocessing data. Includes some basic column scrubbing methods for pandas dataframes. The heavy
@@ -554,6 +560,8 @@ class JwstCalScrubber(Scrubber):
             preset key-value pairs for encoding categorical data, by default None
         mode : str, optional
             determines how data is scraped and handled ('fits' for files or 'df' for dataframe), by default 'fits'
+        miri_ifu_opts : dict, optional
+            Optionally ignore channel and/or subchannel for MIRI IFU exposures. Setting both to False will consider exposures from all channels and subchannels of a given observation to be inputs for a single L3 product.
         """
         self.input_path = input_path
         self.exp_headers = None
@@ -765,9 +773,10 @@ class JwstCalScrubber(Scrubber):
     def make_spec_product_name(self, k, v, tnum):
         """Parse through exposure metadata to create expected L3 spectroscopy products. 
         NOTE: Although the pipeline would create multiple products for either source-based exposures
-        or (channel-based) MIRI MRS exposures, only one product name will be created since the model is
+        or (channel-based) MIRI IFU exposures, only one product name will be created since the model is
         concerned with RAM, i.e. how large the memory footprint is to calibrate a set of input exposures.
-        Source-based products use "s000000001" for the source; MIR_MRS exposures default to "ch1" for channel.
+        Source-based products use "s000000001" for the source; MIR_MRS exposures default to "ch1" or "ch3" for channel.
+        Subchannel ("BAND") is ignored other than for determining if exposures are MIRI IFU.
 
         Parameters
         ----------
@@ -800,7 +809,8 @@ class JwstCalScrubber(Scrubber):
 
         slit = f"-{v['FXD_SLIT']}" if v["FXD_SLIT"] not in NANVALS else ""
         subarray = f"-{v['SUBARRAY']}" if v["SUBARRAY"] not in SUBNAN else ""
-        band = f"ch1-{v['BAND']}" if v["BAND"] not in NANVALS else "" # MIR_MRS IFU only
+        # MIRI IFU only
+        band = f"ch{v['CHANNEL'][0]}-{v['BAND']}" if v["BAND"] not in NANVALS else ""
 
         p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}_{tnum}_{v['INSTRUME']}_{optelem}{slit}{subarray}{band}".lower()
 
@@ -1002,6 +1012,7 @@ class JwstCalScrubber(Scrubber):
         nandler = NaNdler(self.df, dtype_keys, allow_neg=False, verbose=False)
         self.df = nandler.apply_nandlers()
         self.group_nircam_detectors()
+        self.group_subarrays()
         self.log.info(f"Encoding categorical features [{exp_type}]")
         encoder = JwstEncoder(
             self.df, fkeys=dtype_keys["categorical"], encoding_pairs=self.encoding_pairs
@@ -1023,16 +1034,21 @@ class JwstCalScrubber(Scrubber):
         self.df.loc[self.df['detector'].isin(multi_nrcb), 'detector'] = 'NRCB-M'
         self.df.loc[self.df['detector'].isin(multi_nrcab), 'detector'] = 'NRC-M'
 
-    def rename_miri_mrs(self):
-        mirmrs = {}
-        for k, v in self.specpix.items():
-            if k[-1] == '_':
-                bands = ''.join(v['BAND'].split('|'))
-                if bands:
-                    mirmrs[k] = k + f'ch1-{bands.lower()}'
-        for k, v in mirmrs.items():
-            self.specpix[v] = self.specpix.pop(k)
-            self.spec_products[v] = self.spec_products.pop(k)
+
+    def group_subarrays(self):
+        for key in ['MASK', 'SUB', 'WFSS']:
+            self.df.loc[self.df['subarray'].str.startswith(key), 'subarray'] = key
+
+    # def rename_miri_mrs(self):
+    #     mirmrs = {}
+    #     for k, v in self.specpix.items():
+    #         if k[-1] == '_':
+    #             bands = ''.join(v['BAND'].split('|'))
+    #             if bands:
+    #                 mirmrs[k] = k + f'ch1-{bands.lower()}'
+    #     for k, v in mirmrs.items():
+    #         self.specpix[v] = self.specpix.pop(k)
+    #         self.spec_products[v] = self.spec_products.pop(k)
 
     def get_dtype_keys(self):
         """Group input metadata into pre-set data types before applying NaNdlers.
