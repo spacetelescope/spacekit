@@ -687,7 +687,7 @@ class JwstCalScrubber(Scrubber):
         return self._source_based()
 
     def _source_based(self):
-        return ["NRC_WFSS", "NIS_WFSS", "NRS_MSASPEC", "NRS_FIXEDSLIT"]
+        return ["MIR_WFSS", "NRC_WFSS", "NIS_WFSS", "NRS_MSASPEC", "NRS_FIXEDSLIT"]
 
     @property
     def expdata(self):
@@ -721,7 +721,6 @@ class JwstCalScrubber(Scrubber):
         self.products.update(self.imgpix)
         sky.set_keys(ra="RA_REF", dec="DEC_REF")
         self.specpix = sky.calculate_offsets(self.spec_products)
-        # self.rename_miri_mrs()
         self.products.update(self.specpix)
         if self.mode != 'df': # use fits data
             sky.count_exposures = False

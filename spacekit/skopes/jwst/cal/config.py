@@ -302,6 +302,7 @@ KEYPAIR_DATA = {
         "NRS_FIXEDSLIT": 18, 
         "NRS_IFU": 19, 
         "NRS_MSASPEC": 20,
+        "MIR_WFSS": 21,
     },
     "channel": {"NONE": 0, "12": 1, "34": 2, "LONG": 3, "SHORT": 4},
     "band": {

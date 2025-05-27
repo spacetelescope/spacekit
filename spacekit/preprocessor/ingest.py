@@ -308,11 +308,11 @@ class JwstCalIngest:
         self.load_priors()
         self.scrub_exposures()
         self.extrapolate()
+        self.save_ingest_data()
+        self.save_training_sets()
         if self.l3 is not None:
             self.log.error(f"Houston, we have problem: {len(self.l3)} disconnected L3 product(s) floating in space")
             sys.exit(1)
-        self.save_ingest_data()
-        self.save_training_sets()
 
     def ingest_data(self):
         """Loads all relevant files to be ingested into a single dataframe, adding columns for date, year and day of year (`doy`)
@@ -409,6 +409,8 @@ class JwstCalIngest:
         The resulting metadata features will show some variability between ch1/2 and 3/4 L3 products because the input exposures
         are distinct. Further analysis is needed to determine if such variability simply adds noise to the training set, and a decision should be made at training time whether or not to include both channels. Adjustments to inference preprocessing may need to be made so that the model simply ignores channel/subchannel altogether and treats the entire group of inputs as pertaining to a single L3 product (jw_PID_OBS_TRG_miri_). The memory footprint estimates for each individual channel/subchannel combination can be inferred from a single inference output and applied to all relevant 'subproducts'.
         """
+        for d, c in dict(zip(['MIRIFUSHORT', 'MIRIFULONG'],['-12', '-34'])).items():
+            self.df.loc[self.df['DETECTOR'] == d, 'params'] = self.df.loc[self.df['DETECTOR'] == d].params.values + c
         self.mm = self.df.loc[
             (
                 self.df['EXP_TYPE'] == "MIR_MRS"
@@ -419,8 +421,6 @@ class JwstCalIngest:
             )
         ]
         if len(self.mm) > 0:
-            for d, c in dict(zip(['MIRIFUSHORT', 'MIRIFULONG'],['-12', '-34'])).items():
-                self.df.loc[self.df['DETECTOR'] == d, 'params'] = self.df.loc[self.df['DETECTOR'] == d].params.values + c
             drops = self.mm.index
             self.log.info(f"Ignoring MIRI IFU channels 2,4 for {len(drops)/2} L3 products")
             self.df.drop(drops, axis=0, inplace=True)
@@ -624,6 +624,7 @@ class JwstCalIngest:
         self.l3 = self.df.loc[(self.df.pname.isna()) & (self.df.dag.isin(self.l3_dags))]
         if len(self.l3) > 0:
             self.log.warning(f"Unmatched L3 products: {len(self.l3)}")
+            self.log.warning([d for d in list(self.l3.dname.values)])
         else:
             self.l3 = None
 
