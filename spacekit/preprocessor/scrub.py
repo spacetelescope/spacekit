@@ -3,7 +3,6 @@ import glob
 import time
 import pandas as pd
 import numpy as np
-from numpy import deprecate_with_doc
 from spacekit.extractor.scrape import (
     SvmFitsScraper,
     JwstFitsScraper,
@@ -1035,13 +1034,13 @@ class JwstCalScrubber(Scrubber):
         self.df.loc[self.df['detector'].isin(multi_nrcb), 'detector'] = 'NRCB-M'
         self.df.loc[self.df['detector'].isin(multi_nrcab), 'detector'] = 'NRC-M'
 
-
     def group_subarrays(self):
         for key in ['MASK', 'SUB', 'WFSS']:
             self.df.loc[self.df['subarray'].str.startswith(key), 'subarray'] = key
 
-    @deprecate_with_doc("Default behavior of JWST Pipeline >=1.17.0 now generates a separate L3 Product for each sub-channel (band). This functionality will be removed in a future release.")
     def rename_miri_mrs(self):
+        """"DEPRECATED: Default behavior of JWST Pipeline >=1.17.0 now generates a separate L3 Product for each sub-channel (band). 
+        This class method will be removed in the next upcoming release.""""
         mirmrs = {}
         for k, v in self.specpix.items():
             if k[-1] == '_':
