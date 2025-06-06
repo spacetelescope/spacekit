@@ -43,7 +43,7 @@ def test_jwst_cal_predict(jwstcal_input_path):
 @mark.predict
 def test_jwst_cal_predict_handler(jwstcal_input_path):
     jcal = predict_handler(jwstcal_input_path)
-    assert len(jcal.predictions) == 6
+    assert len(jcal.predictions) == 11
     for k, v in jcal.predictions.items():
         name = '_'.join([k.split('_')[0], k.split("_")[2]])
         sfx = k.split('_')[-1].split('-')[0]
