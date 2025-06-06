@@ -29,8 +29,8 @@ def test_jwst_cal_predict(jwstcal_input_path):
     jcal.run_inference()
     assert jcal.input_data['IMAGE'].shape == (3, 27)
     assert jcal.inputs['IMAGE'].shape == (3, 18)
-    assert jcal.input_data['SPEC'].shape == (3, 27)
-    assert jcal.inputs['SPEC'].shape == (3, 18)
+    assert jcal.input_data['SPEC'].shape == (8, 27)
+    assert jcal.inputs['SPEC'].shape == (8, 18)
     for k, v in jcal.predictions.items():
         name = '_'.join([k.split('_')[0], k.split("_")[2]])
         sfx = k.split('_')[-1].split('-')[0]
