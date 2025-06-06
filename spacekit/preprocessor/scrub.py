@@ -3,20 +3,26 @@ import glob
 import time
 import pandas as pd
 import numpy as np
-from spacekit.preprocessor.transform import SkyTransformer
 from spacekit.extractor.scrape import (
     SvmFitsScraper,
     JwstFitsScraper,
     scrape_catalogs,
 )
+from spacekit.preprocessor import (
+    TRUEVALS,
+    NANVALS,
+    FALSEVALS,
+    SUBNAN
+)
+from spacekit.preprocessor.transform import SkyTransformer
 from spacekit.preprocessor.encode import HstSvmEncoder, JwstEncoder, encode_booleans
 from spacekit.logger.log import Logger
 
 
-TRUEVALS = [True, "t", "T", "True", "true", "TRUE"]
-FALSEVALS = [False, 'f', 'F', 'False', 'false', 'FALSE', 'NONE', 'None', 'none', 'nan', 'NaN', None]
-NANVALS = ["NaN", "N/A", "NONE"]
-SUBNAN = NANVALS + ["FULL"]
+# TRUEVALS = [True, "t", "T", "True", "true", "TRUE"]
+# NANVALS = ["NaN", 'nan', "N/A", "NONE", 'None', 'none', None]
+# FALSEVALS = [False, 'f', 'F', 'False', 'false', 'FALSE'] + NANVALS
+# SUBNAN = NANVALS + ["FULL"]
 
 class Scrubber:
     """Base parent class for preprocessing data. Includes some basic column scrubbing methods for pandas dataframes. The heavy
@@ -554,6 +560,8 @@ class JwstCalScrubber(Scrubber):
             preset key-value pairs for encoding categorical data, by default None
         mode : str, optional
             determines how data is scraped and handled ('fits' for files or 'df' for dataframe), by default 'fits'
+        miri_ifu_opts : dict, optional
+            Optionally ignore channel and/or subchannel for MIRI IFU exposures. Setting both to False will consider exposures from all channels and subchannels of a given observation to be inputs for a single L3 product.
         """
         self.input_path = input_path
         self.exp_headers = None
@@ -644,6 +652,7 @@ class JwstCalScrubber(Scrubber):
             "MIR_LYOT",  # coron
             "MIR_4QPM",  # coron
             "MIR_LRS-SLITLESS",  # (only IF TSO)
+            "MIR_WFSS", # expected in future release (cycle 5)
             "NRC_CORON",  # coron
             "NRC_WFSS",
             "NRC_TSIMAGE",  # TSO always
@@ -678,7 +687,7 @@ class JwstCalScrubber(Scrubber):
         return self._source_based()
 
     def _source_based(self):
-        return ["NRC_WFSS", "NIS_WFSS", "NRS_MSASPEC", "NRS_FIXEDSLIT"]
+        return ["MIR_WFSS", "NRC_WFSS", "NIS_WFSS", "NRS_MSASPEC", "NRS_FIXEDSLIT"]
 
     @property
     def expdata(self):
@@ -712,7 +721,6 @@ class JwstCalScrubber(Scrubber):
         self.products.update(self.imgpix)
         sky.set_keys(ra="RA_REF", dec="DEC_REF")
         self.specpix = sky.calculate_offsets(self.spec_products)
-        self.rename_miri_mrs()
         self.products.update(self.specpix)
         if self.mode != 'df': # use fits data
             sky.count_exposures = False
@@ -765,9 +773,11 @@ class JwstCalScrubber(Scrubber):
     def make_spec_product_name(self, k, v, tnum):
         """Parse through exposure metadata to create expected L3 spectroscopy products. 
         NOTE: Although the pipeline would create multiple products for either source-based exposures
-        or (channel-based) MIRI MRS exposures, only one product name will be created since the model is
+        or (channel-based) MIRI IFU exposures, only one product name will be created since the model is
         concerned with RAM, i.e. how large the memory footprint is to calibrate a set of input exposures.
-        Source-based products use "s00001" for the source; MIR_MRS exposures default to "ch4" for channel.
+        Source-based products use "s000000001" for the source; MIR_MRS exposures default to "ch1" or "ch3" for channel.
+        Subchannel ("BAND") is ignored other than for determining if exposures are MIRI IFU.
+
         Parameters
         ----------
         k : str
@@ -782,8 +792,9 @@ class JwstCalScrubber(Scrubber):
             # L3 product only if TSO
             return
         if exptype in self.source_based:
-            # TODO: 12/3/24 (jwst>=1.16) source ID is 9 digits
-            tnum = "s00001" # source-based exposure naming convention
+            # 12/3/24 (jwst>=1.16) source ID is 9 digits
+            # tnum = "s00001" # source-based exposure naming convention
+            tnum = "s000000001"
         pupil = f"{v['PUPIL']}" if v["PUPIL"] not in NANVALS else ""
         fltr = f"{v['FILTER']}" if v["FILTER"] not in NANVALS else ""
         grating = (
@@ -798,8 +809,10 @@ class JwstCalScrubber(Scrubber):
 
         slit = f"-{v['FXD_SLIT']}" if v["FXD_SLIT"] not in NANVALS else ""
         subarray = f"-{v['SUBARRAY']}" if v["SUBARRAY"] not in SUBNAN else ""
+        # MIRI IFU only
+        band = f"ch{v['CHANNEL'][0]}-{v['BAND']}" if v["BAND"] not in NANVALS else ""
 
-        p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}_{tnum}_{v['INSTRUME']}_{optelem}{slit}{subarray}".lower()
+        p = f"jw{v['PROGRAM']}-o{v['OBSERVTN']}_{tnum}_{v['INSTRUME']}_{optelem}{slit}{subarray}{band}".lower()
 
         if exptype in self.tso_ami_coron or v["TSOVISIT"] in TRUEVALS:
             if fltr == 'CLEAR' and grating == 'PRISM':
@@ -901,8 +914,8 @@ class JwstCalScrubber(Scrubber):
             exp_type = v["EXP_TYPE"]
             if exp_type in self.level3_types:
                 if exp_type in self.source_based:
-                    # TODO: 12/3/24 jwst>=1.16: s000000001
-                    tnum = 's00001'
+                    # 12/3/24 jwst>=1.16: 's00001' -> 's000000001'
+                    tnum = 's000000001'
                 else:
                     tnum = tn.get(v['TARGNAME'], rn.get(np.round(v['TARG_RA'], 6), gn.get(v['GS_MAG'], 't0')))
                 if "IMAGE" in exp_type.split("_")[-1]:
@@ -999,6 +1012,7 @@ class JwstCalScrubber(Scrubber):
         nandler = NaNdler(self.df, dtype_keys, allow_neg=False, verbose=False)
         self.df = nandler.apply_nandlers()
         self.group_nircam_detectors()
+        self.group_subarrays()
         self.log.info(f"Encoding categorical features [{exp_type}]")
         encoder = JwstEncoder(
             self.df, fkeys=dtype_keys["categorical"], encoding_pairs=self.encoding_pairs
@@ -1020,7 +1034,13 @@ class JwstCalScrubber(Scrubber):
         self.df.loc[self.df['detector'].isin(multi_nrcb), 'detector'] = 'NRCB-M'
         self.df.loc[self.df['detector'].isin(multi_nrcab), 'detector'] = 'NRC-M'
 
+    def group_subarrays(self):
+        for key in ['MASK', 'SUB', 'WFSS']:
+            self.df.loc[self.df['subarray'].str.startswith(key), 'subarray'] = key
+
     def rename_miri_mrs(self):
+        """DEPRECATED: Default behavior of JWST Pipeline >=1.17.0 now generates a separate L3 Product for each sub-channel (band). 
+        This class method will be removed in the next upcoming release."""
         mirmrs = {}
         for k, v in self.specpix.items():
             if k[-1] == '_':

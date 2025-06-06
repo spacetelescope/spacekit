@@ -149,6 +149,7 @@ L3_TYPES = [
     "MIR_LYOT",  # coron
     "MIR_4QPM",  # coron
     "MIR_LRS-SLITLESS",  # (only IF TSO)
+    "MIR_WFSS",
     "NRC_CORON",  # coron
     "NRC_WFSS",
     "NRC_TSIMAGE",  # TSO always
@@ -172,8 +173,8 @@ KEYPAIR_DATA = {
         "GUIDER1|GUIDER2": 2,
         "GUIDER2": 3,
         "MIRIFULONG": 4,
-        "MIRIFULONG|MIRIFUSHORT": 5,
-        "MIRIFULONG|MIRIFUSHORT|MIRIMAGE": 6,
+        "MIRIFULONG|MIRIFUSHORT": 5, # deprecate TBD
+        "MIRIFULONG|MIRIFUSHORT|MIRIMAGE": 6, # deprecate TBD
         "MIRIFUSHORT": 7,
         "MIRIMAGE": 8,
         "NIS": 9,
@@ -301,6 +302,7 @@ KEYPAIR_DATA = {
         "NRS_FIXEDSLIT": 18, 
         "NRS_IFU": 19, 
         "NRS_MSASPEC": 20,
+        "MIR_WFSS": 21,
     },
     "channel": {"NONE": 0, "12": 1, "34": 2, "LONG": 3, "SHORT": 4},
     "band": {
@@ -318,11 +320,14 @@ KEYPAIR_DATA = {
         "ALLSLITS": 1,
         "BRIGHTSKY": 2,
         "FULL": 3,
+        "MASK": 4, # all mask
         "MASK1065": 4,
         "MASK1140": 4,
         "MASK1550": 4,
         "MASKLYOT": 4,
         "SLITLESSPRISM": 5,
+        "SUB": 6, # all sub
+        "SUB1024B": 6,
         "SUB128": 6,
         "SUB160": 6,
         "SUB160P": 6,
@@ -370,6 +375,7 @@ KEYPAIR_DATA = {
         "SUBTAAMI": 6,
         "SUBTASOSS": 6,
         "SUB400X256ALWB": 6,
+        "WFSS": 7, # all WFSS
         "WFSS128C": 7,
         "WFSS128R": 7,
         "WFSS64C": 7,

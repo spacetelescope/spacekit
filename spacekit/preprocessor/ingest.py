@@ -7,6 +7,7 @@ import numpy as np
 from argparse import ArgumentParser
 from spacekit.logger.log import Logger
 from spacekit.extractor.scrape import JsonScraper
+from spacekit.preprocessor import FALSEVALS
 from spacekit.preprocessor.scrub import HstSvmScrubber, JwstCalScrubber
 from spacekit.generator.draw import DrawMosaics
 from spacekit.skopes.jwst.cal.config import KEYPAIR_DATA, L3_TYPES
@@ -256,7 +257,7 @@ class JwstCalIngest:
         self.product_matches = None
         self.exmatches = {}
         self.rem = {}
-        self.param_cols = ['pid', 'OBSERVTN', 'FILTER', 'GRATING', 'PUPIL', 'SUBARRAY', 'FXD_SLIT', 'EXP_TYPE']
+        self.param_cols = ['pid', 'OBSERVTN', 'FILTER', 'GRATING', 'PUPIL', 'SUBARRAY', 'FXD_SLIT', 'EXP_TYPE', 'BAND']
         self.scrb = None
         self.__name__ = "JwstCalIngest"
         self.log = Logger(self.__name__, **log_kws).spacekit_logger()
@@ -290,6 +291,7 @@ class JwstCalIngest:
         if value is None:
             value = str(self.input_path)
         self.outpath = value.rstrip("/")
+        os.makedirs(self.outpath, exist_ok=True)
         self.ingest_file = os.path.join(self.outpath, "ingest.csv")
         self.trainpath = self.outpath + "/train-{}.csv"
         self.rempath =  self.outpath + "/rem-{}.csv"
@@ -306,9 +308,11 @@ class JwstCalIngest:
         self.load_priors()
         self.scrub_exposures()
         self.extrapolate()
-        if self.l3 is None:
-            self.save_ingest_data()
-            self.save_training_sets()
+        self.save_ingest_data()
+        self.save_training_sets()
+        if self.l3 is not None:
+            self.log.error(f"Houston, we have problem: {len(self.l3)} disconnected L3 product(s) floating in space")
+            sys.exit(1)
 
     def ingest_data(self):
         """Loads all relevant files to be ingested into a single dataframe, adding columns for date, year and day of year (`doy`)
@@ -374,7 +378,7 @@ class JwstCalIngest:
         """Initial preprocessing renames and adds several columns, sets the df index to Dataset, recasts datatypes, 
         and drops the following:
         - older duplicates and exposure types known to be unrelated to Level 3 processing 
-        - redundant MIRI channels (only 1 channel per dataset is kept) 
+        - redundant MIRI IFU products (only 1 channel per dataset is kept) 
         - mosaics (estimates for L3 datasets used to create a mosaic accurately reflect compute requirements)
         """
         if self.df is None:
@@ -392,25 +396,33 @@ class JwstCalIngest:
         self.df.drop(nonsci.index, axis=0, inplace=True)
         self.log.info(f"Dropped {len(nonsci)} non-L3 exposure types")
         self.set_params()
-        self.drop_extra_miri_channels()
+        self.reduce_mirifu_channels()
         self.drop_mosaics()
         self.df['Dataset'] = self.df['dname']
         self.df.set_index('Dataset', inplace=True)
 
-    def drop_extra_miri_channels(self):
-        """Keep only channel 1 of MIR_MRS L3 products, drop channels 2-4"""
-        ch234 = self.df.loc[
+    def reduce_mirifu_channels(self):
+        """Append channel info to `params` string; drop MIRI IFU L3 products from channels 2,4 (keep only 1, 3).
+        Channels 1-2 use the same input exposures, and the same goes for channels 3-4. 
+        NOTE: The memory footprint for each L3 product is the same regardless of channel or subchannel ('band'), 
+        so the inclusion of L3 products from both channels 1 and 3 is likely to be redundant for ML training purposes.
+        The resulting metadata features will show some variability between ch1/2 and 3/4 L3 products because the input exposures
+        are distinct. Further analysis is needed to determine if such variability simply adds noise to the training set, and a decision should be made at training time whether or not to include both channels. Adjustments to inference preprocessing may need to be made so that the model simply ignores channel/subchannel altogether and treats the entire group of inputs as pertaining to a single L3 product (jw_PID_OBS_TRG_miri_). The memory footprint estimates for each individual channel/subchannel combination can be inferred from a single inference output and applied to all relevant 'subproducts'.
+        """
+        for d, c in dict(zip(['MIRIFUSHORT', 'MIRIFULONG'],['-12', '-34'])).items():
+            self.df.loc[self.df['DETECTOR'] == d, 'params'] = self.df.loc[self.df['DETECTOR'] == d].params.values + c
+        self.mm = self.df.loc[
             (
                 self.df['EXP_TYPE'] == "MIR_MRS"
             ) & (
                 self.df[self.dag].isin(self.l3_dags)
             ) & (
-                self.df['CHANNEL'] != '1'
+                self.df['CHANNEL'].isin(['2','4'])
             )
         ]
-        if len(ch234) > 0:
-            drops = ch234.index
-            self.log.info(f"Dropping channels 2-4 for {len(drops)/3} MIR_MRS L3 products")
+        if len(self.mm) > 0:
+            drops = self.mm.index
+            self.log.info(f"Ignoring MIRI IFU channels 2,4 for {len(drops)/2} L3 products")
             self.df.drop(drops, axis=0, inplace=True)
 
     def load_and_recast(self, dpath, idxcol=None):
@@ -498,7 +510,7 @@ class JwstCalIngest:
     def set_params(self):
         """Creates a new dataframe column containing a concatenated string of keywords that uniquely identify a group of 
         related L1 inputs and their L3 output. This is used (in combination with other columns such as targ_ra/dec to match
-        L1 exposures with their L3 product). 
+        L1 exposures with their L3 product). WFSC params are generated separately.
         """
         wftypes= ['PRIME_WFSC_SENSING_ONLY', 'PRIME_WFSC_ROUTINE', 'PRIME_WFSC_SENSING_CONTROL']
         wfcols = ['pid', 'OBSERVTN', 'FILTER', 'PUPIL', 'DETECTOR']
@@ -507,7 +519,7 @@ class JwstCalIngest:
         if len(self.df) > 0:
             params = list(
                 map(
-                    lambda x: '-'.join([str(y) for y in x if str(y) not in  ["NONE", "NaN", "nan", "0", "False", "f"]]),  
+                    lambda x: '-'.join([str(y) for y in x if str(y) not in  FALSEVALS]),  
                     self.df[self.param_cols].values
                 )
             )
@@ -515,7 +527,7 @@ class JwstCalIngest:
         if len(wfsc) > 0:
             wfparams = list(
                 map(
-                    lambda x: '-'.join([str(y) for y in x if str(y) not in  ["NONE", "NaN", "nan", "0", "False", "f"]]),  
+                    lambda x: '-'.join([str(y) for y in x if str(y) not in  FALSEVALS]),  
                     wfsc[wfcols].values
                 )
             )
@@ -556,6 +568,18 @@ class JwstCalIngest:
 
     @staticmethod
     def mark_mosaics(x):
+        """Identify mosaic L3 products based on the dataset's name format.
+
+        Parameters
+        ----------
+        x : str
+            Dataset name
+
+        Returns
+        -------
+        bool
+            True if the dataset name is a mosiac otherwise False
+        """
         if len(x.split('-')) < 2:
             return False
         elif x.split('-')[1][0] != 'c':
@@ -563,6 +587,8 @@ class JwstCalIngest:
         return True
 
     def drop_mosaics(self):
+        """Separate mosaic L3 products and save to `mosaics.csv` on local disk.
+        """
         self.df['mosaic'] = self.df['dname'].apply(lambda x: self.mark_mosaics(x))
         mosaics = self.df.loc[self.df['mosaic']].copy()
         if len(mosaics) > 0:
@@ -576,6 +602,8 @@ class JwstCalIngest:
         self.df.drop('mosaic', axis=1, inplace=True)
 
     def scrub_exposures(self):
+        """Preprocess the L1 input exposures through the JWST Scrubber. See JwstCalScrubber for details.
+        """
         self.scrb = JwstCalScrubber(
                 self.input_path,
                 data=self.df.loc[self.df[self.dag].isin(self.l1_dags)],
@@ -594,10 +622,19 @@ class JwstCalIngest:
         ))
 
     def get_unencoded(self):
+        """Retrieve the raw (unencoded) L3 products generated by the JWST Scrubber using preprocessed L1 exposure groups.
+
+        Returns
+        -------
+        dict
+            Dictionary of each exp_type's dataframe of raw (unencoded) L3 products generated based on groups of L1 input exposures run through the JWST Scubber. 
+        """
         data = [self.scrb.imgpix, self.scrb.specpix, self.scrb.tacpix, self.scrb.fgspix]
         return map(lambda x: pd.DataFrame.from_dict(x, orient='index'), data)
 
     def extrapolate(self):
+        """Match each group of L1 input exposures to a single L3 product, then separate unmatched exposures from the dataframe and convert imagesize to gigabytes. If any L3 products remain unmatched, the preliminary assumption is that these datasets were reprocessed and an attempt is made to update the relevant features for this product within the existing training file stored on local disk at `training.csv` if it exists. Warnings are reported by the log if multiple L3 products match a particular group of L1 inputs and/or L3 products remain that could not be matched with any input exposures or a previous L3 product in the existing training set. In both cases, these products are stored as a list in the `self.l3` attribute for further analysis and debugging since either occurrence indicates an error in the way data is being ingested (often as a result of unexpected changes made within the JWST pipeline after a given release).
+        """
         for exp in self.data.keys():
             self.match_product_groups(exp)
             if len(self.exmatches[exp]) > 0:
@@ -612,10 +649,25 @@ class JwstCalIngest:
         self.l3 = self.df.loc[(self.df.pname.isna()) & (self.df.dag.isin(self.l3_dags))]
         if len(self.l3) > 0:
             self.log.warning(f"Unmatched L3 products: {len(self.l3)}")
+            self.log.warning([d for d in list(self.l3.dname.values)])
         else:
             self.l3 = None
 
     def match_query(self, info, extra_param=None):
+        """Queries the dataframe for L3 products matching the shared metadata attributes for a group of L1 input exposures. If a value is passed into the `extra_param` kwarg, the query is further restricted to include products with a value matching this additional parameter. If this initial query returns 0 results, a second broader query without the additional param is automatically run. By default, the query attempts to find L3 products within the dataframe whose `params` column value matches that of the L1 inputs' `params` column.
+
+        Parameters
+        ----------
+        info : dict
+            Key-value pairs of metadata pertaining to all L1 input exposures associated with a single L3 product.
+        extra_param : str, optional
+            Column name to match against an additional parameter value within the dataframe, by default None
+
+        Returns
+        -------
+        list
+            L3 products matching the specified metadata (and query parameters if requested). 
+        """
         if extra_param:
             l3 = self.df.loc[
                 (
@@ -641,8 +693,9 @@ class JwstCalIngest:
     def match_product_groups(self, exp_type):
         """Matching L3 product with its associated L1 input exposures.
         1. If TARGNAME: match using params (PID-OBS-OPTELEM-SUBARRAY-EXP_TYPE) + TARGNAME
-        2. Elif fixed target: match using params + targra (TARG_RA rounded) 
+        2. Elif fixed target: match using params + targra (TARG_RA rounded to 6 sig. digits) 
         3. Else: match params + gs_mag
+
         Parameters
         ----------
         exp_type : str
@@ -655,19 +708,18 @@ class JwstCalIngest:
             info = self.df.loc[exposures[0]]
             qp = 'TARGNAME'
             if info[qp] == "NONE" or isinstance(info[qp], float):
-                if info['VISITYPE'] == "PRIME_TARGETED_FIXED":
-                    qp = 'targra' # TARG_RA rounded to 6 decimals
-                else:
-                    qp = 'GS_MAG'
+                # TARG_RA rounded to 6 decimals for PTF
+                qp = 'targra' if info['VISITYPE'] == "PRIME_TARGETED_FIXED" else 'GS_MAG'
             l3 = self.match_query(info, extra_param=qp)
             if len(l3) == 0:
                 self.log.debug(f"No matching products identified: {k}")
                 continue
-            else: 
+            else:
                 if len(l3) > 1:
                     if qp == 'TARGNAME' and info['VISITYPE'] == 'PRIME_TARGETED_FIXED':
                         l3 = self.match_query(info, extra_param='targra')
                     if len(l3) > 1: # FALLBACK
+                        # check if miri ifu (l3 products identical for each band)
                         self.log.warning(f"MULTI MATCH ELIMINATION: {k}")
                         pnames = sorted(list(l3.index))
                         self.exmatches[exp_type][info['params']] = pnames
@@ -683,6 +735,8 @@ class JwstCalIngest:
                 self.df.loc[self.df.pname == pname, 'expmode'] = exp_type
 
     def drop_unmatched(self):
+        """Store any unmatched inputs into the `self.raw` attribute then remove them from the training set. Reports a log of the percentage of L3 products successfully matched during this ingest run (anything less than 100% indicates an error).
+        """
         for exp in list(self.data.keys()):
             extracols = [c for c in ['imagesize','date','pname'] if c in self.data[exp].columns]
             self.raw[exp] = pd.concat([self.raw[exp], self.data[exp][extracols]], axis=1)
@@ -700,6 +754,18 @@ class JwstCalIngest:
                 continue
 
     def convert_imagesize_units(self, data=None):
+        """Converts the `imagesize` (memory footprint) column to Gigabyte units and stores the values in a new column named `imgsize_gb` for each exp_type in the `self.data` attribute (image, spec, etc). If the `data` kwarg is None, this change is also applied to the raw (unencoded) versions (`self.raw`). Otherwise the conversion is made to the dataframe passed into the `data` kwarg.
+
+        Parameters
+        ----------
+        data : pandas.DataFrame, optional
+            Apply the unit conversion to a particular dataframe instead of the default `self.data`, by default None
+
+        Returns
+        -------
+        pd.DataFrame
+            Dataframe with additional column 'imgsize_gb` containing the GB values converted from `imagesize` column.
+        """
         if data is not None:
             data['imgsize_gb'] = data['imagesize'].apply(lambda x: x / 10**6)
             return data
@@ -712,6 +778,9 @@ class JwstCalIngest:
                 continue
 
     def update_repro(self):
+        """Sometimes an L3 product is reprocessed and will not have any matching L1 inputs.
+        Updates the imagesize and date attributes of the previous record (if found) with that of the new one.
+        """
         l3 = self.df.loc[(self.df.pname.isna()) & (self.df.dag.isin(self.l3_dags))]
         if len(l3) == 0:
             return
@@ -759,6 +828,10 @@ class JwstCalIngest:
             self.log.warning("0 repro candidates matched.")
 
     def save_training_sets(self):
+        """Adds preprocessed ML training data for each model type to its respective file on local disk: `train-{exp_type}.csv`. 
+        The raw (unencoded) versions are also saved to local disk as `raw-{exp_type}.csv`.
+        Any remaining L1 inputs that did not have a matching L3 product are saved to `rem-{exp-type}.csv` primarily for debugging purposes.
+        """
         for exp in self.exp_types:
             if exp in self.data.keys() and len(self.data[exp]) > 0:
                 fpath = self.trainpath.format(exp.lower())
@@ -775,6 +848,9 @@ class JwstCalIngest:
                 self.log.info(f"Remaining {exp} data saved to: {rpath}")
 
     def save_ingest_data(self):
+        """Adds unmatched L1 inputs into 'ingest.csv', matched L3 products to 'training.csv'. 
+        If `save_l1` attribute is True, matched L1 input exposures are saved to a separate file 'level1.csv'.
+        """
         self.df[self.idxcol] = self.df.index
         if 'pname' not in self.df.columns:
             di = self.df.loc[self.df.dag.isin(self.l1_dags)]
@@ -797,6 +873,8 @@ class JwstCalIngest:
 
 
 def hst_svm_ingest(**kwargs):
+    """Main calling function for runnning HST SVM Alignment Data Ingest.
+    """
     visit_path = kwargs.pop('visit_path', None)
     batch_name = kwargs.pop('batch_name', None)
     drz_ver = kwargs.pop('drz_ver', None)
@@ -808,6 +886,8 @@ def hst_svm_ingest(**kwargs):
 
 
 def jwst_cal_ingest(**kwargs):
+    """Main calling function for running JWST Calibration Data Ingest.
+    """
     jc = JwstCalIngest(**kwargs)
     jc.run_ingest()
 
