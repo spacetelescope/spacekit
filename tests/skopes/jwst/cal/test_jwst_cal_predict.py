@@ -7,7 +7,8 @@ EXPECTED = {
     "jw02732-o001_nircam": {'gbSize': 2.99},
     "jw02732-o005_miri": {'gbSize': 2.31},
     "jw01022-o016_nirspec": {'gbSize': 3.09},
-    "jw01192-o011_miri": {'gbSize': 2.57},
+    "jw01192-o011_miri_ch1": {'gbSize': 1.18},
+    "jw01192-o011_miri_ch3": {'gbSize': 0.99},
     "jw01309-o023_nircam": {'gbSize': 8.13},
 }
 
@@ -32,6 +33,9 @@ def test_jwst_cal_predict(jwstcal_input_path):
     assert jcal.inputs['SPEC'].shape == (3, 18)
     for k, v in jcal.predictions.items():
         name = '_'.join([k.split('_')[0], k.split("_")[2]])
+        sfx = k.split('_')[-1].split('-')[0]
+        if sfx in ['ch1', 'ch3']:
+            name += f'_{sfx}'
         assert EXPECTED[name]["gbSize"] == v["gbSize"]
 
 
@@ -42,6 +46,9 @@ def test_jwst_cal_predict_handler(jwstcal_input_path):
     assert len(jcal.predictions) == 6
     for k, v in jcal.predictions.items():
         name = '_'.join([k.split('_')[0], k.split("_")[2]])
+        sfx = k.split('_')[-1].split('-')[0]
+        if sfx in ['ch1', 'ch3']:
+            name += f'_{sfx}'
         assert EXPECTED[name]["gbSize"] == v["gbSize"]
 
 

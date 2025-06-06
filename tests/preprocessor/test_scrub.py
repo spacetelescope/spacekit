@@ -133,13 +133,13 @@ def test_jwst_cal_scrubber(jwstcal_input_path):
     scrubber = JwstCalScrubber(jwstcal_input_path, encoding_pairs=KEYPAIR_DATA)
     assert len(scrubber.fpaths) == 26
     assert len(scrubber.imgpix) == 3
-    assert len(scrubber.specpix) == 3
+    assert len(scrubber.specpix) == 8
     for (vi, vs) in list(zip(scrubber.imgpix.values(), scrubber.specpix.values())):
         assert len(vi.keys()) == 48
         assert len(vs.keys()) == 48
     for exp in ["IMAGE", "SPEC"]:
         inputs = scrubber.scrub_inputs(exp_type=exp)
-        assert len(inputs) == 3
+        assert len(inputs) == 3 if exp == "IMAGE" else 8
         assert list(inputs.columns) == JWST_SCRUBBED_COLS
 
 
@@ -331,8 +331,8 @@ def test_jwst_cal_scrubber_l3_specname_grating_first(jwst_cal_spec_df):
 @mark.scrub
 def test_jwst_cal_scrubber_l3_specname_fltr_only_or_none(jwst_cal_spec_df):
     no_opt = jwst_cal_spec_df.loc[jwst_cal_spec_df['FILTER'] == "NONE"]
-    no_exp = ['jw01023-o013_miri_ch1-short'] # mir_mrs
-    assert list(set([n.split('_')[-1] == "ch1-short" for n in list(no_opt.index)])) == [True]
+    no_exp = ['jw01023-o013_miri_ch1-short', 'jw01023-o013_miri_ch3-short'] # mir_mrs
+    assert list(set([n.split('_')[-1] in ["ch1-short", "ch3-short"] for n in list(no_opt.index)])) == [True]
     assert no_exp == sorted(list(no_opt['name'].values))
 
     fo_exp = ['jw01029-o007_miri_p750l']
@@ -500,7 +500,6 @@ def test_target_id_grouping(jwst_cal_img_data, jwst_cal_spec_data, jwst_cal_tac_
         data=data,
         mode='df',
         encoding_pairs=KEYPAIR_DATA,
-        # sort_key='PROGRAM',
     )
     df = pd.concat(
         [
@@ -509,12 +508,12 @@ def test_target_id_grouping(jwst_cal_img_data, jwst_cal_spec_data, jwst_cal_tac_
             pd.DataFrame.from_dict(scrubber.tacpix, orient='index')
         ], axis=0
     )
-    assert len(df) == 28
+    assert len(df) == 29
     # source-based
     src_based = df.loc[df['EXP_TYPE'].isin(scrubber.source_based)]
     source_names = list(src_based.index)
     assert len(source_names) == 7
-    assert list(set([s.split('_')[1] == 's00001' for s in source_names])) == [True]
+    assert list(set([s.split('_')[1] == 's000000001' for s in source_names])) == [True]
     df.drop(source_names, axis=0, inplace=True)
     df['dname'] = df.index
     df['tid'] = df['dname'].apply(lambda x: x.split('_')[1])
@@ -535,36 +534,17 @@ def test_target_id_grouping(jwst_cal_img_data, jwst_cal_spec_data, jwst_cal_tac_
     assert list(df.loc[df['VISITYPE'] == 'PARALLEL_PURE']['tid'].unique()) == ['t0']
 
 
-def test_jwst_cal_scrub_rename_miri_mrs(jwst_cal_spec_data):
+def test_jwst_cal_scrub_miri_ifu_names(jwst_cal_spec_data):
     data = jwst_cal_spec_data.loc[jwst_cal_spec_data['EXP_TYPE'] == "MIR_MRS"]
     data.loc['jw01023013001_02101_00004_mirifulong', 'BAND'] = 'MEDIUM'
     data.loc['jw01023013001_02101_00002_mirifushort', 'BAND'] = 'LONG'
-    data.loc['jw01023013001_02101_00003_mirifulong', 'BAND'] = 'LONG-SHORT'
-    data.loc['jw01023013001_02101_00004_mirifushort', 'BAND'] = 'MEDIUM-SHORT'
+    data.loc['jw01023013001_02101_00003_mirifulong', 'BAND'] = 'LONG'
+    data.loc['jw01023013001_02101_00004_mirifushort', 'BAND'] = 'MEDIUM'
     scrubber = JwstCalScrubber(
         "tmp",
         data=data,
         mode='df',
         encoding_pairs=KEYPAIR_DATA,
     )
-    assert list(scrubber.specpix.keys())[0].split('-')[-1] == 'shortmediumlong'
-
-    data = jwst_cal_spec_data.loc[jwst_cal_spec_data['EXP_TYPE'] == "MIR_MRS"]
-    data.loc['jw01023013001_02101_00003_mirifulong', 'BAND'] = 'LONG-SHORT'
-    scrubber = JwstCalScrubber(
-        "tmp",
-        data=data,
-        mode='df',
-        encoding_pairs=KEYPAIR_DATA,
-    )
-    assert list(scrubber.specpix.keys())[0].split('-')[-1] == 'shortlong'
-
-    data = jwst_cal_spec_data.loc[jwst_cal_spec_data['EXP_TYPE'] == "MIR_MRS"]
-    data.loc['jw01023013001_02101_00004_mirifulong', 'BAND'] = 'MEDIUM-SHORT'
-    scrubber = JwstCalScrubber(
-        "tmp",
-        data=data,
-        mode='df',
-        encoding_pairs=KEYPAIR_DATA,
-    )
-    assert list(scrubber.specpix.keys())[0].split('-')[-1] == 'shortmedium'
+    names = sorted(list(scrubber.specpix.keys()))
+    assert [n.split('_')[-1] for n in names] == ['ch1-long', 'ch1-medium', 'ch1-short', 'ch3-long', 'ch3-medium', 'ch3-short']

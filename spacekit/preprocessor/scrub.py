@@ -3,6 +3,7 @@ import glob
 import time
 import pandas as pd
 import numpy as np
+from numpy import deprecate_with_doc
 from spacekit.extractor.scrape import (
     SvmFitsScraper,
     JwstFitsScraper,
@@ -1039,16 +1040,17 @@ class JwstCalScrubber(Scrubber):
         for key in ['MASK', 'SUB', 'WFSS']:
             self.df.loc[self.df['subarray'].str.startswith(key), 'subarray'] = key
 
-    # def rename_miri_mrs(self):
-    #     mirmrs = {}
-    #     for k, v in self.specpix.items():
-    #         if k[-1] == '_':
-    #             bands = ''.join(v['BAND'].split('|'))
-    #             if bands:
-    #                 mirmrs[k] = k + f'ch1-{bands.lower()}'
-    #     for k, v in mirmrs.items():
-    #         self.specpix[v] = self.specpix.pop(k)
-    #         self.spec_products[v] = self.spec_products.pop(k)
+    @deprecate_with_doc("Default behavior of JWST Pipeline >=1.17.0 now generates a separate L3 Product for each sub-channel (band). This functionality will be removed in a future release.")
+    def rename_miri_mrs(self):
+        mirmrs = {}
+        for k, v in self.specpix.items():
+            if k[-1] == '_':
+                bands = ''.join(v['BAND'].split('|'))
+                if bands:
+                    mirmrs[k] = k + f'ch1-{bands.lower()}'
+        for k, v in mirmrs.items():
+            self.specpix[v] = self.specpix.pop(k)
+            self.spec_products[v] = self.spec_products.pop(k)
 
     def get_dtype_keys(self):
         """Group input metadata into pre-set data types before applying NaNdlers.
