@@ -16,4 +16,4 @@ progressbar==2.5
 scikit-learn==1.5.2
 scikeras==0.13.0
 tables==3.10.1
-tqdm==4.66.6
+tqdm==4.67.1
