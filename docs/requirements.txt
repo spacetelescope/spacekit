@@ -7,7 +7,7 @@ tensorflow==2.17.0
 numpy==1.26.4
 numpydoc==1.7.0
 astropy==6.1.4
-pydot==3.0.2
+pydot==4.0.0
 graphviz==0.20.3
 astroquery==0.4.9
 boto3==1.35.54
