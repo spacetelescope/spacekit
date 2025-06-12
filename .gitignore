@@ -39,6 +39,10 @@ develop-eggs
 .installed.cfg
 distribute-*.tar.gz
 
+# env
+*-venv/
+*.python-version
+
 # Other
 .aws
 .cache
