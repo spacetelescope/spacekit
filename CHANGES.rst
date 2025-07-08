@@ -5,6 +5,10 @@ preprocessor
 ------------
 - Revise JWST Cal ingest script to group MIRI IFU input exposures by individual subchannel (band) to account for changes made in JWST pipeline build 11.2 where separate L3 products are now being generated for each band by default. [#115]
 
+documentation
+-------------
+- Updated docstrings for classes across several modules, add jwst model training code snippets, hide ads from RTD homepage [#128]
+
 
 1.1.2 (2025-03-02)
 ==================
