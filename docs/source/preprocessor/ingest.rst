@@ -20,7 +20,7 @@ Additional output files are model-specific encoded subsets of `preprocessed` and
 
     - Database: {outpath}
     - Tables: {.csv files}
-         - Accumulated data storing unencoded values
+        - Accumulated data storing unencoded values
             - preprocessed:  complete L1-L3 groupings
             - ingest: unmatched L1 exposures
             - mosaics: c1XXX association candidate L3 products (currently not supported)
