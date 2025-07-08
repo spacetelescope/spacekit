@@ -99,7 +99,19 @@ def format_hst_cal_row_item(row):
 
 
 class Scraper:
-    """Parent Class for various data scraping subclasses. Instantiating the appropriate subclass is preferred."""
+    """Parent Class for various data scraping subclasses. Instantiating the appropriate subclass is preferred.
+
+    Parameters
+    ----------
+    cache_dir : str, optional
+        parent folder to save data, by default "~"
+    cache_subdir : str, optional
+        save data in a subfolder one directory below `cache_dir`, by default "data"
+    format : str, optional
+        archive format type, by default "zip"
+    extract : bool, optional
+        extract the contents of the compressed archive file, by default True
+    """
 
     def __init__(
         self,
@@ -111,19 +123,6 @@ class Scraper:
         name="Scraper",
         **log_kws,
     ):
-        """Instantiates a spacekit.extractor.scrape.Scraper object.
-
-        Parameters
-        ----------
-        cache_dir : str, optional
-            parent folder to save data, by default "~"
-        cache_subdir : str, optional
-            save data in a subfolder one directory below `cache_dir`, by default "data"
-        format : str, optional
-            archive format type, by default "zip"
-        extract : bool, optional
-            extract the contents of the compressed archive file, by default True
-        """
         self.cache_dir = self.check_cache(cache_dir)  # root path for downloads (home)
         self.cache_subdir = cache_subdir  # subfolder
         self.format = format
@@ -201,8 +200,22 @@ class FileScraper(Scraper):
 
     Parameters
     ----------
-    Scraper : spacekit.extractor.scrape.Scraper object
-        parent Scraper class
+    search_path : str, optional
+        top-level path to search through, by default ""
+    search_patterns : list, optional
+        glob pattern strings, by default ``["*.zip"]``
+    cache_dir : str, optional
+        parent folder to save data, by default "~"
+    cache_subdir : str, optional
+        save data in a subfolder one directory below `cache_dir`, by default "data"
+    format : str, optional
+        archive format type, by default "zip"
+    extract : bool, optional
+        extract the contents of the compressed archive file, by default True
+    clean : bool, optional
+        remove compressed file after extraction, by default False
+    name : str, optional
+        logging name, by default "FileScraper"
     """
 
     def __init__(
@@ -217,27 +230,6 @@ class FileScraper(Scraper):
         name="FileScraper",
         **log_kws,
     ):
-        """Instantiates a spacekit.extractor.scrape.FileScraper object.
-
-        Parameters
-        ----------
-        search_path : str, optional
-            top-level path to search through, by default ""
-        search_patterns : list, optional
-            glob pattern strings, by default ``["*.zip"]``
-        cache_dir : str, optional
-            parent folder to save data, by default "~"
-        cache_subdir : str, optional
-            save data in a subfolder one directory below `cache_dir`, by default "data"
-        format : str, optional
-            archive format type, by default "zip"
-        extract : bool, optional
-            extract the contents of the compressed archive file, by default True
-        clean : bool, optional
-            remove compressed file after extraction, by default False
-        name : str, optional
-            logging name, by default "FileScraper"
-        """
         super().__init__(
             cache_dir=cache_dir,
             cache_subdir=cache_subdir,
@@ -271,14 +263,28 @@ class FileScraper(Scraper):
 
 
 class WebScraper(Scraper):
-    """Scraper subclass for extracting publicly available data off the web.
+    """Scraper subclass for extracting publicly available data off the web. 
+    Uses dictionary of uri, filename and hash key-value pairs to download data securely from a website such as Github.
 
     Parameters
     ----------
-    Scraper : class
-        spacekit.extractor.scrape.Scraper object
+    uri : string
+        root uri (web address)
+    dataset : dictionary
+        key-pair values of each dataset's filenames and hash keys
+    hash_algorithm : str, optional
+        type of hash key algorithm used, by default "sha256"
+    cache_dir : str, optional
+        parent folder to save data, by default "~"
+    cache_subdir : str, optional
+        save data in a subfolder one directory below `cache_dir`, by default "data"
+    format : str, optional
+        archive format type, by default "zip"
+    extract : bool, optional
+        extract the contents of the compressed archive file, by default True
+    clean : bool, optional
+        remove compressed file after extraction
     """
-
     def __init__(
         self,
         uri,
@@ -291,27 +297,6 @@ class WebScraper(Scraper):
         clean=True,
         **log_kws,
     ):
-        """Uses dictionary of uri, filename and hash key-value pairs to download data securely from a website such as Github.
-
-        Parameters
-        ----------
-        uri : string
-            root uri (web address)
-        dataset : dictionary
-            key-pair values of each dataset's filenames and hash keys
-        hash_algorithm : str, optional
-            type of hash key algorithm used, by default "sha256"
-        cache_dir : str, optional
-            parent folder to save data, by default "~"
-        cache_subdir : str, optional
-            save data in a subfolder one directory below `cache_dir`, by default "data"
-        format : str, optional
-            archive format type, by default "zip"
-        extract : bool, optional
-            extract the contents of the compressed archive file, by default True
-        clean : bool, optional
-            remove compressed file after extraction
-        """
         super().__init__(
             cache_dir=cache_dir,
             cache_subdir=cache_subdir,
@@ -365,8 +350,20 @@ class S3Scraper(Scraper):
 
     Parameters
     ----------
-    Scraper : class
-        spacekit.extractor.scrape.Scraper object
+    bucket : string
+        s3 bucket name
+    pfx : str, optional
+        aws bucket prefix (subfolder uri path), by default "archive"
+    dataset : dictionary, optional
+        key-value pairs of dataset filenames and prefixes, by default None
+    cache_dir : str, optional
+        parent folder to save data, by default "~"
+    cache_subdir : str, optional
+        save data in a subfolder one directory below `cache_dir`, by default "data"
+    format : str, optional
+        archive format type, by default "zip"
+    extract : bool, optional
+        extract the contents of the compressed archive file, by default True
     """
 
     def __init__(
@@ -380,25 +377,6 @@ class S3Scraper(Scraper):
         extract=True,
         **log_kws,
     ):
-        """Instantiates a spacekit.extractor.scrape.S3Scraper object
-
-        Parameters
-        ----------
-        bucket : string
-            s3 bucket name
-        pfx : str, optional
-            aws bucket prefix (subfolder uri path), by default "archive"
-        dataset : dictionary, optional
-            key-value pairs of dataset filenames and prefixes, by default None
-        cache_dir : str, optional
-            parent folder to save data, by default "~"
-        cache_subdir : str, optional
-            save data in a subfolder one directory below `cache_dir`, by default "data"
-        format : str, optional
-            archive format type, by default "zip"
-        extract : bool, optional
-            extract the contents of the compressed archive file, by default True
-        """
         super().__init__(
             cache_dir=cache_dir,
             cache_subdir=cache_subdir,
@@ -544,8 +522,24 @@ class DynamoDBScraper(Scraper):
 
     Parameters
     ----------
-    Scraper : class
-        spacekit.extractor.scrape.Scraper object
+    table_name : str
+        name of the DynamoDB table
+    attr : dict, optional
+        used for building a filter expression (see ``make_fxp``), by default None
+    fname : str, optional
+        path or string of filename to save data, by default "batch.csv"
+    formatter : function, optional
+        formatting function to use, by default format_hst_cal_row_item
+    cache_dir : str, optional
+        parent folder to save data, by default "~"
+    cache_subdir : str, optional
+        save data in a subfolder one directory below `cache_dir`, by default "data"
+    format : str, optional
+        archive format type, by default "zip"
+    extract : bool, optional
+        extract the contents of the compressed archive file, by default True
+    clean : bool, optional
+        remove compressed file after extraction
     """
 
     def __init__(
@@ -561,29 +555,6 @@ class DynamoDBScraper(Scraper):
         clean=True,
         **log_kws,
     ):
-        """_summary_
-
-        Parameters
-        ----------
-        table_name : str
-            name of the DynamoDB table
-        attr : dict, optional
-            used for building a filter expression (see ``make_fxp``), by default None
-        fname : str, optional
-            path or string of filename to save data, by default "batch.csv"
-        formatter : function, optional
-            formatting function to use, by default format_hst_cal_row_item
-        cache_dir : str, optional
-            parent folder to save data, by default "~"
-        cache_subdir : str, optional
-            save data in a subfolder one directory below `cache_dir`, by default "data"
-        format : str, optional
-            archive format type, by default "zip"
-        extract : bool, optional
-            extract the contents of the compressed archive file, by default True
-        clean : bool, optional
-            remove compressed file after extraction
-        """
         super().__init__(
             cache_dir=cache_dir,
             cache_subdir=cache_subdir,
@@ -743,28 +714,21 @@ class FitsScraper(FileScraper):
 
     Parameters
     ----------
-    FileScraper : spacekit.extractor.scrape.FileScraper object
-        parent FileScraper class
+    data : pd.DataFrame
+        dataframe of visits, datasets, exposures, etc.
+    input_path : str
+        directory path containing fits files
+    genkeys : list, optional
+        general header keys to scrape, by default []
+    scikeys : list, optional
+        science header keys to scrape, by default []
+    name : str, optional
+        logging name, by default "FitsScraper"
     """
 
     def __init__(
         self, data, input_path, genkeys=[], scikeys=[], name="FitsScraper", **log_kws
     ):
-        """Instantiates a spacekit.extractor.scrape.FitsScraper object.
-
-        Parameters
-        ----------
-        data : pd.DataFrame
-            dataframe of visits, datasets, exposures, etc.
-        input_path : str
-            directory path containing fits files
-        genkeys : list, optional
-            general header keys to scrape, by default []
-        scikeys : list, optional
-            science header keys to scrape, by default []
-        name : str, optional
-            logging name, by default "FitsScraper"
-        """
         super().__init__(name=name, **log_kws)
         self.df = data.copy()
         self.input_path = input_path
@@ -914,24 +878,17 @@ class JwstFitsScraper(FitsScraper):
 
     Parameters
     ----------
-    FitsScraper : spacekit.extractor.scrape.FitsScraper object
-        parent FitsScraper class
+    input_path : str or path
+        directory path containing input exposure files
+    data : pd.DataFrame, optional
+        dataframe of visits, datasets, exposures, etc., by default None
+    pfx : str, optional
+        filename prefix to search for, by default ""
+    sfx : str, optional
+        file suffix to search for, by default "uncal.fits"
     """
 
     def __init__(self, input_path, data=None, pfx="", sfx="_uncal.fits", **log_kws):
-        """_summary_
-
-        Parameters
-        ----------
-        input_path : str or path
-            directory path containing input exposure files
-        data : pd.DataFrame, optional
-            dataframe of visits, datasets, exposures, etc., by default None
-        pfx : str, optional
-            filename prefix to search for, by default ""
-        sfx : str, optional
-            file suffix to search for, by default "uncal.fits"
-        """
         self.genkeys = self.general_header_keys()
         self.scikeys = self.science_header_keys()
         if data is None:
@@ -1015,20 +972,14 @@ class SvmFitsScraper(FitsScraper):
 
     Parameters
     ----------
-    FitsScraper : spacekit.extractor.scrape.FitsScraper object
-        parent FitsScraper class
+    data : pd.DataFrame
+        data containing visit or dataset names
+    input_path : str or path
+        input path containing fits files to scrape
     """
-
     def __init__(self, data, input_path, **log_kws):
-        """Initializes an SvmFitsScraper class object.
 
-        Parameters
-        ----------
-        data : pd.DataFrame
-            data containing visit or dataset names
-        input_path : str or path
-            input path containing fits files to scrape
-        """
+
         self.scikeys = ["rms_ra", "rms_dec", "nmatches", "wcstype"]
         super().__init__(
             data, input_path, scikeys=self.scikeys, name="SvmFitsScraper", **log_kws
@@ -1058,10 +1009,24 @@ class JsonScraper(FileScraper):
 
     Parameters
     ----------
-    FileScraper : spacekit.extractor.scrape.FileScraper
-        parent FileScraper class
+    search_path : _type_, optional
+        The full path of the directory that will be searched for json files to process, by default os.getcwd()
+    search_patterns : list, optional
+        list of glob patterns to use for search, by default ["*_total_*_svm_*.json"]
+    file_basename : str, optional
+        Name of the output file basename (filename without the extension) for the Hierarchical Data
+        Format version 5 (HDF5) .h5 file that the DataFrame will be written to, by default "svm_data"
+    crpt : int, optional
+        Uses extended dataframe index name to differentiate from normal svm data, by default 0
+    save_csv : bool, optional
+        store h5 data into a CSV file, by default False
+    store_h5 : bool, optional
+        save data in hdf5 format, by default True
+    h5_file : str or path, optional
+        load from a saved hdf5 file on local disk, by default None
+    output_path : str or path, optional
+        where to save the data, by default None
     """
-
     def __init__(
         self,
         search_path=os.getcwd(),
@@ -1074,28 +1039,6 @@ class JsonScraper(FileScraper):
         output_path=None,
         **log_kws,
     ):
-        """Initializes a JsonScraper class object
-
-        Parameters
-        ----------
-        search_path : _type_, optional
-            The full path of the directory that will be searched for json files to process, by default os.getcwd()
-        search_patterns : list, optional
-            list of glob patterns to use for search, by default ["*_total_*_svm_*.json"]
-        file_basename : str, optional
-            Name of the output file basename (filename without the extension) for the Hierarchical Data
-            Format version 5 (HDF5) .h5 file that the DataFrame will be written to, by default "svm_data"
-        crpt : int, optional
-            Uses extended dataframe index name to differentiate from normal svm data, by default 0
-        save_csv : bool, optional
-            store h5 data into a CSV file, by default False
-        store_h5 : bool, optional
-            save data in hdf5 format, by default True
-        h5_file : str or path, optional
-            load from a saved hdf5 file on local disk, by default None
-        output_path : str or path, optional
-            where to save the data, by default None
-        """
         super().__init__(
             search_path=search_path,
             search_patterns=search_patterns,

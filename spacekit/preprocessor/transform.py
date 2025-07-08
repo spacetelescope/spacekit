@@ -12,19 +12,16 @@ from spacekit.logger.log import Logger
 
 
 class SkyTransformer:
-    # calculate sky separation / reference pixel offset statistics
-    def __init__(self, mission, name="SkyTransformer", **log_kws):
-        """_summary_
+    """Calculate sky separation / reference pixel offset statistics
 
-        Parameters
-        ----------
-        mission : str
-            Name of mission or observatory, e.g. "JWST", "HST"
-        product_exp_headers : dict, optional
-            , by default None
-        name : str, optional
-            logging name, by default "SkyTransformer"
-        """
+    Parameters
+    ----------
+    mission : str
+        Name of mission or observatory, e.g. "JWST", "HST"
+    name : str, optional
+        logging name, by default "SkyTransformer"
+    """
+    def __init__(self, mission, name="SkyTransformer", **log_kws):
         self.__name__ = name
         self.log = Logger(self.__name__).spacekit_logger(**log_kws)
         self.mission = mission
@@ -44,7 +41,9 @@ class SkyTransformer:
         refer to the fiducial (center pixel coordinate in degrees).
         None values will use defaults (see below); unrecognized kwargs
         will be ignored.
-        Defaults:
+
+        Defaults
+        --------
         * instr="INSTRUME"
         * detector="DETECTOR"
         * channel="CHANNEL"
@@ -87,6 +86,11 @@ class SkyTransformer:
             nested dictionary of (typically Level 3) product names (keys),
             their input exposures (values) and relevant fits header information
             per exposure (key-value pairs).
+        
+        Returns
+        -------
+        dict
+            calculated pixel offset statistics for each L3 product's group of input exposures
         """
         product_refpix = dict()
         for product, exp_headers in product_exp_headers.items():
@@ -94,6 +98,20 @@ class SkyTransformer:
         return product_refpix
 
     def validate_fiducial(self, fiducial, exp):
+        """Checks fiducial to ensure value is valid. 
+
+        Parameters
+        ----------
+        fiducial : tuple of floats
+            ra and dec values
+        exp : str
+            fiducial type (TARG_RA/TARG_DEC, CRVAL1/CRVAL2, RA_REF/DEC_REF)
+
+        Returns
+        -------
+        bool
+            Valid (True) or invalid (False) 
+        """
         (ra, dec) = fiducial
         if isinstance(ra, float) and isinstance(dec, float):
             return True
@@ -106,6 +124,18 @@ class SkyTransformer:
             return False
 
     def get_pixel_offsets(self, exp_data):
+        """Calculates the relative pixel offset statistics for a group of L1 input exposures.
+
+        Parameters
+        ----------
+        exp_data : dict
+            key value pairs of input exposure names and their associated Fits header metadata.
+
+        Returns
+        -------
+        dict
+            pixel offset statistics for this group of input exposures
+        """
         if self.count_exposures is True:
             refpix = dict(NEXPOSUR=len(list(exp_data.keys())))
         else:
@@ -319,6 +349,36 @@ class SkyTransformer:
 
 
 class Transformer:
+    """Transformer base class. Unless the `cols` attribute is empty, the Transformer object will automatically instantiate some
+    of the other attributes needed to transform the data. Using the Transformer subclasses instead is recommended (this
+    class is mainly used as an object with general methods to load or save the transform data as well as instantiate some of
+    the initial attributes).
+
+    Parameters
+    ----------
+    data : dataframe or numpy.ndarray
+        input data containing continuous feature vectors to be transformed (may also contain vectors or columns of
+        categorical and other datatypes as well).
+    transformer : class, optional
+        transform class to use (e.g. from scikit-learn), by default PowerTransformer(standardize=False)
+    cols : list of str or int, optional
+        column names (or index values if data is an np.array) of feature vectors to be transformed (i.e. continuous datatype features), by default []
+    ncols : list of int, optional
+        array index values of feature vectors to be transformed, by default None
+    tx_data : dict, optional
+        transform metadata calculated previously to be reused during this instantiation, by default None
+    tx_file : string, optional
+        path to saved transformer metadata, by default None
+    save_tx : bool, optional
+        save the transformer metadata as json file on local disk, by default True
+    join_data : int, optional
+        1: join normalized data with remaining columns of original; 2: join with complete original, all columns (requires
+        renaming)
+    rename : str or list
+        if string, will be appended to normalized col names; if list, will rename normalized columns in this order
+    output_path : string, optional
+        where to save the transformer metadata, by default None (current working directory)
+    """
     def __init__(
         self,
         data,
@@ -333,33 +393,6 @@ class Transformer:
         name="Transformer",
         **log_kws,
     ):
-        """Initializes a Transformer class object. Unless the `cols` attribute is empty, it will automatically instantiate some
-        of the other attributes needed to transform the data. Using the Transformer subclasses instead is recommended (this
-        class is mainly used as an object with general methods to load or save the transform data as well as instantiate some of
-        the initial attributes).
-
-        Parameters
-        ----------
-        data : dataframe or numpy.ndarray
-            input data containing continuous feature vectors to be transformed (may also contain vectors or columns of
-            categorical and other datatypes as well).
-        transformer : class, optional
-            transform class to use (e.g. from scikit-learn), by default PowerTransformer(standardize=False)
-        cols : list, optional
-            column names or array index values of feature vectors to be transformed (i.e. continuous datatype features), by
-            default []
-        tx_file : string, optional
-            path to saved transformer metadata, by default None
-        save_tx : bool, optional
-            save the transformer metadata as json file on local disk, by default True
-        join_data : int, optional
-            1: join normalized data with remaining columns of original; 2: join with complete original, all columns (requires
-            renaming)
-        rename : str or list
-            if string, will be appended to normalized col names; if list, will rename normalized columns in this order
-        output_path : string, optional
-            where to save the transformer metadata, by default None (current working directory)
-        """
         self.__name__ = name
         self.log = Logger(self.__name__, **log_kws).spacekit_logger()
         self.data = self.check_shape(data)
@@ -570,15 +603,27 @@ class PowerX(Transformer):
 
     Parameters
     ----------
-    Transformer : class
-        spacekit.preprocessor.transform.Transformer parent class
-
-    Returns
-    -------
-    PowerX class object
-        spacekit.preprocessor.transform.PowerX power transform subclass
+    data : dataframe or numpy.ndarray
+        input data containing continuous feature vectors to be transformed (may also contain vectors or columns of
+        categorical and other datatypes as well).
+    cols : list of str or int
+        column names or array index values of feature vectors to be transformed (i.e. continuous datatype features)
+    ncols : list of int, optional
+        array index values of feature vectors to be transformed, by default None
+    tx_data : dict, optional
+        transform metadata (lambdas, mus, and sigmas) calculated previously to be reused during this instantiation, by default None
+    tx_file : string, optional
+        path to saved transformer metadata, by default None
+    save_tx : bool, optional
+        save the transformer metadata as json file on local disk, by default True
+    output_path : string, optional
+        where to save the transformer metadata, by default None (current working directory)
+    join_data : int, optional
+        1: join normalized data with remaining columns of original; 2: join with complete original, all columns (requires
+        renaming), by default 1
+    rename : str or list
+        if string, will be appended to normalized col names; if list, will rename normalized columns in this order, by default _scl
     """
-
     def __init__(
         self,
         data,
@@ -1021,37 +1066,3 @@ def fast_fourier(matrix, bins):
         ft = np.fft.irfft(phase * np.fft.rfft(signal))
         fourier_matrix += ft
     return fourier_matrix
-
-
-# for backward compatability with HSTCAL (planned deprecation)
-# def update_power_transform(df):
-#     pt = PowerTransformer(standardize=False)
-#     df_cont = df[["n_files", "total_mb"]]
-#     pt.fit(df_cont)
-#     input_matrix = pt.transform(df_cont)
-#     # FILES (n_files)
-#     f_mean = np.mean(input_matrix[:, 0])
-#     f_sigma = np.std(input_matrix[:, 0])
-#     # SIZE (total_mb)
-#     s_mean = np.mean(input_matrix[:, 1])
-#     s_sigma = np.std(input_matrix[:, 1])
-#     files = input_matrix[:, 0]
-#     size = input_matrix[:, 1]
-#     x_files = (files - f_mean) / f_sigma
-#     x_size = (size - s_mean) / s_sigma
-#     normalized = np.stack([x_files, x_size], axis=1)
-#     idx = df_cont.index
-#     df_norm = pd.DataFrame(normalized, index=idx, columns=["x_files", "x_size"])
-#     df["x_files"] = df_norm["x_files"]
-#     df["x_size"] = df_norm["x_size"]
-#     lambdas = pt.lambdas_
-#     pt_transform = {
-#         "f_lambda": lambdas[0],
-#         "s_lambda": lambdas[1],
-#         "f_mean": f_mean,
-#         "f_sigma": f_sigma,
-#         "s_mean": s_mean,
-#         "s_sigma": s_sigma,
-#     }
-#     print(pt_transform)
-#     return df, pt_transform

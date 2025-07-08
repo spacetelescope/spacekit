@@ -408,7 +408,7 @@ class JwstCalTrain:
 
 
 if __name__ == "__main__":
-    parser = ArgumentParser(prog="spacekit hst calibration model training")
+    parser = ArgumentParser(prog="spacekit jwst pipeline memory estimation model training")
     parser.add_argument(
         "-d",
         "--training_data",
