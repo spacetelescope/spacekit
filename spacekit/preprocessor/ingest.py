@@ -203,8 +203,7 @@ class JwstCalIngest:
     
     - To ingest multiple files from November 2023, set `pfx="2023-11"`. 
     - To ingest only one file from January 3, 2024, set `pfx="2024-01-03"`. 
-    - You can also pass in a wildcard: `pfx="*_3" would search for all data collected on days 300-365 of any year,
-    while `pfx="2023*_3"` would do the same but only for the year 2023.
+    - You can also pass in a wildcard: `pfx="*_3"` would search for all data collected on days 300-365 of any year, while `pfx="2023*_3"` would do the same but only for the year 2023.
 
     The contents of raw metadata files are expected to contain:
 
