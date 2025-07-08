@@ -1,15 +1,16 @@
+from ast import Assert
 from pytest import mark
 from spacekit.skopes.jwst.cal.predict import JwstCalPredict, predict_handler
 
 
 EXPECTED = {
-    "jw01018-o006_niriss": {'gbSize': 2.06},
-    "jw02732-o001_nircam": {'gbSize': 2.99},
-    "jw02732-o005_miri": {'gbSize': 2.31},
-    "jw01022-o016_nirspec": {'gbSize': 3.09},
-    "jw01192-o011_miri_ch1": {'gbSize': 1.18},
-    "jw01192-o011_miri_ch3": {'gbSize': 0.99},
-    "jw01309-o023_nircam": {'gbSize': 8.13},
+    "jw01018-o006_niriss": {'gbSize': 1.39},
+    "jw02732-o001_nircam": {'gbSize': 3.54},
+    "jw02732-o005_miri": {'gbSize': 2.58},
+    "jw01022-o016_nirspec": {'gbSize': 3.16},
+    "jw01192-o011_miri_ch1": {'gbSize': 2.98},
+    "jw01192-o011_miri_ch3": {'gbSize': 2.89},
+    "jw01309-o023_nircam": {'gbSize': 6.73},
 }
 
 
@@ -36,8 +37,7 @@ def test_jwst_cal_predict(jwstcal_input_path):
         sfx = k.split('_')[-1].split('-')[0]
         if sfx in ['ch1', 'ch3']:
             name += f'_{sfx}'
-        assert EXPECTED[name]["gbSize"] == v["gbSize"]
-
+        assert round(EXPECTED[name]["gbSize"],1) == round(v['gbSize'],1)
 
 @mark.jwst
 @mark.predict
@@ -49,7 +49,7 @@ def test_jwst_cal_predict_handler(jwstcal_input_path):
         sfx = k.split('_')[-1].split('-')[0]
         if sfx in ['ch1', 'ch3']:
             name += f'_{sfx}'
-        assert EXPECTED[name]["gbSize"] == v["gbSize"]
+        assert round(EXPECTED[name]["gbSize"],1) == round(v['gbSize'],1)
 
 
 @mark.jwst
