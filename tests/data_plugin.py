@@ -51,7 +51,7 @@ def pytest_configure(config):
             response = requests.get(data_uri, stream=True)
             if response.status_code == 200:
                 f.write(response.raw.read())
-        chksum = "3b4f8759b32ae76007988073d63156c3995f69a77925ff686a0e3fde785e2421"
+        chksum = "01696d00cb6d4449e471a110e0116587393f32c0960b37207e75b64f3175daa9"
         with open(target_path, "rb") as f:
             digest = hashlib.sha256(f.read())
             if digest.hexdigest() == chksum:
