@@ -1,4 +1,3 @@
-from ast import Assert
 from pytest import mark
 from spacekit.skopes.jwst.cal.predict import JwstCalPredict, predict_handler
 
