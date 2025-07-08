@@ -5,6 +5,29 @@ from spacekit.logger.log import Logger
 
 
 class Prep:
+    """Base class for preprocessing data sets prior to training a machine learning model. This class can be used directly or subclassed for additional custom preprocessing. Existing subclasses for HST and JWST skopes are also available.
+
+    Parameters
+    ----------
+    data : pandas.DataFrame
+        training dataset to be preprocessed
+    y_target : str, optional
+        target column name (dependent variable), by default "imgsize_gb"
+    X_cols : list, optional
+        feature column names (independent variables), by default []
+    tensors : bool, optional
+        convert model inputs into tensors, by default True
+    normalize : bool, optional
+        apply normalization, by default True
+    random : int, optional
+        random seed for train-test splits, by default None
+    tsize : float, optional
+        test size ratio, by default 0.2
+    encode_targets : bool, optional
+        encode target values (categorical classifiers), by default False
+    norm_params : dict, optional
+        normalization parameters (see apply_normalization for acceptable key-val pairs), by default None
+    """
     def __init__(
         self,
         data,
@@ -218,6 +241,31 @@ class HstCalPrep(Prep):
 
 
 class JwstCalPrep(Prep):
+    """Class for preprocessing JWST calibration pipeline metadata prior to training neural networks for estimating memory footprint.
+
+    Parameters
+    ----------
+    data : pandas.DataFrame
+        training dataset to be preprocessed
+    y_target : str, optional
+        target column name (dependent variable), by default "imgsize_gb"
+    X_cols : list, optional
+        feature column names (independent variables), by default []
+    norm_cols : list, optional
+        columns on which to apply normalization, by default []
+    exp_mode : str, optional
+        model training set (image, spec, tac, fgs), by default "image"
+    tensors : bool, optional
+        convert model inputs into tensors, by default True
+    normalize : bool, optional
+        apply normalization, by default True
+    random : int, optional
+        random seed for train-test splits, by default None
+    tsize : float, optional
+        test size ratio, by default 0.2
+    encode_targets : bool, optional
+        encode target values (categorical classifiers), by default False
+    """
     def __init__(
         self,
         data,
@@ -230,13 +278,12 @@ class JwstCalPrep(Prep):
         random=None,
         tsize=0.2,
         encode_targets=False,
-        name="JwstCalPrep",
         **log_kws,
     ):
         self.exp_mode = exp_mode
         self.set_X_cols(X_cols)
         self.set_norm_cols(norm_cols=norm_cols)
-        self.__name__ = name
+        self.__name__ = "JwstCalPrep"
         self.log = Logger(self.__name__, **log_kws).spacekit_logger()
         super().__init__(
             data,

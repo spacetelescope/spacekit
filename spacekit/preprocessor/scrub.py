@@ -19,15 +19,27 @@ from spacekit.preprocessor.encode import HstSvmEncoder, JwstEncoder, encode_bool
 from spacekit.logger.log import Logger
 
 
-# TRUEVALS = [True, "t", "T", "True", "true", "TRUE"]
-# NANVALS = ["NaN", 'nan', "N/A", "NONE", 'None', 'none', None]
-# FALSEVALS = [False, 'f', 'F', 'False', 'false', 'FALSE'] + NANVALS
-# SUBNAN = NANVALS + ["FULL"]
-
 class Scrubber:
-    """Base parent class for preprocessing data. Includes some basic column scrubbing methods for pandas dataframes. The heavy
-    lifting is done via subclasses below."""
+    """
+    Base parent class for preprocessing data. Includes some basic column scrubbing methods for pandas dataframes. The heavy lifting is done via subclasses.
 
+    Parameters
+    ----------
+    data : pandas.DataFrame or dict, optional
+        dataset to be scrubbed, by default None
+    col_order : list, optional
+        order input feature columns, by default None
+    output_path : str or Path, optional
+        path on local disk to save scrubbed dataset, by default None
+    output_file : str, optional
+        name to give scrubbed dataset file, by default None
+    dropnans : bool, optional
+        find and remove any NaNs, by default True
+    save_raw : bool, optional
+        save data as csv on local disk before any encoding is performed, by default True
+    name : str, optional
+        logger name (mutable for subclasses), by default "Scrubber"
+    """
     def __init__(
         self,
         data=None,
@@ -39,6 +51,7 @@ class Scrubber:
         name="Scrubber",
         **log_kws,
     ):
+
         self.__name__ = name
         self.log = Logger(self.__name__, **log_kws).spacekit_logger()
         self.df = self.cache_data(cache=data)
@@ -140,7 +153,7 @@ class Scrubber:
 
 
 class HstSvmScrubber(Scrubber):
-    """Class for invocating standard preprocessing steps of Single Visit Mosaic regression test data.
+    """Class for applying standard preprocessing steps of Single Visit Mosaic regression test data.
 
     Parameters
     ----------
@@ -438,6 +451,22 @@ class HstSvmScrubber(Scrubber):
 
 
 class HstCalScrubber(Scrubber):
+    """Class for invoking initial preprocessing on HST Pipeline calibration metadata for training compute resource estimation models.
+
+    Parameters
+    ----------
+    data : pandas.DataFrame or dict, optional
+        dataset to be scrubbed, by default None
+    output_path : str or Path, optional
+        location to save preprocessed output files, by default None
+    output_file : str, optional
+        file basename to assign preprocessed dataset, by default "batch.csv"
+    dropnans : bool, optional
+        find and remove any NaNs, by default True
+    save_raw : bool, optional
+        save data as csv on local disk before any encoding is performed, by default True
+    """
+
     def __init__(
         self,
         data=None,
@@ -524,10 +553,27 @@ class HstCalScrubber(Scrubber):
 
 class JwstCalScrubber(Scrubber):
     """Class for invoking initial preprocessing of JWST calibration input data.
+
     Parameters
     ----------
-    Scrubber : class
-        spacekit.preprocessor.scrub.Scrubber parent class
+    input_path : str or path
+        path on local disk where L1 input exposures are located
+    data : pd.DataFrame, optional
+        dataframe of exposures to be preprocessed, by default None
+    pfx : str, optional
+        limit scrape search to files starting with a given prefix such as 'jw01018', by default ""
+    sfx : str, optional
+        limit scrape search to files ending with a given suffix, by default "_uncal.fits"
+    dropnans : bool, optional
+        drop null value columns, by default False
+    save_raw : bool, optional
+        save a copy of the dataframe before encoding, by default True
+    encoding_pairs : dict, optional
+        preset key-value pairs for encoding categorical data, by default None
+    mode : str, optional
+        determines how data is scraped and handled ('fits' for files or 'df' for dataframe), by default 'fits'
+    miri_ifu_opts : dict, optional
+        Optionally ignore channel and/or subchannel for MIRI IFU exposures. Setting both to False will consider exposures from all channels and subchannels of a given observation to be inputs for a single L3 product.
     """
     def __init__(
         self,
@@ -541,28 +587,6 @@ class JwstCalScrubber(Scrubber):
         mode='fits',
         **log_kws,
     ):
-        """Initializes a JwstCalScrubber class object.
-        Parameters
-        ----------
-        input_path : str or path
-            path on local disk where L1 input exposures are located
-        data : pd.DataFrame, optional
-            dataframe of exposures to be preprocessed, by default None
-        pfx : str, optional
-            limit scrape search to files starting with a given prefix such as 'jw01018', by default ""
-        sfx : str, optional
-            limit scrape search to files ending with a given suffix, by default "_uncal.fits"
-        dropnans : bool, optional
-            drop null value columns, by default False
-        save_raw : bool, optional
-            save a copy of the dataframe before encoding, by default True
-        encoding_pairs : dict, optional
-            preset key-value pairs for encoding categorical data, by default None
-        mode : str, optional
-            determines how data is scraped and handled ('fits' for files or 'df' for dataframe), by default 'fits'
-        miri_ifu_opts : dict, optional
-            Optionally ignore channel and/or subchannel for MIRI IFU exposures. Setting both to False will consider exposures from all channels and subchannels of a given observation to be inputs for a single L3 product.
-        """
         self.input_path = input_path
         self.exp_headers = None
         self.products = dict()
