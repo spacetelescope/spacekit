@@ -1,6 +1,10 @@
 1.1.3 (unreleased)
 ==================
 
+builder
+-------
+- Retrain JWST models on data collected through June 23, 2025 (v4) [#129]
+
 preprocessor
 ------------
 - Revise JWST Cal ingest script to group MIRI IFU input exposures by individual subchannel (band) to account for changes made in JWST pipeline build 11.2 where separate L3 products are now being generated for each band by default. [#115]
