@@ -10,7 +10,7 @@ astropy==6.1.4
 pydot==4.0.0
 graphviz==0.20.3
 astroquery==0.4.9
-boto3==1.35.54
+boto3==1.40.36
 plotly==6.1.2
 progressbar==2.5
 scikit-learn==1.5.2
