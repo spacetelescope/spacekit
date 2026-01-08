@@ -100,7 +100,7 @@ if __name__ == "__main__":
         help="Uses a key:uri format where options for the key are limited to web, s3, or file. \
         The uri could be your own custom location if not using the default datasets.  \
         Examples are web:calcloud, web:custom.json, s3:mybucket, file:myfolder. \
-        Visit spacekit.readthedocs.io for more info.",
+        Visit www.spacekit.org for more info.",
     )
     parser.add_argument(
         "-d",

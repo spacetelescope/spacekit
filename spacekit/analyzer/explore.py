@@ -1,5 +1,6 @@
-# STANDARD libraries
 import os
+import re
+import warnings
 import numpy as np
 import pandas as pd
 from scipy.stats import iqr
@@ -43,8 +44,22 @@ except ImportError:
     px = None
 
 
+try:
+    from astropy.timeseries import TimeSeries, BoxLeastSquares, aggregate_downsample
+    from astropy import units as u
+    from astropy.stats import sigma_clipped_stats
+    from astropy.io import fits
+except ImportError:
+    TimeSeries = None
+
+def check_ast_imports():
+    return TimeSeries is not None
+
 def check_viz_imports():
     return go is not None
+
+def check_mpl_imports():
+    return mpl is not None and plt is not None
 
 
 class ImagePreviews:
@@ -892,269 +907,461 @@ class HstCalPlots(DataPlots):
 
 
 class SignalPlots:
-    @staticmethod
-    def atomic_vector_plotter(
-        signal,
-        label_col=None,
-        classes=None,
-        class_names=None,
-        figsize=(15, 5),
-        y_units=None,
-        x_units=None,
+    """Class for plotting time series signals and their spectrograms."""
+
+    def __init__(
+        self,
+        show=False,
+        save_png=False,
+        target_cns={},
+        color_map={},
+        output_dir=None,
+        name="SignalPlots",
+        **log_kws,
     ):
+        """Class for manipulating and plotting time series signals and frequency spectrograms.
+
+        Parameters
+        ----------
+        show : bool, optional
+            display plot, by default False
+        save_png : str, optional
+            save plot as PNG file, by default False
+        target_cns : dict, optional
+            target label and string keypairs, by default {}
+        color_map : dict, optional
+            target label and color keypairs, by default {}
         """
-        Plots scatter and line plots of time series signal values.
+        self.__name__ = name
+        self.log = Logger(self.__name__, **log_kws).spacekit_logger()
+        self.show = show
+        self.save_png = save_png
+        self.target_cns = target_cns
+        self.color_map = color_map
+        self.flux_col = "pdcsap_flux"
+        self.extra_cols = ["lc_start", "lc_end", "maxpower","transit", "mean", "median", "stddev"]
+        self.output_dir = os.getcwd() if output_dir is None else output_dir
+        self.check_dependencies()
+        warnings.filterwarnings(action="ignore")  # ignore astropy warnings
 
-        **ARGS
-        signal: pandas series or numpy array
-        label_col: name of the label column if using labeled pandas series
-            -use default None for numpy array or unlabeled series.
-            -this is simply for customizing plot Title to include classification
-        classes: (optional- req labeled data) tuple if binary, array if multiclass
-        class_names: tuple or array of strings denoting what the classes mean
-        figsize: size of the figures (default = (15,5))
+    def check_dependencies(self):
+        if not check_ast_imports() or not check_mpl_imports():
+            self.log.error("astropy and/or matplotlib not installed.")
+            raise ImportError(
+                "You must have astropy and matplotlib installed "
+                f"for the {self.__name__} class to work."
+                "\n\nInstall extra deps via `pip install spacekit[x]`"
+            )
 
-        ******
+    def parse_filename(self, fname, fmt='kepler.fits'):
+        """Extracts target information from FITS light curve file name.
 
-        Ex1: Labeled timeseries passing 1st row of pandas dataframe
-        > first create the signal:
-        signal = x_train.iloc[0, :]
-        > then plot:
-        atomic_vector_plotter(signal, label_col='LABEL',classes=[1,2],
-                    class_names=['No Planet', 'Planet']), figsize=(15,5))
+        Parameters
+        ----------
+        fname : str
+            path to FITS light curve file (llc or lc)
+        fmt : str, optional
+            'kepler.fits' or 'tess.fits', by default "kepler.fits"
 
-        Ex2: numpy array without any labels
-        > first create the signal:
-        signal = x_train.iloc[0, :]
-
-        >then plot:
-        atomic_vector_plotter(signal, figsize=(15,5))
+        Returns
+        -------
+        tuple
+            target id (str), campaign/sector id (str)
         """
-        import pandas as pd
-        import numpy as np
-
-        # pass None to label_col if unlabeled data, creates generic title
-        if label_col is None:
-            label = None
-            title_scatter = "Scatterplot of Star Flux Signals"
-            title_line = "Line Plot of Star Flux Signals"
-            color = "black"
-
-        # store target column as variable
-        elif label_col is not None:
-            label = signal[label_col]
-            # for labeled timeseries
-            if label == 1:
-                cn = class_names[0]
-                color = "red"
-
-            elif label == 2:
-                cn = class_names[1]
-                color = "blue"
-            # TITLES
-            # create appropriate title acc to class_names
-            title_scatter = f"Scatterplot for Star Flux Signal: {cn}"
-            title_line = f"Line Plot for Star Flux Signal: {cn}"
-
-        # Set x and y axis labels according to units
-        # if the units are unknown, we will default to "Flux"
-        if y_units is None:
-            y_units = "Flux"
+        fname = os.path.basename(fname)
+        if fmt == 'kepler.fits': # r"ktwo{obs_id}-c{campaign}_llc.fits"
+            patt = r'ktwo(\d{9,15})-c(\d{2})_llc\.fits'
+            m = re.match(patt, fname)
+            if m:
+                return (m.group(1), m.group(2)) # tid, campaign
+        elif fmt == 'tess.fits': # r"tess{date-time}-s{sctr}-{tid}-{scid}-{cr}_lc.fits"
+            patt = r'^tess(\d{13})-s(\d{4})-(\d{16,20})-(\d{4})-s_lc\.fits$'
+            m = re.match(patt, fname)
+            if m:
+                return (m.group(2), m.group(1)) # tid, sector
         else:
-            y_units = y_units
-        # it is assumed this is a timeseries, default to "time"
-        if x_units is None:
-            x_units = "Time"
-        else:
-            x_units = x_units
+            raise ValueError("fmt must be 'kepler.fits' or 'tess.fits'")
+        raise ValueError("Filename does not match expected pattern")
 
-        # Scatter Plot
-        if isinstance(signal, np.array):
-            series_index = list(range(len(signal)))
+    @staticmethod
+    def read_ts_signal(fits_file, signal_col="pdcsap_flux", fmt='kepler.fits', offset=False, remove_nans=True):
+        """Reads time series signal data from a FITS light curve file (_llc.fits or _lc.fits for kepler and fits respectively). Optionally can
+        apply telescope-specific BJD offset as determined by `fmt` kwarg (most light curve files already have this applied) and remove NaN values from both signal and corresponding timestamp arrays. Regarding the `signal_col` defaults: "sap_flux" is Simple Aperture Photometry flux, the flux after summing the calibrated pixels within the telescope's optimal photometric aperture; the default (recommended) is "pdcsap_flux" (Pre-search Data Conditioned Simple Aperture Photometry, the SAP flux values nominally corrected for instrumental variations - these are the mission's best estimate of the intrinsic variability of the target.).
 
-            converted_array = pd.Series(signal.ravel(), index=series_index)
-            signal = converted_array
+        Parameters
+        ----------
+        fits_file : str
+            path to FITS light curve file (llc or lc)
+        signal_col : str, optional
+            header column name containing the data, by default "pdcsap_flux"
+        fmt : str, optional
+            'kepler.fits' or 'tess.fits', by default "kepler.fits"
+        offset : bool, optional
+            apply telescope-specifc BJD offset to timestamps, by default False
+        remove_nans : bool, optional
+            remove NaN values from signal and timestamps, by default True
 
-        plt.figure(figsize=figsize)
-        plt.scatter(
-            pd.Series([i for i in range(1, len(signal))]),
-            signal[1:],
+        Returns
+        -------
+        np.ndarray
+            time series signal data as a numpy array
+        """
+        if fmt not in ['kepler.fits', 'tess.fits']:
+            raise ValueError("fmt must be 'kepler.fits' or 'tess.fits'")
+        ts = TimeSeries.read(fits_file, format=fmt)
+        flux = np.asarray(ts[signal_col], dtype='float64')
+        timestamps = ts.time.jd
+        if offset is True:
+            bjd = dict(kepler=2454833.0, tess=2457000.0)[fmt.split('.')[0]]
+            timestamps -= bjd  # convert to KBJD/TBJD
+        if remove_nans is True:
+            not_nan_mask = ~np.isnan(flux)
+            flux = flux[not_nan_mask]
+            timestamps = timestamps[not_nan_mask]
+        return timestamps, flux
+
+    def atomic_vector_plotter(
+        self,
+        signal,
+        timestamps=None,
+        label=None,
+        y_units="PDCSAP Flux (e-/s)", # aperture photometry flux
+        x_units="Time (BJD)",  # Barycentric Julian Date
+        figsize=(15,10),
+        fname="flux_signal.png",
+        title_pfx="Flux Signal",
+    ):
+        """Plots scatter and line plots of time series signal values.
+
+        Parameters
+        ----------
+        signal : np.ndarray or pandas Series
+            time series signal data
+        y_units : str, optional
+            y-axis label, by default "PDCSAP Flux (e-/s)"
+        x_units : str, optional
+            x-axis label, by default "Time (BJD)"
+        """
+        cn = self.target_cns.get(label, "")
+        color = self.color_map.get(label, "black")
+        title = title_pfx + f": {cn}" if cn != "" else title_pfx
+        if timestamps is None:
+            timestamps = list(range(len(signal)))
+            x_units = "Time Cadence Index"
+        fig, axs = plt.subplots(nrows=2, ncols=1, figsize=figsize, sharex=True)
+        axs[0].plot(
+                timestamps,
+                signal,
+                color=color,
+            )
+        axs[0].set_ylabel(y_units)
+        axs[1].scatter(
+            timestamps,
+            signal,
             marker=4,
             color=color,
         )
-        plt.ylabel(y_units)
+        axs[1].set_ylabel(y_units)
         plt.xlabel(x_units)
-        plt.title(title_scatter)
-        plt.show()
-
-        # Line Plot
-        plt.figure(figsize=figsize)
-        plt.plot(pd.Series([i for i in range(1, len(signal))]), signal[1:], color=color)
-        plt.ylabel(y_units)
-        plt.xlabel(x_units)
-        plt.title(title_line)
-        plt.show()
-
-    @staticmethod
-    def flux_specs(
-        signal,
-        Fs=2,
-        NFFT=256,
-        noverlap=128,
-        mode="psd",
-        cmap=None,
-        units=None,
-        colorbar=False,
-        save_for_ML=False,
-        fname=None,
-        num=None,
-        **kwargs,
-    ):
-        """generate and save spectographs of flux signal frequencies"""
-        import matplotlib.pyplot as plt
-
-        if cmap is None:
-            cmap = "binary"
-
-        # PIX: plots only the pixelgrids -ideal for image classification
-        if save_for_ML is True:
-            # turn off everything except pixel grid
-            fig, ax = plt.subplots(figsize=(10, 10), frameon=False)
-            fig, freqs, t, m = plt.specgram(signal, Fs=Fs, NFFT=NFFT, mode=mode, cmap=cmap)
-            ax.axis(False)
-            ax.show()
-
-            if fname is not None:
-                try:
-                    if num:
-                        path = fname + num
-                    else:
-                        path = fname
-                    plt.savefig(path, **kwargs)
-                except Exception as e:
-                    print("Something went wrong while saving the img file")
-                    print(e)
-
-        else:
-            fig, ax = plt.subplots(figsize=(13, 11))
-            fig, freqs, t, m = plt.specgram(signal, Fs=Fs, NFFT=NFFT, mode=mode, cmap=cmap)
-            plt.colorbar()
-            if units is None:
-                units = ["Wavelength (λ)", "Frequency (ν)"]
-            plt.xlabel(units[0])
-            plt.ylabel(units[1])
-            if num:
-                title = f"Spectrogram_{num}"
-            else:
-                title = "Spectrogram"
-            plt.title(title)
+        plt.suptitle(title)
+        fig.tight_layout()
+        if self.save_png:
+            fpath = str(os.path.join(self.output_dir, fname)) + ".png"
+            fig.savefig(fpath, dpi=300)
+        if self.show:
             plt.show()
+        else:
+            plt.close()
 
-        return fig, freqs, t, m
+    def signal_phase_folder(self, file_list, fmt="kepler.fits", error=True, snr=True, include_extra=False):
+        """Generates phase-folded light curves from LLC/LCF flux signals
 
-    @staticmethod
-    def singal_phase_folder(file_list, fmt="kepler.fits", error=False, snr=False):
-        """plots phase-folded light curve of a signal
-        returns dataframe of transit timestamps for each light curve
-        planet_hunter(f=files[9], fmt='kepler.fits')
+        Parameters
+        ----------
+        file_list : list
+            list of FITS file path(s) containing time series data
+        flux_col : str, optional
+            header column name containing the data, by default "pdcsap_flux"
+        fmt : str, optional
+            'kepler.fits' or  'tess.fits', by default "kepler.fits"
+        error : bool, optional
+            include SAP flux error (residuals) if available, by default True
+        snr : bool, optional
+            apply signal-to-noise-ratio to periodogram autopower calculation, by default True
 
-        args:
-        - fits_files = takes array of files or single .fits file
-
-        kwargs:
-        - format : 'kepler.fits' or  'tess.fits'
-        - error: include SAP flux error (residuals) if available
-        - snr: apply signal-to-noise-ratio to periodogram autopower calculation
+        Returns
+        -------
+        pd.DataFrame
+            transit timestamps and phase folded flux values for each light curve
         """
-        from astropy.timeseries import TimeSeries
-        import numpy as np
-        from astropy import units as u
-        from astropy.timeseries import BoxLeastSquares
-        from astropy.stats import sigma_clipped_stats
-        from astropy.timeseries import aggregate_downsample
-
-        # read in file
+        #req_cols = ["obs_id", "campaign", "time_jd", "sap_flux_norm", "time_bin_start", "sap_flux_norm_binned", "period"]
         transits = {}
         for index, file in enumerate(file_list):
             res = {}
-            if fmt == "kepler.fits":
-                prefix = file.replace("ktwo", "")
-                suffix = prefix.replace("_llc.fits", "")
-                pair = suffix.split("-")
-                obs_id = pair[0]
-                campaign = pair[1]
-
+            fname = os.path.basename(file)
+            (tid, sc) = self.parse_filename(fname, fmt=fmt)
             ts = TimeSeries.read(file, format=fmt)  # read in timeseries
-
             # add to meta dict
-            res["obs_id"] = obs_id
-            res["campaign"] = campaign
-            res["lc_start"] = ts.time.jd[0]
-            res["lc_end"] = ts.time.jd[-1]
-
+            res["tid"] = tid
+            res["sc"] = sc
             # use box least squares to estimate period
-            if error is True:  # if error col data available
-                periodogram = BoxLeastSquares.from_timeseries(ts, "sap_flux", "sap_flux_err")
+            if error is True and f'{self.flux_col}_err' in ts.columns:
+                periodogram = BoxLeastSquares.from_timeseries(
+                    ts, self.flux_col, f"{self.flux_col}_err"
+                )
             else:
-                periodogram = BoxLeastSquares.from_timeseries(ts, "sap_flux")
+                periodogram = BoxLeastSquares.from_timeseries(ts, self.flux_col)
             if snr is True:
                 results = periodogram.autopower(0.2 * u.day, objective="snr")
             else:
                 results = periodogram.autopower(0.2 * u.day)
-
             maxpower = np.argmax(results.power)
             period = results.period[maxpower]
-            transit_time = results.transit_time[maxpower]
-
-            res["maxpower"] = maxpower
             res["period"] = period
-            res["transit"] = transit_time
-
-            # res['ts'] = ts
-
+            transit_time = results.transit_time[maxpower]
             # fold the time series using the period
             ts_folded = ts.fold(period=period, epoch_time=transit_time)
-
-            # folded time series plot
-            # plt.plot(ts_folded.time.jd, ts_folded['sap_flux'], 'k.', markersize=1)
-            # plt.xlabel('Time (days)')
-            # plt.ylabel('SAP Flux (e-/s)')
-
+            res["time_jd"] = ts_folded.time.jd
             # normalize the flux by sigma-clipping the data to determine the baseline flux:
-            mean, median, stddev = sigma_clipped_stats(ts_folded["sap_flux"])
-            ts_folded["sap_flux_norm"] = ts_folded["sap_flux"] / median
-            res["mean"] = mean
-            res["median"] = median
-            res["stddev"] = stddev
-            res["sap_flux_norm"] = ts_folded["sap_flux_norm"]
-
+            mean, median, stddev = sigma_clipped_stats(ts_folded[self.flux_col])
+            ts_folded["flux_norm"] = ts_folded[self.flux_col] / median
+            res["flux_norm"] = ts_folded["flux_norm"]
             # downsample the time series by binning the points into bins of equal time
             ts_binned = aggregate_downsample(ts_folded, time_bin_size=0.03 * u.day)
-
-            # final result
-            fig = plt.figure(figsize=(11, 5))
-            ax = fig.gca()
-            ax.plot(ts_folded.time.jd, ts_folded["sap_flux_norm"], "k.", markersize=1)
-            ax.plot(
-                ts_binned.time_bin_start.jd,
-                ts_binned["sap_flux_norm"],
-                "r-",
-                drawstyle="steps-post",
-            )
-            ax.set_xlabel("Time (days)")
-            ax.set_ylabel("Normalized flux")
-            ax.set_title(obs_id)
-            ax.legend([np.round(period, 3)])
-            plt.close()
-
-            res["fig"] = fig
-
+            res["time_bin_start"] = ts_binned.time_bin_start.jd
+            res["flux_norm_binned"] = ts_binned["flux_norm"]
+            if include_extra:
+                res["lc_start"] = ts.time.jd[0]
+                res["lc_end"] = ts.time.jd[-1]
+                res["transit"] = transit_time
+                res["maxpower"] = maxpower
+                res["mean"] = mean
+                res["median"] = median
+                res["stddev"] = stddev
+                res['fname'] = fname
             transits[index] = res
-
         df = pd.DataFrame.from_dict(transits, orient="index")
+        return df
+    
+    def plot_phase_signals(self, ts, title_pfx="Phase-folded Light Curve: ", figsize=(11,5)):
+        """Plots a phase-folded light curve from timeseries flux signal data. Requires a dataframe row containing the following columns:
+        "time_jd", "flux_norm", "time_bin_start", "flux_norm_binned", "tid", "sc", "period"
+        e.g.,
+        df = SignalPlots.signal_phase_folder(file_list)
+        ts = df.iloc[index]
+        signal_plots.plot_phase_signals(ts)
 
+        Parameters
+        ----------
+        ts : ArrayLike
+            timeseries flux signal data
+        title_pfx : str, optional
+            Plot title prefix, by default "Phase-folded Light Curve: "
+        figsize : tuple, optional
+            figure size, by default (11,5)
+        """
+        fig = plt.figure(figsize=figsize)
+        ax = fig.gca()
+        ax.plot(ts["time_jd"], ts["flux_norm"], "k.", markersize=1)
+        ax.plot(
+            ts["time_bin_start"],
+            ts["flux_norm_binned"],
+            "r-",
+            drawstyle="steps-post",
+        )
+        ax.set_xlabel("Time (days)")
+        ax.set_ylabel("Normalized flux")
+        ax.set_title(title_pfx + ts["tid"])
+        ax.legend([np.round(ts['period'], 3)])
+        if self.save_png:
+            fpath = os.path.join(self.output_dir, f"{ts['sc']}-{ts['tid']}_phase_folded.png")
+            fig.savefig(fpath, dpi=300)
+        if self.show:
+            plt.show()
+        else:
+            plt.close()
+    
+    def set_spec_kwargs(self, Fs=2, NFFT=256, noverlap=128, mode="psd", cmap="binary"):
+        """returns dict of default spectrogram kwargs
+
+        Returns
+        -------
+        dict
+            default spectrogram kwargs
+        """
+        spec_kwargs = {
+            "Fs": Fs,
+            "NFFT": NFFT,
+            "noverlap": noverlap,
+            "mode": mode,
+            "cmap": cmap,
+        }
+        return spec_kwargs
+
+    def flux_specs(
+        self,
+        signal,
+        units=["Wavelength (λ)", "Frequency (ν)"],
+        colorbar=True,
+        save_for_ml=False,
+        fname="specgram",
+        title="Spectrogram",
+        **kwargs,
+    ):
+        """generate and save spectrograms of flux signal frequencies. By default uses kwargs in `set_spec_kwargs` method.
+
+        Parameters
+        ----------
+        signal : ArrayLike
+            1D array-like signal data
+        units : list of strings, optional
+            x and y units respectively, by default N["Wavelength (λ)", "Frequency (ν)"]
+        colorbar : bool, optional
+            include colorbar in plot, by default True
+        save_for_ml : bool, optional
+            plots pixel grid only (no axes, colorbar or labels), by default False
+        fname : str, optional
+            filename without extension for saving png, by default 'specgram'
+        title : str, optional
+            plot title, by default "Spectrogram"
+        **kwargs : dict
+            matplotlib.pyplot.specgram keyword arguments
+
+        Returns
+        -------
+        tuple
+            periodogram, freqs, t, m - see matplotlib.pyplot.specgram
+        """
+        fpath = os.path.join(self.output_dir, fname)
+        spec_kwargs = self.set_spec_kwargs(**kwargs)
+        if save_for_ml is True:
+            fig, ax = plt.subplots(figsize=(10, 10), frameon=False)
+            ax.axis(False)
+        else:
+            fig, ax = plt.subplots(figsize=(13, 11))
+            if colorbar:
+                plt.colorbar()
+            units = ["Wavelength (λ)", "Frequency (ν)"] if units is None or len(units) < 2 else units
+            plt.xlabel(units[0])
+            plt.ylabel(units[1])
+            plt.title(title)
+        
+        fig, freqs, t, m = plt.specgram(
+            signal, **spec_kwargs,
+        )
+        if self.save_png:
+            plt.savefig(fpath, dpi=300)
+        if self.show:
+            plt.show()
+        else:
+            plt.close()
+        return fig, freqs, t, m
+
+
+
+class K2SignalPlots(SignalPlots):
+    """Class for plotting K2 time series signals and their spectrograms."""
+
+    def __init__(
+        self,
+        flux_col="pdcsap_flux",
+        show=False,
+        save_png=True,
+        target_cns={1: "No Planet", 2: "Planet"},
+        color_map={1: "red", 2: "blue"},
+        **log_kws,
+    ):
+        """_summary_
+
+        Parameters
+        ----------
+        show : bool, optional
+            display plot, by default False
+        save_png : bool, optional
+            save plot as PNG file, by default True
+        target_cns : dict, optional
+            target label and string keypairs, by default {1: "No Planet", 2: "Planet"}
+        color_map : dict, optional
+            target label and color keypairs, by default {1: "red", 2: "blue"}
+        """
+        super().__init__(
+            show=show,
+            save_png=save_png,
+            flux_col=flux_col,
+            target_cns=target_cns,
+            color_map=color_map,
+            name="K2SignalPlots",
+            **log_kws,
+        )
+        self.df = None
+        self.files = []
+
+    def generate_dataframe(self):
+        """Generates dataframe of K2 light curve signal properties from list of FITS files"""
+        if len(self.files) == 0:
+            raise ValueError("No files provided. Set `self.files` to a list of K2 FITS light curve file paths.")
+        self.df = self.signal_phase_folder(self.files, fmt="kepler.fits", error=True, snr=True, include_extra=True)
+
+    def generate_raw_flux_df(self, flux_col="SAP_FLUX", add_label=None, ffillna=True):
+        """Generates dataframe of raw flux signals from list of K2 FITS files"""
+        if len(self.files) == 0:
+            raise ValueError("No files provided. Set `self.files` to a list of K2 FITS light curve file paths.")
+        records = {}
+        for index, file in enumerate(self.files):
+            with fits.open(file) as hdulist:
+                signal = hdulist[1].data[flux_col]
+                records[index] = np.asarray(signal, dtype='float64')
+        df = pd.DataFrame.from_dict(records, orient="index")
+        if ffillna is True:
+            df.ffill(axis=1, inplace=True)
+        df.columns = ['FLUX.'+str(c+1) for c in df.columns]
+        if isinstance(add_label, int):
+            cols = list(df.columns)
+            df['LABEL'] = add_label
+            df = df[['LABEL'] + cols]
         return df
 
+    def generate_specs(self, ml_ready=False, rgb=True):
+        """Generates spectrograms for each light curve signal in dataframe"""
+        if self.df is None:
+            self.generate_dataframe(self.files)
+        if rgb is True:
+            kwargs = self.set_spec_kwargs(cmap="plasma")
+        for _, row in self.df.iterrows():
+            fname = row['fname'].replace('.fits', '_specgram')
+            _, flux = self.read_ts_signal(row['fname'], fmt='kepler.fits', offset=True, remove_nans=True)
+            self.flux_specs(
+                flux,
+                save_for_ml=ml_ready,
+                fname=fname,
+                title=f"Spectrogram: {row['sc']}-{row['tid']}",
+                **kwargs,
+            )
+    
+    def generate_phase_signal_plots(self):
+        """Generates phase-folded light curve plots for each signal in dataframe"""
+        if self.df is None:
+            self.generate_dataframe(self.files)
+        for i in list(range(len(self.df))):
+            ts = df.iloc[i]
+            self.plot_phase_signals(ts, title_pfx="K2 Phase-folded Light Curve: ", figsize=(11,5))
+    
+    def generate_flux_signal_plots(self):
+        """Generates atomic vector plots for each signal in dataframe"""
+        if self.df is None:
+            self.generate_dataframe(self.files)
+        for _, row in self.df.iterrows():
+            fname = row['fname'].replace('.fits', '_flux_signal')
+            timestamps, flux = self.read_ts_signal(row['fname'], fmt='kepler.fits', offset=True, remove_nans=True)
+            self.atomic_vector_plotter(
+                flux,
+                timestamps=timestamps,
+                y_units="PDCSAP Flux (e-/s)",
+                x_units="Time (BJD)",
+                figsize=(15,10),
+                fname=fname,
+                title_pfx=f"K2 Flux Signal: {row['sc']}-{row['tid']}",
+            )
 
 # testing
 if __name__ == "__main__":

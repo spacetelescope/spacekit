@@ -1,4 +1,4 @@
-#!/bin/bash -xu
+#!/bin/bash -e
 source "./docker/images/dashboard_image/.env"
 
 DOCKER_FILE=./docker/images/dashboard_image/Dockerfile

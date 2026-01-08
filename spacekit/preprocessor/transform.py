@@ -888,16 +888,29 @@ def tensors_to_arrays(X_train, y_train, X_test, y_test):
     return X_train, y_train, X_test, y_test
 
 
-def hypersonic_pliers(path_to_train, path_to_test, y_col=[0], skip=1, dlm=",", encoding="bytes", subtract_y=0.0, reshape=False):
-    """Extracts data into 1-dimensional arrays, using separate target classes (y) for training and test data. Assumes y (target)
-    is first column in dataframe. If the target (y) classes in the raw data are 0 and 2, but you'd like them to be binaries (0
-    and 1), set subtract_y=1.0
+def ffill_array(arr):
+    """
+    Forward-fills NaN values in a 1D NumPy array using pure NumPy operations.
+    """
+    mask = np.isnan(arr)
+    # Get indices of non-NaN values
+    idx = np.where(~mask, np.arange(len(mask)), 0)
+    # Forward fill indices
+    np.maximum.accumulate(idx, out=idx)
+    # Use the indices to select the corresponding non-NaN values
+    return arr[idx]
+
+
+def hypersonic_pliers(
+    path_to_train, path_to_test=None, y_col=[0], skip=1, dlm=",", encoding='bytes', subtract_y=0.0, reshape=False
+):
+    """Extracts data into 1-dimensional arrays, using separate target classes (y) for training and test data. Assumes y (target) is first column in dataframe. If the target (y) classes in the raw data are 1 and 2, but you'd like them to be binaries (0 and 1), set subtract_y=1.0
 
     Parameters
     ----------
     path_to_train : string
         path to training data file (csv)
-    path_to_test : string
+    path_to_test : string, optional
         path to test data file (csv)
     y_col : list, optional
         axis index of target class, by default [0]
@@ -920,20 +933,23 @@ def hypersonic_pliers(path_to_train, path_to_test, y_col=[0], skip=1, dlm=",", e
     xcols = [c for c in cols if c not in y_col]
     X_train = Train[:, xcols]
     y_train = Train[:, y_col, np.newaxis] - subtract_y
+    if reshape is True:
+        y_train = y_train.reshape(y_train.shape[0], 1)
+    del Train
+    print("X_train: ", X_train.shape)
+    print("y_train: ", y_train.shape)
+
+    if path_to_test is None:
+        return X_train, y_train
 
     Test = np.loadtxt(path_to_test, skiprows=skip, delimiter=dlm, encoding=encoding)
     X_test = Test[:, xcols]
     y_test = Test[:, y_col, np.newaxis] - subtract_y
     if reshape is True:
-        y_train = y_train.reshape(y_train.shape[0], 1)
         y_test = y_test.reshape(y_test.shape[0], 1)
-
-    del Train, Test
-    print("X_train: ", X_train.shape)
-    print("y_train: ", y_train.shape)
+    del Test
     print("X_test: ", X_test.shape)
     print("y_test: ", y_test.shape)
-
     return X_train, X_test, y_train, y_test
 
 
@@ -969,7 +985,7 @@ def thermo_fusion_chisel(matrix1, matrix2=None):
         return matrix1
 
 
-def babel_fish_dispenser(matrix1, matrix2=None, step_size=None, axis=2):
+def babel_fish_dispenser(matrix1, matrix2=None, step_size=200, axis=2):
     """Adds an input corresponding to the running average over a set number of time steps. This helps the neural network to
     ignore high frequency noise by passing in a uniform 1-D filter and stacking the arrays.
 
@@ -989,9 +1005,6 @@ def babel_fish_dispenser(matrix1, matrix2=None, step_size=None, axis=2):
     numpy array(s)
         2D array (original input array with a uniform 1d-filter as noise)
     """
-    if step_size is None:
-        step_size = 200
-
     # calc input for flux signal rolling avgs
     filter1 = uniform_filter1d(matrix1, axis=1, size=step_size)
     # store in array and stack on 2nd axis for each obs of X data
@@ -1008,8 +1021,7 @@ def babel_fish_dispenser(matrix1, matrix2=None, step_size=None, axis=2):
 
 
 def fast_fourier(matrix, bins):
-    """Takes an array (e.g. signal input values) and rotates number of ``bins`` to the left as a fast Fourier transform. Returns
-    vector of length equal to ``matrix`` input array.
+    """Takes an array (e.g. signal input values) and rotates number of ``bins`` to the left as a fast Fourier transform. Returns vector of length equal to ``matrix`` input array.
 
     Parameters
     ----------
