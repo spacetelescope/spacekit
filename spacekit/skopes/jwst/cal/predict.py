@@ -318,6 +318,8 @@ class JwstCalPredict:
         imgsize = self.regressor(self.img3_reg.model, X)
         for i, _ in enumerate(X):
             rpred = np.round(float(np.squeeze(imgsize[i])), 2)
+            if rpred > 900.0:
+                rpred = 900.0  # cap at 900 GB
             self.predictions[product_index[i]] = {
                 "gbSize": rpred
             }
@@ -335,6 +337,8 @@ class JwstCalPredict:
         
         for i, _ in enumerate(X):
             rpred = np.round(float(np.squeeze(imgsize[i])), 2)
+            if rpred > 900.0:
+                rpred = 900.0  # cap at 900 GB
             self.predictions[product_index[i]] = {
                 "gbSize": rpred
             }

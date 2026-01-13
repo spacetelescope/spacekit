@@ -676,7 +676,7 @@ class JwstCalScrubber(Scrubber):
             "MIR_LYOT",  # coron
             "MIR_4QPM",  # coron
             "MIR_LRS-SLITLESS",  # (only IF TSO)
-            "MIR_WFSS", # expected in future release (cycle 5)
+            "MIR_WFSS",
             "NRC_CORON",  # coron
             "NRC_WFSS",
             "NRC_TSIMAGE",  # TSO always
@@ -816,7 +816,7 @@ class JwstCalScrubber(Scrubber):
             # L3 product only if TSO
             return
         if exptype in self.source_based:
-            # source-based exposure naming convention uses s000000001; NRC_WFSS may use t000
+            # source-based exposure naming convention uses s000000001 except if parallel_pure then t0
             tnum = "s000000001" if v["VISITYPE"] != "PARALLEL_PURE" else tnum
         pupil = f"{v['PUPIL']}" if v["PUPIL"] not in NANVALS else ""
         fltr = f"{v['FILTER']}" if v["FILTER"] not in NANVALS else ""
@@ -937,7 +937,6 @@ class JwstCalScrubber(Scrubber):
             exp_type = v["EXP_TYPE"]
             if exp_type in self.level3_types:
                 if exp_type in self.source_based:
-                    # 12/3/24 jwst>=1.16: 's00001' -> 's000000001'
                     tnum = 's000000001' if v['VISITYPE'] != 'PARALLEL_PURE' else 't0'
                 else:
                     tnum = tn.get(v['TARGNAME'], rn.get(np.round(v['TARG_RA'], 6), gn.get(v['GS_MAG'], 't0')))
