@@ -816,9 +816,8 @@ class JwstCalScrubber(Scrubber):
             # L3 product only if TSO
             return
         if exptype in self.source_based:
-            # 12/3/24 (jwst>=1.16) source ID is 9 digits
-            # tnum = "s00001" # source-based exposure naming convention
-            tnum = "s000000001"
+            # source-based exposure naming convention uses s000000001; NRC_WFSS may use t000
+            tnum = "s000000001" if v["VISITYPE"] != "PARALLEL_PURE" else tnum
         pupil = f"{v['PUPIL']}" if v["PUPIL"] not in NANVALS else ""
         fltr = f"{v['FILTER']}" if v["FILTER"] not in NANVALS else ""
         grating = (
@@ -883,7 +882,7 @@ class JwstCalScrubber(Scrubber):
     def fake_target_ids(self):
         """Assigns a fake target ID using TARGNAME, TARG_RA or GS_MAG. These IDs are fake in that
         they're unlikely to match actual target IDs assigned later in the pipeline. For source-based exposures, 
-        the id is always "s00001". (jwst>=1.16, after 12/3/24: source Id will be 9 digits: s000000001)
+        the id defaults to "s000000001" except in the case of NRC_WFSS parallel_pure which uses "t0".
 
         Grouping logic:
         - TARG_RA (rounded to 6 decimals): VISITYPE=PRIME_TARGETED_FIXED, TARGNAME=NaN
@@ -939,7 +938,7 @@ class JwstCalScrubber(Scrubber):
             if exp_type in self.level3_types:
                 if exp_type in self.source_based:
                     # 12/3/24 jwst>=1.16: 's00001' -> 's000000001'
-                    tnum = 's000000001'
+                    tnum = 's000000001' if v['VISITYPE'] != 'PARALLEL_PURE' else 't0'
                 else:
                     tnum = tn.get(v['TARGNAME'], rn.get(np.round(v['TARG_RA'], 6), gn.get(v['GS_MAG'], 't0')))
                 if "IMAGE" in exp_type.split("_")[-1]:
