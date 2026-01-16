@@ -1,6 +1,7 @@
 """
 Base IO code for all datasets (borrowing concepts from sklearn.datasets and keras.utils.load_data)
 """
+
 from spacekit.extractor.scrape import WebScraper
 from spacekit.analyzer.scan import (
     import_dataset,
@@ -50,13 +51,9 @@ def download_single_archive(archives, date_key=None, data_home=None):
     return fpath
 
 
-def load_from_archive(
-    archives, fpath=None, date_key=None, scanner=None, data_home=None
-):
+def load_from_archive(archives, fpath=None, date_key=None, scanner=None, data_home=None):
     if fpath is None:
-        fpath = download_single_archive(
-            archives, date_key=date_key, data_home=data_home
-        )
+        fpath = download_single_archive(archives, date_key=date_key, data_home=data_home)
     if scanner:
         scn = scanner(perimeter=fpath)
         df = scn.load_dataframe(kwargs=scn.kwargs, decoder=scn.decoder)

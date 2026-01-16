@@ -120,10 +120,7 @@ layout = html.Div(
                     [
                         dcc.Dropdown(
                             id="selected-scatter",
-                            options=[
-                                {"label": f, "value": f}
-                                for f in ["rms_ra_dec", "point_segment"]
-                            ],
+                            options=[{"label": f, "value": f} for f in ["rms_ra_dec", "point_segment"]],
                             value="rms_ra_dec",
                         )
                     ],

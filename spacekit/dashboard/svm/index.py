@@ -14,9 +14,7 @@ from spacekit.analyzer.explore import SVMPreviews
 global imps
 imps = SVMPreviews(X, labels=y, names=idx)
 
-url_bar_and_content_div = html.Div(
-    [dcc.Location(id="url", refresh=False), html.Div(id="page-content")]
-)
+url_bar_and_content_div = html.Div([dcc.Location(id="url", refresh=False), html.Div(id="page-content")])
 # index layout
 index_layout = html.Div(
     children=[
@@ -56,9 +54,7 @@ index_layout = html.Div(
 app.layout = url_bar_and_content_div
 
 # "complete" layout
-app.validation_layout = html.Div(
-    [url_bar_and_content_div, index_layout, eval.layout, eda.layout, pred.layout]
-)
+app.validation_layout = html.Div([url_bar_and_content_div, index_layout, eval.layout, eda.layout, pred.layout])
 
 
 @app.callback(Output("page-content", "children"), Input("url", "pathname"))

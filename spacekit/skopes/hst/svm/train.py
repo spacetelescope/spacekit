@@ -1,17 +1,18 @@
 """
-This module builds, trains, and evaluates an ensemble model for labeled and preprocessed SVM regression test data and alignment 
-images. The ensemble model is a combination of two neural networks: a MultiLayerPerceptron (for regression test data) and a 3D 
+This module builds, trains, and evaluates an ensemble model for labeled and preprocessed SVM regression test data and alignment
+images. The ensemble model is a combination of two neural networks: a MultiLayerPerceptron (for regression test data) and a 3D
 Image Convolutional Neural Network (CNN). The script includes functions for the following steps:
 
 1. load and prep the data and images for ML
 2. build and train the model
 3. compute results and save to disk
 
-This script (and/or its functions) should be used in conjunction with spacekit.skopes.hst.svm.prep if using raw data (since both 
-the regression test dataframe for MLP and the png images for the CNN need to be created first). Once a model has been trained 
+This script (and/or its functions) should be used in conjunction with spacekit.skopes.hst.svm.prep if using raw data (since both
+the regression test dataframe for MLP and the png images for the CNN need to be created first). Once a model has been trained
 using this script, it is saved to disk and can be loaded again later for use with the predict script (spacekit.skopes.hst.svm.
 predict).
 """
+
 import os
 import argparse
 import datetime as dt
@@ -86,9 +87,7 @@ def make_ensembles(
         return XTR, YTR, XTS, YTS
 
 
-def load_ensemble_data(
-    filename, img_path, img_size=128, dim=3, ch=3, norm=0, v=0.85, output_path=None
-):
+def load_ensemble_data(filename, img_path, img_size=128, dim=3, ch=3, norm=0, v=0.85, output_path=None):
     """Loads regression test data from a csv file and image data from png files. Splits the data into train, test and validation
     sets, applies normalization (if norm=1), creates a maste index of the original dataset input names, and stacks the features
     and class targets for both data types into lists which can be used as inputs for an ensemble model.
@@ -124,9 +123,7 @@ def load_ensemble_data(
     print("\tREG DATA: ", df.shape)
     print(f"\nClass Labels (0=Aligned, 1=Misaligned)\n{df['label'].value_counts()}")
 
-    (X, y), (train, test, val) = SVMImageIO(
-        img_path, w=img_size, h=img_size, d=dim * ch, inference=False, data=df, v=v
-    ).load()
+    (X, y), (train, test, val) = SVMImageIO(img_path, w=img_size, h=img_size, d=dim * ch, inference=False, data=df, v=v).load()
 
     # DATA AUGMENTATION
     print("\nPerforming Regression Data Augmentation")
@@ -134,9 +131,7 @@ def load_ensemble_data(
 
     # IMAGE AUGMENTATION
     print("\nPerforming Image Data Augmentation")
-    img_idx, (X_tr, y_tr), (X_ts, y_ts), (X_vl, y_vl) = training_img_aug(
-        train, test, val=val
-    )
+    img_idx, (X_tr, y_tr), (X_ts, y_ts), (X_vl, y_vl) = training_img_aug(train, test, val=val)
 
     # NORMALIZATION and SCALING
     if norm:
@@ -164,7 +159,14 @@ def load_ensemble_data(
 
 
 def train_ensemble(
-    XTR, YTR, XTS, YTS, model_name="ensembleSVM", params=None, output_path=None, keras=True,
+    XTR,
+    YTR,
+    XTS,
+    YTS,
+    model_name="ensembleSVM",
+    params=None,
+    output_path=None,
+    keras=True,
 ):
     """Build, compile and fit an ensemble model with regression test data and image input arrays.
 
@@ -317,9 +319,7 @@ if __name__ == "__main__":
         usage="python -m spacekit.skopes.hst.svm.train svm_train.csv path/to/img",
     )
     parser.add_argument("data_file", type=str, help="path to training data csv file(s)")
-    parser.add_argument(
-        "img_path", type=str, help="path to png images parent directory"
-    )
+    parser.add_argument("img_path", type=str, help="path to png images parent directory")
     parser.add_argument(
         "-s",
         "--image_size",
@@ -327,9 +327,7 @@ if __name__ == "__main__":
         default=128,
         help="image pixel size (single value assigned to width and height)",
     )
-    parser.add_argument(
-        "-m", "--model_name", type=str, default="ensembleSVM", help="name to give model"
-    )
+    parser.add_argument("-m", "--model_name", type=str, default="ensembleSVM", help="name to give model")
     parser.add_argument(
         "-o",
         "--output_path",
@@ -361,9 +359,7 @@ if __name__ == "__main__":
         default=1,
         help="evaluate model with validation sample",
     )
-    parser.add_argument(
-        "-p", "--plots", type=int, default=0, help="draw model performance plots"
-    )
+    parser.add_argument("-p", "--plots", type=int, default=0, help="draw model performance plots")
     args = parser.parse_args()
     if args.validate == 1:
         v = 0.85

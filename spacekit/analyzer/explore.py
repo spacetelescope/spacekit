@@ -15,6 +15,7 @@ except ImportError:
 try:
     import matplotlib as mpl
     import matplotlib.pyplot as plt
+
     font_dict = {"family": "monospace", "size": 16}
     mpl.rc("font", **font_dict)
     styles = ["seaborn-bright", "seaborn-v0_8-bright"]
@@ -360,9 +361,7 @@ class DataPlots:
         for c in self.classes:
             mu, ste = [], []
             for k in list(self.gkeys.keys()):
-                data = self.df[
-                    (self.df[self.target] == c) & (self.df[self.group] == k)
-                ][feature]
+                data = self.df[(self.df[self.target] == c) & (self.df[self.group] == k)][feature]
                 mu.append(np.mean(data))
                 ste.append(np.std(data) / np.sqrt(len(data)))
             means.append(mu)
@@ -399,9 +398,7 @@ class DataPlots:
         if self.save_html:
             if not os.path.exists(self.save_html):
                 os.makedirs(self.save_html, exist_ok=True)
-            pyo.plot(
-                fig, filename=f"{self.save_html}/{figtype}_{self.name1}_vs_{self.name2}"
-            )
+            pyo.plot(fig, filename=f"{self.save_html}/{figtype}_{self.name1}_vs_{self.name2}")
         return fig
 
     def make_scatter_figs(
@@ -641,9 +638,7 @@ class DataPlots:
         traces = []
         for key, value in self.gkeys.items():
             dx = groups.get_group(key).value_counts()
-            trace = go.Bar(
-                x=dx.index, y=dx, name=value.upper(), marker=dict(color=cmap[key])
-            )
+            trace = go.Bar(x=dx.index, y=dx, name=value.upper(), marker=dict(color=cmap[key]))
             traces.append(trace)
         layout = go.Layout(title=f"{target.title()} by {self.group.title()}")
         fig = go.Figure(data=traces, layout=layout)
@@ -715,12 +710,8 @@ class HstSvmPlots(DataPlots):
         return self.bar
 
     def alignment_scatters(self):
-        rms_scatter = self.make_scatter_figs(
-            "rms_ra", "rms_dec", categories=self.categories
-        )
-        source_scatter = self.make_scatter_figs(
-            "point", "segment", categories=self.categories
-        )
+        rms_scatter = self.make_scatter_figs("rms_ra", "rms_dec", categories=self.categories)
+        source_scatter = self.make_scatter_figs("point", "segment", categories=self.categories)
         self.scatter = {"rms_ra_dec": rms_scatter, "point_segment": source_scatter}
         return self.scatter
 
@@ -847,9 +838,7 @@ class HstCalPlots(DataPlots):
         self.scatter3 = {}
         for z in self.continuous:
             data = self.df[[x, y, z, "instr_key"]]
-            scat3d = super().scatter3d(
-                x, y, z, mask=data, target="instr_key", width=700, height=700
-            )
+            scat3d = super().scatter3d(x, y, z, mask=data, target="instr_key", width=700, height=700)
             self.scatter3[z] = scat3d
 
     def make_box_figs(self, vars):
@@ -1031,9 +1020,7 @@ class SignalPlots:
         if save_for_ML is True:
             # turn off everything except pixel grid
             fig, ax = plt.subplots(figsize=(10, 10), frameon=False)
-            fig, freqs, t, m = plt.specgram(
-                signal, Fs=Fs, NFFT=NFFT, mode=mode, cmap=cmap
-            )
+            fig, freqs, t, m = plt.specgram(signal, Fs=Fs, NFFT=NFFT, mode=mode, cmap=cmap)
             ax.axis(False)
             ax.show()
 
@@ -1050,9 +1037,7 @@ class SignalPlots:
 
         else:
             fig, ax = plt.subplots(figsize=(13, 11))
-            fig, freqs, t, m = plt.specgram(
-                signal, Fs=Fs, NFFT=NFFT, mode=mode, cmap=cmap
-            )
+            fig, freqs, t, m = plt.specgram(signal, Fs=Fs, NFFT=NFFT, mode=mode, cmap=cmap)
             plt.colorbar()
             if units is None:
                 units = ["Wavelength (λ)", "Frequency (ν)"]
@@ -1109,9 +1094,7 @@ class SignalPlots:
 
             # use box least squares to estimate period
             if error is True:  # if error col data available
-                periodogram = BoxLeastSquares.from_timeseries(
-                    ts, "sap_flux", "sap_flux_err"
-                )
+                periodogram = BoxLeastSquares.from_timeseries(ts, "sap_flux", "sap_flux_err")
             else:
                 periodogram = BoxLeastSquares.from_timeseries(ts, "sap_flux")
             if snr is True:
@@ -1180,9 +1163,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("dataset", type=str, help="path to dataframe (csv file)")
     parser.add_argument("index", type=str, default="index", help="index column name")
-    parser.add_argument(
-        "-e", "--example", type=str, choices=["svm", "cal"], help="run example demo"
-    )
+    parser.add_argument("-e", "--example", type=str, choices=["svm", "cal"], help="run example demo")
     args = parser.parse_args()
     dataset = args.dataset
     index = args.index

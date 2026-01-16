@@ -4,6 +4,7 @@ import glob
 import pandas as pd
 import numpy as np
 import json
+
 # import pickle
 from zipfile import ZipFile
 import time
@@ -68,9 +69,7 @@ def find_local_dataset(source_path, fname=None, date_key=None):
                     print(f"Found matching dataset: {f}")
         fpath = fpath[-1]
     else:
-        print(
-            "No datasets found :( \n Check the source_path exists and there's a .csv file in one of its subdirectories."
-        )
+        print("No datasets found :( \n Check the source_path exists and there's a .csv file in one of its subdirectories.")
         sys.exit(1)
     return fpath
 
@@ -131,9 +130,7 @@ def stratified_splits(df, target="label", v=0.85):
     seed = np.random.randint(1, 42)
     y = df[target]
     X = df.drop(target, axis=1, inplace=False)
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, shuffle=True, stratify=y, random_state=seed
-    )
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=True, stratify=y, random_state=seed)
     X_val, y_val = np.asarray([]), np.asarray([])
     if v > 0:
         try:
@@ -328,15 +325,9 @@ class ImageIO:
         tuples of arrays
             train, test, val tuples of arrays
         """
-        (X_train, X_test, X_val) = self.load_npz(
-            npz_file=X, keys=["X_train", "X_test", "X_val"]
-        )
-        (y_train, y_test, y_val) = self.load_npz(
-            npz_file=y, keys=["y_train", "y_test", "y_val"]
-        )
-        (train_idx, test_idx, val_idx) = self.load_npz(
-            npz_file=i, keys=["train_idx", "test_idx", "val_idx"]
-        )
+        (X_train, X_test, X_val) = self.load_npz(npz_file=X, keys=["X_train", "X_test", "X_val"])
+        (y_train, y_test, y_val) = self.load_npz(npz_file=y, keys=["y_train", "y_test", "y_val"])
+        (train_idx, test_idx, val_idx) = self.load_npz(npz_file=i, keys=["train_idx", "test_idx", "val_idx"])
         train = (train_idx, X_train, y_train)
         test = (test_idx, X_test, y_test)
         val = (val_idx, X_val, y_val)
@@ -353,12 +344,8 @@ class ImageIO:
             test_idx=test[0],
             val_idx=val[0],
         )
-        np.savez(
-            f"{data_path}/images.npz", X_train=train[1], X_test=test[1], X_val=val[1]
-        )
-        np.savez(
-            f"{data_path}/labels.npz", y_train=train[2], y_test=test[2], y_val=val[2]
-        )
+        np.savez(f"{data_path}/images.npz", X_train=train[1], X_test=test[1], X_val=val[1])
+        np.savez(f"{data_path}/labels.npz", y_train=train[2], y_test=test[2], y_val=val[2])
 
     def split_arrays(self, data, t=0.6, v=0.85):
         """Split arrays into test and validation sample groups.
@@ -470,9 +457,7 @@ class SVMImageIO(ImageIO):
         v: float, optional
             size ratio for validation set, by default 0.85
         """
-        super().__init__(
-            img_path, format=format, data=data, name="SVMImageIO", **log_kws
-        )
+        super().__init__(img_path, format=format, data=data, name="SVMImageIO", **log_kws)
         self.w = w
         self.h = h
         self.d = d
@@ -492,9 +477,7 @@ class SVMImageIO(ImageIO):
                 train, test, val = self.load_from_data_splits(*X)
             elif self.format == "npz":
                 train, test, val = super().split_arrays_from_npz(v=self.v)
-                X, y = super().split_df_from_arrays(
-                    train, test, val, target=self.target
-                )
+                X, y = super().split_df_from_arrays(train, test, val, target=self.target)
             return (X, y), (train, test, val)
 
     def load_from_data_splits(self, X_train, X_test, X_val):
@@ -850,15 +833,13 @@ def load_multitype_data(input_path, index_names=["index", "ipst"]):
         elif not sfx:
             if os.path.isfile(f):
                 print(
-                        "Use of Pickle for results files is no longer supported."
-                        "Please re-save results using `save_multitype_data` and "
-                        "try again. Supported types: .npy, .npz, .csv, .json, .txt"
+                    "Use of Pickle for results files is no longer supported."
+                    "Please re-save results using `save_multitype_data` and "
+                    "try again. Supported types: .npy, .npz, .csv, .json, .txt"
                 )
                 raise ModuleNotFoundError
         else:
-            print(
-                f"Unrecognized file format: {sfx}. Allowed types are: csv, txt, json, npy, npz."
-            )
+            print(f"Unrecognized file format: {sfx}. Allowed types are: csv, txt, json, npy, npz.")
     return outputs
 
 

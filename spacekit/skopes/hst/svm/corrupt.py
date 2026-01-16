@@ -3,10 +3,11 @@ CRVAL1 and CRVAL2 give the center coordinate as right ascension and declination 
 
 CRPIX1 and CRPIX2 are the pixel coordinates of the reference point to which the projection and the rotation refer.
 
-The default corruption method is on CRVAL1 and/or CRVAL2 only. Corruption can also be performed on CRPIX values; this would allow 
+The default corruption method is on CRVAL1 and/or CRVAL2 only. Corruption can also be performed on CRPIX values; this would allow
 a machine learning algorithm to be trained on an alternative (albeit more rare) cause of single visit mosaic misalignment.
 
 """
+
 import os
 import sys
 import argparse
@@ -21,16 +22,12 @@ from spacekit.analyzer.track import stopwatch
 try:
     from drizzlepac import runsinglehap
 except ImportError:
-    raise ValueError(
-        "Running this script requires drizzlepac to be installed. Run `pip install drizzlepac` then try again."
-    )
+    raise ValueError("Running this script requires drizzlepac to be installed. Run `pip install drizzlepac` then try again.")
 try:
     from tqdm import tqdm
     from progressbar import ProgressBar
 except ImportError:
-    raise ValueError(
-        "tqdm and/or progressbar is not installed. Use `pip install spacekit[x]`"
-    )
+    raise ValueError("tqdm and/or progressbar is not installed. Use `pip install spacekit[x]`")
 
 
 SVM_QUALITY_TESTING = "on"

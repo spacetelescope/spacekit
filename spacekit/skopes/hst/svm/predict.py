@@ -1,17 +1,18 @@
 """
-This module generates predictions using a pre-trained ensemble neural network for unlabeled SVM regression test data and 
-alignment images. The ensemble model is a combination of two neural networks: a MultiLayerPerceptron (for regression test data) 
+This module generates predictions using a pre-trained ensemble neural network for unlabeled SVM regression test data and
+alignment images. The ensemble model is a combination of two neural networks: a MultiLayerPerceptron (for regression test data)
 and a 3D Image Convolutional Neural Network (CNN). The script includes functions for the following steps:
 
 1. load and prep the data and images for ML
 2. load the saved model and generate predictions
 3. save predictions and summary statistics to disk
 
-This script (and/or its functions) should be used in conjunction with spacekit.skopes.hst.svm.prep if using raw data (since both 
-the regression test dataframe for MLP and the png images for the CNN need to be created first). Once a model has been trained 
-using the spacekit.skopes.hst.svm.train script, it is saved to disk and can be loaded for use here to generate predictions on 
+This script (and/or its functions) should be used in conjunction with spacekit.skopes.hst.svm.prep if using raw data (since both
+the regression test dataframe for MLP and the png images for the CNN need to be created first). Once a model has been trained
+using the spacekit.skopes.hst.svm.train script, it is saved to disk and can be loaded for use here to generate predictions on
 unlabeled data.
 """
+
 # from zipfile import ZipFile
 # import tensorflow as tf
 import numpy as np
@@ -134,7 +135,7 @@ def classification_report(df, output_path, group=None):
         for d, i in DETECTOR_KEY.items():
             if i in cmp:
                 # some alignments from this detector were suspicious
-                print(f"{d}\t{cmp[i]} \t ({T[i]}) \t {np.round((cmp[i]/T[i])*100, 1)}%")
+                print(f"{d}\t{cmp[i]} \t ({T[i]}) \t {np.round((cmp[i] / T[i]) * 100, 1)}%")
             elif i in T:
                 # no alignments from this detector were suspicious
                 print(f"{d}\t0 \t ({T[i]}) \t 0%")
@@ -214,9 +215,7 @@ def predict_alignment(
         Name for this group of data (for classification report), e.g. SVM-2021-11-02
     """
     builder = BuilderEnsemble(model_path=model_path)
-    builder.load_saved_model(
-        arch="svm_align", extract_to=extract_to, keras_archive=True
-    )
+    builder.load_saved_model(arch="svm_align", extract_to=extract_to, keras_archive=True)
     builder.find_tx_file()
     X = load_mixed_inputs(data_file, img_path, tx=builder.tx_file, size=size, norm=norm)
     preds = classify_alignments(X, builder.model, output_path=output_path, group=group)
@@ -234,9 +233,7 @@ if __name__ == "__main__":
         default="svm_data.csv",
         help="path to preprocessed mosaic data csv file",
     )
-    parser.add_argument(
-        "img_path", type=str, help="path to png images parent directory"
-    )
+    parser.add_argument("img_path", type=str, help="path to png images parent directory")
     parser.add_argument(
         "-m",
         "--model_path",

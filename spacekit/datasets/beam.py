@@ -22,6 +22,7 @@ download(scrape="s3:mybucketname", "2021-11-04-1636048291,2021-10-28-1635457222,
 
 archive: json filepath containing metadata structured similar to dictionaries in ``spacekit.datasets.meta``
 """
+
 import argparse
 import sys
 import os
@@ -38,7 +39,7 @@ def download(scrape="file:data", datasets="2022-02-14,2021-11-04,2021-10-28", de
         cache_dir = os.path.abspath(dest.split("/")[0])
         cache_subdir = "/".join(dest.split("/")[1:])
     elif dest in [None, "none", "None"]:
-        cache_dir, cache_subdir ="~", "data"
+        cache_dir, cache_subdir = "~", "data"
     elif dest in [".", "data"]:
         cache_dir, cache_subdir = ".", "data"
     else:
@@ -62,25 +63,19 @@ def download(scrape="file:data", datasets="2022-02-14,2021-11-04,2021-10-28", de
             dd = {}
             for d in datasets:
                 dd[d] = cc["data"][d]
-            scraper = WebScraper(
-                cc["uri"], dd, cache_dir=cache_dir, cache_subdir=cache_subdir
-            )
+            scraper = WebScraper(cc["uri"], dd, cache_dir=cache_dir, cache_subdir=cache_subdir)
         else:
             SPACEKIT_LOG.error(
                 f"Must use custom json file or one of the spacekit collections: {list(spacekit_collections.keys())}"
             )
     elif src == "s3":
         SPACEKIT_LOG.info("Scraping S3")
-        scraper = S3Scraper(
-            archive, pfx=S3PREFIX, cache_dir=cache_dir, cache_subdir=cache_subdir
-        )
+        scraper = S3Scraper(archive, pfx=S3PREFIX, cache_dir=cache_dir, cache_subdir=cache_subdir)
         scraper.make_s3_keys(fnames=datasets)
     elif src == "file":
         SPACEKIT_LOG.info("Scraping local directory")
         p = [f"{archive}/*.zip", f"{archive}/*"]
-        scraper = FileScraper(
-            patterns=p, clean=False, cache_dir=cache_dir, cache_subdir=cache_subdir
-        )
+        scraper = FileScraper(patterns=p, clean=False, cache_dir=cache_dir, cache_subdir=cache_subdir)
     else:
         SPACEKIT_LOG.error("Unrecognized scrape arg. Must begin with web, s3, or file.")
     if scraper:
