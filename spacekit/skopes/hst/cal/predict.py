@@ -17,8 +17,8 @@ This module loads a pre-trained ANN to predict job resource requirements for HST
 # 3 - load models and generate predictions
 # 4 - return preds as json to parent lambda function
 
-MEMORY BIN: classifier predicts which of 4 memory bins is most likely to be needed to process an HST dataset (ipppssoot) 
-successfully. The probabilities of each bin are output to Cloudwatch logs and the highest bin probability is returned to the 
+MEMORY BIN: classifier predicts which of 4 memory bins is most likely to be needed to process an HST dataset (ipppssoot)
+successfully. The probabilities of each bin are output to Cloudwatch logs and the highest bin probability is returned to the
 Calcloud job submit lambda invoking this one. Bin sizes are as follows:
 
 Memory Bins:
@@ -27,13 +27,14 @@ Memory Bins:
 2: 8-16GB
 3: >16GB
 
-WALLCLOCK REGRESSION: regression generates estimate for specific number of seconds needed to process the dataset using the same 
-input data. This number is then tripled in Calcloud for the sake of creating an extra buffer of overhead in order to prevent 
+WALLCLOCK REGRESSION: regression generates estimate for specific number of seconds needed to process the dataset using the same
+input data. This number is then tripled in Calcloud for the sake of creating an extra buffer of overhead in order to prevent
 larger jobs from being killed unnecessarily.
 
-MEMORY REGRESSION: A third regression model is used to estimate the actual value of memory needed for the job. This is mainly for 
+MEMORY REGRESSION: A third regression model is used to estimate the actual value of memory needed for the job. This is mainly for
 the purpose of logging/future analysis and is not currently being used for allocating memory in calcloud jobs.
 """
+
 import os
 import argparse
 import numpy as np
@@ -93,18 +94,14 @@ class Predict:
     def initialize_models(self):
         self.log.info("Initializing prediction models")
         if self.models is None and not os.path.exists(self.model_path):
-            self.log.warning(
-                f"models path not found: {self.model_path} - defaulting to latest in spacekit-collection"
-            )
+            self.log.warning(f"models path not found: {self.model_path} - defaulting to latest in spacekit-collection")
             self.model_path = None
         self.load_models(models=self.models)
 
     def scrape_s3_inputs(self):
         if self.key == "control":
             self.key = f"control/{self.dataset}/{self.dataset}_MemModelFeatures.txt"
-        self.input_data = S3Scraper(
-            bucket=self.bucket_name, pfx=self.key, **self.log_kws
-        ).import_dataset()
+        self.input_data = S3Scraper(bucket=self.bucket_name, pfx=self.key, **self.log_kws).import_dataset()
 
     def normalize_inputs(self):
         if self.norm:
@@ -123,30 +120,22 @@ class Predict:
             self.scrape_s3_inputs()
         self.log.info(f"dataset: {self.dataset} keys: {self.input_data}")
         self.log.info("Preprocessing features")
-        self.inputs = HstCalScrubber(
-            data={self.dataset: self.input_data}, **self.log_kws
-        ).scrub_inputs()
+        self.inputs = HstCalScrubber(data={self.dataset: self.input_data}, **self.log_kws).scrub_inputs()
         self.log.info(f"dataset: {self.dataset} features: {self.inputs}")
         self.normalize_inputs()
 
     def load_models(self, models={}):
         self.mem_clf = models.get(
             "mem_clf",
-            load_pretrained_model(
-                model_path=self.model_path, name="mem_clf", **self.log_kws
-            ),
+            load_pretrained_model(model_path=self.model_path, name="mem_clf", **self.log_kws),
         )
         self.wall_reg = models.get(
             "wall_reg",
-            load_pretrained_model(
-                model_path=self.model_path, name="wall_reg", **self.log_kws
-            ),
+            load_pretrained_model(model_path=self.model_path, name="wall_reg", **self.log_kws),
         )
         self.mem_reg = models.get(
             "mem_reg",
-            load_pretrained_model(
-                model_path=self.model_path, name="mem_reg", **self.log_kws
-            ),
+            load_pretrained_model(model_path=self.model_path, name="mem_reg", **self.log_kws),
         )
         if self.model_path is None:
             self.model_path = os.path.dirname(self.mem_clf.model_path)
@@ -191,9 +180,7 @@ def lambda_handler(event, context):
     pre-trained neural networks. This lambda is invoked from the Job Submit lambda which json.dumps the s3 bucket and key to the
     file containing job input parameters. The path to the text file in s3 assumes the following format: `control/ipppssoot/
     ipppssoot_MemModelFeatures.txt`."""
-    MODEL_PATH = os.environ.get(
-        "MODEL_PATH", "./models"
-    )  # "data/2022-02-14-1644848448/models"
+    MODEL_PATH = os.environ.get("MODEL_PATH", "./models")  # "data/2022-02-14-1644848448/models"
     TX_FILE = os.path.join(MODEL_PATH, "tx_data.json")
     # load models here for warm starts in aws lambda
     mem_clf = load_pretrained_model(model_path=MODEL_PATH, name="mem_clf")
@@ -213,9 +200,7 @@ def lambda_handler(event, context):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        prog="spacekit", usage="spacekit.skopes.hst.cal.predict dataset"
-    )
+    parser = argparse.ArgumentParser(prog="spacekit", usage="spacekit.skopes.hst.cal.predict dataset")
     parser.add_argument(
         "dataset",
         type=str,

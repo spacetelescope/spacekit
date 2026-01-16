@@ -21,6 +21,7 @@ try:
     import plotly.graph_objects as go
     import matplotlib as mpl
     import matplotlib.pyplot as plt
+
     font_dict = {"family": "monospace", "size": 16}  # Titillium Web
     mpl.rc("font", **font_dict)
     styles = ["seaborn-bright", "seaborn-v0_8-bright"]
@@ -238,9 +239,7 @@ class Computer(object):
         """
         self.y_scores = self.model.predict(self.X_test)
         if self.y_scores.shape[1] < 2:
-            self.y_scores = np.concatenate(
-                [np.round(1 - self.y_scores), np.round(self.y_scores)], axis=1
-            )
+            self.y_scores = np.concatenate([np.round(1 - self.y_scores), np.round(self.y_scores)], axis=1)
         return self.y_scores
 
     def acc_loss_scores(self):
@@ -312,17 +311,11 @@ class Computer(object):
         ax = axes[0]
         ax.plot(thresholds, 1.0 - fpr)
         ax.plot(thresholds, tpr)
-        ax.set_title(
-            "Crossover at {0:.2f}, Specificity {1:.2f}".format(
-                crossover_cutoff, crossover_specificity
-            )
-        )
+        ax.set_title("Crossover at {0:.2f}, Specificity {1:.2f}".format(crossover_cutoff, crossover_specificity))
 
         ax = axes[1]
         ax.plot(fpr, tpr)
-        ax.set_title(
-            "ROC area under curve: {0:.2f}".format(roc_auc_score(y_true, y_hat))
-        )
+        ax.set_title("ROC area under curve: {0:.2f}".format(roc_auc_score(y_true, y_hat)))
         if self.show:
             fig.show()
 
@@ -383,7 +376,7 @@ class Computer(object):
                 continue
 
     def make_regression_dummies(self, **kwargs):
-        y_true = [self.get_bin_estimate(t, **kwargs) for t in self.predictions[:,1]]
+        y_true = [self.get_bin_estimate(t, **kwargs) for t in self.predictions[:, 1]]
         y_scores = [self.get_bin_estimate(p, **kwargs) for p in self.predictions[:, 0]]
         y_onehot = pd.get_dummies(y_true, drop_first=False, dtype=int, prefix="bin")
         self.y_pred_dummies = pd.get_dummies(y_scores, drop_first=False, dtype=int, prefix="bin")
@@ -560,7 +553,7 @@ class Computer(object):
         Parameters
         ----------
         desc: str, optional
-            Append custom text to title 
+            Append custom text to title
 
         Returns
         -------
@@ -574,13 +567,11 @@ class Computer(object):
             np_config.enable_numpy_behavior()
             y = self.y_test.reshape(1, -1)
             p = self.y_pred
-        
+
         title = "Residual Error"
         if desc:
             title += f" - {desc}"
-        data = go.Scatter(
-            x=y, y=p, name="y-y_hat", mode="markers", marker=dict(color="red")
-        )
+        data = go.Scatter(x=y, y=p, name="y-y_hat", mode="markers", marker=dict(color="red"))
         layout = go.Layout(
             title=title,
             xaxis={"title": "y (ground truth)"},
@@ -794,9 +785,7 @@ class ComputeClassifier(Computer):
         try:
             conf_idx = np.where(self.y_pred != self.test_idx.values)
         except AttributeError as e:
-            print(
-                f"Test/Val Index should be a pandas series, not {type(self.test_idx)}"
-            )
+            print(f"Test/Val Index should be a pandas series, not {type(self.test_idx)}")
             print(e)
             return
         pred_proba = np.asarray(self.model.predict(self.X_test).flatten(), "float32")
@@ -951,9 +940,7 @@ class ComputeMulti(ComputeClassifier):
         )
         self.roc_auc = self.roc_auc_multi()
         self.acc_loss = self.acc_loss_scores()
-        self.cmx = confusion_matrix(
-            np.argmax(self.y_test, axis=-1), np.argmax(self.y_pred, axis=-1)
-        )
+        self.cmx = confusion_matrix(np.argmax(self.y_test, axis=-1), np.argmax(self.y_pred, axis=-1))
         self.cmx_norm = self.fusion_matrix(self.cmx, self.classes)[1]
         self.fnfp = self.fnfp_multi()
         if show_summary:
@@ -1009,9 +996,7 @@ class ComputeMulti(ComputeClassifier):
         try:
             conf_idx = np.where(preds != actual)[0]
         except AttributeError as e:  # can probably remove this
-            print(
-                f"Test/Val Index should be a pandas series, not {type(self.test_idx)}"
-            )
+            print(f"Test/Val Index should be a pandas series, not {type(self.test_idx)}")
             print(e)
             return
         pred_proba = np.amax(self.y_scores, axis=-1)

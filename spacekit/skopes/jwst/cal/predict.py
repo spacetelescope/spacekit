@@ -8,6 +8,7 @@ Program (PID) of exposures comes into pipeline
 6. load model
 7. run inference
 """
+
 import os
 import argparse
 import numpy as np
@@ -24,6 +25,7 @@ from spacekit.builder.architect import Builder
 
 global JWST_CAL_MODELS
 JWST_CAL_MODELS = {}
+
 
 def load_pretrained_model(**builder_kwargs):
     """_summary_
@@ -121,9 +123,7 @@ class JwstCalPredict:
         """
         self.log.info("Initializing prediction models...")
         if self.models is None and not os.path.exists(self.model_path):
-            self.log.warning(
-                f"models path not found: {self.model_path} - defaulting to latest in spacekit-collection"
-            )
+            self.log.warning(f"models path not found: {self.model_path} - defaulting to latest in spacekit-collection")
             self.model_path = None
         if JWST_CAL_MODELS:
             self.models = JWST_CAL_MODELS
@@ -150,9 +150,7 @@ class JwstCalPredict:
         if self.norm:
             self.log.info(f"Applying normalization [{order}]...")
             tx_file = self.tx_file.format(order.lower())
-            Px = PowerX(
-                inputs, cols=norm_cols, tx_file=tx_file, rename=None, join_data=1
-            )
+            Px = PowerX(inputs, cols=norm_cols, tx_file=tx_file, rename=None, join_data=1)
             X = Px.Xt
             self.tx_data = Px.tx_data
             self.log.debug(f"tx_data: {self.tx_data}")
@@ -167,7 +165,7 @@ class JwstCalPredict:
         """Verifies input path exists and checks if file or directory.
         If input_path is a directory, check/set self.pid value
         If self.obs is not None, validate format (1-3 digits) and append to self.pid
-        If input_path is a file, any files matching first 9 chars and suffix 
+        If input_path is a file, any files matching first 9 chars and suffix
         (typically detector, e.g. "nrcb4_uncal.fits")
         found in the same directory will be included automatically (assumes
         standard naming convention of JWST input exposures).
@@ -188,20 +186,19 @@ class JwstCalPredict:
             self.pid = prefix
             return
         if self.pid is not None:
-            self.pid = 'jw{:0>5}'.format(str(self.pid).lstrip('jw'))
+            self.pid = "jw{:0>5}".format(str(self.pid).lstrip("jw"))
             if self.obs:
                 try:
-                    self.obs = '{:0>3}'.format(int(self.obs))
+                    self.obs = "{:0>3}".format(int(self.obs))
                 except ValueError:
-                    self.obs = ''
+                    self.obs = ""
                 self.pid += self.obs
         else:
             self.pid = ""
             return
 
     def preprocess(self):
-        """Runs necessary preprocessing steps on input exposure data prior to inference.
-        """
+        """Runs necessary preprocessing steps on input exposure data prior to inference."""
         self.input_data = dict(
             IMAGE=None,
             SPEC=None,
@@ -245,15 +242,11 @@ class JwstCalPredict:
         # )
         self.img3_reg = models.get(
             "img3_reg",
-            load_pretrained_model(
-                model_path=self.model_path, name="img3_reg", **self.log_kws
-            ),
+            load_pretrained_model(model_path=self.model_path, name="img3_reg", **self.log_kws),
         )
         self.spec3_reg = models.get(
             "spec3_reg",
-            load_pretrained_model(
-                model_path=self.model_path, name="spec3_reg", **self.log_kws
-            ),
+            load_pretrained_model(model_path=self.model_path, name="spec3_reg", **self.log_kws),
         )
         if self.model_path is None:
             self.model_path = os.path.dirname(self.img3_reg.model_path)
@@ -281,7 +274,7 @@ class JwstCalPredict:
     #     for i, _ in enumerate(X):
     #         self.predictions[product_index[i]] = {
     #             "imgBin": imgbin[0]
-    #         } 
+    #         }
     #         self.probabilities[product_index[i]] = {"probabilities": pred_proba[0]}
     #     # self.log.info(f"probabilities: {self.probabilities}")
 
@@ -307,8 +300,7 @@ class JwstCalPredict:
         return pred
 
     def run_image_inference(self):
-        """Run inference for L3 Image exposure datasets
-        """
+        """Run inference for L3 Image exposure datasets"""
         input_data = self.input_data.get("IMAGE", None)
         X = self.inputs.get("IMAGE", None)
         if X is None or input_data is None:
@@ -320,13 +312,10 @@ class JwstCalPredict:
             rpred = np.round(float(np.squeeze(imgsize[i])), 2)
             if rpred > 990.0:
                 rpred = 990.0  # cap at 990 GB
-            self.predictions[product_index[i]] = {
-                "gbSize": rpred
-            }
+            self.predictions[product_index[i]] = {"gbSize": rpred}
 
     def run_spec_inference(self):
-        """Run inference for L3 Spectroscopy exposure datasets
-        """
+        """Run inference for L3 Spectroscopy exposure datasets"""
         input_data = self.input_data.get("SPEC", None)
         X = self.inputs.get("SPEC", None)
         if X is None or input_data is None:
@@ -334,18 +323,15 @@ class JwstCalPredict:
         self.log.info("Estimating memory footprints : L3 SPEC")
         product_index = list(input_data.index)
         imgsize = self.regressor(self.spec3_reg.model, X)
-        
+
         for i, _ in enumerate(X):
             rpred = np.round(float(np.squeeze(imgsize[i])), 2)
             if rpred > 990.0:
                 rpred = 990.0  # cap at 900 GB
-            self.predictions[product_index[i]] = {
-                "gbSize": rpred
-            }
+            self.predictions[product_index[i]] = {"gbSize": rpred}
 
     def run_inference(self):
-        """Main calling function to preprocess input exposures and generate estimated memory footprints.
-        """
+        """Main calling function to preprocess input exposures and generate estimated memory footprints."""
         if not self.inputs:
             self.preprocess()
         if self.img3_reg:
@@ -363,9 +349,7 @@ def predict_handler(input_path, **kwargs):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        prog="spacekit", usage="spacekit.skopes.jwst.cal.predict input_path"
-    )
+    parser = argparse.ArgumentParser(prog="spacekit", usage="spacekit.skopes.jwst.cal.predict input_path")
     parser.add_argument(
         "input_path",
         type=str,

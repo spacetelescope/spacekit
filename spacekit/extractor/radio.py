@@ -17,6 +17,7 @@ try:
 except ImportError:
     ProgressBar = None
 
+
 def check_astroquery():
     return Observations is not None
 
@@ -103,9 +104,7 @@ class Radio:
         obs_collection, t_exptime, target_classification
         """
         if self.collection and self.exptime:
-            want = (obs["obs_collection"] == self.collection) & (
-                obs["t_exptime"] == self.exptime
-            )
+            want = (obs["obs_collection"] == self.collection) & (obs["t_exptime"] == self.exptime)
         elif obsid:
             want = obs["obsid"] == obsid
 
@@ -178,9 +177,7 @@ class Radio:
             # )
             want = self.set_product_params(obs)
             data_prod = Observations.get_product_list(obs[want])
-            filt_prod = Observations.filter_products(
-                data_prod, productSubGroupDescription=self.subgroup
-            )
+            filt_prod = Observations.filter_products(data_prod, productSubGroupDescription=self.subgroup)
             try:
                 uri = Observations.get_cloud_uris(filt_prod)
                 self.s3_uris.append(uri)
@@ -207,9 +204,7 @@ class Radio:
             key = U.replace("s3://stpubdata/", "")
             root = U.split("/")[-1]
             try:
-                self.bucket.download_file(
-                    key, root, ExtraArgs={"RequestPayer": "requester"}
-                )
+                self.bucket.download_file(key, root, ExtraArgs={"RequestPayer": "requester"})
                 count += 1
                 self.science_files.append(root)
             except FileExistsError:
@@ -220,13 +215,9 @@ class Radio:
     def mast_download(self):
         """Download datasets from MAST"""
         if self.obsid is None:
-            query_params = self.set_query_params(
-                proposal_id=self.proposal_id, filters=self.filters
-            )
+            query_params = self.set_query_params(proposal_id=self.proposal_id, filters=self.filters)
         else:
-            query_params = self.set_query_params(
-                proposal_id=self.proposal_id, filters=self.filters, obsid=self.obsid
-            )
+            query_params = self.set_query_params(proposal_id=self.proposal_id, filters=self.filters, obsid=self.obsid)
         obs = Observations.query_criteria(**query_params)
         Observations.download_products(
             obs["obsid"],
@@ -235,9 +226,7 @@ class Radio:
             productSubGroupDescription=self.subgroup,
         )
 
-        files = glob.glob(
-            os.path.join(os.curdir, "science", "mastDownload", "HST", "*", "*fits")
-        )
+        files = glob.glob(os.path.join(os.curdir, "science", "mastDownload", "HST", "*", "*fits"))
 
         for im in files:
             root = "./" + im.split("/")[-1]
@@ -262,17 +251,13 @@ class Radio:
         else:
             dec = 0
         if ra != 0:
-            obs = Observations.query_criteria(
-                proposal_id=prop_id, s_ra=[ra, ra + 0.1], s_dec=[dec, dec + 0.1]
-            )
+            obs = Observations.query_criteria(proposal_id=prop_id, s_ra=[ra, ra + 0.1], s_dec=[dec, dec + 0.1])
             targname = obs[np.where(obs["target_name"])]["target_name"]
             if len(targname) > 0:
                 targ = targname[0]
             else:
                 targ = "ANY"
-            category = obs[np.where(obs["target_classification"])][
-                "target_classification"
-            ]
+            category = obs[np.where(obs["target_classification"])]["target_classification"]
             if len(category) > 0:
                 cat = category[0]
             else:
@@ -330,9 +315,7 @@ class Radio:
             for x, (k, v) in zip(bar(range(len(data))), data.items()):
                 other_cat[k] = {}
                 propid, ra, dec = v[propid], v[ra], v[dec]
-                obs = Observations.query_criteria(
-                    proposal_id=propid, s_ra=[ra, ra + 0.1], s_dec=[dec, dec + 0.1]
-                )
+                obs = Observations.query_criteria(proposal_id=propid, s_ra=[ra, ra + 0.1], s_dec=[dec, dec + 0.1])
                 cat = obs[np.where(obs[datacol])][datacol]
                 if len(cat) > 0:
                     other_cat[k] = cat[0]
@@ -354,9 +337,7 @@ class HstSvmRadio(Radio):
     ``spacekit.preprocessor.scrub`` api for an example (or the astropy documentation).
     """
 
-    def __init__(
-        self, df, trg_col="targname", ra_col="ra_targ", dec_col="dec_targ", **log_kws
-    ):
+    def __init__(self, df, trg_col="targname", ra_col="ra_targ", dec_col="dec_targ", **log_kws):
         """Instantiates a spacekit.extractor.radio.HstSvmRadio object.
 
         Parameters
@@ -376,9 +357,7 @@ class HstSvmRadio(Radio):
         self.ra_col = ra_col
         self.dec_col = dec_col
         self.targets = self.df[self.trg_col].unique()
-        self.targ_any = self.df.loc[df[self.trg_col] == "ANY"][
-            [self.ra_col, self.dec_col]
-        ]
+        self.targ_any = self.df.loc[df[self.trg_col] == "ANY"][[self.ra_col, self.dec_col]]
         self.target_categories = {}
         self.other_cat = {}
         self.categories = {}
@@ -398,9 +377,7 @@ class HstSvmRadio(Radio):
         return self.df
 
     def backup_search(self, targ):
-        self.targ_any[targ] = self.df.loc[self.df[self.trg_col] == targ][
-            [self.ra_col, self.dec_col]
-        ]
+        self.targ_any[targ] = self.df.loc[self.df[self.trg_col] == targ][[self.ra_col, self.dec_col]]
 
     def combine_categories(self):
         """Combines the two dictionaries (``target_categories`` and ``other_cat``) and inserts back into the
@@ -416,9 +393,7 @@ class HstSvmRadio(Radio):
             for i in idx:
                 self.categories[i] = v
         self.categories.update(self.other_cat)
-        cat = pd.DataFrame.from_dict(
-            self.categories, orient="index", columns=["category"]
-        )
+        cat = pd.DataFrame.from_dict(self.categories, orient="index", columns=["category"])
         self.log.info("\nTarget Categories Assigned.")
         self.log.info(cat["category"].value_counts())
         self.df = self.df.join(cat, how="left")
@@ -444,14 +419,10 @@ class HstSvmRadio(Radio):
 
 
 class JwstCalRadio(Radio):
-
     def __init__(self, **log_kws):
         super().__init__(name="JwstCalRadio", **log_kws)
         self.product_matches = dict()
-        self.asn_kwargs = dict(
-                productSubGroupDescription=['ASN'],
-                productGroupDescription=['Minimum Recommended Products']
-        )
+        self.asn_kwargs = dict(productSubGroupDescription=["ASN"], productGroupDescription=["Minimum Recommended Products"])
         self.errs = {}
         self.verbose = False
 
@@ -463,7 +434,7 @@ class JwstCalRadio(Radio):
             self.log.info(f"Querying MAST for {len(products)} L3 {exptype} products")
             self.product_matches[exptype] = dict()
             self.errs[exptype] = dict()
-            spec = True if exptype == 'SPEC' else False
+            spec = True if exptype == "SPEC" else False
             query_params = dict(wildcard=True, limit=1) if spec is True else {}
             for k in products:
                 try:
@@ -483,7 +454,7 @@ class JwstCalRadio(Radio):
         return self.product_matches
 
     def get_obsid(self, k, spec=False):
-        pattern = re.compile('t[0-9]{1,3}')
+        pattern = re.compile("t[0-9]{1,3}")
         if spec is False:
             trg = k.split("_")[1]
             m = re.match(pattern, trg)
@@ -492,10 +463,10 @@ class JwstCalRadio(Radio):
             else:
                 obsid = k + "*"
         else:
-            if k.split('_')[-2] == 'miri': # miri ifu
+            if k.split("_")[-2] == "miri":  # miri ifu
                 obsid = k + "ch*"
             else:
-                obsid = k+"*"
+                obsid = k + "*"
 
             trg = obsid.split("_")[1]
             if trg not in ["s*", "t*"]:
@@ -509,44 +480,44 @@ class JwstCalRadio(Radio):
         self.log.warning(f"No results found for {k}")
 
     def run_query(self, obsid, wildcard=False, limit=0):
-        filt_prod = [] 
+        filt_prod = []
         targname = None
         obs = Observations.query_criteria(obs_id=obsid)
         if len(obs) == 0 and wildcard is True:
             obs = self.wildcard_query(obsid)
         if len(obs) > 1 and limit > 0:
-            source_ids = sorted([o['obs_id'] for o in obs])
+            source_ids = sorted([o["obs_id"] for o in obs])
             # limit to first result
             obsid = source_ids[0]
             obs = Observations.query_criteria(obs_id=obsid)
         if len(obs) > 0:
             try:
-                targname = obs['target_name'][0]
+                targname = obs["target_name"][0]
             except Exception:
                 targname = None
-            data_prod = Observations.get_product_list(obs['obsid'])
+            data_prod = Observations.get_product_list(obs["obsid"])
             filt_prod = Observations.filter_products(data_prod, **self.asn_kwargs)
 
         return filt_prod, targname
 
     def wildcard_query(self, obsid):
         if len(obsid.split("s*")) > 1:
-            wild = obsid.split("s*") # s00001
+            wild = obsid.split("s*")  # s00001
         elif len(obsid.split("t*")) > 1:
             wild = obsid.split("t*")
         else:
             wild = None
         if wild:
-            obsid_wild = '*'.join(wild)
+            obsid_wild = "*".join(wild)
             obs = Observations.query_criteria(obs_id=obsid_wild)
         else:
             obs = []
         return obs
 
     def add_match(self, filt_prod, targname):
-        product = filt_prod['obs_id'][0]
-        asn_file = filt_prod['productFilename'][0]
-        asn_name = asn_file.replace('_asn.json', '')
+        product = filt_prod["obs_id"][0]
+        asn_file = filt_prod["productFilename"][0]
+        asn_name = asn_file.replace("_asn.json", "")
         match = dict(pname=product, asn=asn_name, TARGNAME=targname)
         return match
 
@@ -556,7 +527,7 @@ class JwstCalRadio(Radio):
         image_products = list(input_data["IMAGE"].index)
         self.log.info(f"Querying MAST for {len(image_products)} L3 image products")
         self.product_matches["IMAGE"] = dict()
-        self.errs['IMAGE'] = dict()
+        self.errs["IMAGE"] = dict()
         for k in image_products:
             try:
                 obsid = self.get_obsid(k)
@@ -567,9 +538,9 @@ class JwstCalRadio(Radio):
                     if self.verbose:
                         self.log.info(f"{k} = {match['pname']} = {match['asn']}")
                 else:
-                    self.log_error(k, 'IMAGE')
+                    self.log_error(k, "IMAGE")
             except Exception as e:
-                self.errs['IMAGE'][k] = str(e)
+                self.errs["IMAGE"][k] = str(e)
         nresults = len(self.product_matches["IMAGE"])
         self.log.info(f"{nresults} of {len(image_products)} matched.")
 
@@ -579,7 +550,7 @@ class JwstCalRadio(Radio):
         spec_products = list(input_data["SPEC"].index)
         self.log.info(f"Querying MAST for {len(spec_products)} L3 spec products")
         self.product_matches["SPEC"] = dict()
-        self.errs['SPEC'] = dict()
+        self.errs["SPEC"] = dict()
         for k in spec_products:
             try:
                 obsid = self.get_obsid(k, spec=True)
@@ -590,9 +561,9 @@ class JwstCalRadio(Radio):
                     if self.verbose:
                         self.log.info(f"{k} = {match['pname']} = {match['asn']}")
                 else:
-                    self.log_error(k, 'SPEC')
+                    self.log_error(k, "SPEC")
             except Exception as e:
-                self.errs['SPEC'][k] = str(e)
+                self.errs["SPEC"][k] = str(e)
         nresults = len(self.product_matches["SPEC"])
         self.log.info(f"{nresults} of {len(spec_products)} matched.")
 
@@ -602,7 +573,7 @@ class JwstCalRadio(Radio):
         tac_products = list(input_data["TAC"].index)
         self.log.info(f"Querying MAST for {len(tac_products)} L3 tac products")
         self.product_matches["TAC"] = dict()
-        self.errs['TAC'] = dict()
+        self.errs["TAC"] = dict()
         for k in tac_products:
             try:
                 obsid = self.get_obsid(k)
@@ -613,8 +584,8 @@ class JwstCalRadio(Radio):
                     if self.verbose:
                         self.log.info(f"{k} = {match['pname']} = {match['asn']}")
                 else:
-                    self.log_error(k, 'TAC')
+                    self.log_error(k, "TAC")
             except Exception as e:
-                self.errs['TAC'][k] = str(e)
+                self.errs["TAC"][k] = str(e)
         nresults = len(self.product_matches["TAC"])
         self.log.info(f"{nresults} of {len(tac_products)} matched.")

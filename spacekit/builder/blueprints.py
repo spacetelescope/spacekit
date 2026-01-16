@@ -179,7 +179,7 @@ class Blueprint:
             epochs=200,
             lr=1e-4,
             decay=[100000, 0.96],
-            early_stopping='val_rmse',
+            early_stopping="val_rmse",
             verbose=0,
         )
 
@@ -206,6 +206,6 @@ class Blueprint:
             epochs=200,
             lr=1e-4,
             decay=[100000, 0.96],
-            early_stopping='val_rmse',
+            early_stopping="val_rmse",
             verbose=0,
         )

@@ -8,9 +8,7 @@ mem_reg = NN["mem_reg"]
 wall_reg = NN["wall_reg"]
 
 
-def read_inputs(
-    n_files, total_mb, drizcorr, pctecorr, crsplit, subarray, detector, dtype, instr
-):
+def read_inputs(n_files, total_mb, drizcorr, pctecorr, crsplit, subarray, detector, dtype, instr):
     x_features = np.asarray(
         [
             n_files,
@@ -363,10 +361,7 @@ def node_bias_clicks(node):
 
 
 def nodes_edges(parent_nodes, node_groups, edge_pairs):
-    nodes = [
-        {"data": {"id": id, "label": label}, "classes": layerclass}
-        for id, label, layerclass in parent_nodes
-    ]
+    nodes = [{"data": {"id": id, "label": label}, "classes": layerclass} for id, label, layerclass in parent_nodes]
     nodes.extend(
         [
             {
@@ -376,19 +371,13 @@ def nodes_edges(parent_nodes, node_groups, edge_pairs):
             for id, label, parent, x, y in node_groups
         ]
     )
-    edges = [
-        {"data": {"source": source, "target": target, "weight": weight}}
-        for source, target, weight in edge_pairs
-    ]
+    edges = [{"data": {"source": source, "target": target, "weight": weight}} for source, target, weight in edge_pairs]
     return nodes, edges
 
 
 def initialize_nodes(parent_nodes, node_groups):
     # network layers (rectangles containing each group of neurons)
-    nodes = [
-        {"data": {"id": id, "label": label}, "classes": layerclass}
-        for id, label, layerclass in parent_nodes
-    ]
+    nodes = [{"data": {"id": id, "label": label}, "classes": layerclass} for id, label, layerclass in parent_nodes]
     # add input layer nodes (no classes)
     nodes.extend(
         [

@@ -2,11 +2,11 @@
 Spacekit HST "Calibration in the Cloud" (calcloud) Job Resource Allocation Model Training
 
 This script imports and preprocesses job metadata for the Hubble Space Telescope data calibration pipeline,
-which is then used as inputs to build, train and evaluate 3 neural networks for estimating AWS batch compute job resource 
+which is then used as inputs to build, train and evaluate 3 neural networks for estimating AWS batch compute job resource
 requirements.
 
-The networks include one multi-class classifier and two linear regression estimators. The classifier predicts which of 4 possible 
-memory bin sizes (and therefore compute instance type) is most appropriate for reprocessing a given ipppssoot (i.e. "job"). The 
+The networks include one multi-class classifier and two linear regression estimators. The classifier predicts which of 4 possible
+memory bin sizes (and therefore compute instance type) is most appropriate for reprocessing a given ipppssoot (i.e. "job"). The
 wallclock regressor estimates the maximum execution time ("wallclock" or "kill" time) in seconds needed to complete the job.
 
 Ex:
@@ -77,9 +77,7 @@ class Train:
         self.data = None
         self.model_objs = {}
         self.save_csv = None
-        self.dict_preds = dict(
-            mem_clf="bin_pred", mem_reg="mem_pred", wall_reg="wall_pred"
-        )
+        self.dict_preds = dict(mem_clf="bin_pred", mem_reg="mem_pred", wall_reg="wall_pred")
 
     def main(self):
         # TODO error handling / log msg
@@ -167,9 +165,7 @@ class Train:
             self.model_objects["wall_reg"] = {"builder": wall, "results": wcom}
 
     def build_fit(self, BuildClass, y_train, y_test, test_idx):
-        builder = BuildClass(
-            self.data.X_train, y_train, self.data.X_test, y_test, test_idx=test_idx
-        )
+        builder = BuildClass(self.data.X_train, y_train, self.data.X_test, y_test, test_idx=test_idx)
         builder.build()
         builder.fit()
         if self.model_path:
@@ -242,15 +238,11 @@ class Train:
         for m, c in self.dict_preds.items():
             if c == "bin_pred":
                 self.data.data[c] = np.argmax(
-                    self.model_objects[m]["builder"].model.predict(
-                        self.data.data[self.X_norm]
-                    ),
+                    self.model_objects[m]["builder"].model.predict(self.data.data[self.X_norm]),
                     axis=-1,
                 )
             else:
-                self.data.data[c] = self.model_objects[m]["builder"].model.predict(
-                    self.data.data[self.X_norm]
-                )
+                self.data.data[c] = self.model_objects[m]["builder"].model.predict(self.data.data[self.X_norm])
 
     def tt_pred(self):
         """Generates predictions for the training set and combines these
@@ -281,9 +273,7 @@ class Train:
                 )
             else:
                 test[c] = self.model_objects[m]["results"].y_pred
-                train[c] = self.model_objects[m]["builder"].model.predict(
-                    train[self.X_norm]
-                )
+                train[c] = self.model_objects[m]["builder"].model.predict(train[self.X_norm])
         for c in self.dict_preds.values():
             self.data.data.loc[self.data.data[test.index], c] = test[c]
             self.data.data.loc[self.data.data[train.index], c] = train[c]
@@ -376,9 +366,7 @@ def make_timestamp_path(timestamp):
     elif isinstance(timestamp, int) or isinstance(timestamp, float):
         train_time = dt.datetime.fromtimestamp(timestamp)
     else:
-        print(
-            f"Timestamp type must be a string (datetime, isoformat) or int/float (timestamp). You passed {type(timestamp)}."
-        )
+        print(f"Timestamp type must be a string (datetime, isoformat) or int/float (timestamp). You passed {type(timestamp)}.")
         raise ValueError
     t0 = train_time.timestamp()
     data_path = f"{dt.date.fromtimestamp(t0).isoformat()}-{str(int(t0))}"
@@ -424,21 +412,15 @@ def parse_user_args(args):
             type=args.attrtype,
             value=args.attrvalue,
         )
-        fpath = scrape_dynamodb(
-            args.tablename, timestamp=args.timestamp, fname=args.fname, attr=attr
-        )
+        fpath = scrape_dynamodb(args.tablename, timestamp=args.timestamp, fname=args.fname, attr=attr)
         train_path = os.path.dirname(os.path.dirname(fpath))
         model_path = train_path  # "models" subdir will be saved here automatically
         res_path = os.path.join(train_path, "results")
 
     elif args.src == "file":
-        fpath = find_local_dataset(
-            args.source_path, fname=args.fname, date_key=args.date_key
-        )
+        fpath = find_local_dataset(args.source_path, fname=args.fname, date_key=args.date_key)
         if args.overwrite:  # retrain and overwrite existing local data and results
-            train_path = (
-                model_path
-            ) = args.source_path  # "models" subdir will be saved here automatically
+            train_path = model_path = args.source_path  # "models" subdir will be saved here automatically
             res_path = os.path.join(args.source_path, "results")
         else:
             data_path = os.path.join(make_timestamp_path(args.timestamp), "data")
@@ -471,26 +453,14 @@ if __name__ == "__main__":
     )
 
     # ddb (Dynamo DB)
-    parser.add_argument(
-        "--tablename", type=str, default=os.environ.get("DDBTABLE", "calcloud-model-sb")
-    )
-    parser.add_argument(
-        "--attrname", type=str, default=os.environ.get("ATTRNAME", "None")
-    )
-    parser.add_argument(
-        "--attrmethod", type=str, default=os.environ.get("ATTRMETHOD", "None")
-    )
-    parser.add_argument(
-        "--attrtype", type=str, default=os.environ.get("ATTRTYPE", "None")
-    )
-    parser.add_argument(
-        "--attrvalue", type=str, default=os.environ.get("ATTRVAL", "None")
-    )
+    parser.add_argument("--tablename", type=str, default=os.environ.get("DDBTABLE", "calcloud-model-sb"))
+    parser.add_argument("--attrname", type=str, default=os.environ.get("ATTRNAME", "None"))
+    parser.add_argument("--attrmethod", type=str, default=os.environ.get("ATTRMETHOD", "None"))
+    parser.add_argument("--attrtype", type=str, default=os.environ.get("ATTRTYPE", "None"))
+    parser.add_argument("--attrvalue", type=str, default=os.environ.get("ATTRVAL", "None"))
 
     # s3 (amazon s3 bucket)
-    parser.add_argument(
-        "--bucketname", default=os.environ.get("S3MOD", "calcloud-modeling-sb")
-    )
+    parser.add_argument("--bucketname", default=os.environ.get("S3MOD", "calcloud-modeling-sb"))
 
     # arch (spacekit collection archive dataset)
     parser.add_argument(
@@ -518,9 +488,7 @@ if __name__ == "__main__":
         default="now",
         help="timestamp to record for this training iteration. Default is `now` (current timestamp at runtime).",
     )
-    parser.add_argument(
-        "--fname", type=str, default=None, help="name of training data csv file"
-    )
+    parser.add_argument("--fname", type=str, default=None, help="name of training data csv file")
     parser.add_argument(
         "--mem_clf",
         type=int,
@@ -556,9 +524,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--save_ddb", action="store_true")
     parser.add_argument("--save_s3", action="store_true")
-    parser.add_argument(
-        "--verbose", type=int, choices=[0, 1, 2], default=os.environ.get("VERBOSE", 0)
-    )
+    parser.add_argument("--verbose", type=int, choices=[0, 1, 2], default=os.environ.get("VERBOSE", 0))
     parser.add_argument(
         "--config",
         "-c",

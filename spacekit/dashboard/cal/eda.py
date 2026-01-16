@@ -102,10 +102,7 @@ layout = html.Div(
                                     [
                                         dcc.Dropdown(
                                             id="xaxis-features",
-                                            options=[
-                                                {"label": f, "value": f}
-                                                for f in hst.feature_list
-                                            ],
+                                            options=[{"label": f, "value": f} for f in hst.feature_list],
                                             value="n_files",
                                         )
                                     ],
@@ -119,10 +116,7 @@ layout = html.Div(
                                     [
                                         dcc.Dropdown(
                                             id="yaxis-features",
-                                            options=[
-                                                {"label": t, "value": t}
-                                                for t in ["memory", "wallclock"]
-                                            ],
+                                            options=[{"label": t, "value": t} for t in ["memory", "wallclock"]],
                                             value="memory",
                                         )
                                     ],
