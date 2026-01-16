@@ -153,8 +153,7 @@ class Predict:
     def regressor(self, model, data):
         """Returns Regression model prediction"""
         X = array_to_tensor(data)
-        pred = model.predict(X)
-        return pred
+        return model.predict(X).item()
 
     def run_inference(self, models={}):
         if self.X is None:

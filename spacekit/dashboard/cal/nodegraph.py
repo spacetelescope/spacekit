@@ -35,8 +35,7 @@ def classifier(model, data):
 
 def regressor(model, data):
     """Returns Regression model prediction"""
-    pred = model.predict(data)
-    return pred
+    return model.predict(data).item()
 
 
 def make_preds(x_features, tx_file):
@@ -52,7 +51,7 @@ def make_preds(x_features, tx_file):
     membin, pred_proba = classifier(clf, X)
     P = pred_proba[0]
     p0, p1, p2, p3 = P[0], P[1], P[2], P[3]
-    memval = np.round(float(regressor(mem_reg, X)), 2)
+    memval = float(np.round(regressor(mem_reg, X), 2))
     print(f"\n*** BIN PRED: {membin}\n***PROBABILITIES: {P}\n***MEMORY:{memval}")
     # Predict Wallclock Allocation (execution time in seconds)
     clocktime = int(regressor(wall_reg, X))
