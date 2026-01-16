@@ -147,7 +147,7 @@ class Predict:
         """Returns class prediction"""
         X = array_to_tensor(data)
         pred_proba = model.predict(X)
-        pred = int(np.argmax(pred_proba, axis=-1))
+        pred = int(np.argmax(pred_proba, axis=-1).item())
         return pred, pred_proba
 
     def regressor(self, model, data):

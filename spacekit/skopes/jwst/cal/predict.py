@@ -259,7 +259,7 @@ class JwstCalPredict:
         shape = (1, -1) if reshape is True else data.shape
         X = array_to_tensor(data, reshape=reshape, shape=shape)
         pred_proba = model.predict(X)
-        pred = int(np.argmax(pred_proba, axis=-1))
+        pred = int(np.argmax(pred_proba, axis=-1).item())
         return pred, pred_proba
 
     # def run_classifier(self, expmode):

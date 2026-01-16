@@ -498,14 +498,14 @@ class HstCalScrubber(Scrubber):
         return self.new_cols.extend(self.col_order)
 
     def scrub_inputs(self):
-        self.log.info(f"Scrubbing inputs for {self.data.index[0]}")
-        n_files = int(self.data["n_files"][0])
-        total_mb = int(np.round(float(self.data["total_mb"]), 0))
-        detector = 1 if self.data["DETECTOR"][0].upper() in ["UVIS", "WFC"] else 0
-        subarray = 1 if self.data["SUBARRAY"][0].title() == "True" else 0
-        drizcorr = 1 if self.data["DRIZCORR"][0].upper() == "PERFORM" else 0
-        pctecorr = 1 if self.data["PCTECORR"][0].upper() == "PERFORM" else 0
-        cr = self.data["CRSPLIT"][0]
+        self.log.info(f"Scrubbing inputs for {self.data.iloc[0].name}")
+        n_files = int(self.data.iloc[0]["n_files"])
+        total_mb = int(np.round(float(self.data.iloc[0]["total_mb"]), 0))
+        detector = 1 if self.data.iloc[0]["DETECTOR"].upper() in ["UVIS", "WFC"] else 0
+        subarray = 1 if self.data.iloc[0]["SUBARRAY"].title() == "True" else 0
+        drizcorr = 1 if self.data.iloc[0]["DRIZCORR"].upper() == "PERFORM" else 0
+        pctecorr = 1 if self.data.iloc[0]["PCTECORR"].upper() == "PERFORM" else 0
+        cr = self.data.iloc[0]["CRSPLIT"]
         if cr == "NaN":
             crsplit = 0
         elif cr in ["1", "1.0"]:

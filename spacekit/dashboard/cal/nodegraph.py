@@ -29,7 +29,7 @@ def read_inputs(n_files, total_mb, drizcorr, pctecorr, crsplit, subarray, detect
 def classifier(model, data):
     """Returns class prediction"""
     pred_proba = model.predict(data)
-    pred = int(np.argmax(pred_proba, axis=-1))
+    pred = int(np.argmax(pred_proba, axis=-1).item())
     return pred, pred_proba
 
 
