@@ -256,7 +256,7 @@ class SVMPreviews(ImagePreviews):
 
 
 class DataPlots:
-    """Parent class for drawing exploratory data analysis plots from a dataframe."""
+    """Base class for drawing exploratory data analysis plots from a dataframe."""
 
     def __init__(
         self,
@@ -265,6 +265,7 @@ class DataPlots:
         height=700,
         show=False,
         save_html=None,
+        telescope=None,
         name="DataPlots",
         **log_kws,
     ):
@@ -275,21 +276,23 @@ class DataPlots:
         self.height = height
         self.show = show
         self.save_html = save_html
+        self.telescope = telescope
         self.target = None  # target (y) name e.g. "label", "memory", "wallclock"
         self.labels = None  #
         self.classes = None  # target classes e.g. [0,1] or [0,1,2,3]
         self.n_classes = None
-        self.group = None  # e.g. "detector" or "instr"
+        self.group = None  # e.g. "detector", "instr", "cat"
         self.gkeys = None
+        self.group_dict = None
         self.categories = None
         self.cmap = ["dodgerblue", "gold", "fuchsia", "lime"]
         self.continuous = None
         self.categorical = None
         self.feature_list = None
-        self.telescope = None
         self.figures = None
         self.scatter = None
         self.bar = None
+        self.box = None
         self.groupedbar = None
         self.kde = None
         if not check_viz_imports():
@@ -302,17 +305,60 @@ class DataPlots:
             )
 
     def group_keys(self):
-        if self.group in ["instr", "instrument"]:
-            keys = ["acs", "cos", "stis", "wfc3"]
-        elif self.group in ["det", "detector"]:
-            uniq = list(self.df[self.group].unique())
-            if len(uniq) == 2:
-                keys = ["wfc-uvis", "other"]
-            else:
-                keys = ["hrc", "ir", "sbc", "uvis", "wfc"]
-        # TODO: target classification / "category"
-        elif self.group in ["cat", "category"]:
-            keys = [
+        """Generates numerically ordered key-pairs for each unique value of self.group found in the dataframe
+
+        Returns
+        -------
+        dict
+            enumerated dictionary of unique values for each group
+        """
+        if not self.group:
+            self.log.error("Cannot generate group keys if no grouping feature specified. Set the `group` attribute then try again.")
+        if self.group.startswith("instr"):
+            return dict(enumerate(self.instr_keys()))
+        elif self.group.startswith("det"):
+            return dict(enumerate(self.det_keys()))
+        elif self.group.startswith("cat"):
+            return dict(enumerate(self.targ_class_keys()))
+        else:
+            return dict(enumerate(sorted(list(self.df[self.group].unique()))))
+
+    def instr_keys(self):
+        """Generates a list of intruments based on self.telescope
+
+        Returns
+        -------
+        list
+            list of instrument keys for the specified telescope
+        """
+        if self.telescope not in ["hst", "jwst"]:
+            return []
+        return dict(
+            hst=["acs", "wfc3", "cos", "stis"],
+            jwst=["fgs", "miri", "nircam", "niriss", "nirspec"])[self.telescope.lower()]
+    
+    def det_keys(self):
+        """Creates a list of detectors based on self.telescope
+
+        Returns
+        -------
+        list
+            list of detector keys for the specified telescope
+        """
+        keys = list(self.df[self.group].unique())
+        if self.telescope.lower() == "hst" and len(keys) == 2:
+            keys = ["wfc-uvis", "other"]
+        return keys
+
+    def targ_class_keys(self):
+        """List of standard astronomical target classification categories
+
+        Returns
+        -------
+        list
+            standard target classification categories
+        """
+        return [
                 "calibration",
                 "galaxy",
                 "galaxy_cluster",
@@ -321,27 +367,24 @@ class DataPlots:
                 "stellar_cluster",
                 "unidentified",
             ]
-        # TODO: filters
-        group_keys = dict(enumerate(keys))
-        return group_keys
+
+    def map_df_by_group(self):
+        """Instantiates `group_dict` as a dictionary of grouped dataframes and color map
+        """
+        self.group_dict = {}
+        for k, v in self.gkeys.items():
+            self.group_dict[v] = [self.df.groupby(self.group).get_group(k), self.cmap[k]]
 
     def map_data(self):
-        """Instantiates grouped dataframes for each detector
-
-        Returns
-        -------
-        dict
-            data_map dictionary of grouped data frames and color map
+        """Instantiates `data_map` as a dictionary of grouped dataframes and color maps for each category in `categories` attribute.
         """
-        if self.cmap is None:
-            cmap = ["#119dff", "salmon", "#66c2a5", "fuchsia", "#f4d365"]
-        else:
-            cmap = self.cmap
+        cmap = ["#119dff", "salmon", "#66c2a5", "fuchsia", "#f4d365"] if self.cmap is None else self.cmap
+        if not self.categories:
+            self.feature_subset()
         self.data_map = {}
         for key, name in self.gkeys.items():
             data = self.categories[name]
             self.data_map[name] = dict(data=data, color=cmap[key])
-        return self.data_map
 
     def feature_subset(self):
         """Create a set of groups from a categorical feature (dataframe column). Used for plotting multiple traces on a figure
@@ -354,10 +397,8 @@ class DataPlots:
         self.categories = {}
         feature_groups = self.df.groupby(self.group)
         for i in list(range(len(feature_groups))):
-            dx = feature_groups.get_group(i)
             k = self.gkeys[i]
-            self.categories[k] = dx
-        return self.categories
+            self.categories[k] = feature_groups.get_group(i)
 
     def feature_stats_by_target(self, feature):
         """Calculates statistical info (mean and standard deviation) for a feature within each target class.
@@ -384,6 +425,30 @@ class DataPlots:
         return means, errs
 
     def make_subplots(self, figtype, xtitle, ytitle, data1, data2, name1, name2):
+        """Generates figure with multiple subplots for two sets of data using previously generated figures.
+
+        Parameters
+        ----------
+        figtype : str
+            type of figure being generated (used for saving html file)
+        xtitle : str
+            title for the x-axis
+        ytitle : str
+            title for the y-axis
+        data1 : go.Figure
+            figure object for the first set of data
+        data2 : go.Figure
+            figure object for the second set of data
+        name1 : str
+            name for the first subplot
+        name2 : str
+            name for the second subplot
+
+        Returns
+        -------
+        go.Figure
+            figure object containing the subplots
+        """
         fig = subplots.make_subplots(
             rows=1,
             cols=2,
@@ -416,7 +481,7 @@ class DataPlots:
             pyo.plot(fig, filename=f"{self.save_html}/{figtype}_{self.name1}_vs_{self.name2}")
         return fig
 
-    def make_scatter_figs(
+    def make_target_scatter_figs(
         self,
         xaxis_name,
         yaxis_name,
@@ -425,6 +490,27 @@ class DataPlots:
         categories=None,
         target=None,
     ):
+        """Generates scatterplots for two features in the dataframe, grouped by target classes.
+
+        Parameters
+        ----------
+        xaxis_name : str
+            column name in dataframe to plot on x-axis
+        yaxis_name : str
+            column name in dataframe to plot on y-axis
+        marker_size : int, optional
+            marker size for scatter plot points, by default 15
+        cmap : list, optional
+            list of colors for different target classes, by default ["cyan", "fuchsia"]
+        categories : dict, optional
+            dictionary of categories to group data by, by default None
+        target : str, optional
+            name of target column in dataframe, by default None
+        Returns
+        -------
+        list
+            list of scatterplot figures for each category
+        """
         if categories is None:
             categories = {"all": self.df}
         if target is None:
@@ -471,12 +557,67 @@ class DataPlots:
             scatter_figs.append(fig)
         return scatter_figs
 
+    def make_feature_scatter_figs(self, xaxis_name, yaxis_name):
+        """Generates scatterplots for two features in the dataframe, grouped by the `group` attribute.
+
+        Parameters
+        ----------
+        xaxis_name : str
+            name of column in dataframe to plot on x-axis
+        yaxis_name : str
+            name of column in dataframe to plot on y-axis
+
+        Returns
+        -------
+        list
+            scatterplot figures for each group in self.group attribute
+        """
+        if self.data_map is None:
+            self.map_data()
+        scatter_figs = []
+        for key, datacolor in self.data_map.items():
+            data = datacolor["data"]
+            color = datacolor["color"]
+            trace = go.Scatter(
+                x=data[xaxis_name],
+                y=data[yaxis_name],
+                text=data.index,
+                mode="markers",
+                opacity=0.7,
+                marker={"size": 15, "color": color},
+                name=key,
+            )
+            layout = go.Layout(
+                xaxis={"title": xaxis_name},
+                yaxis={"title": yaxis_name},
+                title=key,
+                hovermode="closest",
+                paper_bgcolor="#242a44",
+                plot_bgcolor="#242a44",
+                font={"color": "#ffffff"},
+            )
+            fig = go.Figure(data=trace, layout=layout)
+            scatter_figs.append(fig)
+        return scatter_figs
+
     def make_target_scatter(self, target=None):
+        """Generates target vs feature scatterplot for a given target (by default self.target) for each feature in self.feature_list.
+
+        Parameters
+        ----------
+        target : str, optional
+            target column name, by default None
+
+        Returns
+        -------
+        list
+            target-feature scatterplot figures for each feature in self.feature_list
+        """
         if target is None:
             target = self.target
         target_figs = {}
         for f in self.feature_list:
-            target_figs[f] = self.make_scatter_figs(f, target)
+            target_figs[f] = self.make_target_scatter_figs(f, target)
         return target_figs
 
     def bar_plots(
@@ -489,6 +630,30 @@ class DataPlots:
         height=500,
         cmap=["dodgerblue", "fuchsia"],
     ):
+        """Draws a bar plot for a feature, grouped by the `group` attribute.
+
+        Parameters
+        ----------
+        X : array-like
+            X-axis values
+        Y : array-like
+            Y-axis values
+        feature : str
+            Feature name
+        y_err : list, optional
+            Y-axis error values, by default [None, None]
+        width : int, optional
+            Width of the plot, by default 700
+        height : int, optional
+            Height of the plot, by default 500
+        cmap : list, optional
+            List of colors for the plot, by default ["dodgerblue", "fuchsia"]
+
+        Returns
+        -------
+        go.Figure
+            Plotly Figure object representing the bar plot
+        """
         traces = []
         for i in self.classes:
             i = int(i)
@@ -532,6 +697,32 @@ class DataPlots:
         height=500,
         cmap=["#F66095", "#2BCDC1"],
     ):
+        """Generates KDE plots for specified columns in the dataframe.
+
+        Parameters
+        ----------
+        cols : list of str
+            List of column names to generate KDE plots for
+        norm : bool, optional
+            Whether to normalize the data, by default False
+        targets : bool, optional
+            Whether to group data by target classes, by default False
+        hist : bool, optional
+            Whether to show histogram, by default True
+        curve : bool, optional
+            Whether to show KDE curve, by default True
+        binsize : float, optional
+            Bin size for the histogram, by default 0.2
+        height : int, optional
+            Height of the plot, by default 500
+        cmap : list, optional
+            List of colors for the plot, by default ["#F66095", "#2BCDC1"]
+
+        Returns
+        -------
+        go.Figure
+            Plotly Figure object representing the KDE plot
+        """
         if norm is True:
             df = PowerX(self.df, cols=cols, join_data=True).Xt
             cols = [c + "_scl" for c in cols]
@@ -576,6 +767,26 @@ class DataPlots:
         return fig
 
     def scatter3d(self, x, y, z, mask=None, target=None):
+        """Generates a 3D scatterplot for three features in the dataframe.
+
+        Parameters
+        ----------
+        x : str
+            feature column name for x-axis
+        y : str
+            feature column name for y-axis
+        z : str
+            feature column name for z-axis
+        mask : pd.DataFrame, optional
+            DataFrame to use as a mask/filter, by default None
+        target : str, optional
+            target column name, by default None
+
+        Returns
+        -------
+        go.Figure
+            Plotly Figure object representing the 3D scatterplot
+        """
         if mask is None:
             df = self.df
         else:
@@ -610,6 +821,18 @@ class DataPlots:
             return fig
 
     def remove_outliers(self, y_data):
+        """Removes outliers from a given pandas Series using the IQR method.
+
+        Parameters
+        ----------
+        y_data : pd.Series
+            The data from which to remove outliers.
+
+        Returns
+        -------
+        pd.Series
+            The data with outliers removed via IQR filtering.
+        """
         q = y_data.quantile([0.25, 0.75]).values
         q1, q3 = q[0], q[1]
         lower_fence = q1 - 1.5 * iqr(y_data)
@@ -618,12 +841,23 @@ class DataPlots:
         return y
 
     def box_plots(self, cols=None, outliers=True):
+        """Generates multi-trace box plots for each feature in cols param, with or without outliers
+
+        Parameters
+        ----------
+        cols : list, optional
+            features to plot from dataframe, by default None (uses self.continuous attribute)
+        outliers : bool, optional
+            whether to include outliers in the box plots, by default True
+
+        Returns
+        -------
+        dict
+            dictionary of plotly box plot figures for each feature in cols parameter
+        """
         box = {}
         title_sfx = ""
-        if cols is None:
-            features = self.continuous
-        else:
-            features = cols
+        features = cols or self.continuous
         for f in features:
             traces = []
             for i, name in enumerate(self.gkeys.values()):
@@ -645,10 +879,53 @@ class DataPlots:
             box[f] = fig
         return box
 
-    def grouped_barplot(self, target="label", cmap=None, save=False):
+    def make_box_figs(self, vars: list):
+        """Generates single trace box plots, one plot for each var where `vars` is a list of columns in df
+
+        Parameters
+        ----------
+        vars : list
+            column names in dataframe to plot
+
+        Returns
+        -------
+        list
+            list of plotly box plot figures for each variable in vars parameter
+        """
+        box_figs = []
+        if not self.group_dict:
+            self.map_df_by_group()
+        for v in vars:
+            data = [go.Box(y=j[0][v], name=i) for i, j in self.group_dict.items()]
+            layout = go.Layout(
+                title=f"{v} by {self.group}",
+                hovermode="closest",
+                paper_bgcolor="#242a44",
+                plot_bgcolor="#242a44",
+                font={"color": "#ffffff"},
+            )
+            fig = go.Figure(data=data, layout=layout)
+            box_figs.append(fig)
+        return box_figs
+
+    def grouped_barplot(self, target="label", cmap=None):
+        """Draws a grouped bar plot for a target column, grouped by the `group` attribute.
+
+        Parameters
+        ----------
+        target : str, optional
+            target column to plot, by default "label"
+        cmap : list, optional
+            list of colors for the bars, by default None
+
+        Returns
+        -------
+        go.Figure
+            plotly figure object for the grouped bar plot
+        """
         df = self.df
         if cmap is None:
-            cmap = ["red", "orange", "yellow", "purple", "blue"]
+            cmap = self.cmap or ["red", "orange", "yellow", "purple", "blue"]
         groups = df.groupby([self.group])[target]
         traces = []
         for key, value in self.gkeys.items():
@@ -674,46 +951,34 @@ class HstSvmPlots(DataPlots):
         spacekit.analyzer.explore.DataPlots parent class
     """
 
-    def __init__(
-        self,
-        df,
-        group="det",
-        width=1300,
-        height=700,
-        show=False,
-        save_html=None,
-        **log_kws,
-    ):
+    def __init__(self, df, group="det", width=1300, height=700, show=False, save_html=None, **log_kws):
         super().__init__(
             df,
             width=width,
             height=height,
             show=show,
             save_html=save_html,
+            telescope="hst",
             name="HstSvmPlots",
             **log_kws,
         )
         self.group = group
-        self.telescope = "HST"
         self.target = "label"
         self.classes = list(set(df[self.target].values))  # [0, 1]
         self.labels = ["aligned", "misaligned"]
         self.n_classes = len(set(self.labels))
-        self.gkeys = super().group_keys()
+        self.gkeys = self.group_keys()
         self.categories = self.feature_subset()
         self.continuous = ["rms_ra", "rms_dec", "gaia", "nmatches", "numexp"]
         self.categorical = ["det", "wcs", "cat"]
         self.feature_list = self.continuous + self.categorical
         self.cmap = ["#119dff", "salmon", "#66c2a5", "fuchsia", "#f4d365"]
-        self.df_by_detector()
-        self.bar = None
-        self.scatter = None
-        self.kde = None
+        self.map_df_by_group()
 
     def draw_plots(self):
-        self.bar = self.alignment_bars()
-        self.scatter = self.alignment_scatters()
-        self.kde = self.alignment_kde()
+        self.alignment_bars()
+        self.alignment_scatters()
+        self.alignment_kde()
 
     def alignment_bars(self):
         self.bar = {}
@@ -722,13 +987,11 @@ class HstSvmPlots(DataPlots):
             means, errs = self.feature_stats_by_target(f)
             bar = self.bar_plots(X, means, f, y_err=errs)
             self.bar[f] = bar
-        return self.bar
 
     def alignment_scatters(self):
-        rms_scatter = self.make_scatter_figs("rms_ra", "rms_dec", categories=self.categories)
-        source_scatter = self.make_scatter_figs("point", "segment", categories=self.categories)
+        rms_scatter = self.make_target_scatter_figs("rms_ra", "rms_dec", categories=self.categories)
+        source_scatter = self.make_target_scatter_figs("point", "segment", categories=self.categories)
         self.scatter = {"rms_ra_dec": rms_scatter, "point_segment": source_scatter}
-        return self.scatter
 
     def alignment_kde(self):
         cols = self.continuous
@@ -738,64 +1001,35 @@ class HstSvmPlots(DataPlots):
         for i, c in enumerate(cols):
             self.kde["targ"][c] = targ[i]
             self.kde["norm"][c] = norm[i]
-        return self.kde
-
-    # def group_keys(self):
-    #     if self.group in ["det", "detector"]:
-    #         keys = ["hrc", "ir", "sbc", "uvis", "wfc"]
-    #     elif self.group in ["cat", "category"]:
-    #         keys = [
-    #             "calibration",
-    #             "galaxy",
-    #             "galaxy_cluster",
-    #             "ISM",
-    #             "star",
-    #             "stellar_cluster",
-    #             "unidentified",
-    #         ]
-    #     group_keys = dict(enumerate(keys))
-    #     return group_keys
-
-    def df_by_detector(self):
-        """Instantiates grouped dataframes for each detector
-
-        Returns
-        -------
-        self
-        """
-        try:
-            self.hrc = self.df.groupby("det").get_group(0)
-            self.ir = self.df.groupby("det").get_group(1)
-            self.sbc = self.df.groupby("det").get_group(2)
-            self.uvis = self.df.groupby("det").get_group(3)
-            self.wfc = self.df.groupby("det").get_group(4)
-            self.instr_dict = {
-                "hrc": [self.hrc, "#119dff"],  # lightblue
-                "ir": [self.ir, "salmon"],
-                "sbc": [self.sbc, "#66c2a5"],  # lightgreen
-                "uvis": [self.uvis, "fuchsia"],
-                "wfc": [self.wfc, "#f4d365"],  # softgold
-            }
-        except Exception as e:
-            print(e)
-        return self
 
 
 class HstCalPlots(DataPlots):
-    def __init__(self, df, group="instr", **log_kws):
-        super().__init__(df, name="HstCalPlots", **log_kws)
-        self.telescope = "HST"
+
+    def __init__(self, df, group="instr", width=1300, height=700, show=False, save_html=None, **log_kws):
+        super().__init__(
+            df,
+            width=width,
+            height=height,
+            show=show,
+            save_html=save_html,
+            telescope="hst",
+            name="HstCalPlots",
+            **log_kws,
+        )
         self.target = "mem_bin"
         self.classes = [0, 1, 2, 3]
         self.group = group
         self.labels = ["2g", "8g", "16g", "64g"]
         self.gkeys = self.group_keys()
+        self.group_dict = {}
+        self.cmap = ["dodgerblue", "gold", "fuchsia", "lime"]
+        self.data_map = None
         self.categories = self.feature_subset()
-        self.acs = None
-        self.cos = None
-        self.stis = None
-        self.wfc3 = None
-        self.instr_dict = None
+        # self.acs = None
+        # self.cos = None
+        # self.stis = None
+        # self.wfc3 = None
+        # self.instr_dict = None
         self.instruments = list(self.df["instr_key"].unique())
         self.continuous = ["n_files", "total_mb", "x_files", "x_size"]
         self.categorical = [
@@ -808,27 +1042,10 @@ class HstCalPlots(DataPlots):
             "instr",
         ]
         self.feature_list = self.continuous + self.categorical
-        self.cmap = ["dodgerblue", "gold", "fuchsia", "lime"]
-        self.data_map = None
-        self.scatter = None
-        self.box = None
         self.scatter3 = None
 
-    def df_by_instr(self):
-        self.acs = self.df.groupby("instr").get_group(0)
-        self.cos = self.df.groupby("instr").get_group(1)
-        self.stis = self.df.groupby("instr").get_group(2)
-        self.wfc3 = self.df.groupby("instr").get_group(3)
-        self.instr_dict = {
-            "acs": [self.acs, "#119dff"],
-            "wfc3": [self.wfc3, "salmon"],
-            "cos": [self.cos, "#66c2a5"],
-            "stis": [self.stis, "fuchsia"],
-        }
-        return self
-
     def draw_plots(self):
-        self.scatter = self.make_cal_scatterplots()
+        self.make_cal_scatterplots()
         self.box = self.box_plots()
         box_target = self.box_plots(cols=["memory", "wallclock"])
         box_fenced = self.box_plots(cols=["memory", "wallclock"], outliers=False)
@@ -843,67 +1060,16 @@ class HstCalPlots(DataPlots):
     def make_cal_scatterplots(self):
         memory_figs, wallclock_figs = {}, {}
         for f in self.feature_list:
-            memory_figs[f] = self.make_scatter_figs(f, "memory")
-            wallclock_figs[f] = self.make_scatter_figs(f, "wallclock")
+            memory_figs[f] = self.make_feature_scatter_figs(f, "memory")
+            wallclock_figs[f] = self.make_feature_scatter_figs(f, "wallclock")
         self.scatter = dict(memory=memory_figs, wallclock=wallclock_figs)
-        return self.scatter
 
     def make_cal_scatter3d(self):
         x, y = "memory", "wallclock"
         self.scatter3 = {}
         for z in self.continuous:
             data = self.df[[x, y, z, "instr_key"]]
-            scat3d = super().scatter3d(x, y, z, mask=data, target="instr_key", width=700, height=700)
-            self.scatter3[z] = scat3d
-
-    def make_box_figs(self, vars):
-        box_figs = []
-        for v in vars:
-            data = [
-                go.Box(y=self.acs[v], name="acs"),
-                go.Box(y=self.cos[v], name="cos"),
-                go.Box(y=self.stis[v], name="stis"),
-                go.Box(y=self.wfc3[v], name="wfc3"),
-            ]
-            layout = go.Layout(
-                title=f"{v} by instrument",
-                hovermode="closest",
-                paper_bgcolor="#242a44",
-                plot_bgcolor="#242a44",
-                font={"color": "#ffffff"},
-            )
-            fig = go.Figure(data=data, layout=layout)
-            box_figs.append(fig)
-        return box_figs
-
-    def make_scatter_figs(self, xaxis_name, yaxis_name):
-        if self.data_map is None:
-            self.map_data()
-        scatter_figs = []
-        for instr, datacolor in self.data_map.items():
-            data = datacolor["data"]
-            color = datacolor["color"]
-            trace = go.Scatter(
-                x=data[xaxis_name],
-                y=data[yaxis_name],
-                text=data.index,
-                mode="markers",
-                opacity=0.7,
-                marker={"size": 15, "color": color},
-                name=instr,
-            )
-            layout = go.Layout(
-                xaxis={"title": xaxis_name},
-                yaxis={"title": yaxis_name},
-                title=instr,
-                hovermode="closest",
-                paper_bgcolor="#242a44",
-                plot_bgcolor="#242a44",
-                font={"color": "#ffffff"},
-            )
-            fig = go.Figure(data=trace, layout=layout)
-            scatter_figs.append(fig)
-        return scatter_figs
+            self.scatter3[z] = super().scatter3d(x, y, z, mask=data, target="instr_key", width=700, height=700)
 
 
 class SignalPlots:
