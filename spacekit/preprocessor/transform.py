@@ -902,7 +902,7 @@ def ffill_array(arr):
 
 
 def hypersonic_pliers(
-    path_to_train, path_to_test=None, y_col=[0], skip=1, dlm=",", encoding='bytes', subtract_y=0.0, reshape=False
+    path_to_train, path_to_test=None, y_col=[0], skip=1, dlm=",", encoding="bytes", subtract_y=0.0, reshape=False
 ):
     """Extracts data into 1-dimensional arrays, using separate target classes (y) for training and test data. Assumes y (target) is first column in dataframe. If the target (y) classes in the raw data are 1 and 2, but you'd like them to be binaries (0 and 1), set subtract_y=1.0
 

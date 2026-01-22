@@ -260,7 +260,7 @@ def get_coords(xy_origin, layer_idx):
     y0 = xy_origin[1]
 
     if layer_idx == 0:
-        neurons = clf.layers[layer_idx].output_shape[0][1]
+        neurons = clf.layers[layer_idx].output.shape[1]
     else:
         neurons = clf.layers[layer_idx].units
     slope = int(3200 / neurons)

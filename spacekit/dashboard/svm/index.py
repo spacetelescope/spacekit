@@ -2,7 +2,7 @@ from dash import html, dcc
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
 from argparse import ArgumentParser
-from app import app
+from spacekit.dashboard.svm.app import app
 from spacekit.dashboard.svm import eda, eval, pred
 from spacekit.dashboard.svm.config import svm, hst, images  # NN
 import numpy as np
@@ -100,11 +100,11 @@ def update_cmx(cmx_type):
 # SCATTER CALLBACK
 @app.callback(
     [
-        Output("hrc-scatter", "figure"),
-        Output("ir-scatter", "figure"),
-        Output("sbc-scatter", "figure"),
-        Output("uvis-scatter", "figure"),
-        Output("wfc-scatter", "figure"),
+        Output("acs-hrc-scatter", "figure"),
+        Output("wfc3-ir-scatter", "figure"),
+        Output("acs-sbc-scatter", "figure"),
+        Output("wfc3-uvis-scatter", "figure"),
+        Output("acs-wfc-scatter", "figure"),
     ],
     [Input("selected-scatter", "value")],
 )
@@ -225,6 +225,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     host, port = args.host, args.port
     if args.env == "dev":
-        app.run_server(host=host, port=port, debug=True, dev_tools_prune_errors=False)
+        app.run(host=host, port=port, debug=True, dev_tools_prune_errors=False)
     else:
-        app.run_server(host="0.0.0.0", port=8050)
+        app.run(host="0.0.0.0", port=8050)

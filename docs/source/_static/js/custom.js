@@ -273,7 +273,7 @@ mouse_ball.y = e.pageY;
 
 
 function hideAds() {
-    const adIds = ["readthedocs-ea", "readthedocs-ea-text-footer"];
+    const adIds = ["readthedocs-ea", "readthedocs-ea-text-footer", "readthedocs-ea-text-nostyle-nodoctool"];
     adIds.forEach(element => {
         var rtdAd = document.getElementById(element);
         if (rtdAd != null && !rtdAd.hasAttribute("hidden")) {
@@ -307,3 +307,5 @@ waitForVariable('ethicalads')
     console.error(error);
     // handle timeout or error
   }, 2000);
+
+hideAds();

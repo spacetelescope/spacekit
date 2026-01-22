@@ -52,11 +52,14 @@ try:
 except ImportError:
     TimeSeries = None
 
+
 def check_ast_imports():
     return TimeSeries is not None
 
+
 def check_viz_imports():
     return go is not None
+
 
 def check_mpl_imports():
     return mpl is not None and plt is not None
@@ -313,7 +316,9 @@ class DataPlots:
             enumerated dictionary of unique values for each group
         """
         if not self.group:
-            self.log.error("Cannot generate group keys if no grouping feature specified. Set the `group` attribute then try again.")
+            self.log.error(
+                "Cannot generate group keys if no grouping feature specified. Set the `group` attribute then try again."
+            )
         if self.group.startswith("instr"):
             return dict(enumerate(self.instr_keys()))
         elif self.group.startswith("det"):
@@ -333,10 +338,10 @@ class DataPlots:
         """
         if self.telescope not in ["hst", "jwst"]:
             return []
-        return dict(
-            hst=["acs", "wfc3", "cos", "stis"],
-            jwst=["fgs", "miri", "nircam", "niriss", "nirspec"])[self.telescope.lower()]
-    
+        return dict(hst=["acs", "wfc3", "cos", "stis"], jwst=["fgs", "miri", "nircam", "niriss", "nirspec"])[
+            self.telescope.lower()
+        ]
+
     def det_keys(self):
         """Creates a list of detectors based on self.telescope
 
@@ -345,9 +350,12 @@ class DataPlots:
         list
             list of detector keys for the specified telescope
         """
-        keys = list(self.df[self.group].unique())
-        if self.telescope.lower() == "hst" and len(keys) == 2:
-            keys = ["wfc-uvis", "other"]
+        keys = sorted(list(self.df[self.group].unique()))
+        if self.telescope.lower() == "hst":
+            if len(keys) == 2:
+                return ["wfc-uvis", "other"]
+            if not isinstance(keys[0], str) and len(keys) == 5:
+                return ["hrc", "ir", "sbc", "uvis", "wfc"]
         return keys
 
     def targ_class_keys(self):
@@ -359,25 +367,23 @@ class DataPlots:
             standard target classification categories
         """
         return [
-                "calibration",
-                "galaxy",
-                "galaxy_cluster",
-                "ISM",
-                "star",
-                "stellar_cluster",
-                "unidentified",
-            ]
+            "calibration",
+            "galaxy",
+            "galaxy_cluster",
+            "ISM",
+            "star",
+            "stellar_cluster",
+            "unidentified",
+        ]
 
     def map_df_by_group(self):
-        """Instantiates `group_dict` as a dictionary of grouped dataframes and color map
-        """
+        """Instantiates `group_dict` as a dictionary of grouped dataframes and color map"""
         self.group_dict = {}
         for k, v in self.gkeys.items():
             self.group_dict[v] = [self.df.groupby(self.group).get_group(k), self.cmap[k]]
 
     def map_data(self):
-        """Instantiates `data_map` as a dictionary of grouped dataframes and color maps for each category in `categories` attribute.
-        """
+        """Instantiates `data_map` as a dictionary of grouped dataframes and color maps for each category in `categories` attribute."""
         cmap = ["#119dff", "salmon", "#66c2a5", "fuchsia", "#f4d365"] if self.cmap is None else self.cmap
         if not self.categories:
             self.feature_subset()
@@ -968,11 +974,11 @@ class HstSvmPlots(DataPlots):
         self.labels = ["aligned", "misaligned"]
         self.n_classes = len(set(self.labels))
         self.gkeys = self.group_keys()
-        self.categories = self.feature_subset()
+        self.cmap = ["#119dff", "salmon", "#66c2a5", "fuchsia", "#f4d365"]
+        self.feature_subset()
         self.continuous = ["rms_ra", "rms_dec", "gaia", "nmatches", "numexp"]
         self.categorical = ["det", "wcs", "cat"]
         self.feature_list = self.continuous + self.categorical
-        self.cmap = ["#119dff", "salmon", "#66c2a5", "fuchsia", "#f4d365"]
         self.map_df_by_group()
 
     def draw_plots(self):
@@ -1004,7 +1010,6 @@ class HstSvmPlots(DataPlots):
 
 
 class HstCalPlots(DataPlots):
-
     def __init__(self, df, group="instr", width=1300, height=700, show=False, save_html=None, **log_kws):
         super().__init__(
             df,
@@ -1024,12 +1029,7 @@ class HstCalPlots(DataPlots):
         self.group_dict = {}
         self.cmap = ["dodgerblue", "gold", "fuchsia", "lime"]
         self.data_map = None
-        self.categories = self.feature_subset()
-        # self.acs = None
-        # self.cos = None
-        # self.stis = None
-        # self.wfc3 = None
-        # self.instr_dict = None
+        self.feature_subset()
         self.instruments = list(self.df["instr_key"].unique())
         self.continuous = ["n_files", "total_mb", "x_files", "x_size"]
         self.categorical = [
@@ -1105,7 +1105,7 @@ class SignalPlots:
         self.target_cns = target_cns
         self.color_map = color_map
         self.flux_col = "pdcsap_flux"
-        self.extra_cols = ["lc_start", "lc_end", "maxpower","transit", "mean", "median", "stddev"]
+        self.extra_cols = ["lc_start", "lc_end", "maxpower", "transit", "mean", "median", "stddev"]
         self.output_dir = os.getcwd() if output_dir is None else output_dir
         self.check_dependencies()
         warnings.filterwarnings(action="ignore")  # ignore astropy warnings
@@ -1119,7 +1119,7 @@ class SignalPlots:
                 "\n\nInstall extra deps via `pip install spacekit[x]`"
             )
 
-    def parse_filename(self, fname, fmt='kepler.fits'):
+    def parse_filename(self, fname, fmt="kepler.fits"):
         """Extracts target information from FITS light curve file name.
 
         Parameters
@@ -1135,22 +1135,22 @@ class SignalPlots:
             target id (str), campaign/sector id (str)
         """
         fname = os.path.basename(fname)
-        if fmt == 'kepler.fits': # r"ktwo{obs_id}-c{campaign}_llc.fits"
-            patt = r'ktwo(\d{9,15})-c(\d{2})_llc\.fits'
+        if fmt == "kepler.fits":  # r"ktwo{obs_id}-c{campaign}_llc.fits"
+            patt = r"ktwo(\d{9,15})-c(\d{2})_llc\.fits"
             m = re.match(patt, fname)
             if m:
-                return (m.group(1), m.group(2)) # tid, campaign
-        elif fmt == 'tess.fits': # r"tess{date-time}-s{sctr}-{tid}-{scid}-{cr}_lc.fits"
-            patt = r'^tess(\d{13})-s(\d{4})-(\d{16,20})-(\d{4})-s_lc\.fits$'
+                return (m.group(1), m.group(2))  # tid, campaign
+        elif fmt == "tess.fits":  # r"tess{date-time}-s{sctr}-{tid}-{scid}-{cr}_lc.fits"
+            patt = r"^tess(\d{13})-s(\d{4})-(\d{16,20})-(\d{4})-s_lc\.fits$"
             m = re.match(patt, fname)
             if m:
-                return (m.group(2), m.group(1)) # tid, sector
+                return (m.group(2), m.group(1))  # tid, sector
         else:
             raise ValueError("fmt must be 'kepler.fits' or 'tess.fits'")
         raise ValueError("Filename does not match expected pattern")
 
     @staticmethod
-    def read_ts_signal(fits_file, signal_col="pdcsap_flux", fmt='kepler.fits', offset=False, remove_nans=True):
+    def read_ts_signal(fits_file, signal_col="pdcsap_flux", fmt="kepler.fits", offset=False, remove_nans=True):
         """Reads time series signal data from a FITS light curve file (_llc.fits or _lc.fits for kepler and fits respectively). Optionally can
         apply telescope-specific BJD offset as determined by `fmt` kwarg (most light curve files already have this applied) and remove NaN values from both signal and corresponding timestamp arrays. Regarding the `signal_col` defaults: "sap_flux" is Simple Aperture Photometry flux, the flux after summing the calibrated pixels within the telescope's optimal photometric aperture; the default (recommended) is "pdcsap_flux" (Pre-search Data Conditioned Simple Aperture Photometry, the SAP flux values nominally corrected for instrumental variations - these are the mission's best estimate of the intrinsic variability of the target.).
 
@@ -1172,13 +1172,13 @@ class SignalPlots:
         np.ndarray
             time series signal data as a numpy array
         """
-        if fmt not in ['kepler.fits', 'tess.fits']:
+        if fmt not in ["kepler.fits", "tess.fits"]:
             raise ValueError("fmt must be 'kepler.fits' or 'tess.fits'")
         ts = TimeSeries.read(fits_file, format=fmt)
-        flux = np.asarray(ts[signal_col], dtype='float64')
+        flux = np.asarray(ts[signal_col], dtype="float64")
         timestamps = ts.time.jd
         if offset is True:
-            bjd = dict(kepler=2454833.0, tess=2457000.0)[fmt.split('.')[0]]
+            bjd = dict(kepler=2454833.0, tess=2457000.0)[fmt.split(".")[0]]
             timestamps -= bjd  # convert to KBJD/TBJD
         if remove_nans is True:
             not_nan_mask = ~np.isnan(flux)
@@ -1191,9 +1191,9 @@ class SignalPlots:
         signal,
         timestamps=None,
         label=None,
-        y_units="PDCSAP Flux (e-/s)", # aperture photometry flux
+        y_units="PDCSAP Flux (e-/s)",  # aperture photometry flux
         x_units="Time (BJD)",  # Barycentric Julian Date
-        figsize=(15,10),
+        figsize=(15, 10),
         fname="flux_signal.png",
         title_pfx="Flux Signal",
     ):
@@ -1216,10 +1216,10 @@ class SignalPlots:
             x_units = "Time Cadence Index"
         fig, axs = plt.subplots(nrows=2, ncols=1, figsize=figsize, sharex=True)
         axs[0].plot(
-                timestamps,
-                signal,
-                color=color,
-            )
+            timestamps,
+            signal,
+            color=color,
+        )
         axs[0].set_ylabel(y_units)
         axs[1].scatter(
             timestamps,
@@ -1260,7 +1260,7 @@ class SignalPlots:
         pd.DataFrame
             transit timestamps and phase folded flux values for each light curve
         """
-        #req_cols = ["obs_id", "campaign", "time_jd", "sap_flux_norm", "time_bin_start", "sap_flux_norm_binned", "period"]
+        # req_cols = ["obs_id", "campaign", "time_jd", "sap_flux_norm", "time_bin_start", "sap_flux_norm_binned", "period"]
         transits = {}
         for index, file in enumerate(file_list):
             res = {}
@@ -1271,10 +1271,8 @@ class SignalPlots:
             res["tid"] = tid
             res["sc"] = sc
             # use box least squares to estimate period
-            if error is True and f'{self.flux_col}_err' in ts.columns:
-                periodogram = BoxLeastSquares.from_timeseries(
-                    ts, self.flux_col, f"{self.flux_col}_err"
-                )
+            if error is True and f"{self.flux_col}_err" in ts.columns:
+                periodogram = BoxLeastSquares.from_timeseries(ts, self.flux_col, f"{self.flux_col}_err")
             else:
                 periodogram = BoxLeastSquares.from_timeseries(ts, self.flux_col)
             if snr is True:
@@ -1304,12 +1302,12 @@ class SignalPlots:
                 res["mean"] = mean
                 res["median"] = median
                 res["stddev"] = stddev
-                res['fname'] = fname
+                res["fname"] = fname
             transits[index] = res
         df = pd.DataFrame.from_dict(transits, orient="index")
         return df
-    
-    def plot_phase_signals(self, ts, title_pfx="Phase-folded Light Curve: ", figsize=(11,5)):
+
+    def plot_phase_signals(self, ts, title_pfx="Phase-folded Light Curve: ", figsize=(11, 5)):
         """Plots a phase-folded light curve from timeseries flux signal data. Requires a dataframe row containing the following columns:
         "time_jd", "flux_norm", "time_bin_start", "flux_norm_binned", "tid", "sc", "period"
         e.g.,
@@ -1338,7 +1336,7 @@ class SignalPlots:
         ax.set_xlabel("Time (days)")
         ax.set_ylabel("Normalized flux")
         ax.set_title(title_pfx + ts["tid"])
-        ax.legend([np.round(ts['period'], 3)])
+        ax.legend([np.round(ts["period"], 3)])
         if self.save_png:
             fpath = os.path.join(self.output_dir, f"{ts['sc']}-{ts['tid']}_phase_folded.png")
             fig.savefig(fpath, dpi=300)
@@ -1346,7 +1344,7 @@ class SignalPlots:
             plt.show()
         else:
             plt.close()
-    
+
     def set_spec_kwargs(self, Fs=2, NFFT=256, noverlap=128, mode="psd", cmap="binary"):
         """returns dict of default spectrogram kwargs
 
@@ -1411,9 +1409,10 @@ class SignalPlots:
             plt.xlabel(units[0])
             plt.ylabel(units[1])
             plt.title(title)
-        
+
         fig, freqs, t, m = plt.specgram(
-            signal, **spec_kwargs,
+            signal,
+            **spec_kwargs,
         )
         if self.save_png:
             plt.savefig(fpath, dpi=300)
@@ -1422,7 +1421,6 @@ class SignalPlots:
         else:
             plt.close()
         return fig, freqs, t, m
-
 
 
 class K2SignalPlots(SignalPlots):
@@ -1476,15 +1474,15 @@ class K2SignalPlots(SignalPlots):
         for index, file in enumerate(self.files):
             with fits.open(file) as hdulist:
                 signal = hdulist[1].data[flux_col]
-                records[index] = np.asarray(signal, dtype='float64')
+                records[index] = np.asarray(signal, dtype="float64")
         df = pd.DataFrame.from_dict(records, orient="index")
         if ffillna is True:
             df.ffill(axis=1, inplace=True)
-        df.columns = ['FLUX.'+str(c+1) for c in df.columns]
+        df.columns = ["FLUX." + str(c + 1) for c in df.columns]
         if isinstance(add_label, int):
             cols = list(df.columns)
-            df['LABEL'] = add_label
-            df = df[['LABEL'] + cols]
+            df["LABEL"] = add_label
+            df = df[["LABEL"] + cols]
         return df
 
     def generate_specs(self, ml_ready=False, rgb=True):
@@ -1494,8 +1492,8 @@ class K2SignalPlots(SignalPlots):
         if rgb is True:
             kwargs = self.set_spec_kwargs(cmap="plasma")
         for _, row in self.df.iterrows():
-            fname = row['fname'].replace('.fits', '_specgram')
-            _, flux = self.read_ts_signal(row['fname'], fmt='kepler.fits', offset=True, remove_nans=True)
+            fname = row["fname"].replace(".fits", "_specgram")
+            _, flux = self.read_ts_signal(row["fname"], fmt="kepler.fits", offset=True, remove_nans=True)
             self.flux_specs(
                 flux,
                 save_for_ml=ml_ready,
@@ -1503,31 +1501,32 @@ class K2SignalPlots(SignalPlots):
                 title=f"Spectrogram: {row['sc']}-{row['tid']}",
                 **kwargs,
             )
-    
+
     def generate_phase_signal_plots(self):
         """Generates phase-folded light curve plots for each signal in dataframe"""
         if self.df is None:
             self.generate_dataframe(self.files)
         for i in list(range(len(self.df))):
             ts = df.iloc[i]
-            self.plot_phase_signals(ts, title_pfx="K2 Phase-folded Light Curve: ", figsize=(11,5))
-    
+            self.plot_phase_signals(ts, title_pfx="K2 Phase-folded Light Curve: ", figsize=(11, 5))
+
     def generate_flux_signal_plots(self):
         """Generates atomic vector plots for each signal in dataframe"""
         if self.df is None:
             self.generate_dataframe(self.files)
         for _, row in self.df.iterrows():
-            fname = row['fname'].replace('.fits', '_flux_signal')
-            timestamps, flux = self.read_ts_signal(row['fname'], fmt='kepler.fits', offset=True, remove_nans=True)
+            fname = row["fname"].replace(".fits", "_flux_signal")
+            timestamps, flux = self.read_ts_signal(row["fname"], fmt="kepler.fits", offset=True, remove_nans=True)
             self.atomic_vector_plotter(
                 flux,
                 timestamps=timestamps,
                 y_units="PDCSAP Flux (e-/s)",
                 x_units="Time (BJD)",
-                figsize=(15,10),
+                figsize=(15, 10),
                 fname=fname,
                 title_pfx=f"K2 Flux Signal: {row['sc']}-{row['tid']}",
             )
+
 
 # testing
 if __name__ == "__main__":
