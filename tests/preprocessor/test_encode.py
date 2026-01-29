@@ -34,13 +34,10 @@ def test_svm_encoder(scraped_mast_file):
     enc.encode_features()
     assert enc.df.shape == (1, 18)
     for col in ENCODED_COL_EXPECTED:
-        if col in list(enc.df.columns):
-            assert True
-        else:
-            assert False
-    assert enc.df.cat[0] == 3
-    assert enc.df.det[0] == 1
-    assert enc.df.wcs[0] == 0
+        assert col in list(enc.df.columns)
+    assert enc.df.iloc[0]['cat'] == 3
+    assert enc.df.iloc[0]['det'] == 1
+    assert enc.df.iloc[0]['wcs'] == 0
 
 
 @mark.svm
