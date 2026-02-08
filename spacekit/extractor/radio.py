@@ -2,7 +2,6 @@ import os
 import shutil
 import glob
 import re
-import boto3
 import numpy as np
 import pandas as pd
 from spacekit.logger.log import Logger
@@ -13,6 +12,11 @@ except ImportError:
     Observations = None
 
 try:
+    import boto3
+except ImportError:
+    boto3 = None
+
+try:
     from progressbar import ProgressBar
 except ImportError:
     ProgressBar = None
@@ -20,6 +24,10 @@ except ImportError:
 
 def check_astroquery():
     return Observations is not None
+
+
+def check_boto3():
+    return boto3 is not None
 
 
 def check_progressbar():
@@ -54,9 +62,9 @@ class Radio:
         self.log = Logger(self.__name__, **log_kws).spacekit_logger()
         self.config = config
         self.region = "us-east-1"
-        self.s3 = boto3.resource("s3", region_name=self.region)
-        self.bucket = self.s3.Bucket("stpubdata")
-        self.location = {"LocationConstraint": self.region}
+        self.s3 = None
+        self.bucket = None
+        self.location = None
         self.target_list = None
         self.proposal_id = None  # '13926'
         self.collection = None  # "K2" "HST" "HLA" "JWST"
@@ -73,10 +81,9 @@ class Radio:
             raise ImportError(
                 "You must install astroquery (`pip install astroquery`) "
                 "and progressbar (`pip install progressbar`) for the "
-                "radio module to work. \n\nInstall extra deps via "
+                "radio module to work. \n\nInstall all extra deps via "
                 "`pip install spacekit[x]`"
             )
-
         self.configure_aws()
 
     def configure_aws(self):
@@ -84,8 +91,19 @@ class Radio:
         # configure aws settings
         if self.config == "enable":
             self.log.info("Configuring for AWS cloud data retrieval...")
+            if not check_boto3():
+                self.log.error("boto3 not installed.")
+                raise ImportError(
+                    "You must install boto3 (`pip install boto3`) for "
+                    "AWS S3 access via the radio module.\n\nInstall all "
+                    "extra deps via `pip install spacekit[x]`"
+                )
+            self.s3 = boto3.resource("s3", region_name=self.region)
+            self.bucket = self.s3.Bucket("stpubdata")
+            self.location = {"LocationConstraint": self.region}
             Observations.enable_cloud_dataset(provider="AWS", profile="default")
-        elif self.config == "disable":
+        else:
+            self.log.info("Configuring for MAST data retrieval only...")
             Observations.disable_cloud_dataset()
 
     def set_query_params(self, **kwargs):
@@ -187,7 +205,6 @@ class Radio:
                 self.log.error(f"Could not resolve {target} to a sky position.")
                 self.errors.append(target)
                 continue
-        return self
 
     def s3_download(self):
         """Download datasets in list of uris from AWS s3 bucket (public access via STScI)
@@ -210,7 +227,6 @@ class Radio:
             except FileExistsError:
                 continue
         self.log.info(f"Download Complete: {count} files")
-        return self
 
     def mast_download(self):
         """Download datasets from MAST"""

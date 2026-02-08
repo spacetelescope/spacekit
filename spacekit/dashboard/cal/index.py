@@ -304,6 +304,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     host, port = args.host, args.port
     if args.env == "dev":
-        app.run_server(host=host, port=port, debug=True, dev_tools_prune_errors=False)
+        app.run(host=host, port=port, debug=True, dev_tools_prune_errors=False)
     else:
-        app.run_server(host="0.0.0.0", port=8050)
+        app.run(host="0.0.0.0", port=8050)

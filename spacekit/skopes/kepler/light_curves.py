@@ -44,17 +44,19 @@ class LaunchK2:
                 train = fpath
             else:
                 test = fpath
-        self.X_train, self.X_test, self.y_train, self.y_test = hypersonic_pliers(train, test, subtract_y=1.0, reshape=True)
+        self.X_train, self.X_test, self.y_train, self.y_test = hypersonic_pliers(
+            train, path_to_test=test, subtract_y=1.0, reshape=True
+        )
         print("Data split successful")
 
     def scale_data(self):
         print("Scaling data to Zero Mean and Unit Variance...")
-        self.X_train, self.X_test = thermo_fusion_chisel(self.X_train, self.X_test)
+        self.X_train, self.X_test = thermo_fusion_chisel(self.X_train, matrix2=self.X_test)
         print("Data scaling successful.")
 
     def add_filter(self):
         print("Adding noise filter...")
-        self.X_train, self.X_test = babel_fish_dispenser(self.X_train, self.X_test)
+        self.X_train, self.X_test = babel_fish_dispenser(self.X_train, matrix2=self.X_test)
         print("Noise filter added successfully.")
 
     def deploy(self):

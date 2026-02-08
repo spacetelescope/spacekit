@@ -1109,6 +1109,9 @@ class NaNdler:
             if self.verbose:
                 print(f"\nNaNs to be NaNdled:\n{self.df[cols].isna().sum()}\n")
             for n in cols:
+                if self.df[n].dtype in ['str', 'O']: # pandas>=3.0 uses 'str' for object types
+                    vals = pd.to_numeric(self.df[n], errors='coerce')
+                    self.df[n] = vals
                 self.df.loc[self.df[n].isna(), n] = 0.0
 
     def discrete_nandler(self, nanval=0.0):
