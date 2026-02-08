@@ -49,6 +49,10 @@ jobs:
             toxenv: py313
             python-version: 3.13
 
+          - name: python 3.14
+            toxenv: py314
+            python-version: 3.14
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
