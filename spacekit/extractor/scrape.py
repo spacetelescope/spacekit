@@ -172,8 +172,8 @@ class Scraper:
                 extracted_fpaths.append(extracted)
                 if self.clean is True:
                     os.remove(z)
-                    if os.path.exists(z+'_archive'):
-                        os.remove(z+'_archive')
+                    if os.path.exists(z + "_archive"):
+                        os.remove(z + "_archive")
         self.fpaths = extracted_fpaths
 
     def compress_files(self, target_folder, fname=None, compression="zip"):
@@ -263,7 +263,7 @@ class FileScraper(Scraper):
 
 
 class WebScraper(Scraper):
-    """Scraper subclass for extracting publicly available data off the web. 
+    """Scraper subclass for extracting publicly available data off the web.
     Uses dictionary of uri, filename and hash key-value pairs to download data securely from a website such as Github.
 
     Parameters
@@ -285,6 +285,7 @@ class WebScraper(Scraper):
     clean : bool, optional
         remove compressed file after extraction
     """
+
     def __init__(
         self,
         uri,
@@ -314,8 +315,8 @@ class WebScraper(Scraper):
 
     def scrape(self):
         """Using the key-pair values in `dataset` dictionary attribute, download the files from a website
-        (such as zenodo) and check the hash keys match before extracting. Extraction and hash-key checking 
-        is handled externally by the `keras.utils.data_utils.get_file` method. If extraction is successful, 
+        (such as zenodo) and check the hash keys match before extracting. Extraction and hash-key checking
+        is handled externally by the `keras.utils.data_utils.get_file` method. If extraction is successful,
         the archive file will be deleted. See spacekit.datasets.meta for dictionary formatting examples.
 
         Returns
@@ -338,7 +339,7 @@ class WebScraper(Scraper):
                 archive_format=self.format,
             )
             self.fpaths.append(fpath)
-            name_keys.append(os.path.join(self.outpath, data['key']))
+            name_keys.append(os.path.join(self.outpath, data["key"]))
         if self.extract is True:
             self.extract_archives(name_keys=name_keys)
         return self.fpaths
@@ -643,9 +644,7 @@ class DynamoDBScraper(Scraper):
         while raw_data.get("LastEvaluatedKey"):
             print("Downloading ", end="")
             if attr:
-                raw_data = table.scan(
-                    ExclusiveStartKey=raw_data["LastEvaluatedKey"], **scan_kwargs
-                )
+                raw_data = table.scan(ExclusiveStartKey=raw_data["LastEvaluatedKey"], **scan_kwargs)
             else:
                 raw_data = table.scan(ExclusiveStartKey=raw_data["LastEvaluatedKey"])
             items.extend(raw_data["Items"])
@@ -661,26 +660,20 @@ class DynamoDBScraper(Scraper):
     def write_to_csv(self):
         self.fpath = os.path.join(self.cache_dir, self.cache_subdir, self.fname)
         with open(self.fpath, "w") as csvfile:
-            writer = csv.DictWriter(
-                csvfile, delimiter=",", fieldnames=self.ddb_data["keys"], quotechar='"'
-            )
+            writer = csv.DictWriter(csvfile, delimiter=",", fieldnames=self.ddb_data["keys"], quotechar='"')
             writer.writeheader()
             writer.writerows(self.ddb_data["items"])
         print(f"DDB data saved to: {self.fpath}")
 
     def format_row_item(self, row):
         row = self.formatter(row)
-        return json.loads(
-            json.dumps(row, allow_nan=True), parse_int=Decimal, parse_float=Decimal
-        )
+        return json.loads(json.dumps(row, allow_nan=True), parse_int=Decimal, parse_float=Decimal)
 
     def write_to_dynamo(self, rows):
         try:
             table = dynamodb.Table(self.table_name)
         except Exception as e:
-            print(
-                "Error loading DynamoDB table. Check if table was created correctly and environment variable."
-            )
+            print("Error loading DynamoDB table. Check if table was created correctly and environment variable.")
             print(e)
         try:
             with table.batch_writer() as batch:
@@ -726,9 +719,7 @@ class FitsScraper(FileScraper):
         logging name, by default "FitsScraper"
     """
 
-    def __init__(
-        self, data, input_path, genkeys=[], scikeys=[], name="FitsScraper", **log_kws
-    ):
+    def __init__(self, data, input_path, genkeys=[], scikeys=[], name="FitsScraper", **log_kws):
         super().__init__(name=name, **log_kws)
         self.df = data.copy()
         self.input_path = input_path
@@ -929,10 +920,10 @@ class JwstFitsScraper(FitsScraper):
             "FILTER",  # Name of the filter element used
             "PUPIL",  # Name of the pupil element used
             "GRATING",  # Name of the grating element used (SPEC)
-            "FXD_SLIT", # Name of fixed slit aperture used
+            "FXD_SLIT",  # Name of fixed slit aperture used
             "EXP_TYPE",  # Type of data in the exposure
             "CHANNEL",  # Instrument channel
-            "BAND", # MRS wavelength band
+            "BAND",  # MRS wavelength band
             "SUBARRAY",  # Subarray used
             "NUMDTHPT",  # Total number of points in pattern
             "GS_RA",  # guide star right ascension
@@ -977,13 +968,10 @@ class SvmFitsScraper(FitsScraper):
     input_path : str or path
         input path containing fits files to scrape
     """
+
     def __init__(self, data, input_path, **log_kws):
-
-
         self.scikeys = ["rms_ra", "rms_dec", "nmatches", "wcstype"]
-        super().__init__(
-            data, input_path, scikeys=self.scikeys, name="SvmFitsScraper", **log_kws
-        )
+        super().__init__(data, input_path, scikeys=self.scikeys, name="SvmFitsScraper", **log_kws)
         self.fpaths = self.find_drz_paths(dname_col="dataset", drzimg_col="imgname")
 
     def scrape_fits(self):
@@ -1027,6 +1015,7 @@ class JsonScraper(FileScraper):
     output_path : str or path, optional
         where to save the data, by default None
     """
+
     def __init__(
         self,
         search_path=os.getcwd(),
@@ -1125,16 +1114,11 @@ class JsonScraper(FileScraper):
             with open(json_filename) as f:
                 json_data = json.load(f)
 
-            out_dict["header"] = json_data[
-                "header"
-            ]  # copy over the 'header' section directly.
+            out_dict["header"] = json_data["header"]  # copy over the 'header' section directly.
             out_dict["general information"] = json_data["general information"]
             out_dict["data"] = collections.OrderedDict()  # set up blank data section
             for datakey in json_data["data"].keys():
-                if (
-                    json_data["data"][datakey]["original format"]
-                    == "<class 'numpy.ndarray'>"
-                ):  # Extract numpy array
+                if json_data["data"][datakey]["original format"] == "<class 'numpy.ndarray'>":  # Extract numpy array
                     self.log.info(
                         "Converting dataset '{}' back to format '{}', dtype = {}".format(
                             datakey,
@@ -1146,12 +1130,8 @@ class JsonScraper(FileScraper):
                         json_data["data"][datakey]["data"],
                         dtype=json_data["data"][datakey]["dtype"],
                     )
-                elif (
-                    json_data["data"][datakey]["original format"] == "<class 'tuple'>"
-                ):  # Extract tuples
-                    out_dict["data"][datakey] = tuple(
-                        json_data["data"][datakey]["data"]
-                    )
+                elif json_data["data"][datakey]["original format"] == "<class 'tuple'>":  # Extract tuples
+                    out_dict["data"][datakey] = tuple(json_data["data"][datakey]["data"])
                 else:  # Catchall for everything else
                     out_dict["data"][datakey] = json_data["data"][datakey]["data"]
 
@@ -1182,9 +1162,7 @@ class JsonScraper(FileScraper):
                 search_string = os.path.join(self.search_path, "*", search_pattern)
                 search_results = glob.glob(search_string)
 
-            self.log.info(
-                "{} files found: {}".format(search_pattern, len(search_results))
-            )
+            self.log.info("{} files found: {}".format(search_pattern, len(search_results)))
             if len(search_results) > 0:
                 json_list += search_results
 
@@ -1234,9 +1212,7 @@ class JsonScraper(FileScraper):
             store.put("mydata", self.data)
             store.get_storer("mydata").attrs.metadata = kwargs
             store.close()
-            self.log.info(
-                "Wrote dataframe and metadata to HDF5 file {}".format(self.h5_file)
-            )
+            self.log.info("Wrote dataframe and metadata to HDF5 file {}".format(self.h5_file))
         else:
             print("Data unavailable - run `json_scraper` to collect json data.")
         return self.h5_file
@@ -1295,9 +1271,7 @@ class JsonScraper(FileScraper):
             if ingest_dict:
                 if self.data is not None:
                     self.log.debug("APPENDED DATAFRAME")
-                    self.data = self.data.append(
-                        pd.DataFrame(ingest_dict["data"], index=[idx])
-                    )
+                    self.data = self.data.append(pd.DataFrame(ingest_dict["data"], index=[idx]))
                 else:
                     self.log.debug("CREATED DATAFRAME")
                     self.data = pd.DataFrame(ingest_dict["data"], index=[idx])
@@ -1355,17 +1329,13 @@ class JsonScraper(FileScraper):
                 for header_item in json_data["header"].keys():
                     if header_item in self.keyword_shortlist:
                         # if header_item in header_keywords_to_keep:
-                        ingest_dict["data"]["header." + header_item] = json_data[
-                            "header"
-                        ][header_item]
+                        ingest_dict["data"]["header." + header_item] = json_data["header"][header_item]
                 header_ingested = True
             # add information from "general information" section to ingest_dict just once
             if not gen_info_ingested:
                 for gi_item in json_data["general information"].keys():
                     if gi_item in self.keyword_shortlist:
-                        ingest_dict["data"]["gen_info." + gi_item] = json_data[
-                            "general information"
-                        ][gi_item]
+                        ingest_dict["data"]["gen_info." + gi_item] = json_data["general information"][gi_item]
                 gen_info_ingested = True
             flattened_data = self.flatten_dict(json_data["data"])
             for fd_key in flattened_data.keys():

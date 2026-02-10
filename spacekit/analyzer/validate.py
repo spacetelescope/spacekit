@@ -144,7 +144,7 @@ for train_idx, test_idx in kfold.split(X, y):
     fn, fp = len(com.fnfp["fn_idx"]), len(com.fnfp["fp_idx"])
     print(f"\nScore for fold {fold_no}:")
     print(f"\nLOSS={loss}")
-    print(f"\nACC={acc*100}%")
+    print(f"\nACC={acc * 100}%")
     print(f"\nROC={roc}%")
     print(f"\nFN={fn}")
     print(f"\nFP={fp}")
@@ -182,9 +182,9 @@ print("Score per fold")
 for i in range(0, len(acc_per_fold)):
     print("--------" * 11)
     print(
-        f"> Fold {i+1} - Loss: {loss_per_fold[i]} - Accuracy: {acc_per_fold[i]}% \
-        - ROC: {np.round(roc_per_fold[i], 4)} - FP: {np.round((fp_per_fold[i]/T)*100, 4)} \
-        - FN: {np.round((fn_per_fold[i]/T)*100, 4)}"
+        f"> Fold {i + 1} - Loss: {loss_per_fold[i]} - Accuracy: {acc_per_fold[i]}% \
+        - ROC: {np.round(roc_per_fold[i], 4)} - FP: {np.round((fp_per_fold[i] / T) * 100, 4)} \
+        - FN: {np.round((fn_per_fold[i] / T) * 100, 4)}"
     )
 print("--------" * 11)
 print("Averages:")

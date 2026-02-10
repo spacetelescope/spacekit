@@ -51,9 +51,7 @@ layout = html.Div(
                                             id="image-state",
                                             options=[
                                                 {
-                                                    "label": "_".join(
-                                                        i.split("_")[-4:]
-                                                    ),
+                                                    "label": "_".join(i.split("_")[-4:]),
                                                     "value": i,
                                                 }
                                                 for i in [
@@ -159,9 +157,7 @@ layout = html.Div(
                                             id="dropdown-state",
                                             options=[
                                                 {
-                                                    "label": "_".join(
-                                                        i.split("_")[-4:]
-                                                    ),
+                                                    "label": "_".join(i.split("_")[-4:]),
                                                     "value": i,
                                                 }
                                                 for i in [

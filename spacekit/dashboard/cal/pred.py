@@ -57,12 +57,8 @@ layout = html.Div(
                     children=[
                         html.P(id="cytoscape-tapNodeData-output", style=styles["pre"]),
                         html.P(id="cytoscape-tapEdgeData-output", style=styles["pre"]),
-                        html.P(
-                            id="cytoscape-mouseoverNodeData-output", style=styles["pre"]
-                        ),
-                        html.P(
-                            id="cytoscape-mouseoverEdgeData-output", style=styles["pre"]
-                        ),
+                        html.P(id="cytoscape-mouseoverNodeData-output", style=styles["pre"]),
+                        html.P(id="cytoscape-mouseoverEdgeData-output", style=styles["pre"]),
                     ],
                     style={
                         "width": "100%",
@@ -99,9 +95,7 @@ layout = html.Div(
                                         ),
                                         dcc.Dropdown(
                                             id="select-ipst",
-                                            options=[
-                                                {"label": i, "value": i} for i in ipsts
-                                            ],
+                                            options=[{"label": i, "value": i} for i in ipsts],
                                             value="idio03010",
                                             style={
                                                 "color": "black",
@@ -247,7 +241,7 @@ layout = html.Div(
                                         "margin": 5,
                                         "width": 255,
                                     },
-                                )
+                                ),
                                 # END outputs Left Col
                             ],
                             style={
@@ -414,7 +408,7 @@ layout = html.Div(
                                         "margin": 5,
                                         "width": 255,
                                     },
-                                )
+                                ),
                                 # END Input Right COL
                             ],
                             style={
@@ -568,7 +562,7 @@ layout = html.Div(
                                             size=220,
                                             color="rgb(33, 134, 244)",
                                             style=styles["gradbar-blue"],
-                                        )
+                                        ),
                                         # END Probabilities
                                     ],
                                     style={
@@ -684,7 +678,7 @@ layout = html.Div(
                 "float": "center",
                 "background-color": "#242a44",
             },
-        )
+        ),
         # PAGE LAYOUT
     ],
     style={

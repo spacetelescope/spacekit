@@ -9,9 +9,7 @@ from spacekit.dashboard.cal.config import cal, hst, tx_file
 from spacekit.preprocessor.transform import PowerX
 
 
-url_bar_and_content_div = html.Div(
-    [dcc.Location(id="url", refresh=False), html.Div(id="page-content")]
-)
+url_bar_and_content_div = html.Div([dcc.Location(id="url", refresh=False), html.Div(id="page-content")])
 
 # index layout
 index_layout = html.Div(
@@ -54,9 +52,7 @@ index_layout = html.Div(
 app.layout = url_bar_and_content_div
 
 # "complete" layout
-app.validation_layout = html.Div(
-    [url_bar_and_content_div, index_layout, eval.layout, eda.layout, pred.layout]
-)
+app.validation_layout = html.Div([url_bar_and_content_div, index_layout, eval.layout, eda.layout, pred.layout])
 
 
 @app.callback(Output("page-content", "children"), Input("url", "pathname"))
@@ -170,12 +166,8 @@ def update_xi_predictions(
     if n_clicks == 0:
         raise PreventUpdate
     # if n_clicks > 0:
-    x_features = nodegraph.read_inputs(
-        n_files, total_mb, drizcorr, pctecorr, crsplit, subarray, detector, dtype, instr
-    )
-    m_preds = nodegraph.make_preds(
-        x_features, tx_file
-    )  # [membin, memval, clocktime, p0, p1, p2, p3]
+    x_features = nodegraph.read_inputs(n_files, total_mb, drizcorr, pctecorr, crsplit, subarray, detector, dtype, instr)
+    m_preds = nodegraph.make_preds(x_features, tx_file)  # [membin, memval, clocktime, p0, p1, p2, p3]
     n_clicks = 0
     m_preds.append(0)  # reset `activate` toggle switch = off
     return m_preds
@@ -224,9 +216,7 @@ def update_ipst(selected_ipst):
     State("dtype-state", "value"),
     State("instr-state", "value"),
 )
-def activate_network(
-    on, n_files, total_mb, drizcorr, pctecorr, crsplit, subarray, detector, dtype, instr
-):
+def activate_network(on, n_files, total_mb, drizcorr, pctecorr, crsplit, subarray, detector, dtype, instr):
     if on is True:
         x_features = nodegraph.read_inputs(
             n_files,
@@ -314,6 +304,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     host, port = args.host, args.port
     if args.env == "dev":
-        app.run_server(host=host, port=port, debug=True, dev_tools_prune_errors=False)
+        app.run(host=host, port=port, debug=True, dev_tools_prune_errors=False)
     else:
-        app.run_server(host="0.0.0.0", port=8050)
+        app.run(host="0.0.0.0", port=8050)

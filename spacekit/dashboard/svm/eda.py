@@ -120,10 +120,7 @@ layout = html.Div(
                     [
                         dcc.Dropdown(
                             id="selected-scatter",
-                            options=[
-                                {"label": f, "value": f}
-                                for f in ["rms_ra_dec", "point_segment"]
-                            ],
+                            options=[{"label": f, "value": f} for f in ["rms_ra_dec", "point_segment"]],
                             value="rms_ra_dec",
                         )
                     ],
@@ -137,23 +134,23 @@ layout = html.Div(
                 html.Div(
                     children=[
                         dcc.Graph(
-                            id="hrc-scatter",
+                            id="acs-hrc-scatter",
                             style={"display": "inline-block", "float": "center"},
                         ),
                         dcc.Graph(
-                            id="ir-scatter",
+                            id="wfc3-ir-scatter",
                             style={"display": "inline-block", "float": "center"},
                         ),
                         dcc.Graph(
-                            id="sbc-scatter",
+                            id="acs-sbc-scatter",
                             style={"display": "inline-block", "float": "center"},
                         ),
                         dcc.Graph(
-                            id="uvis-scatter",
+                            id="wfc3-uvis-scatter",
                             style={"display": "inline-block", "float": "center"},
                         ),
                         dcc.Graph(
-                            id="wfc-scatter",
+                            id="acs-wfc-scatter",
                             style={"display": "inline-block", "float": "center"},
                         ),
                     ],

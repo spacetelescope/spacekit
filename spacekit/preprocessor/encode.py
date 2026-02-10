@@ -121,9 +121,7 @@ class PairEncoder:
     def fit(self, data, keypairs, axiscol=None, handle_unknowns=True):
         if isinstance(data, pd.DataFrame):
             if axiscol is None:
-                self.log.error(
-                    "Must indicate which column to fit if `data` is a `dataframe`."
-                )
+                self.log.error("Must indicate which column to fit if `data` is a `dataframe`.")
                 return
             try:
                 self.arr = np.asarray(data[axiscol], dtype=object)
@@ -149,9 +147,7 @@ class PairEncoder:
             if handle_unknowns is True:
                 self.handle_unknowns(unknowns)
             else:
-                self.log.error(
-                    f"Found unknown values in {axiscol}:\n {self.arr[unknowns]}"
-                )
+                self.log.error(f"Found unknown values in {axiscol}:\n {self.arr[unknowns]}")
                 return
         try:
             self.unique = np.unique(self.arr)
@@ -233,9 +229,7 @@ class CategoricalEncoder:
             original dataframe with all categorical type features label-encoded.
         """
         if self.encoding_pairs is None:
-            self.log.error(
-                "encoding_pairs attr must be instantiated with key-value pairs"
-            )
+            self.log.error("encoding_pairs attr must be instantiated with key-value pairs")
             return
         self.log.debug("Encoding categorical features...")
         for col, name in self.encodings.items():
@@ -245,9 +239,7 @@ class CategoricalEncoder:
             self.df[name] = enc.transformed
             if self.verbose:
                 self.log.debug(f"*** {col} --> {name} ***")
-                self.log.debug(
-                    f"\n\nORIGINAL:\n{self.df[col].value_counts()}\n\nENCODED:\n{self.df[name].value_counts()}\n"
-                )
+                self.log.debug(f"\n\nORIGINAL:\n{self.df[col].value_counts()}\n\nENCODED:\n{self.df[name].value_counts()}\n")
         self.rejoin_original()
         return self.df
 
@@ -322,9 +314,11 @@ class HstSvmEncoder(CategoricalEncoder):
         self.encode_categories()
 
     def __repr__(self):
-        return (
-            "encodings: %s \n category_keys: %s \n detector_keys: %s \n wcs_keys: %s"
-            % (self.encodings, self.category_keys, self.detector_keys, self.wcs_keys)
+        return "encodings: %s \n category_keys: %s \n detector_keys: %s \n wcs_keys: %s" % (
+            self.encodings,
+            self.category_keys,
+            self.detector_keys,
+            self.wcs_keys,
         )
 
     def encode_features(self):
@@ -414,7 +408,6 @@ class HstSvmEncoder(CategoricalEncoder):
 
 
 class HstCalEncoder(CategoricalEncoder):
-
     """Categorical encoding class for HST Calibration in the Cloud Reprocessing inputs."""
 
     def __init__(
@@ -525,9 +518,7 @@ class JwstEncoder(CategoricalEncoder):
     def make_keypairs(self):
         """Instantiates key-pair dictionaries for each of the categorical features."""
         self.abbreviate_strings(self, cname="subarray", ckeys=["MASK", "SUB", "WFSS"])
-        keymaker = CategoricalKeymaker(
-            self.df, list(self.df.columns), recast=["channel"]
-        )
+        keymaker = CategoricalKeymaker(self.df, list(self.df.columns), recast=["channel"])
         self.encoding_pairs = keymaker.encode_categories()
 
     def abbreviate_strings(self, cname="subarray", ckeys=["MASK", "SUB", "WFSS"]):
@@ -610,12 +601,8 @@ class CategoricalKeymaker:
         keypairs = None
         if codify:
             # convert long string to abbreviated string prior to numeric encoding
-            coded, keypairs = self.codify_keypairs(
-                col=col, forced_zero=forced_zero, **codify
-            )
-            self.df[col + "_c"] = self.df[col].apply(
-                lambda x: self.abbreviator(x, keypairs)
-            )
+            coded, keypairs = self.codify_keypairs(col=col, forced_zero=forced_zero, **codify)
+            self.df[col + "_c"] = self.df[col].apply(lambda x: self.abbreviator(x, keypairs))
             col += "_c"
         else:
             coded = self.make_default_keypairs(col, zero_val=forced_zero)
@@ -662,9 +649,7 @@ class CategoricalKeymaker:
         for col in self.cols:
             keypairs = self.encoding_pairs.get(col, None)
             if keypairs:
-                self.df[col] = self.df[col].apply(
-                    lambda x: self.keypair_encoder(x, keypairs, col)
-                )
+                self.df[col] = self.df[col].apply(lambda x: self.keypair_encoder(x, keypairs, col))
         return self.df
 
     def non_defaults(self):
@@ -689,13 +674,9 @@ class CategoricalKeymaker:
                 )
 
     def set_default_kwargs(self, forced_zero="NONE", recast=None, codify=None):
-        self.default_kwargs = dict(
-            forced_zero=forced_zero, recast=recast, codify=codify
-        )
+        self.default_kwargs = dict(forced_zero=forced_zero, recast=recast, codify=codify)
 
-    def set_recast_kwargs(
-        self, stringify=True, splitify=True, make_upper=True, splitter=".", i=0
-    ):
+    def set_recast_kwargs(self, stringify=True, splitify=True, make_upper=True, splitter=".", i=0):
         self.recast_kwargs = dict(
             stringify=stringify,
             splitify=splitify,
@@ -825,9 +806,7 @@ class CategoricalKeymaker:
         else:
             return x
 
-    def recast_data(
-        self, col, stringify=True, splitify=True, make_upper=True, **kwargs
-    ):
+    def recast_data(self, col, stringify=True, splitify=True, make_upper=True, **kwargs):
         if stringify is True:
             self.df[col] = self.df[col].apply(lambda x: self.string_caster(x))
         if splitify is True:

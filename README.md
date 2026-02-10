@@ -52,7 +52,7 @@ $ pytest --env jwstcal -m jwst
 
 **JWST Calibration Pipeline Resource Prediction (JWST)**
 
-[JWST CAL Docs](https://spacekit.readthedocs.io/en/latest/skopes/jwst/cal.html)
+[JWST CAL Docs](https://www.spacekit.org/en/latest/skopes/jwst/cal/index.html)
 
 * Inference ``spacekit.skopes.jwst.cal.predict``
 
@@ -86,7 +86,7 @@ $ python -m spacekit.skopes.jwst.cal.predict /path/to/inputs --pid 1076
 
 **Single Visit Mosaic Alignment (HST)**
 
-[SVM Docs](https://spacekit.readthedocs.io/en/latest/skopes/hst/svm.html)
+[SVM Docs](https://www.spacekit.org/en/latest/skopes/hst/svm/index.html)
 
 * Preprocessing: ``spacekit.skopes.hst.svm.prep``
 * Predict Image Alignments: ``spacekit.skopes.hst.svm.predict``
@@ -97,7 +97,7 @@ $ python -m spacekit.skopes.jwst.cal.predict /path/to/inputs --pid 1076
 
 **HST Calibration Pipeline Resource Prediction (HST)**
 
-[HST CAL Docs](https://spacekit.readthedocs.io/en/latest/skopes/hst/cal.html)
+[HST CAL Docs](https://www.spacekit.org/en/latest/skopes/hst/cal/index.html)
 
 * Training ``spacekit.skopes.hst.cal.train``
 * Inference ``spacekit.skopes.hst.cal.predict``
@@ -105,7 +105,7 @@ $ python -m spacekit.skopes.jwst.cal.predict /path/to/inputs --pid 1076
 
 **Exoplanet Detection with time-series photometry (K2, TESS)**
 
-[K2 Docs](https://spacekit.readthedocs.io/en/latest/skopes/kepler/light-curves.html)
+[K2 Docs](https://www.spacekit.org/en/latest/skopes/kepler/light_curves.html)
 
 * ``spacekit.skopes.kepler.light_curves``
 
