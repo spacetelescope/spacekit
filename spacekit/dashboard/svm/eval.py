@@ -58,10 +58,7 @@ layout = html.Div(
                                             [
                                                 dcc.Dropdown(
                                                     id="keras-picker",
-                                                    options=[
-                                                        {"label": str(v), "value": v}
-                                                        for v in svm.versions
-                                                    ],
+                                                    options=[{"label": str(v), "value": v} for v in svm.versions],
                                                     value=svm.versions[-1],
                                                 )
                                             ],
@@ -93,9 +90,7 @@ layout = html.Div(
                             ]
                         ),
                         html.P("ROC AUC", style={"margin": 25}),
-                        html.P(
-                            "Receiver Operator Characteristic", style={"margin": 25}
-                        ),
+                        html.P("Receiver Operator Characteristic", style={"margin": 25}),
                         html.P("(Area Under the Curve)", style={"margin": 25}),
                         html.Div(
                             children=[
@@ -105,10 +100,7 @@ layout = html.Div(
                                             [
                                                 dcc.Dropdown(
                                                     id="rocauc-picker",
-                                                    options=[
-                                                        {"label": str(v), "value": v}
-                                                        for v in svm.versions
-                                                    ],
+                                                    options=[{"label": str(v), "value": v} for v in svm.versions],
                                                     value=svm.versions[-1],
                                                 )
                                             ],

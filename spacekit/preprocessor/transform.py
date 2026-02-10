@@ -21,6 +21,7 @@ class SkyTransformer:
     name : str, optional
         logging name, by default "SkyTransformer"
     """
+
     def __init__(self, mission, name="SkyTransformer", **log_kws):
         self.__name__ = name
         self.log = Logger(self.__name__).spacekit_logger(**log_kws)
@@ -86,7 +87,7 @@ class SkyTransformer:
             nested dictionary of (typically Level 3) product names (keys),
             their input exposures (values) and relevant fits header information
             per exposure (key-value pairs).
-        
+
         Returns
         -------
         dict
@@ -98,7 +99,7 @@ class SkyTransformer:
         return product_refpix
 
     def validate_fiducial(self, fiducial, exp):
-        """Checks fiducial to ensure value is valid. 
+        """Checks fiducial to ensure value is valid.
 
         Parameters
         ----------
@@ -110,7 +111,7 @@ class SkyTransformer:
         Returns
         -------
         bool
-            Valid (True) or invalid (False) 
+            Valid (True) or invalid (False)
         """
         (ra, dec) = fiducial
         if isinstance(ra, float) and isinstance(dec, float):
@@ -147,7 +148,7 @@ class SkyTransformer:
             fiducial = (data.get(self.ra_key, self.ra_key2), data.get(self.dec_key, self.dec_key2))
             # only need to set once bc consisent across exposures
             if targ_radec is None:
-                targ_radec = (data.get("TARG_RA", ''), data.get("TARG_DEC", ''))
+                targ_radec = (data.get("TARG_RA", ""), data.get("TARG_DEC", ""))
             # validate fiducials
             if self.validate_fiducial(fiducial, exp) is False:
                 bad_fiducials[exp] = str(exp)
@@ -157,9 +158,7 @@ class SkyTransformer:
             channel = data.get(self.channel_key, None)
             band = data.get(self.band_key, None)
             exp_type = data.get(self.exp_key, None)
-            scale = self.get_scale(
-                instr, channel=channel, detector=detector, exp_type=exp_type
-            )
+            scale = self.get_scale(instr, channel=channel, detector=detector, exp_type=exp_type)
             shape = self.data_shapes(instr)
             # footprint from shape
             footprint = self.footprint_from_shape(fiducial, scale, shape)
@@ -174,12 +173,12 @@ class SkyTransformer:
                 detectors.append(detector.upper())
             # MIRI MRS: determine bands used: short, long, shortmedium, shortmediumlong
             if band is not None:
-                bands.extend([b.upper() for b in band.split('-') if b.upper() not in bands])
+                bands.extend([b.upper() for b in band.split("-") if b.upper() not in bands])
         # Throw out any exposures with invalid data
         for k in bad_fiducials.keys():
             del exp_data[k]
-            if 'NEXPOSUR' in refpix:
-                refpix['NEXPOSUR'] -= 1
+            if "NEXPOSUR" in refpix:
+                refpix["NEXPOSUR"] -= 1
         # if all exposures were bad, return empty dict
         if len(exp_data) < 1:
             return {}
@@ -190,7 +189,7 @@ class SkyTransformer:
         # pixel sky sep offsets from estimated fiducial
         pcoord = SkyCoord(lon_fiducial, lat_fiducial, unit="deg")
         tcoord = None
-        if self.validate_fiducial(targ_radec, 'TARG_RA/TARG_DEC') is True:
+        if self.validate_fiducial(targ_radec, "TARG_RA/TARG_DEC") is True:
             tcoord = SkyCoord(targ_radec[0], targ_radec[1], unit="deg")
         for exp, data in exp_data.items():
             (ra, dec) = data["fiducial"]
@@ -202,14 +201,8 @@ class SkyTransformer:
                 exp_data[exp]["targ_offset"] = targ_pixel
                 targ_offsets.append(targ_pixel)
         # fill in metadata for product using reference exposure (usually vals are equal across inputs)
-        ref_exp = [
-            k for k, v in exp_data.items() if v["offset"] == np.min(np.asarray(offsets))
-        ][0]
-        keys = [
-            k
-            for k in list(exp_data[ref_exp].keys())
-            if k not in ["DETECTOR", "BAND", "footprint", "fiducial"]
-        ]
+        ref_exp = [k for k, v in exp_data.items() if v["offset"] == np.min(np.asarray(offsets))][0]
+        keys = [k for k in list(exp_data[ref_exp].keys()) if k not in ["DETECTOR", "BAND", "footprint", "fiducial"]]
         for k in keys:
             refpix[k] = exp_data[ref_exp][k]
         if len(detectors) > 1:
@@ -221,7 +214,7 @@ class SkyTransformer:
         elif len(bands) == 1:
             refpix["BAND"] = bands[0]
         else:
-            refpix["BAND"] = 'NONE'
+            refpix["BAND"] = "NONE"
         # offset statistics
         offset_stats = self.offset_statistics(offsets)
         refpix.update(offset_stats)
@@ -233,12 +226,8 @@ class SkyTransformer:
             # set default to 0.0 as fallback if calculation fails
             refpix["t_offset"] = 0.0
             refpix["gs_offset"] = 0.0
-            refpix["gs_offset"] = self.pixel_sky_separation(
-                refpix["GS_RA"], refpix["GS_DEC"], pcoord, refpix["scale"]
-            )
-            refpix["t_offset"] = self.pixel_sky_separation(
-                refpix["TARG_RA"], refpix["TARG_DEC"], pcoord, refpix["scale"]
-            )
+            refpix["gs_offset"] = self.pixel_sky_separation(refpix["GS_RA"], refpix["GS_DEC"], pcoord, refpix["scale"])
+            refpix["t_offset"] = self.pixel_sky_separation(refpix["TARG_RA"], refpix["TARG_DEC"], pcoord, refpix["scale"])
         except (ValueError, TypeError):
             self.log.debug("TARG/GS RA DEC vals missing or NaN - setting to 0.0")
         return refpix
@@ -379,6 +368,7 @@ class Transformer:
     output_path : string, optional
         where to save the transformer metadata, by default None (current working directory)
     """
+
     def __init__(
         self,
         data,
@@ -413,9 +403,7 @@ class Transformer:
                 data = data.reshape(1, -1)
             elif isinstance(data, pd.Series):
                 name = data.name
-                data = pd.DataFrame(
-                    data.values.reshape(1, -1), columns=list(data.index)
-                )
+                data = pd.DataFrame(data.values.reshape(1, -1), columns=list(data.index))
                 data["index"] = name
                 data.set_index("index", inplace=True)
         return data
@@ -525,9 +513,7 @@ class Transformer:
         try:
             idx = self.data.index
         except AttributeError:
-            self.log.error(
-                "Non-dataframe type detected - Trying `normalized_matrix` instead."
-            )
+            self.log.error("Non-dataframe type detected - Trying `normalized_matrix` instead.")
             return self.normalized_matrix(normalized)
         if self.rename is None:
             newcols = self.cols
@@ -588,9 +574,7 @@ class Transformer:
         elif isinstance(self.data, np.ndarray):
             return self.normalized_matrix(normalized)
         else:
-            self.log.error(
-                "Input data type not recognized - must be a dataframe or array"
-            )
+            self.log.error("Input data type not recognized - must be a dataframe or array")
             return None
 
 
@@ -624,6 +608,7 @@ class PowerX(Transformer):
     rename : str or list
         if string, will be appended to normalized col names; if list, will rename normalized columns in this order, by default _scl
     """
+
     def __init__(
         self,
         data,
@@ -749,9 +734,7 @@ class PowerX(Transformer):
         return self.normalized
 
 
-def normalize_training_data(
-    df, cols, X_train, X_test, X_val=None, rename=None, output_path=None
-):
+def normalize_training_data(df, cols, X_train, X_test, X_val=None, rename=None, output_path=None):
     """Apply Leo-Johnson PowerTransform (via scikit learn) normalization and scaling to the training data, saving the transform
     metadata to json file on local disk and transforming the train, test and val sets separately (to prevent data leakage).
 
@@ -775,19 +758,11 @@ def normalize_training_data(
     """
     print("Applying Normalization (Leo-Johnson PowerTransform)")
     ncols = [i for i, c in enumerate(df.columns) if c in cols]
-    Px = PowerX(
-        df, cols=cols, ncols=ncols, save_tx=True, rename=rename, output_path=output_path
-    )
-    X_train = PowerX(
-        X_train, cols=cols, ncols=ncols, rename=rename, tx_data=Px.tx_data
-    ).Xt
-    X_test = PowerX(
-        X_test, cols=cols, ncols=ncols, rename=rename, tx_data=Px.tx_data
-    ).Xt
+    Px = PowerX(df, cols=cols, ncols=ncols, save_tx=True, rename=rename, output_path=output_path)
+    X_train = PowerX(X_train, cols=cols, ncols=ncols, rename=rename, tx_data=Px.tx_data).Xt
+    X_test = PowerX(X_test, cols=cols, ncols=ncols, rename=rename, tx_data=Px.tx_data).Xt
     if X_val is not None:
-        X_val = PowerX(
-            X_val, cols=cols, ncols=ncols, rename=rename, tx_data=Px.tx_data
-        ).Xt
+        X_val = PowerX(X_val, cols=cols, ncols=ncols, rename=rename, tx_data=Px.tx_data).Xt
         return X_train, X_test, X_val
     else:
         return X_train, X_test
@@ -913,18 +888,29 @@ def tensors_to_arrays(X_train, y_train, X_test, y_test):
     return X_train, y_train, X_test, y_test
 
 
+def ffill_array(arr):
+    """
+    Forward-fills NaN values in a 1D NumPy array using pure NumPy operations.
+    """
+    mask = np.isnan(arr)
+    # Get indices of non-NaN values
+    idx = np.where(~mask, np.arange(len(mask)), 0)
+    # Forward fill indices
+    np.maximum.accumulate(idx, out=idx)
+    # Use the indices to select the corresponding non-NaN values
+    return arr[idx]
+
+
 def hypersonic_pliers(
-    path_to_train, path_to_test, y_col=[0], skip=1, dlm=",", encoding='bytes', subtract_y=0.0, reshape=False
+    path_to_train, path_to_test=None, y_col=[0], skip=1, dlm=",", encoding="bytes", subtract_y=0.0, reshape=False
 ):
-    """Extracts data into 1-dimensional arrays, using separate target classes (y) for training and test data. Assumes y (target)
-    is first column in dataframe. If the target (y) classes in the raw data are 0 and 2, but you'd like them to be binaries (0
-    and 1), set subtract_y=1.0
+    """Extracts data into 1-dimensional arrays, using separate target classes (y) for training and test data. Assumes y (target) is first column in dataframe. If the target (y) classes in the raw data are 1 and 2, but you'd like them to be binaries (0 and 1), set subtract_y=1.0
 
     Parameters
     ----------
     path_to_train : string
         path to training data file (csv)
-    path_to_test : string
+    path_to_test : string, optional
         path to test data file (csv)
     y_col : list, optional
         axis index of target class, by default [0]
@@ -947,20 +933,23 @@ def hypersonic_pliers(
     xcols = [c for c in cols if c not in y_col]
     X_train = Train[:, xcols]
     y_train = Train[:, y_col, np.newaxis] - subtract_y
+    if reshape is True:
+        y_train = y_train.reshape(y_train.shape[0], 1)
+    del Train
+    print("X_train: ", X_train.shape)
+    print("y_train: ", y_train.shape)
+
+    if path_to_test is None:
+        return X_train, y_train
 
     Test = np.loadtxt(path_to_test, skiprows=skip, delimiter=dlm, encoding=encoding)
     X_test = Test[:, xcols]
     y_test = Test[:, y_col, np.newaxis] - subtract_y
     if reshape is True:
-        y_train = y_train.reshape(y_train.shape[0], 1)
         y_test = y_test.reshape(y_test.shape[0], 1)
-
-    del Train, Test
-    print("X_train: ", X_train.shape)
-    print("y_train: ", y_train.shape)
+    del Test
     print("X_test: ", X_test.shape)
     print("y_test: ", y_test.shape)
-
     return X_train, X_test, y_train, y_test
 
 
@@ -981,17 +970,13 @@ def thermo_fusion_chisel(matrix1, matrix2=None):
     ndarray(s)
         scaled array(s) of same shape as input
     """
-    matrix1 = (matrix1 - np.mean(matrix1, axis=1).reshape(-1, 1)) / np.std(
-        matrix1, axis=1
-    ).reshape(-1, 1)
+    matrix1 = (matrix1 - np.mean(matrix1, axis=1).reshape(-1, 1)) / np.std(matrix1, axis=1).reshape(-1, 1)
 
     print("Mean: ", matrix1[0].mean())
     print("Variance: ", matrix1[0].std())
 
     if matrix2 is not None:
-        matrix2 = (matrix2 - np.mean(matrix2, axis=1).reshape(-1, 1)) / np.std(
-            matrix2, axis=1
-        ).reshape(-1, 1)
+        matrix2 = (matrix2 - np.mean(matrix2, axis=1).reshape(-1, 1)) / np.std(matrix2, axis=1).reshape(-1, 1)
 
         print("Mean: ", matrix2[0].mean())
         print("Variance: ", matrix2[0].std())
@@ -1000,7 +985,7 @@ def thermo_fusion_chisel(matrix1, matrix2=None):
         return matrix1
 
 
-def babel_fish_dispenser(matrix1, matrix2=None, step_size=None, axis=2):
+def babel_fish_dispenser(matrix1, matrix2=None, step_size=200, axis=2):
     """Adds an input corresponding to the running average over a set number of time steps. This helps the neural network to
     ignore high frequency noise by passing in a uniform 1-D filter and stacking the arrays.
 
@@ -1020,9 +1005,6 @@ def babel_fish_dispenser(matrix1, matrix2=None, step_size=None, axis=2):
     numpy array(s)
         2D array (original input array with a uniform 1d-filter as noise)
     """
-    if step_size is None:
-        step_size = 200
-
     # calc input for flux signal rolling avgs
     filter1 = uniform_filter1d(matrix1, axis=1, size=step_size)
     # store in array and stack on 2nd axis for each obs of X data
@@ -1039,8 +1021,7 @@ def babel_fish_dispenser(matrix1, matrix2=None, step_size=None, axis=2):
 
 
 def fast_fourier(matrix, bins):
-    """Takes an array (e.g. signal input values) and rotates number of ``bins`` to the left as a fast Fourier transform. Returns
-    vector of length equal to ``matrix`` input array.
+    """Takes an array (e.g. signal input values) and rotates number of ``bins`` to the left as a fast Fourier transform. Returns vector of length equal to ``matrix`` input array.
 
     Parameters
     ----------
@@ -1060,9 +1041,7 @@ def fast_fourier(matrix, bins):
     for row in matrix:
         signal = np.asarray(row)
         frequency = np.arange(signal.size / 2 + 1, dtype=np.float)
-        phase = np.exp(
-            complex(0.0, (2.0 * np.pi)) * frequency * bins / float(signal.size)
-        )
+        phase = np.exp(complex(0.0, (2.0 * np.pi)) * frequency * bins / float(signal.size))
         ft = np.fft.irfft(phase * np.fft.rfft(signal))
         fourier_matrix += ft
     return fourier_matrix

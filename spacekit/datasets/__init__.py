@@ -1,5 +1,5 @@
-"""Utilities for loading datasets from the spacekit archive.
-"""
+"""Utilities for loading datasets from the spacekit archive."""
+
 from ._base import scrape_archives
 from ._base import load_from_archive
 from ._base import load_cal

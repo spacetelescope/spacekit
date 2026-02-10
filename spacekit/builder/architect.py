@@ -280,7 +280,7 @@ class Builder:
             input_name=self.input_name,
             output_name=self.output_name,
             name=self.name,
-            algorithm=self.algorithm
+            algorithm=self.algorithm,
         )
 
     def fit_params(
@@ -375,22 +375,18 @@ class Builder:
         list
             [callbacks.ModelCheckpoint, callbacks.EarlyStopping]
         """
-        if self.early_stopping not in ['val_accuracy', 'val_loss', 'val_rmse']:
+        if self.early_stopping not in ["val_accuracy", "val_loss", "val_rmse"]:
             warn_msg = f"Invalid `early_stopping` value: {self.early_stopping}."
             if self.algorithm == "linreg" or self.loss == "mse":
-                self.early_stopping = 'val_rmse'
+                self.early_stopping = "val_rmse"
             elif "accuracy" in self.metrics:
-                self.early_stopping = 'val_accuracy'
+                self.early_stopping = "val_accuracy"
             else:
-                self.early_stopping = 'val_loss'
+                self.early_stopping = "val_loss"
             self.log.warning(f"{warn_msg} Using default : {self.early_stopping}")
         model_name = str(self.model.name)
-        checkpoint_cb = callbacks.ModelCheckpoint(
-            f"{model_name}_checkpoint.keras", save_best_only=True
-        )
-        early_stopping_cb = callbacks.EarlyStopping(
-            monitor=self.early_stopping, patience=self.patience
-        )
+        checkpoint_cb = callbacks.ModelCheckpoint(f"{model_name}_checkpoint.keras", save_best_only=True)
+        early_stopping_cb = callbacks.EarlyStopping(monitor=self.early_stopping, patience=self.patience)
         self.callbacks = [checkpoint_cb, early_stopping_cb]
         return self.callbacks
 
@@ -475,9 +471,7 @@ class Builder:
                 layer_range=None,
             )
         except ImportError:
-            self.log.error(
-                "pydot and graphviz not installed: `pip install spacekit[viz]`"
-            )
+            self.log.error("pydot and graphviz not installed: `pip install spacekit[viz]`")
 
     @xtimer
     def batch_fit(self):
@@ -491,9 +485,7 @@ class Builder:
         """
         model_name = str(self.model.name).upper()
         self.log.info("FITTING MODEL...")
-        validation_data = (
-            (self.X_test, self.y_test) if self.X_test is not None else None
-        )
+        validation_data = (self.X_test, self.y_test) if self.X_test is not None else None
 
         if self.early_stopping is not None:
             self.callbacks = self.set_callbacks()
@@ -535,9 +527,7 @@ class Builder:
             self.fit_params(**params)
         model_name = str(self.model.name).upper()
         self.log.info("FITTING MODEL...")
-        validation_data = (
-            (self.X_test, self.y_test) if self.X_test is not None else None
-        )
+        validation_data = (self.X_test, self.y_test) if self.X_test is not None else None
 
         if self.early_stopping is not None:
             self.callbacks = self.set_callbacks()
@@ -578,12 +568,8 @@ class BuilderMLP(Builder):
         blueprint="mlp",
         **builder_kwargs,
     ):
-        train_data = (
-            (X_train, y_train) if X_train is not None and y_train is not None else None
-        )
-        test_data = (
-            (X_test, y_test) if X_test is not None and y_test is not None else None
-        )
+        train_data = (X_train, y_train) if X_train is not None and y_train is not None else None
+        test_data = (X_test, y_test) if X_test is not None and y_test is not None else None
         super().__init__(
             train_data=train_data,
             test_data=test_data,
@@ -618,24 +604,20 @@ class BuilderMLP(Builder):
         # visible layer
         inputs = Input(shape=(self.input_shape,), name=self.input_name)
         # hidden layers
-        x = Dense(
-            self.layers[0], activation=self.activation, name=f"1_dense{self.layers[0]}"
-        )(inputs)
+        x = Dense(self.layers[0], activation=self.activation, name=f"1_dense{self.layers[0]}")(inputs)
         for i, layer in enumerate(self.layers[1:]):
             i += 1
             if layer in layer_kwargs:
-                x = Dense(layer, activation=self.activation, name=f"{i+1}_dense{layer}", **layer_kwargs[layer])(x)
+                x = Dense(layer, activation=self.activation, name=f"{i + 1}_dense{layer}", **layer_kwargs[layer])(x)
             else:
-                x = Dense(layer, activation=self.activation, name=f"{i+1}_dense{layer}")(x)
+                x = Dense(layer, activation=self.activation, name=f"{i + 1}_dense{layer}")(x)
         # output layer
         if self.blueprint == "ensemble":
             self.mlp = Model(inputs, x, name="mlp_ensemble")
             return self.mlp
         else:
             self.model = Sequential()
-            outputs = Dense(
-                self.output_shape, activation=self.cost_function, name=self.output_name
-            )(x)
+            outputs = Dense(self.output_shape, activation=self.cost_function, name=self.output_name)(x)
             self.model = Model(inputs=inputs, outputs=outputs, name=self.name)
             if self.lr_sched is True:
                 lr_schedule = self.decay_learning_rate()
@@ -709,12 +691,8 @@ class BuilderCNN3D(Builder):
         blueprint="cnn3d",
         **builder_kwargs,
     ):
-        train_data = (
-            (X_train, y_train) if X_train is not None and y_train is not None else None
-        )
-        test_data = (
-            (X_test, y_test) if X_test is not None and y_test is not None else None
-        )
+        train_data = (X_train, y_train) if X_train is not None and y_train is not None else None
+        test_data = (X_test, y_test) if X_test is not None and y_test is not None else None
         super().__init__(
             train_data=train_data,
             test_data=test_data,
@@ -740,9 +718,7 @@ class BuilderCNN3D(Builder):
         self.pool = 1
         self.dense = 512
         self.dropout = 0.3
-        self.step_size = (
-            self.X_train.shape[0] if self.X_train is not None else self.batch_size
-        )
+        self.step_size = self.X_train.shape[0] if self.X_train is not None else self.batch_size
         self.steps_per_epoch = self.step_size // self.batch_size
         self.batch_maker = self.batch
 
@@ -866,12 +842,8 @@ class BuilderEnsemble(Builder):
         output_name="ensemble_output",
         **builder_kwargs,
     ):
-        train_data = (
-            (X_train, y_train) if X_train is not None and y_train is not None else None
-        )
-        test_data = (
-            (X_test, y_test) if X_test is not None and y_test is not None else None
-        )
+        train_data = (X_train, y_train) if X_train is not None and y_train is not None else None
+        test_data = (X_test, y_test) if X_test is not None and y_test is not None else None
         super().__init__(
             train_data=train_data,
             test_data=test_data,
@@ -1063,12 +1035,8 @@ class BuilderCNN2D(Builder):
         blueprint="cnn2d",
         **builder_kwargs,
     ):
-        train_data = (
-            (X_train, y_train) if X_train is not None and y_train is not None else None
-        )
-        test_data = (
-            (X_test, y_test) if X_test is not None and y_test is not None else None
-        )
+        train_data = (X_train, y_train) if X_train is not None and y_train is not None else None
+        test_data = (X_test, y_test) if X_test is not None and y_test is not None else None
         super().__init__(
             train_data=train_data,
             test_data=test_data,
@@ -1223,12 +1191,8 @@ class MemoryClassifier(BuilderMLP):
         test_idx=None,
         **builder_kwargs,
     ):
-        train_data = (
-            (X_train, y_train) if X_train is not None and y_train is not None else None
-        )
-        test_data = (
-            (X_test, y_test) if X_test is not None and y_test is not None else None
-        )
+        train_data = (X_train, y_train) if X_train is not None and y_train is not None else None
+        test_data = (X_test, y_test) if X_test is not None and y_test is not None else None
         super().__init__(
             train_data=train_data,
             test_data=test_data,
@@ -1271,12 +1235,8 @@ class MemoryRegressor(BuilderMLP):
         test_idx=None,
         **builder_kwargs,
     ):
-        train_data = (
-            (X_train, y_train) if X_train is not None and y_train is not None else None
-        )
-        test_data = (
-            (X_test, y_test) if X_test is not None and y_test is not None else None
-        )
+        train_data = (X_train, y_train) if X_train is not None and y_train is not None else None
+        test_data = (X_test, y_test) if X_test is not None and y_test is not None else None
         super().__init__(
             train_data=train_data,
             test_data=test_data,
@@ -1320,12 +1280,8 @@ class WallclockRegressor(BuilderMLP):
         test_idx=None,
         **builder_kwargs,
     ):
-        train_data = (
-            (X_train, y_train) if X_train is not None and y_train is not None else None
-        )
-        test_data = (
-            (X_test, y_test) if X_test is not None and y_test is not None else None
-        )
+        train_data = (X_train, y_train) if X_train is not None and y_train is not None else None
+        test_data = (X_test, y_test) if X_test is not None and y_test is not None else None
         super().__init__(
             train_data=train_data,
             test_data=test_data,

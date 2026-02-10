@@ -20,17 +20,11 @@ tx_file = f"{model_path}/tx_data.json"
 ipsts = cal.df.index.values
 
 
-clf = Builder(
-    blueprint="memory_classifier", model_path=model_path, name="mem_clf"
-).load_saved_model()
+clf = Builder(blueprint="memory_classifier", model_path=model_path, name="mem_clf").load_saved_model()
 
-mem_reg = Builder(
-    blueprint="memory_regression", model_path=model_path, name="mem_reg"
-).load_saved_model()
+mem_reg = Builder(blueprint="memory_regression", model_path=model_path, name="mem_reg").load_saved_model()
 
-wall_reg = Builder(
-    blueprint="wallclock_regression", model_path=model_path, name="wall_reg"
-).load_saved_model()
+wall_reg = Builder(blueprint="wallclock_regression", model_path=model_path, name="wall_reg").load_saved_model()
 
 
 global NN

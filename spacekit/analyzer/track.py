@@ -31,6 +31,7 @@ class Stopwatch:
             result = self.func(*args, **kwargs)
             self.stop()
             return result
+
         return wrap
 
     def start(self):
@@ -185,12 +186,11 @@ def clockit(func):
         stopwatch(ps, t0=start, t1=end)
         print(end - start)
         return result
+
     return wrap
 
 
-def record_metrics(
-    log_dir, visit, wall, clock, ps="svm", n_files=None, total_size=None
-):
+def record_metrics(log_dir, visit, wall, clock, ps="svm", n_files=None, total_size=None):
     log_file = os.path.join(log_dir, f"{ps}-stats.txt")
     metrics = {"visit": visit, "walltime": wall, "clocktime": clock}
     if n_files:
@@ -207,6 +207,7 @@ def xtimer(fn):
         to_execute = fn(*args, **kwargs)
         end_time = time.perf_counter()
         execution_time = end_time - start_time
-        SPACEKIT_LOG.info('{0} took {1:.8f}s to execute'.format(fn.__name__, execution_time))
+        SPACEKIT_LOG.info("{0} took {1:.8f}s to execute".format(fn.__name__, execution_time))
         return to_execute
+
     return inner

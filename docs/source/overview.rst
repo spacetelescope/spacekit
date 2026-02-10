@@ -9,7 +9,7 @@ the Astronomical Data Science and Machine Learning Toolkit
 Overview
 ========
 
-Spacekit is a python library designed to do the heavy lifting of machine learning in astronomy-related applications using .
+Spacekit is a python library designed to do the heavy lifting of machine learning in astronomy-related applications.
 
 The modules contained in this package can be used to assist and streamline each step of a typical data science project:
 
@@ -27,7 +27,7 @@ The modules contained in this package can be used to assist and streamline each 
 Applications
 ------------
 
-The :doc:`Skøpes <skopes/index>` module includes real-world machine learning applications used by the Hubble and James Webb Space Telescopes in data calibration pipelines. These mini-applications are an orchestration of functions and classes from other spacekit modules to run real-time, automated analysis, training, and inference on a local server as well as in the cloud (AWS).
+The :doc:`Skøpes <skopes/index>` module includes real-world machine learning applications used by the Hubble and James Webb Space Telescopes in data calibration pipelines. These mini-applications are an orchestration of functions and classes from other spacekit modules to run automated analysis, training, and inference in real-time on a local server or in the cloud (AWS).
 
 
 Indices and tables
