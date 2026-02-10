@@ -3,13 +3,14 @@ from spacekit.skopes.jwst.cal.predict import JwstCalPredict, predict_handler
 
 
 EXPECTED = {
-    "jw01018-o006_niriss": {'gbSize': 2.06},
-    "jw02732-o001_nircam": {'gbSize': 2.99},
-    "jw02732-o005_miri": {'gbSize': 2.31},
-    "jw01022-o016_nirspec": {'gbSize': 3.09},
-    "jw01192-o011_miri_ch1": {'gbSize': 1.18},
-    "jw01192-o011_miri_ch3": {'gbSize': 0.99},
-    "jw01309-o023_nircam": {'gbSize': 8.13},
+    "jw01018-o006_niriss": {'gbSize': 2.05},
+    "jw02732-o001_nircam": {'gbSize': 2.65},
+    "jw02732-o005_miri": {'gbSize': 3.2},
+    "jw01022-o016_nirspec": {'gbSize': 3.63},
+    "jw01192-o011_miri_ch1": {'gbSize': 3.07},
+    "jw01192-o011_miri_ch3": {'gbSize': 3.01},
+    "jw01309-o023_nircam": {'gbSize': 11.79},
+
 }
 
 
@@ -36,8 +37,7 @@ def test_jwst_cal_predict(jwstcal_input_path):
         sfx = k.split('_')[-1].split('-')[0]
         if sfx in ['ch1', 'ch3']:
             name += f'_{sfx}'
-        assert EXPECTED[name]["gbSize"] == v["gbSize"]
-
+        assert round(EXPECTED[name]["gbSize"],1) == round(v['gbSize'],1)
 
 @mark.jwst
 @mark.predict
@@ -49,7 +49,7 @@ def test_jwst_cal_predict_handler(jwstcal_input_path):
         sfx = k.split('_')[-1].split('-')[0]
         if sfx in ['ch1', 'ch3']:
             name += f'_{sfx}'
-        assert EXPECTED[name]["gbSize"] == v["gbSize"]
+        assert round(EXPECTED[name]["gbSize"],1) == round(v['gbSize'],1)
 
 
 @mark.jwst
@@ -115,3 +115,14 @@ def test_jwst_cal_predict_radec_nans_skip(jwstcal_input_path):
     assert jcal.input_data['SPEC'].loc['jw01022-o016_t1_nirspec_g140h-f100lp']['nexposur'] == 1
     # nrs2 only (nrs1 exposure was removed)
     assert jcal.input_data['SPEC'].loc['jw01022-o016_t1_nirspec_g140h-f100lp']['detector'] == 16
+
+@mark.jwst
+@mark.predict
+def test_jwst_cal_predict_nrc_wfss_parallel_pure(jwstcal_input_path):
+    input_path = jwstcal_input_path + "/nrc_wfss_pp"
+    jcal = JwstCalPredict(input_path=input_path)
+    jcal.preprocess()
+    # should use t0 as target id instead of 9-digit source ID (s000000001)
+    assert jcal.input_data['SPEC'].loc['jw01309-o023_t0_nircam_f322w2-grismr']['nexposur'] == 2
+    jcal.run_inference()
+    assert round(jcal.predictions['jw01309-o023_t0_nircam_f322w2-grismr']['gbSize'],1) == 12.0

@@ -1,9 +1,29 @@
-1.1.3 (unreleased)
+1.1.4 (2026-02-09)
 ==================
+
+analyzer
+--------
+- Minor fixes and improvements to plotting functions in explore module along with updated docstrings [#148]
+
+builder
+-------
+- Retrain JWST models on data collected through January 8, 2026 (v5) and use t0 targ ID instead of 9-digit source ID for NRC WFSS Parallel_Pure [#147] 
+
+
+1.1.3 (2025-07-08)
+==================
+
+builder
+-------
+- Retrain JWST models on data collected through June 23, 2025 (v4) [#129]
 
 preprocessor
 ------------
 - Revise JWST Cal ingest script to group MIRI IFU input exposures by individual subchannel (band) to account for changes made in JWST pipeline build 11.2 where separate L3 products are now being generated for each band by default. [#115]
+
+documentation
+-------------
+- Updated docstrings for classes across several modules, add jwst model training code snippets, hide ads from RTD homepage [#128]
 
 
 1.1.2 (2025-03-02)

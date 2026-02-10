@@ -1,4 +1,4 @@
-ZID = "14941394" # zenodo DOI record
+ZID = "18271832"  # zenodo DOI record
 
 calcloud = {
     "uri": f"https://zenodo.org/record/{ZID}/files",
@@ -93,7 +93,21 @@ svm = {
 jwst_cal = {
     "uri": f"https://zenodo.org/record/{ZID}/files",
     "data": {
-        "2023-08-02": {
+        "2026-01-09": {
+            "fname": "",
+            "hash": "",
+            "desc": "",
+            "key": "",
+            "size": "",
+        },
+        "2025-06-23": {
+            "fname": "",
+            "hash": "",
+            "desc": "",
+            "key": "",
+            "size": "",
+        },
+        "2025-02-25": {
             "fname": "",
             "hash": "",
             "desc": "",
@@ -107,20 +121,13 @@ jwst_cal = {
             "key": "",
             "size": "",
         },
-        "2025-02-25": {
-            "fname": "",
-            "hash": "",
-            "desc": "",
-            "key": "",
-            "size": "",
-        }
     },
     "model": {
         "fname": "jwst_cal.zip",
-        "hash": "e41d3480166e590d3dc08f34a3ce2a92",
+        "hash": "79fc025b5db30d48df5764fa59816a25",
         "desc": "JWST Calibration Processing Resource Prediction Models",
         "key": "jwst_cal",
-        "size": "1.3MB",
+        "size": "1.47MB",
     },
 }
 
@@ -170,7 +177,7 @@ networks = {
     "jwst_cal": {
         "basepath": "spacekit.builder.trained_networks",
         "fname": "jwst_cal.zip",
-        "hash": "f6b3ba0f6ed9c42cedd932db4503f17e6763515da81c45cbcba667866cbaeaf9",
-        "size": "1.4MB",
+        "hash": "216ba261e7c74c644133f5c7f42d1ab06b91c78bc9aac1c30b11991cff73cf27",
+        "size": "1.47MB",
     },
 }

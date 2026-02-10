@@ -62,9 +62,7 @@ class Logger:
         verbose=False,
         log=None,
     ):
-        self.__name__ = (
-            f"spacekit.{script_name}" if script_name != "spacekit" else script_name
-        )
+        self.__name__ = f"spacekit.{script_name}" if script_name != "spacekit" else script_name
         self.short_name = script_name
         self.console = console
         self.logfile = logfile
@@ -88,17 +86,9 @@ class Logger:
 
     def set_name(self):
         if self.verbose is True:
-            name = (
-                " [%(threadName)s - %(name)-16s]"
-                if self.threadname is True
-                else " [%(name)-16s]"
-            )
+            name = " [%(threadName)s - %(name)-16s]" if self.threadname is True else " [%(name)-16s]"
         else:
-            name = (
-                " [%(threadName)s - %(name)s]"
-                if self.threadname is True
-                else " [%(name)s]"
-            )
+            name = " [%(threadName)s - %(name)s]" if self.threadname is True else " [%(name)s]"
         return name
 
     def set_log_line_template(self):
@@ -107,19 +97,13 @@ class Logger:
         name = self.set_name()
         levelname = " [%(levelname)-8s]"
         end_template = " %(message)s%(color_off)s"
-        self.log_line_template = (
-            start_template + timestamp + name + levelname + end_template
-        )
+        self.log_line_template = start_template + timestamp + name + levelname + end_template
 
     def set_formatters(self):
         self.set_log_line_template()
 
-        self.console_formatter = LogFormatter(
-            fmt=self.log_line_template, color=self.console_log_color
-        )
-        self.logfile_formatter = LogFormatter(
-            fmt=self.log_line_template, color=self.logfile_log_color
-        )
+        self.console_formatter = LogFormatter(fmt=self.log_line_template, color=self.console_log_color)
+        self.logfile_formatter = LogFormatter(fmt=self.log_line_template, color=self.logfile_log_color)
 
     def add_console_handler(self):
         # Create console handler
@@ -128,10 +112,7 @@ class Logger:
         elif self.console_log_output == "stderr":
             self.console_log_output = sys.stderr
         else:
-            print(
-                "Failed to set console output: invalid output: '%s'"
-                % self.console_log_output
-            )
+            print("Failed to set console output: invalid output: '%s'" % self.console_log_output)
             return False
         self.console_handler = logging.StreamHandler(self.console_log_output)
 
@@ -139,10 +120,7 @@ class Logger:
         try:
             self.console_handler.setLevel(self.console_log_level)
         except Exception:
-            print(
-                "Failed to set console log level: invalid level: '%s'"
-                % self.console_log_level
-            )
+            print("Failed to set console log level: invalid level: '%s'" % self.console_log_level)
             return False
 
         # Create and set formatter, add console handler to logger
@@ -158,10 +136,7 @@ class Logger:
         try:
             self.logfile_handler.setLevel(self.logfile_log_level)
         except Exception:
-            print(
-                "Failed to set log file log level: invalid level: '%s'"
-                % self.logfile_log_level
-            )
+            print("Failed to set log file log level: invalid level: '%s'" % self.logfile_log_level)
             return False
         # Create and set formatter, add log file handler to logger
         self.logfile_handler.setFormatter(self.logfile_formatter)
@@ -238,9 +213,7 @@ def log_test():
     if len(args) > 2:
         loglevel = args[2]
 
-    script_name = (
-        name if name is not None else os.path.splitext(os.path.basename(sys.argv[0]))[0]
-    )
+    script_name = name if name is not None else os.path.splitext(os.path.basename(sys.argv[0]))[0]
     # Setup logging
     # script_name = os.path.splitext(os.path.basename(sys.argv[0]))[0]
     log = Logger(script_name, console_log_level=loglevel).setup_logger()

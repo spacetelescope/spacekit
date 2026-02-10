@@ -22,9 +22,7 @@ layout = html.Div(
                 # MEMORY CLASSIFIER CHARTS
                 html.Div(
                     children=[
-                        html.H4(
-                            children="Memory Bin Classifier", style={"padding": 10}
-                        ),
+                        html.H4(children="Memory Bin Classifier", style={"padding": 10}),
                         # ACCURACY vs LOSS (BARPLOTS)
                         "Accuracy vs Loss",
                         html.Div(
@@ -59,10 +57,7 @@ layout = html.Div(
                                             [
                                                 dcc.Dropdown(
                                                     id="keras-picker",
-                                                    options=[
-                                                        {"label": str(v), "value": v}
-                                                        for v in cal.versions
-                                                    ],
+                                                    options=[{"label": str(v), "value": v} for v in cal.versions],
                                                     value=cal.versions[-1],
                                                 )
                                             ],
@@ -96,9 +91,7 @@ layout = html.Div(
                             ]
                         ),
                         html.P("ROC AUC", style={"margin": 25}),
-                        html.P(
-                            "Receiver Operator Characteristic", style={"margin": 25}
-                        ),
+                        html.P("Receiver Operator Characteristic", style={"margin": 25}),
                         html.P("(Area Under the Curve)", style={"margin": 25}),
                         html.Div(
                             children=[
@@ -108,10 +101,7 @@ layout = html.Div(
                                             [
                                                 dcc.Dropdown(
                                                     id="rocauc-picker",
-                                                    options=[
-                                                        {"label": str(v), "value": v}
-                                                        for v in cal.versions
-                                                    ],
+                                                    options=[{"label": str(v), "value": v} for v in cal.versions],
                                                     value=cal.versions[-1],
                                                 )
                                             ],

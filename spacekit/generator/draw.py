@@ -280,11 +280,7 @@ class DrawMosaics:
             else:
                 flagcols = [c for c in cat.columns if "Flags" in c]
             if len(flagcols) > 0:
-                flags = (
-                    cat.loc[:, flagcols]
-                    .fillna(100, axis=0, inplace=False)
-                    .apply(min, axis=1)
-                )
+                flags = cat.loc[:, flagcols].fillna(100, axis=0, inplace=False).apply(min, axis=1)
                 if catalog == "point":
                     fcolor_ = flags.apply(self.point_flag_color)
                 elif catalog == "segment":
@@ -357,9 +353,7 @@ class DrawMosaics:
             else:  # original (0)
                 self.draw_total_images(dataset)
         end = time.time()
-        stopwatch(
-            "IMAGE GENERATION", t0=start, t1=end, out=base, subset_name=self.subset_name
-        )
+        stopwatch("IMAGE GENERATION", t0=start, t1=end, out=base, subset_name=self.subset_name)
 
     def draw_total_images(self, dataset, P=0, S=0, G=0):
         """Primary class method for plotting the data, drawing the catalogs (if any) and saving to local disk as png.
@@ -393,13 +387,9 @@ class DrawMosaics:
                     interval = ZScaleInterval()
                     zmin, zmax = interval.get_limits(hdu.data)
                     if self.manual is None:
-                        norm = ImageNormalize(
-                            hdu.data, vmin=0, vmax=zmax * 2, clip=self.clip
-                        )
+                        norm = ImageNormalize(hdu.data, vmin=0, vmax=zmax * 2, clip=self.clip)
                     elif self.manual == "zscale":
-                        norm = ImageNormalize(
-                            hdu.data, vmin=zmin, vmax=zmax, clip=self.clip
-                        )
+                        norm = ImageNormalize(hdu.data, vmin=zmin, vmax=zmax, clip=self.clip)
                     elif isinstance(self.manual, dict):
                         try:
                             norm = ImageNormalize(hdu.data, **self.manual)

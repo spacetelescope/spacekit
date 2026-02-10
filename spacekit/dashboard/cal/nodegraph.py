@@ -8,9 +8,7 @@ mem_reg = NN["mem_reg"]
 wall_reg = NN["wall_reg"]
 
 
-def read_inputs(
-    n_files, total_mb, drizcorr, pctecorr, crsplit, subarray, detector, dtype, instr
-):
+def read_inputs(n_files, total_mb, drizcorr, pctecorr, crsplit, subarray, detector, dtype, instr):
     x_features = np.asarray(
         [
             n_files,
@@ -31,14 +29,13 @@ def read_inputs(
 def classifier(model, data):
     """Returns class prediction"""
     pred_proba = model.predict(data)
-    pred = int(np.argmax(pred_proba, axis=-1))
+    pred = int(np.argmax(pred_proba, axis=-1).item())
     return pred, pred_proba
 
 
 def regressor(model, data):
     """Returns Regression model prediction"""
-    pred = model.predict(data)
-    return pred
+    return model.predict(data).item()
 
 
 def make_preds(x_features, tx_file):
@@ -54,7 +51,7 @@ def make_preds(x_features, tx_file):
     membin, pred_proba = classifier(clf, X)
     P = pred_proba[0]
     p0, p1, p2, p3 = P[0], P[1], P[2], P[3]
-    memval = np.round(float(regressor(mem_reg, X)), 2)
+    memval = float(np.round(regressor(mem_reg, X), 2))
     print(f"\n*** BIN PRED: {membin}\n***PROBABILITIES: {P}\n***MEMORY:{memval}")
     # Predict Wallclock Allocation (execution time in seconds)
     clocktime = int(regressor(wall_reg, X))
@@ -263,7 +260,7 @@ def get_coords(xy_origin, layer_idx):
     y0 = xy_origin[1]
 
     if layer_idx == 0:
-        neurons = clf.layers[layer_idx].output_shape[0][1]
+        neurons = clf.layers[layer_idx].output.shape[1]
     else:
         neurons = clf.layers[layer_idx].units
     slope = int(3200 / neurons)
@@ -363,10 +360,7 @@ def node_bias_clicks(node):
 
 
 def nodes_edges(parent_nodes, node_groups, edge_pairs):
-    nodes = [
-        {"data": {"id": id, "label": label}, "classes": layerclass}
-        for id, label, layerclass in parent_nodes
-    ]
+    nodes = [{"data": {"id": id, "label": label}, "classes": layerclass} for id, label, layerclass in parent_nodes]
     nodes.extend(
         [
             {
@@ -376,19 +370,13 @@ def nodes_edges(parent_nodes, node_groups, edge_pairs):
             for id, label, parent, x, y in node_groups
         ]
     )
-    edges = [
-        {"data": {"source": source, "target": target, "weight": weight}}
-        for source, target, weight in edge_pairs
-    ]
+    edges = [{"data": {"source": source, "target": target, "weight": weight}} for source, target, weight in edge_pairs]
     return nodes, edges
 
 
 def initialize_nodes(parent_nodes, node_groups):
     # network layers (rectangles containing each group of neurons)
-    nodes = [
-        {"data": {"id": id, "label": label}, "classes": layerclass}
-        for id, label, layerclass in parent_nodes
-    ]
+    nodes = [{"data": {"id": id, "label": label}, "classes": layerclass} for id, label, layerclass in parent_nodes]
     # add input layer nodes (no classes)
     nodes.extend(
         [

@@ -8,11 +8,12 @@ from spacekit.builder.architect import BuilderCNN2D
 from spacekit.datasets.meta import k2 as k2meta
 from spacekit.extractor.scrape import WebScraper
 
+
 def downloads_exist(scraper, k2_meta):
     base_path = os.path.join(scraper.cache_dir, scraper.cache_subdir)
     filepaths = []
     for k, v in k2_meta.items():
-        fpath = os.path.join(base_path, v['key'])
+        fpath = os.path.join(base_path, v["key"])
         filepaths.append(fpath)
     for fp in filepaths:
         if not os.path.exists(fp):
@@ -44,24 +45,22 @@ class LaunchK2:
             else:
                 test = fpath
         self.X_train, self.X_test, self.y_train, self.y_test = hypersonic_pliers(
-            train, test, subtract_y=1.0, reshape=True
+            train, path_to_test=test, subtract_y=1.0, reshape=True
         )
         print("Data split successful")
 
     def scale_data(self):
         print("Scaling data to Zero Mean and Unit Variance...")
-        self.X_train, self.X_test = thermo_fusion_chisel(self.X_train, self.X_test)
+        self.X_train, self.X_test = thermo_fusion_chisel(self.X_train, matrix2=self.X_test)
         print("Data scaling successful.")
 
     def add_filter(self):
         print("Adding noise filter...")
-        self.X_train, self.X_test = babel_fish_dispenser(self.X_train, self.X_test)
+        self.X_train, self.X_test = babel_fish_dispenser(self.X_train, matrix2=self.X_test)
         print("Noise filter added successfully.")
 
     def deploy(self):
-        self.builder = BuilderCNN2D(
-            X_train=self.X_train, y_train=self.y_train, X_test=self.X_test, y_test=self.y_test
-        )
+        self.builder = BuilderCNN2D(X_train=self.X_train, y_train=self.y_train, X_test=self.X_test, y_test=self.y_test)
         self.builder.build()
 
     def takeoff(self):
@@ -70,8 +69,8 @@ class LaunchK2:
 
 if __name__ == "__main__":
     print("Extracting data...")
-    scraper = WebScraper(k2meta['uri'], k2meta['data'])
-    scraper.fpaths = downloads_exist(scraper, k2meta['data'])
+    scraper = WebScraper(k2meta["uri"], k2meta["data"])
+    scraper.fpaths = downloads_exist(scraper, k2meta["data"])
     if not scraper.fpaths:
         scraper.scrape()
         print("Data extraction successful.")

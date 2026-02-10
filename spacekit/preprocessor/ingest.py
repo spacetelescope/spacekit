@@ -15,6 +15,16 @@ from spacekit.analyzer.track import timer, record_metrics, xtimer
 
 
 class SvmAlignmentIngest:
+    """Class for ingesting and preprocessing HST single visit mosaic alignment classifier datasets
+
+    Parameters
+    ----------
+    input_path : str or Path, optional
+        path on local disk to the input data, by default None
+    outpath : str or Path, optional
+        path on local disk to save outputs, by default None
+    """
+
     def __init__(self, input_path=None, outpath=None):
         self.input_path = os.getcwd() if input_path is None else input_path
         self.batch_out = os.getcwd() if outpath is None else outpath
@@ -96,9 +106,7 @@ class SvmAlignmentIngest:
         fname = os.path.basename(fname).split(".")[0]
         # 1: SCRAPE JSON FILES and make dataframe
         if h5 is None:
-            search_path = (
-                os.path.join(self.input_path, visit) if visit else self.input_path
-            )
+            search_path = os.path.join(self.input_path, visit) if visit else self.input_path
             patterns = self.json_pattern.split(",")
             jsc = JsonScraper(
                 search_path=search_path,
@@ -175,72 +183,44 @@ class SvmAlignmentIngest:
                     os.remove(f)
                 print(f"Cleaned up {len(grp)} files")
             else:
-                print(
-                    f"{len(df)} in DF does not match {len(grp)} in filegroup. Skipping cleanup"
-                )
+                print(f"{len(df)} in DF does not match {len(grp)} in filegroup. Skipping cleanup")
 
 
 class JwstCalIngest:
+    """Loads raw JWST Calibration Pipeline metadata from local disk (`input_path`)
+    and runs initial ML preprocessing steps necessary prior to model training. The resulting
+    dataframes will be "ingested" into any pre-existing training sets located in `outpath`.
+    This outpath acts as the primary database containing several "tables" (dataframes stored
+    in .csv files). This class is designed to run on single or multiple files at a time
+    (limit specificity using 'pfx`).
+
+    Input file naming convention: YYYY-MM-DD_%d.csv (%d = day of year) ex: 2024-02-21_052.csv
+    Alternate formats currently not supported because filenames are used to store date info.
+    Examples:
+
+    - To ingest multiple files from November 2023, set `pfx="2023-11"`.
+    - To ingest only one file from January 3, 2024, set `pfx="2024-01-03"`.
+    - You can also pass in a wildcard: `pfx="*_3"` would search for all data collected on days 300-365 of any year, while `pfx="2023*_3"` would do the same but only for the year 2023.
+
+    The contents of raw metadata files are expected to contain:
+
+        - 1) columns consistent with Fits header keyword-values used in JWST Cal model training (see `spacekit.skopes.jwst.cal.config`)
+        - 2) rows of Level 1/1b exposures (inputs/features) along with Level 3 products
+        - 3) imagesize (memory footprint) for each L3 product (outputs/target)
+
+    Parameters
+    ----------
+    input_path : str (path), optional
+        directory path to csv files on local disk, by default None (current working directory)
+    pfx : str, optional
+        filename start pattern (e.g. "2023" or "*-12-), by default ""
+    outpath : str (path), optional
+        directory path to save (and/or update) preprocessed files on local disk, by default None (current working directory)
+    save_l1 : bool, optional
+        save matched level 1 input data to separate file, by default True
+    """
 
     def __init__(self, input_path=None, pfx="", outpath=None, save_l1=False, **log_kws):
-        """Loads raw JWST Calibration Pipeline metadata from local disk (`input_path`)
-        and runs initial ML preprocessing steps necessary prior to model training. The resulting 
-        dataframes will be "ingested" into any pre-existing training sets located in `outpath`. 
-        This outpath acts as the primary database containing several "tables" (dataframes stored
-        in .csv files). This class is designed to run on single or multiple files at a time 
-        (limit specificity using 'pfx`). 
-        Input file naming convention: YYYY-MM-DD_%d.csv (%d = day of year) ex: 2024-02-21_052.csv
-        Alternate formats currently not supported because filenames are used to store date info.
-        Examples: To ingest multiple files from November 2023, set `pfx="2023-11". To ingest only
-        one file from January 3, 2024, set `pfx="2024-01-03". You can also pass in a wildcard, for
-        example `pfx="*_3" would search for all data collected on days 300-365 of any year,
-        while `pfx="2023*_3" would do the same but only for the year 2023.
-        The contents of raw metadata files are expected to contain:
- 
-            1) columns consistent with Fits header keyword-values used in JWST Cal model training 
-            (see `spacekit.skopes.jwst.cal.config`) 
-            2) rows of Level 1/1b exposures (inputs/features) along with Level 3 products
-            3) imagesize (memory footprint) for each L3 product (outputs/target)
-        
-        At STSCI, additional model training data is acquired daily from the telescope's calibration pipeline.
-        Due to the nature of an automated 24-hour data collection cycle, some Level 3 products may still be
-        processing at the time data is collected. This results in a given input file containing groups of L1
-        exposures with no matching L3 product. JwstCalIngest will run preprocessing on all L1 inputs and attempt 
-        to match them with an L3 product in the same file. Any complete datasets (where a match is identified) are
-        inserted into the "database", a file called `training.csv`. Any remaining L1 exposures that did not 
-        find a match are stored into a separate "table" called `ingest.csv`. The next time this ingest process
-        is run, the script will load both the new data as well as prior (unmatched) data. The assumption here is
-        that the missing L3 product(s) (and sometimes even additional L1 exposures for this association) will 
-        eventually complete the pipeline and show up in subsequent files.
-        Additional output files are model-specific encoded subsets of `preprocessed` and `ingest`. Data is inserted
-        into these in the same manner as appropriate. The actual files to be used for model training are named as
-        "train-{modelname}.csv", while `training.csv` contains all the original columns with unencoded values
-        and is intended to be used primarily for data analysis and debugging purposes.
-        Database: {outpath}
-        Tables: {.csv files}
-            Accumulated data storing unencoded values
-            - preprocessed:  complete L1-L3 groupings
-            - ingest: unmatched L1 exposures
-            - mosaics: c1XXX association candidate L3 products (currently not supported)
-            Encoded datasets finalized and ready for model training (input features + y-targets)
-            - train-image: L3 image model
-            - train-spec: L3 spectroscopy model
-            - train-tac: L3 TSO/AMI/CORON model
-            Encoded input features of remaining L1 exposures (y-targets pending)
-            - rem-image.csv
-            - rem-spec.csv
-            - rem-tac.csv
-        Parameters
-        ----------
-        input_path : str (path), optional
-            directory path to csv files on local disk, by default None (current working directory)
-        pfx : str, optional
-            filename start pattern (e.g. "2023" or "*-12-), by default ""
-        outpath : str (path), optional
-            directory path to save (and/or update) preprocessed files on local disk, by default None (current working directory)
-        save_l1 : bool, optional
-            save matched level 1 input data to separate file, by default True
-        """
         self.input_path = input_path.rstrip("/") if input_path is not None else os.getcwd()
         self.pfx = "" if pfx is None else pfx
         self.save_l1 = save_l1
@@ -257,7 +237,7 @@ class JwstCalIngest:
         self.product_matches = None
         self.exmatches = {}
         self.rem = {}
-        self.param_cols = ['pid', 'OBSERVTN', 'FILTER', 'GRATING', 'PUPIL', 'SUBARRAY', 'FXD_SLIT', 'EXP_TYPE', 'BAND']
+        self.param_cols = ["pid", "OBSERVTN", "FILTER", "GRATING", "PUPIL", "SUBARRAY", "FXD_SLIT", "EXP_TYPE", "BAND"]
         self.scrb = None
         self.__name__ = "JwstCalIngest"
         self.log = Logger(self.__name__, **log_kws).spacekit_logger()
@@ -267,17 +247,7 @@ class JwstCalIngest:
         return self._float_cols()
 
     def _float_cols(self):
-        return [
-            'CRVAL1',
-            'CRVAL2',
-            'RA_REF',
-            'DEC_REF',
-            'GS_RA',
-            'GS_DEC',
-            'GS_MAG',
-            'TARG_RA',
-            'TARG_DEC'
-        ]
+        return ["CRVAL1", "CRVAL2", "RA_REF", "DEC_REF", "GS_RA", "GS_DEC", "GS_MAG", "TARG_RA", "TARG_DEC"]
 
     def set_outpath(self, value=None):
         """Initialize class variables relating to file paths on local disk where ingested data will be stored.
@@ -294,13 +264,12 @@ class JwstCalIngest:
         os.makedirs(self.outpath, exist_ok=True)
         self.ingest_file = os.path.join(self.outpath, "ingest.csv")
         self.trainpath = self.outpath + "/train-{}.csv"
-        self.rempath =  self.outpath + "/rem-{}.csv"
+        self.rempath = self.outpath + "/rem-{}.csv"
         self.rawpath = self.outpath + "/raw-{}.csv"
 
     @xtimer
     def run_ingest(self):
-        """Main calling function to run the entire ingest script.
-        """
+        """Main calling function to run the entire ingest script."""
         self.ingest_data()
         if len(self.files) == 0:
             return
@@ -324,10 +293,10 @@ class JwstCalIngest:
         for f in self.files:
             df = pd.read_csv(f, index_col=self.idxcol)
             df = self.drop_level2(df)
-            filedate, day = os.path.basename(f).split('_')
-            df['date'] = filedate
-            df['year'] = filedate.split('-')[0]
-            df['doy'] = int(day.split('.')[0])
+            filedate, day = os.path.basename(f).split("_")
+            df["date"] = filedate
+            df["year"] = filedate.split("-")[0]
+            df["doy"] = int(day.split(".")[0])
             if self.df is None:
                 self.df = df
             else:
@@ -350,11 +319,11 @@ class JwstCalIngest:
 
     def drop_level2(self, df):
         """Determines which `dag` column values relate to Level 1 and Level 3 according to their names,
-        then drops any rows from the DataFrame that do not match these values. Note: starting on 6/13/2025, 
+        then drops any rows from the DataFrame that do not match these values. Note: starting on 6/13/2025,
         a change in the data collection process added a new `dag` value 'ESTIMATE_LEVEL_3_MEMORY' which
         is unrelated to the actual processing of a dataset on its designated server node and therefore rows matching
         this value are also removed.
- 
+
         Parameters
         ----------
         df : pandas.DataFrame
@@ -366,8 +335,8 @@ class JwstCalIngest:
             dataframe with only L1 and L3 datasets
         """
         alldags = sorted(list(df[self.dag].value_counts().index))
-        l1_dags = [d for d in alldags if '1' in d]
-        l3_dags = [d for d in alldags if '3' in d and 'MEMORY' not in d]
+        l1_dags = [d for d in alldags if "1" in d]
+        l3_dags = [d for d in alldags if "3" in d and "MEMORY" not in d]
         dags_l1_l3 = l1_dags + l3_dags
         df = df.loc[df[self.dag].isin(dags_l1_l3)]
         self.l1_dags.extend([l for l in l1_dags if l not in self.l1_dags])
@@ -375,54 +344,48 @@ class JwstCalIngest:
         return df
 
     def initial_scrub(self):
-        """Initial preprocessing renames and adds several columns, sets the df index to Dataset, recasts datatypes, 
+        """Initial preprocessing renames and adds several columns, sets the df index to Dataset, recasts datatypes,
         and drops the following:
-        - older duplicates and exposure types known to be unrelated to Level 3 processing 
-        - redundant MIRI IFU products (only 1 channel per dataset is kept) 
+        - older duplicates and exposure types known to be unrelated to Level 3 processing
+        - redundant MIRI IFU products (only 1 channel per dataset is kept)
         - mosaics (estimates for L3 datasets used to create a mosaic accurately reflect compute requirements)
         """
         if self.df is None:
             return
-        self.df['dname'] = self.df.index
-        self.df['dname'] = self.df['dname'].apply(lambda x: self.strip_file_suffix(x))
-        self.df.rename({'ImageSize':'imagesize', self.dag: 'dag'}, axis=1, inplace=True)
-        self.dag = 'dag'
-        self.df['pid'] = self.df['dname'].apply(lambda x: self.extract_pid(x))
+        self.df["dname"] = self.df.index
+        self.df["dname"] = self.df["dname"].apply(lambda x: self.strip_file_suffix(x))
+        self.df.rename({"ImageSize": "imagesize", self.dag: "dag"}, axis=1, inplace=True)
+        self.dag = "dag"
+        self.df["pid"] = self.df["dname"].apply(lambda x: self.extract_pid(x))
         self.df = self.recast_dtypes(self.df)
         n0 = len(self.df)
-        self.df = self.df.sort_values(by=['date', 'imagesize']).drop_duplicates(subset='dname', keep='last')
+        self.df = self.df.sort_values(by=["date", "imagesize"]).drop_duplicates(subset="dname", keep="last")
         self.log.info(f"Dropped {n0 - len(self.df)} duplicates.")
-        nonsci = self.df.loc[~self.df['EXP_TYPE'].isin(L3_TYPES)]
+        nonsci = self.df.loc[~self.df["EXP_TYPE"].isin(L3_TYPES)]
         self.df.drop(nonsci.index, axis=0, inplace=True)
         self.log.info(f"Dropped {len(nonsci)} non-L3 exposure types")
         self.set_params()
         self.reduce_mirifu_channels()
         self.drop_mosaics()
-        self.df['Dataset'] = self.df['dname']
-        self.df.set_index('Dataset', inplace=True)
+        self.df["Dataset"] = self.df["dname"]
+        self.df.set_index("Dataset", inplace=True)
 
     def reduce_mirifu_channels(self):
         """Append channel info to `params` string; drop MIRI IFU L3 products from channels 2,4 (keep only 1, 3).
-        Channels 1-2 use the same input exposures, and the same goes for channels 3-4. 
-        NOTE: The memory footprint for each L3 product is the same regardless of channel or subchannel ('band'), 
+        Channels 1-2 use the same input exposures, and the same goes for channels 3-4.
+        NOTE: The memory footprint for each L3 product is the same regardless of channel or subchannel ('band'),
         so the inclusion of L3 products from both channels 1 and 3 is likely to be redundant for ML training purposes.
         The resulting metadata features will show some variability between ch1/2 and 3/4 L3 products because the input exposures
         are distinct. Further analysis is needed to determine if such variability simply adds noise to the training set, and a decision should be made at training time whether or not to include both channels. Adjustments to inference preprocessing may need to be made so that the model simply ignores channel/subchannel altogether and treats the entire group of inputs as pertaining to a single L3 product (jw_PID_OBS_TRG_miri_). The memory footprint estimates for each individual channel/subchannel combination can be inferred from a single inference output and applied to all relevant 'subproducts'.
         """
-        for d, c in dict(zip(['MIRIFUSHORT', 'MIRIFULONG'],['-12', '-34'])).items():
-            self.df.loc[self.df['DETECTOR'] == d, 'params'] = self.df.loc[self.df['DETECTOR'] == d].params.values + c
+        for d, c in dict(zip(["MIRIFUSHORT", "MIRIFULONG"], ["-12", "-34"])).items():
+            self.df.loc[self.df["DETECTOR"] == d, "params"] = self.df.loc[self.df["DETECTOR"] == d].params.values + c
         self.mm = self.df.loc[
-            (
-                self.df['EXP_TYPE'] == "MIR_MRS"
-            ) & (
-                self.df[self.dag].isin(self.l3_dags)
-            ) & (
-                self.df['CHANNEL'].isin(['2','4'])
-            )
+            (self.df["EXP_TYPE"] == "MIR_MRS") & (self.df[self.dag].isin(self.l3_dags)) & (self.df["CHANNEL"].isin(["2", "4"]))
         ]
         if len(self.mm) > 0:
             drops = self.mm.index
-            self.log.info(f"Ignoring MIRI IFU channels 2,4 for {len(drops)/2} L3 products")
+            self.log.info(f"Ignoring MIRI IFU channels 2,4 for {len(drops) / 2} L3 products")
             self.df.drop(drops, axis=0, inplace=True)
 
     def load_and_recast(self, dpath, idxcol=None):
@@ -462,22 +425,22 @@ class JwstCalIngest:
         pandas.DataFrame
             recasted dataframe
         """
-        df['OBSERVTN'] = df['OBSERVTN'].apply(lambda x: self.validate_obs(x))
-        df['PROGRAM'] = df['PROGRAM'].apply(lambda x: '{:0>5}'.format(x))
+        df["OBSERVTN"] = df["OBSERVTN"].apply(lambda x: self.validate_obs(x))
+        df["PROGRAM"] = df["PROGRAM"].apply(lambda x: "{:0>5}".format(x))
         for col in self.float_cols:
             df[col] = df[col].apply(lambda x: self.convert_to_float(x))
-        df['year'] = df['year'].astype('int64')
-        df['date'] = pd.to_datetime(df['date'], yearfirst=True)
-        df['TARG_RA'] = df['TARG_RA'].apply(lambda x: np.round(x, 8))
+        df["year"] = df["year"].astype("int64")
+        df["date"] = pd.to_datetime(df["date"], yearfirst=True)
+        df["TARG_RA"] = df["TARG_RA"].apply(lambda x: np.round(x, 8))
         # fine-grained matching param without affecting original values
-        df['targra'] = df['TARG_RA'].apply(lambda x: np.round(x, 6))
+        df["targra"] = df["TARG_RA"].apply(lambda x: np.round(x, 6))
         return df
 
     def load_priors(self):
         """Loads previously ingested but unmatched datasets from 'ingest.csv' file located in
         `output_path` on local disk. Checks the `params` column and extracts any that match
         the current ingest dataframe in order to attempt a new match. This is necessary for some
-        datasets which take multiple days to complete processing. 
+        datasets which take multiple days to complete processing.
         """
         if not os.path.exists(self.ingest_file):
             self.log.debug("Prior data not found -- skipping.")
@@ -485,65 +448,57 @@ class JwstCalIngest:
         l3params = self.df.loc[self.df.dag.isin(self.l3_dags)].params.unique()
         self.log.info("Checking prior data")
         di = self.load_and_recast(self.ingest_file)
-        di = di.sort_values(by='date').drop_duplicates(subset='dname', keep='last')
+        di = di.sort_values(by="date").drop_duplicates(subset="dname", keep="last")
         ds = di.loc[di.params.isin(l3params)].copy()
         if len(ds) > 0:
             self.log.info(f"Prior data loaded successfully: {len(ds)} exposures added.")
             try:
-                self.df = pd.concat([self.df, ds], axis=0)   
+                self.df = pd.concat([self.df, ds], axis=0)
             except Exception as e:
                 self.log.error(str(e))
             self.update_dags()
-            self.df = self.df.sort_values(by='date').drop_duplicates(subset='dname', keep='last')
+            self.df = self.df.sort_values(by="date").drop_duplicates(subset="dname", keep="last")
             di.drop(ds.index, axis=0, inplace=True)
             di[self.idxcol] = di.index
             di.to_csv(self.ingest_file, index=False)
 
     def update_dags(self):
-        """Update the lists of l1 and l3 dag values once a collection of datasets from multiple files are ingested 
+        """Update the lists of l1 and l3 dag values once a collection of datasets from multiple files are ingested
         (including priors loaded from ingest.csv).
         """
         alldags = sorted(list(self.df[self.dag].value_counts().index))
-        self.l1_dags = [d for d in alldags if '1' in d]
-        self.l3_dags = [d for d in alldags if '3' in d and 'MEMORY' not in d]
+        self.l1_dags = [d for d in alldags if "1" in d]
+        self.l3_dags = [d for d in alldags if "3" in d and "MEMORY" not in d]
 
     def set_params(self):
-        """Creates a new dataframe column containing a concatenated string of keywords that uniquely identify a group of 
+        """Creates a new dataframe column containing a concatenated string of keywords that uniquely identify a group of
         related L1 inputs and their L3 output. This is used (in combination with other columns such as targ_ra/dec to match
         L1 exposures with their L3 product). WFSC params are generated separately.
         """
-        wftypes= ['PRIME_WFSC_SENSING_ONLY', 'PRIME_WFSC_ROUTINE', 'PRIME_WFSC_SENSING_CONTROL']
-        wfcols = ['pid', 'OBSERVTN', 'FILTER', 'PUPIL', 'DETECTOR']
-        wfsc = self.df.loc[self.df['VISITYPE'].isin(wftypes)].copy()
+        wftypes = ["PRIME_WFSC_SENSING_ONLY", "PRIME_WFSC_ROUTINE", "PRIME_WFSC_SENSING_CONTROL"]
+        wfcols = ["pid", "OBSERVTN", "FILTER", "PUPIL", "DETECTOR"]
+        wfsc = self.df.loc[self.df["VISITYPE"].isin(wftypes)].copy()
         self.df.drop(wfsc.index, axis=0, inplace=True)
         if len(self.df) > 0:
             params = list(
-                map(
-                    lambda x: '-'.join([str(y) for y in x if str(y) not in  FALSEVALS]),  
-                    self.df[self.param_cols].values
-                )
+                map(lambda x: "-".join([str(y) for y in x if str(y) not in FALSEVALS]), self.df[self.param_cols].values)
             )
-            self.df['params'] = pd.DataFrame(params, index=self.df.index)
+            self.df["params"] = pd.DataFrame(params, index=self.df.index)
         if len(wfsc) > 0:
-            wfparams = list(
-                map(
-                    lambda x: '-'.join([str(y) for y in x if str(y) not in  FALSEVALS]),  
-                    wfsc[wfcols].values
-                )
-            )
-            wfsc['params'] = pd.DataFrame(wfparams, index=wfsc.index)
+            wfparams = list(map(lambda x: "-".join([str(y) for y in x if str(y) not in FALSEVALS]), wfsc[wfcols].values))
+            wfsc["params"] = pd.DataFrame(wfparams, index=wfsc.index)
             self.df = pd.concat([self.df, wfsc], axis=0)
 
     @staticmethod
     def save_kwargs(path):
         if not os.path.exists(path):
             return dict(index=False)
-        return dict(mode='a', index=False, header=False)
+        return dict(mode="a", index=False, header=False)
 
     @staticmethod
     def strip_file_suffix(x):
         if x.endswith("fits"):
-            x = '_'.join(x.split('_')[:-1])
+            x = "_".join(x.split("_")[:-1])
         return x
 
     @staticmethod
@@ -551,13 +506,13 @@ class JwstCalIngest:
         if not isinstance(x, str):
             return x
         pid = x[2:7]
-        if pid[0] == '0':
+        if pid[0] == "0":
             pid = pid[1:]
         return int(pid)
 
     @staticmethod
     def validate_obs(x):
-        return '{:0>3}'.format(x)
+        return "{:0>3}".format(x)
 
     @staticmethod
     def convert_to_float(x):
@@ -580,46 +535,38 @@ class JwstCalIngest:
         bool
             True if the dataset name is a mosiac otherwise False
         """
-        if len(x.split('-')) < 2:
+        if len(x.split("-")) < 2:
             return False
-        elif x.split('-')[1][0] != 'c':
+        elif x.split("-")[1][0] != "c":
             return False
         return True
 
     def drop_mosaics(self):
-        """Separate mosaic L3 products and save to `mosaics.csv` on local disk.
-        """
-        self.df['mosaic'] = self.df['dname'].apply(lambda x: self.mark_mosaics(x))
-        mosaics = self.df.loc[self.df['mosaic']].copy()
+        """Separate mosaic L3 products and save to `mosaics.csv` on local disk."""
+        self.df["mosaic"] = self.df["dname"].apply(lambda x: self.mark_mosaics(x))
+        mosaics = self.df.loc[self.df["mosaic"]].copy()
         if len(mosaics) > 0:
-            mosaics.drop('mosaic', axis=1, inplace=True)
+            mosaics.drop("mosaic", axis=1, inplace=True)
             mpath = f"{self.outpath}/mosaics.csv"
             mosaics[self.idxcol] = mosaics.index
             mosaics.to_csv(mpath, **self.save_kwargs(mpath))
             self.log.info(f"Mosaic data saved to: {mpath}")
             self.log.info(f"Dropping {len(mosaics.index)} mosaics from ingest data")
             self.df.drop(mosaics.index, axis=0, inplace=True)
-        self.df.drop('mosaic', axis=1, inplace=True)
+        self.df.drop("mosaic", axis=1, inplace=True)
 
     def scrub_exposures(self):
-        """Preprocess the L1 input exposures through the JWST Scrubber. See JwstCalScrubber for details.
-        """
+        """Preprocess the L1 input exposures through the JWST Scrubber. See JwstCalScrubber for details."""
         self.scrb = JwstCalScrubber(
-                self.input_path,
-                data=self.df.loc[self.df[self.dag].isin(self.l1_dags)],
-                encoding_pairs=KEYPAIR_DATA,
-                mode='df'
+            self.input_path, data=self.df.loc[self.df[self.dag].isin(self.l1_dags)], encoding_pairs=KEYPAIR_DATA, mode="df"
         )
         for exp_type in self.exp_types:
             inputs = self.scrb.scrub_inputs(exp_type=exp_type)
             if inputs is not None:
-                inputs['dname'] = inputs.index
+                inputs["dname"] = inputs.index
                 self.data[exp_type] = inputs
         (self.img, self.spec, self.tac, self.fgs) = self.get_unencoded()
-        self.raw = dict(zip(
-            ["IMAGE", "SPEC", "TAC", "FGS"], 
-            [self.img, self.spec, self.tac, self.fgs]
-        ))
+        self.raw = dict(zip(["IMAGE", "SPEC", "TAC", "FGS"], [self.img, self.spec, self.tac, self.fgs]))
 
     def get_unencoded(self):
         """Retrieve the raw (unencoded) L3 products generated by the JWST Scrubber using preprocessed L1 exposure groups.
@@ -627,21 +574,20 @@ class JwstCalIngest:
         Returns
         -------
         dict
-            Dictionary of each exp_type's dataframe of raw (unencoded) L3 products generated based on groups of L1 input exposures run through the JWST Scubber. 
+            Dictionary of each exp_type's dataframe of raw (unencoded) L3 products generated based on groups of L1 input exposures run through the JWST Scubber.
         """
         data = [self.scrb.imgpix, self.scrb.specpix, self.scrb.tacpix, self.scrb.fgspix]
-        return map(lambda x: pd.DataFrame.from_dict(x, orient='index'), data)
+        return map(lambda x: pd.DataFrame.from_dict(x, orient="index"), data)
 
     def extrapolate(self):
-        """Match each group of L1 input exposures to a single L3 product, then separate unmatched exposures from the dataframe and convert imagesize to gigabytes. If any L3 products remain unmatched, the preliminary assumption is that these datasets were reprocessed and an attempt is made to update the relevant features for this product within the existing training file stored on local disk at `training.csv` if it exists. Warnings are reported by the log if multiple L3 products match a particular group of L1 inputs and/or L3 products remain that could not be matched with any input exposures or a previous L3 product in the existing training set. In both cases, these products are stored as a list in the `self.l3` attribute for further analysis and debugging since either occurrence indicates an error in the way data is being ingested (often as a result of unexpected changes made within the JWST pipeline after a given release).
-        """
+        """Match each group of L1 input exposures to a single L3 product, then separate unmatched exposures from the dataframe and convert imagesize to gigabytes. If any L3 products remain unmatched, the preliminary assumption is that these datasets were reprocessed and an attempt is made to update the relevant features for this product within the existing training file stored on local disk at `training.csv` if it exists. Warnings are reported by the log if multiple L3 products match a particular group of L1 inputs and/or L3 products remain that could not be matched with any input exposures or a previous L3 product in the existing training set. In both cases, these products are stored as a list in the `self.l3` attribute for further analysis and debugging since either occurrence indicates an error in the way data is being ingested (often as a result of unexpected changes made within the JWST pipeline after a given release)."""
         for exp in self.data.keys():
             self.match_product_groups(exp)
             if len(self.exmatches[exp]) > 0:
                 self.log.warning(f"Multiple matches in {exp}: {len(self.exmatches[exp])}")
         self.drop_unmatched()
         self.convert_imagesize_units()
-        if 'pname' not in self.df.columns:
+        if "pname" not in self.df.columns:
             self.log.debug("No L3 candidates to match")
             self.l3 = None
             return
@@ -666,34 +612,24 @@ class JwstCalIngest:
         Returns
         -------
         list
-            L3 products matching the specified metadata (and query parameters if requested). 
+            L3 products matching the specified metadata (and query parameters if requested).
         """
         if extra_param:
             l3 = self.df.loc[
-                (
-                    self.df['params'] == info['params']
-                ) & (
-                    self.df[self.dag].isin(self.l3_dags)
-                ) & (
-                    self.df[extra_param] == info[extra_param]
-                )
+                (self.df["params"] == info["params"])
+                & (self.df[self.dag].isin(self.l3_dags))
+                & (self.df[extra_param] == info[extra_param])
             ]
-            if len(l3) == 0: # drop extra search param
+            if len(l3) == 0:  # drop extra search param
                 l3 = self.match_query(info)
         else:
-            l3 = self.df.loc[
-                (
-                    self.df['params'] == info['params']
-                ) & (
-                    self.df[self.dag].isin(self.l3_dags)
-                )
-            ]
+            l3 = self.df.loc[(self.df["params"] == info["params"]) & (self.df[self.dag].isin(self.l3_dags))]
         return l3
 
     def match_product_groups(self, exp_type):
         """Matching L3 product with its associated L1 input exposures.
         1. If TARGNAME: match using params (PID-OBS-OPTELEM-SUBARRAY-EXP_TYPE) + TARGNAME
-        2. Elif fixed target: match using params + targra (TARG_RA rounded to 6 sig. digits) 
+        2. Elif fixed target: match using params + targra (TARG_RA rounded to 6 sig. digits)
         3. Else: match params + gs_mag
 
         Parameters
@@ -704,52 +640,51 @@ class JwstCalIngest:
         self.exmatches[exp_type] = {}
         for k, v in self.scrb.expdata[exp_type].items():
             exposures = list(v.keys())
-            self.df.loc[self.df.dname.isin(exposures), 'expmode'] = exp_type
+            self.df.loc[self.df.dname.isin(exposures), "expmode"] = exp_type
             info = self.df.loc[exposures[0]]
-            qp = 'TARGNAME'
+            qp = "TARGNAME"
             if info[qp] == "NONE" or isinstance(info[qp], float):
                 # TARG_RA rounded to 6 decimals for PTF
-                qp = 'targra' if info['VISITYPE'] == "PRIME_TARGETED_FIXED" else 'GS_MAG'
+                qp = "targra" if info["VISITYPE"] == "PRIME_TARGETED_FIXED" else "GS_MAG"
             l3 = self.match_query(info, extra_param=qp)
             if len(l3) == 0:
                 self.log.debug(f"No matching products identified: {k}")
                 continue
             else:
                 if len(l3) > 1:
-                    if qp == 'TARGNAME' and info['VISITYPE'] == 'PRIME_TARGETED_FIXED':
-                        l3 = self.match_query(info, extra_param='targra')
-                    if len(l3) > 1: # FALLBACK
+                    if qp == "TARGNAME" and info["VISITYPE"] == "PRIME_TARGETED_FIXED":
+                        l3 = self.match_query(info, extra_param="targra")
+                    if len(l3) > 1:  # FALLBACK
                         # check if miri ifu (l3 products identical for each band)
                         self.log.warning(f"MULTI MATCH ELIMINATION: {k}")
                         pnames = sorted(list(l3.index))
-                        self.exmatches[exp_type][info['params']] = pnames
-                        self.df.loc[self.df.dname.isin(pnames), 'expmode'] = exp_type
-                        l3 = l3.loc[l3['dname'] == pnames[0]]
-                pname = l3.iloc[0]['dname']
-                imagesize = l3.iloc[0]['imagesize']
-                self.data[exp_type].loc[k, 'pname'] = pname
-                self.data[exp_type].loc[k, 'imagesize'] = imagesize
-                self.data[exp_type].loc[k, 'date'] = l3.iloc[0]['date']
-                self.df.loc[pname, 'pname'] = pname
-                self.df.loc[self.df.dname.isin(exposures), 'pname'] = pname
-                self.df.loc[self.df.pname == pname, 'expmode'] = exp_type
+                        self.exmatches[exp_type][info["params"]] = pnames
+                        self.df.loc[self.df.dname.isin(pnames), "expmode"] = exp_type
+                        l3 = l3.loc[l3["dname"] == pnames[0]]
+                pname = l3.iloc[0]["dname"]
+                imagesize = l3.iloc[0]["imagesize"]
+                self.data[exp_type].loc[k, "pname"] = pname
+                self.data[exp_type].loc[k, "imagesize"] = imagesize
+                self.data[exp_type].loc[k, "date"] = l3.iloc[0]["date"]
+                self.df.loc[pname, "pname"] = pname
+                self.df.loc[self.df.dname.isin(exposures), "pname"] = pname
+                self.df.loc[self.df.pname == pname, "expmode"] = exp_type
 
     def drop_unmatched(self):
-        """Store any unmatched inputs into the `self.raw` attribute then remove them from the training set. Reports a log of the percentage of L3 products successfully matched during this ingest run (anything less than 100% indicates an error).
-        """
+        """Store any unmatched inputs into the `self.raw` attribute then remove them from the training set. Reports a log of the percentage of L3 products successfully matched during this ingest run (anything less than 100% indicates an error)."""
         for exp in list(self.data.keys()):
-            extracols = [c for c in ['imagesize','date','pname'] if c in self.data[exp].columns]
+            extracols = [c for c in ["imagesize", "date", "pname"] if c in self.data[exp].columns]
             self.raw[exp] = pd.concat([self.raw[exp], self.data[exp][extracols]], axis=1)
             try:
-                if 'imagesize' in self.raw[exp].columns:
-                    self.rem[exp] = self.raw[exp].loc[self.raw[exp]['imagesize'].isna()].copy()
+                if "imagesize" in self.raw[exp].columns:
+                    self.rem[exp] = self.raw[exp].loc[self.raw[exp]["imagesize"].isna()].copy()
                 else:
                     self.rem[exp] = self.raw[exp].copy()
-                n = self.df.loc[(self.df.dag.isin(self.l3_dags)) & (self.df.expmode == exp)]['expmode'].size
+                n = self.df.loc[(self.df.dag.isin(self.l3_dags)) & (self.df.expmode == exp)]["expmode"].size
                 self.data[exp].drop(self.rem[exp].index, axis=0, inplace=True)
                 self.raw[exp].drop(self.rem[exp].index, axis=0, inplace=True)
                 if n > 0:
-                    self.log.info(f"[{exp}] L3 matched: {len(self.data[exp])} | {np.round((len(self.data[exp])/n)*100)}%")
+                    self.log.info(f"[{exp}] L3 matched: {len(self.data[exp])} | {np.round((len(self.data[exp]) / n) * 100)}%")
             except KeyError:
                 continue
 
@@ -767,13 +702,13 @@ class JwstCalIngest:
             Dataframe with additional column 'imgsize_gb` containing the GB values converted from `imagesize` column.
         """
         if data is not None:
-            data['imgsize_gb'] = data['imagesize'].apply(lambda x: x / 10**6)
+            data["imgsize_gb"] = data["imagesize"].apply(lambda x: x / 10**6)
             return data
         for exp in self.exp_types:
             try:
-                if 'imagesize' in self.data[exp].columns:
-                    self.data[exp]['imgsize_gb'] = self.data[exp]['imagesize'].apply(lambda x: x / 10**6)
-                    self.raw[exp]['imgsize_gb'] = self.data[exp]['imgsize_gb']
+                if "imagesize" in self.data[exp].columns:
+                    self.data[exp]["imgsize_gb"] = self.data[exp]["imagesize"].apply(lambda x: x / 10**6)
+                    self.raw[exp]["imgsize_gb"] = self.data[exp]["imgsize_gb"]
             except KeyError:
                 continue
 
@@ -789,20 +724,17 @@ class JwstCalIngest:
         if dp is None:
             self.log.warning("Could not update repro data - file not found.")
             return
-        dp = dp.sort_values(by='date').drop_duplicates(subset='pname', keep='last')
+        dp = dp.sort_values(by="date").drop_duplicates(subset="pname", keep="last")
         updates = {}
         notrepro = []
         pnames = list(l3.index)
         for pname in pnames:
             try:
-                expmode = dp.loc[pname]['expmode']
+                expmode = dp.loc[pname]["expmode"]
                 if expmode not in updates:
                     updates[expmode] = dict()
                 updates[expmode][pname] = dict(
-                    imagesize=l3.loc[pname].imagesize,
-                    doy=l3.loc[pname].doy,
-                    date=l3.loc[pname].date,
-                    year=l3.loc[pname].year
+                    imagesize=l3.loc[pname].imagesize, doy=l3.loc[pname].doy, date=l3.loc[pname].date, year=l3.loc[pname].year
                 )
             except KeyError:
                 notrepro.append(pname)
@@ -812,8 +744,8 @@ class JwstCalIngest:
             for name, revised in repro_data.items():
                 for k, v in revised.items():
                     dp.loc[name, k] = v
-                data.loc[data.pname == name, 'imagesize'] = revised['imagesize']
-                data.loc[data.pname == name, 'date'] = revised['date']
+                data.loc[data.pname == name, "imagesize"] = revised["imagesize"]
+                data.loc[data.pname == name, "date"] = revised["date"]
             data = self.convert_imagesize_units(data=data)
             data[self.idxcol] = data.index
             data.to_csv(self.trainpath.format(exp_type.lower()), index=False)
@@ -828,18 +760,18 @@ class JwstCalIngest:
             self.log.warning("0 repro candidates matched.")
 
     def save_training_sets(self):
-        """Adds preprocessed ML training data for each model type to its respective file on local disk: `train-{exp_type}.csv`. 
+        """Adds preprocessed ML training data for each model type to its respective file on local disk: `train-{exp_type}.csv`.
         The raw (unencoded) versions are also saved to local disk as `raw-{exp_type}.csv`.
         Any remaining L1 inputs that did not have a matching L3 product are saved to `rem-{exp-type}.csv` primarily for debugging purposes.
         """
         for exp in self.exp_types:
             if exp in self.data.keys() and len(self.data[exp]) > 0:
                 fpath = self.trainpath.format(exp.lower())
-                self.data[exp][self.idxcol] = self.data[exp]['pname']
+                self.data[exp][self.idxcol] = self.data[exp]["pname"]
                 self.data[exp].to_csv(fpath, **self.save_kwargs(fpath))
                 self.log.info(f"{exp} training data saved to: {fpath}")
                 wpath = self.rawpath.format(exp.lower())
-                self.raw[exp][self.idxcol] = self.raw[exp]['pname']
+                self.raw[exp][self.idxcol] = self.raw[exp]["pname"]
                 self.raw[exp].to_csv(wpath, **self.save_kwargs(wpath))
             if exp in self.rem.keys() and len(self.rem[exp]) > 0:
                 rpath = self.rempath.format(exp.lower())
@@ -848,15 +780,15 @@ class JwstCalIngest:
                 self.log.info(f"Remaining {exp} data saved to: {rpath}")
 
     def save_ingest_data(self):
-        """Adds unmatched L1 inputs into 'ingest.csv', matched L3 products to 'training.csv'. 
+        """Adds unmatched L1 inputs into 'ingest.csv', matched L3 products to 'training.csv'.
         If `save_l1` attribute is True, matched L1 input exposures are saved to a separate file 'level1.csv'.
         """
         self.df[self.idxcol] = self.df.index
-        if 'pname' not in self.df.columns:
+        if "pname" not in self.df.columns:
             di = self.df.loc[self.df.dag.isin(self.l1_dags)]
         else:
             di = self.df.loc[self.df.pname.isna()].copy()
-            di.drop(['pname'], axis=1, inplace=True)
+            di.drop(["pname"], axis=1, inplace=True)
         di.to_csv(self.ingest_file, **self.save_kwargs(self.ingest_file))
         self.log.info(f"Remaining Ingest data saved to: {self.ingest_file}")
         dp = self.df.drop(di.index, axis=0)
@@ -873,11 +805,10 @@ class JwstCalIngest:
 
 
 def hst_svm_ingest(**kwargs):
-    """Main calling function for runnning HST SVM Alignment Data Ingest.
-    """
-    visit_path = kwargs.pop('visit_path', None)
-    batch_name = kwargs.pop('batch_name', None)
-    drz_ver = kwargs.pop('drz_ver', None)
+    """Main calling function for runnning HST SVM Alignment Data Ingest."""
+    visit_path = kwargs.pop("visit_path", None)
+    batch_name = kwargs.pop("batch_name", None)
+    drz_ver = kwargs.pop("drz_ver", None)
     svi = SvmAlignmentIngest(**kwargs)
     if visit_path is not None:
         svi.prep_single_visit(visit_path)
@@ -886,8 +817,7 @@ def hst_svm_ingest(**kwargs):
 
 
 def jwst_cal_ingest(**kwargs):
-    """Main calling function for running JWST Calibration Data Ingest.
-    """
+    """Main calling function for running JWST Calibration Data Ingest."""
     jc = JwstCalIngest(**kwargs)
     jc.run_ingest()
 
@@ -897,23 +827,23 @@ if __name__ == "__main__":
     subparsers = parser.add_subparsers(title="skope", help="application skope")
     parser_jcal = subparsers.add_parser(
         "jcal",
-        add_help=False, 
+        add_help=False,
         parents=[parser],
         help="jwst calibration training data",
-        usage="spacekit.preprocessor.ingest skope [options]"
+        usage="spacekit.preprocessor.ingest skope [options]",
     )
     parser_hsvm = subparsers.add_parser(
-        "hsvm", 
-        add_help=False, 
-        parents=[parser], 
+        "hsvm",
+        add_help=False,
+        parents=[parser],
         help="hst svm alignment training data",
-        usage="spacekit.preprocessor.ingest skope [options]"
+        usage="spacekit.preprocessor.ingest skope [options]",
     )
     for subparser in [parser_jcal, parser_hsvm]:
         subparser.add_argument("-i", "--input_path", default=os.getcwd(), type=str, help="data filepath to be ingested")
         subparser.add_argument("-o", "--outpath", type=str, default=None, help="path to save ingested data on local disk")
 
-    parser_jcal.add_argument("-p","--pfx", type=str, default=None, help="file name prefix to limit search on local disk")
+    parser_jcal.add_argument("-p", "--pfx", type=str, default=None, help="file name prefix to limit search on local disk")
     parser_jcal.add_argument("-s", "--save_l1", type=bool, default=False, help="save matched level 1 input data to separate file")
     parser_jcal.set_defaults(func=jwst_cal_ingest)
 
@@ -923,5 +853,5 @@ if __name__ == "__main__":
     parser_hsvm.set_defaults(func=hst_svm_ingest)
 
     kwargs = {**vars(parser.parse_args())}
-    func = kwargs.pop('func')
+    func = kwargs.pop("func")
     func(**kwargs)

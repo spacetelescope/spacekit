@@ -253,9 +253,7 @@ def color_jitter(x, brightness=0.4, contrast=0.4, saturation=0.4, hue=None):
     """
     x = tf.image.random_brightness(x, max_delta=0.8 * brightness)
     x = tf.image.random_contrast(x, lower=1 - 0.8 * contrast, upper=1 + 0.8 * contrast)
-    x = tf.image.random_saturation(
-        x, lower=1 - 0.8 * saturation, upper=1 + 0.8 * saturation
-    )
+    x = tf.image.random_saturation(x, lower=1 - 0.8 * saturation, upper=1 + 0.8 * saturation)
     if hue is not None:
         x = tf.image.random_hue(x, max_delta=0.2 * hue)
     x = tf.clip_by_value(x, 0, 255)
