@@ -5,7 +5,7 @@ furo==2024.8.6
 matplotlib==3.9.4
 tensorflow==2.20.0
 numpy==1.26.4
-numpydoc==1.7.0
+numpydoc==1.10.0
 astropy==6.1.4
 pydot==4.0.1
 graphviz==0.21
