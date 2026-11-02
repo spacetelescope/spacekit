@@ -1,21 +1,14 @@
 """Utilities for loading datasets from the spacekit archive."""
 
-from ._base import scrape_archives
-from ._base import load_from_archive
-from ._base import load_cal
-from ._base import load_svm
-from ._base import load_k2
-from ._base import load_jwst_cal
-from ._base import import_collection
-from ._base import load
+from ._base import import_collection, load, load_cal, load_from_archive, load_jwst_cal, load_k2, load_svm, scrape_archives
 
 __all__ = [
-    "scrape_archives",
-    "load_from_archive",
-    "load_cal",
-    "load_svm",
-    "load_k2",
-    "load_jwst_cal",
     "import_collection",
     "load",
+    "load_cal",
+    "load_from_archive",
+    "load_jwst_cal",
+    "load_k2",
+    "load_svm",
+    "scrape_archives",
 ]

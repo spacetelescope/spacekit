@@ -9,21 +9,21 @@ Program (PID) of exposures comes into pipeline
 7. run inference
 """
 
-import os
 import argparse
-import numpy as np
-from spacekit.logger.log import SPACEKIT_LOG, Logger
-from spacekit.skopes.jwst.cal.config import KEYPAIR_DATA, COLUMN_ORDER, NORM_COLS
-from spacekit.preprocessor.scrub import JwstCalScrubber
-from spacekit.preprocessor.transform import array_to_tensor, PowerX
-from spacekit.builder.architect import Builder
+import os
 
+import numpy as np
+
+from spacekit.builder.architect import Builder
+from spacekit.logger.log import SPACEKIT_LOG, Logger
+from spacekit.preprocessor.scrub import JwstCalScrubber
+from spacekit.preprocessor.transform import PowerX, array_to_tensor
+from spacekit.skopes.jwst.cal.config import COLUMN_ORDER, KEYPAIR_DATA, NORM_COLS
 
 # build from local filepath
 # MODEL_PATH = os.environ.get("MODEL_PATH", "./models/jwst_cal")
 # TX_FILE = MODEL_PATH + "/tx_data-{}.json"
 
-global JWST_CAL_MODELS
 JWST_CAL_MODELS = {}
 
 
@@ -51,19 +51,12 @@ class JwstCalPredict:
         pid=None,
         obs=None,
         model_path=None,
-        models={},
+        models=None,
         tx_file=None,
         norm=1,
-        norm_cols=[
-            "offset",
-            "max_offset",
-            "mean_offset",
-            "sigma_offset",
-            "err_offset",
-            "sigma1_mean",
-        ],
+        norm_cols=None,
         sfx="uncal.fits",
-        expmodes=["IMAGE", "SPEC"],
+        expmodes=None,
         **log_kws,
     ):
         """Initializes JwstCalPredict class object. This class can be used to estimate the memory footprint of Level 3 products based on metadata scraped from uncalibrated (Level 1) exposures.
@@ -91,6 +84,12 @@ class JwstCalPredict:
         expmodes : list, optional
             specifies which exposure modes to turn on for inference, by default ["IMAGE", "SPEC"]
         """
+        if expmodes is None:
+            expmodes = ["IMAGE", "SPEC"]
+        if norm_cols is None:
+            norm_cols = ["offset", "max_offset", "mean_offset", "sigma_offset", "err_offset", "sigma1_mean"]
+        if models is None:
+            models = {}
         self.input_path = input_path
         self.pid = pid
         self.obs = obs
@@ -112,8 +111,8 @@ class JwstCalPredict:
         self.__name__ = "JwstCalPredict"
         self.log = Logger(self.__name__, **log_kws).setup_logger(logger=SPACEKIT_LOG)
         self.log_kws = dict(log=self.log, **log_kws)
-        self.predictions = dict()
-        self.probabilities = dict()
+        self.predictions = {}
+        self.probabilities = {}
         self.initialize_models()
 
     def initialize_models(self):
@@ -189,7 +188,7 @@ class JwstCalPredict:
             self.pid = "jw{:0>5}".format(str(self.pid).lstrip("jw"))
             if self.obs:
                 try:
-                    self.obs = "{:0>3}".format(int(self.obs))
+                    self.obs = f"{int(self.obs):0>3}"
                 except ValueError:
                     self.obs = ""
                 self.pid += self.obs
@@ -199,18 +198,18 @@ class JwstCalPredict:
 
     def preprocess(self):
         """Runs necessary preprocessing steps on input exposure data prior to inference."""
-        self.input_data = dict(
-            IMAGE=None,
-            SPEC=None,
-            FGS=None,
-            TAC=None,
-        )
-        self.inputs = dict(
-            IMAGE=None,
-            SPEC=None,
-            FGS=None,
-            TAC=None,
-        )
+        self.input_data = {
+            "IMAGE": None,
+            "SPEC": None,
+            "FGS": None,
+            "TAC": None,
+        }
+        self.inputs = {
+            "IMAGE": None,
+            "SPEC": None,
+            "FGS": None,
+            "TAC": None,
+        }
         self.log.info("Preprocessing inputs...")
         self.verify_input_path()
         scrubber = JwstCalScrubber(
@@ -226,7 +225,7 @@ class JwstCalPredict:
                 self.input_data[exp_type] = inputs
                 self.inputs[exp_type] = self.normalize_inputs(inputs, order=exp_type)
 
-    def load_models(self, models={}):
+    def load_models(self, models=None):
         """_summary_
 
         Parameters
@@ -240,6 +239,8 @@ class JwstCalPredict:
         #         model_path=self.model_path, name="jmem_clf", **self.log_kws
         #     ),
         # )
+        if models is None:
+            models = {}
         self.img3_reg = models.get(
             "img3_reg",
             load_pretrained_model(model_path=self.model_path, name="img3_reg", **self.log_kws),
@@ -255,7 +256,7 @@ class JwstCalPredict:
 
     def classifier(self, model, data):
         """Returns class prediction"""
-        reshape = True if len(data.shape) == 1 else False
+        reshape = len(data.shape) == 1
         shape = (1, -1) if reshape is True else data.shape
         X = array_to_tensor(data, reshape=reshape, shape=shape)
         pred_proba = model.predict(X)
@@ -293,7 +294,7 @@ class JwstCalPredict:
         numpy.array
             Returns Regression model prediction
         """
-        reshape = True if len(data.shape) == 1 else False
+        reshape = len(data.shape) == 1
         shape = (1, -1) if reshape is True else data.shape
         X = array_to_tensor(data, reshape=reshape, shape=shape)
         pred = model.predict(X)
@@ -310,8 +311,7 @@ class JwstCalPredict:
         imgsize = self.regressor(self.img3_reg.model, X)
         for i, _ in enumerate(X):
             rpred = np.round(float(np.squeeze(imgsize[i])), 2)
-            if rpred > 990.0:
-                rpred = 990.0  # cap at 990 GB
+            rpred = min(rpred, 990.0)  # cap at 990 GB
             self.predictions[product_index[i]] = {"gbSize": rpred}
 
     def run_spec_inference(self):
@@ -326,8 +326,7 @@ class JwstCalPredict:
 
         for i, _ in enumerate(X):
             rpred = np.round(float(np.squeeze(imgsize[i])), 2)
-            if rpred > 990.0:
-                rpred = 990.0  # cap at 900 GB
+            rpred = min(rpred, 990.0)  # cap at 900 GB
             self.predictions[product_index[i]] = {"gbSize": rpred}
 
     def run_inference(self):

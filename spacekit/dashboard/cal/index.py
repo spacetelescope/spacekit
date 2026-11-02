@@ -1,13 +1,13 @@
-from dash import html
-from dash import dcc
+from argparse import ArgumentParser
+
+from dash import dcc, html
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
-from argparse import ArgumentParser
+
+from spacekit.dashboard.cal import eda, eval, nodegraph, pred
 from spacekit.dashboard.cal.app import app
-from spacekit.dashboard.cal import eda, eval, pred, nodegraph
 from spacekit.dashboard.cal.config import cal, hst, tx_file
 from spacekit.preprocessor.transform import PowerX
-
 
 url_bar_and_content_div = html.Div([dcc.Location(id="url", refresh=False), html.Div(id="page-content")])
 
@@ -255,7 +255,7 @@ def displayTapNodeData(data):
             b = nodegraph.node_bias_clicks(node)
         else:
             b = None
-        return f"bias: {node} = {str(b)}"
+        return f"bias: {node} = {b!s}"
 
 
 @app.callback(
@@ -267,7 +267,7 @@ def displayTapEdgeData(data):
         src = data["source"]  # x1
         trg = data["target"]  # h1-1
         w = nodegraph.edge_weight_clicks(src, trg)
-        return f"weight: {src} and {trg} = {str(w)}"
+        return f"weight: {src} and {trg} = {w!s}"
 
 
 @app.callback(
@@ -281,7 +281,7 @@ def displayMouseNodeData(data):
             b = nodegraph.node_bias_clicks(node)
         else:
             b = None
-        return f"bias: {node} = {str(b)}"
+        return f"bias: {node} = {b!s}"
 
 
 @app.callback(
@@ -293,7 +293,7 @@ def displayMouseEdgeData(data):
         src = data["source"]  # x1
         trg = data["target"]  # h1-1
         w = nodegraph.edge_weight_clicks(src, trg)
-        return f"weight: {src} and {trg} = {str(w)}"
+        return f"weight: {src} and {trg} = {w!s}"
 
 
 if __name__ == "__main__":

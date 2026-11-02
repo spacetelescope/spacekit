@@ -1,12 +1,13 @@
-import os
 import json
-import pandas as pd
+import os
+
 import numpy as np
+import pandas as pd
+import tensorflow as tf
+from astropy import units as u
+from astropy.coordinates import SkyCoord
 from scipy.ndimage.filters import uniform_filter1d
 from sklearn.preprocessing import PowerTransformer
-import tensorflow as tf
-from astropy.coordinates import SkyCoord
-from astropy import units as u
 
 from spacekit.logger.log import Logger
 
@@ -31,7 +32,7 @@ class SkyTransformer:
         self.detector = None
         self.channel = None
         self.count_exposures = True
-        self.refpix = dict()
+        self.refpix = {}
         self.set_keys()
 
     def set_keys(self, **kwargs):
@@ -93,7 +94,7 @@ class SkyTransformer:
         dict
             calculated pixel offset statistics for each L3 product's group of input exposures
         """
-        product_refpix = dict()
+        product_refpix = {}
         for product, exp_headers in product_exp_headers.items():
             product_refpix[product] = self.get_pixel_offsets(exp_headers)
         return product_refpix
@@ -117,7 +118,7 @@ class SkyTransformer:
         if isinstance(ra, float) and isinstance(dec, float):
             return True
         else:
-            warning_message = f"Invalid RA/DEC fiducial value ({ra}, {dec}) in {str(exp)}"
+            warning_message = f"Invalid RA/DEC fiducial value ({ra}, {dec}) in {exp!s}"
             if exp == "TARG_RA/TARG_DEC":
                 self.log.debug(warning_message)
             else:
@@ -138,9 +139,9 @@ class SkyTransformer:
             pixel offset statistics for this group of input exposures
         """
         if self.count_exposures is True:
-            refpix = dict(NEXPOSUR=len(list(exp_data.keys())))
+            refpix = {"NEXPOSUR": len(list(exp_data.keys()))}
         else:
-            refpix = dict()
+            refpix = {}
         offsets, targ_offsets, detectors, bands = [], [], [], []
         targ_radec = None
         bad_fiducials = {}
@@ -162,12 +163,12 @@ class SkyTransformer:
             shape = self.data_shapes(instr)
             # footprint from shape
             footprint = self.footprint_from_shape(fiducial, scale, shape)
-            exp_data[exp].update(
-                dict(
-                    fiducial=fiducial,
-                    footprint=footprint,
-                    scale=scale,
-                )
+            data.update(
+                {
+                    "fiducial": fiducial,
+                    "footprint": footprint,
+                    "scale": scale,
+                }
             )
             if detector is not None and detector.upper() not in detectors:
                 detectors.append(detector.upper())
@@ -175,7 +176,7 @@ class SkyTransformer:
             if band is not None:
                 bands.extend([b.upper() for b in band.split("-") if b.upper() not in bands])
         # Throw out any exposures with invalid data
-        for k in bad_fiducials.keys():
+        for k in bad_fiducials:
             del exp_data[k]
             if "NEXPOSUR" in refpix:
                 refpix["NEXPOSUR"] -= 1
@@ -201,7 +202,7 @@ class SkyTransformer:
                 exp_data[exp]["targ_offset"] = targ_pixel
                 targ_offsets.append(targ_pixel)
         # fill in metadata for product using reference exposure (usually vals are equal across inputs)
-        ref_exp = [k for k, v in exp_data.items() if v["offset"] == np.min(np.asarray(offsets))][0]
+        ref_exp = next(k for k, v in exp_data.items() if v["offset"] == np.min(np.asarray(offsets)))
         keys = [k for k in list(exp_data[ref_exp].keys()) if k not in ["DETECTOR", "BAND", "footprint", "fiducial"]]
         for k in keys:
             refpix[k] = exp_data[ref_exp][k]
@@ -233,36 +234,36 @@ class SkyTransformer:
         return refpix
 
     def image_pixel_scales(self):
-        return dict(
-            HST=dict(ACS=dict(WFC=0.05), WFC3=dict(UVIS=0.04, IR=0.13)),
-            JWST=dict(
-                NIRCAM=dict(
-                    SHORT=0.03,
-                    LONG=0.06,
-                ),
-                MIRI=dict(
-                    GEN=0.11,
-                    MRS=0.196,
-                ),
-                NIRISS=0.06,
-                NIRSPEC=0.12,
-                FGS=0.069,
-            ),
-        )[self.mission]
+        return {
+            "HST": {"ACS": {"WFC": 0.05}, "WFC3": {"UVIS": 0.04, "IR": 0.13}},
+            "JWST": {
+                "NIRCAM": {
+                    "SHORT": 0.03,
+                    "LONG": 0.06,
+                },
+                "MIRI": {
+                    "GEN": 0.11,
+                    "MRS": 0.196,
+                },
+                "NIRISS": 0.06,
+                "NIRSPEC": 0.12,
+                "FGS": 0.069,
+            },
+        }[self.mission]
 
     def data_shapes(self, instr):
-        return dict(
-            JWST=dict(
-                NIRCAM=(2048, 2048),
-                MIRI=(1032, 1024),
-                NIRISS=(2048, 2048),
-                NIRSPEC=(2048, 2048),
-            ),
-            HST=dict(
-                ACS=(4096, 2048),  # ACS -> WFC,
-                WFC3=(4096, 2051),  # WFC3 -> UVIS (IR=(1024,1024))
-            ),
-        )[self.mission][instr]
+        return {
+            "JWST": {
+                "NIRCAM": (2048, 2048),
+                "MIRI": (1032, 1024),
+                "NIRISS": (2048, 2048),
+                "NIRSPEC": (2048, 2048),
+            },
+            "HST": {
+                "ACS": (4096, 2048),  # ACS -> WFC,
+                "WFC3": (4096, 2051),  # WFC3 -> UVIS (IR=(1024,1024))
+            },
+        }[self.mission][instr]
 
     def get_scale(self, instr, channel=None, detector=None, exp_type=None):
         if channel.upper() in ["SHORT", "LONG"]:
@@ -322,7 +323,7 @@ class SkyTransformer:
     @staticmethod
     def offset_statistics(offsets, pfx=""):
         offsets = np.asarray(offsets)
-        stats = dict()
+        stats = {}
         stats[f"{pfx}max_offset"] = np.max(offsets)
         stats[f"{pfx}mean_offset"] = np.mean(offsets)
         stats[f"{pfx}sigma_offset"] = np.std(offsets)
@@ -528,7 +529,7 @@ class Transformer:
             elif self.join_data == 2:
                 data_norm = data_norm.join(self.data, how="left")
             return data_norm
-        except Exception as e:
+        except (ValueError, TypeError, pd.errors.MergeError) as e:
             self.log.error(e)
             return None
 
@@ -902,7 +903,7 @@ def ffill_array(arr):
 
 
 def hypersonic_pliers(
-    path_to_train, path_to_test=None, y_col=[0], skip=1, dlm=",", encoding="bytes", subtract_y=0.0, reshape=False
+    path_to_train, path_to_test=None, y_col=None, skip=1, dlm=",", encoding="bytes", subtract_y=0.0, reshape=False
 ):
     """Extracts data into 1-dimensional arrays, using separate target classes (y) for training and test data. Assumes y (target) is first column in dataframe. If the target (y) classes in the raw data are 1 and 2, but you'd like them to be binaries (0 and 1), set subtract_y=1.0
 
@@ -928,6 +929,8 @@ def hypersonic_pliers(
     np.ndarrays
         X_train, X_test, y_train, y_test
     """
+    if y_col is None:
+        y_col = [0]
     Train = np.loadtxt(path_to_train, skiprows=skip, delimiter=dlm, encoding=encoding)
     cols = list(range(Train.shape[1]))
     xcols = [c for c in cols if c not in y_col]

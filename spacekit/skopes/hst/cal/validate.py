@@ -1,16 +1,18 @@
+import time
+
+import numpy as np
+from sklearn.model_selection import KFold, StratifiedKFold, cross_val_score
+from sklearn.preprocessing import LabelEncoder
+
 from spacekit.builder.architect import (
     MemoryClassifier,
     MemoryRegressor,
     WallclockRegressor,
 )
-import numpy as np
-import time
-from sklearn.model_selection import StratifiedKFold, KFold, cross_val_score
-from sklearn.preprocessing import LabelEncoder
-from spacekit.skopes.hst.cal.config import COLUMN_ORDER
-from spacekit.extractor.scrape import S3Scraper
 from spacekit.extractor.load import save_multitype_data, zip_subdirs
+from spacekit.extractor.scrape import S3Scraper
 from spacekit.logger.log import SPACEKIT_LOG
+from spacekit.skopes.hst.cal.config import COLUMN_ORDER
 
 try:
     from scikeras.wrappers import KerasClassifier, KerasRegressor
@@ -89,7 +91,7 @@ def kfold_cross_val(data, target_col, s3=None, data_path=None, verbose=2, n_jobs
     return kfold_dict
 
 
-def run_kfold(data, s3=None, data_path=None, models=[], n_jobs=-2):
+def run_kfold(data, s3=None, data_path=None, models=None, n_jobs=-2):
     """_summary_
 
     Parameters
@@ -105,6 +107,8 @@ def run_kfold(data, s3=None, data_path=None, models=[], n_jobs=-2):
     n_jobs : int, optional
         kfold njobs, by default -2
     """
+    if models is None:
+        models = []
     if not check_scikeras():
         SPACEKIT_LOG.error("scikeras not installed.")
         raise ImportError(

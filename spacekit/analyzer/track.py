@@ -1,10 +1,12 @@
-import sys
-import numpy as np
 import datetime as dt
-import os
 import glob
+import os
+import sys
 import time
-from spacekit.logger.log import Logger, SPACEKIT_LOG
+
+import numpy as np
+
+from spacekit.logger.log import SPACEKIT_LOG, Logger
 
 
 class Stopwatch:
@@ -46,7 +48,7 @@ class Stopwatch:
         self.log.info(f"CLOCK [{self.ps}] : {self.clocktime}")
 
     def record(self, t, info):
-        timestring = dt.datetime.fromtimestamp(t).strftime("%m/%d/%Y - %H:%M:%S")
+        timestring = dt.datetime.fromtimestamp(t, tz=dt.timezone.utc).strftime("%m/%d/%Y - %H:%M:%S")
         self.log(f"{timestring} [i] {info} [{self.ps}]")
         if self.delta:
             self.log.info(f"Duration [{self.ps}] : {self.delta[0]} {self.delta[1]}\n")
@@ -140,7 +142,11 @@ def stopwatch(prcname, t0=None, t1=None, out=".", log=True, subset_name=None):
     else:
         info = "STARTED"
         t = t0
-    timestring = dt.datetime.fromtimestamp(t).strftime("%m/%d/%Y - %H:%M:%S")
+    try:
+        tz = dt.timezone.utc
+    except AttributeError:
+        tz = dt.timezone.utc
+    timestring = dt.datetime.fromtimestamp(t, tz=tz).strftime("%m/%d/%Y - %H:%M:%S")
     message = f"{timestring} [i] {info} [{prcname}]"
     print(message)
 
@@ -197,8 +203,7 @@ def record_metrics(log_dir, visit, wall, clock, ps="svm", n_files=None, total_si
         metrics.update({"n_files": n_files, "total_size": total_size})
 
     with open(log_file, "w") as lf:
-        for k, v in metrics.items():
-            lf.write(f"{k}: {v}\n")
+        lf.writelines(f"{k}: {v}\n" for k, v in metrics.items())
 
 
 def xtimer(fn):
@@ -207,7 +212,7 @@ def xtimer(fn):
         to_execute = fn(*args, **kwargs)
         end_time = time.perf_counter()
         execution_time = end_time - start_time
-        SPACEKIT_LOG.info("{0} took {1:.8f}s to execute".format(fn.__name__, execution_time))
+        SPACEKIT_LOG.info(f"{fn.__name__} took {execution_time:.8f}s to execute")
         return to_execute
 
     return inner

@@ -1,7 +1,8 @@
 import os
-from conftest import check_skope
+
 from pytest import mark
 
+from conftest import check_skope
 from spacekit.skopes.hst.svm.train import load_ensemble_data, run_training
 
 EXPECTED_RES = [
@@ -18,15 +19,15 @@ EXPECTED_RES = [
     "y_onehot",
 ]
 
-PARAMS = dict(
-    batch_size=6,
-    epochs=1,
-    lr=1e-4,
-    decay=[100000, 0.96],
-    early_stopping=None,
-    verbose=2,
-    ensemble=True,
-)
+PARAMS = {
+    "batch_size": 6,
+    "epochs": 1,
+    "lr": 1e-4,
+    "decay": [100000, 0.96],
+    "early_stopping": None,
+    "verbose": 2,
+    "ensemble": True,
+}
 
 
 @mark.hst

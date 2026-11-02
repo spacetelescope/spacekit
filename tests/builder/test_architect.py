@@ -1,6 +1,7 @@
 from pytest import mark
+
 from conftest import check_skope
-from spacekit.builder.architect import BuilderEnsemble, Builder
+from spacekit.builder.architect import Builder, BuilderEnsemble
 from spacekit.skopes.hst.svm.train import load_ensemble_data
 
 
@@ -18,15 +19,15 @@ def test_svm_ensemble_builder_with_data(skope, labeled_dataset, svm_train_npz):
         v=0.85,
         output_path="tmp",
     )
-    params = dict(
-        batch_size=14,
-        epochs=1,
-        lr=1e-4,
-        decay=[100000, 0.96],
-        early_stopping=None,
-        verbose=2,
-        ensemble=True,
-    )
+    params = {
+        "batch_size": 14,
+        "epochs": 1,
+        "lr": 1e-4,
+        "decay": [100000, 0.96],
+        "early_stopping": None,
+        "verbose": 2,
+        "ensemble": True,
+    }
     ens = BuilderEnsemble(
         X_train=XTR,
         y_train=YTR,

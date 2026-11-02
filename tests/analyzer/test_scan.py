@@ -1,6 +1,5 @@
 from pytest import mark
 
-
 EXPECTED = {
     "svm": {
         "classes": [0, 1],

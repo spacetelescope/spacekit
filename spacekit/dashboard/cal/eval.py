@@ -1,7 +1,6 @@
-from dash import dcc
-from dash import html
-from spacekit.dashboard.cal.config import cal
+from dash import dcc, html
 
+from spacekit.dashboard.cal.config import cal
 
 layout = html.Div(
     children=[

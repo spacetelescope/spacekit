@@ -1,9 +1,11 @@
-from pytest import mark
-from conftest import check_skope
-from spacekit.extractor.load import load_datasets, SVMImageIO
-from spacekit.preprocessor.transform import PowerX
-import numpy as np
 import os
+
+import numpy as np
+from pytest import mark
+
+from conftest import check_skope
+from spacekit.extractor.load import SVMImageIO, load_datasets
+from spacekit.preprocessor.transform import PowerX
 
 RENAMED_COLS = {
     "svm": [

@@ -1,13 +1,15 @@
 import os
+from zipfile import ZipFile
+
+import pandas as pd
 import pytest
 from pytest import fixture
-from zipfile import ZipFile
-import pandas as pd
+
 from spacekit.analyzer.explore import HstCalPlots, HstSvmPlots
-from spacekit.analyzer.scan import HstSvmScanner, HstCalScanner, import_dataset
-from spacekit.extractor.load import load_datasets, extract_file
-from spacekit.skopes.jwst.cal.config import KEYPAIR_DATA
+from spacekit.analyzer.scan import HstCalScanner, HstSvmScanner, import_dataset
+from spacekit.extractor.load import extract_file, load_datasets
 from spacekit.preprocessor.scrub import JwstCalScrubber
+from spacekit.skopes.jwst.cal.config import KEYPAIR_DATA
 
 TESTED_VERSIONS = {}
 
@@ -39,7 +41,7 @@ class Config:
         self.env = env
 
         if env.lower() not in SUPPORTED_ENVS:
-            raise Exception(
+            raise ValueError(
                 f"{env} is not a supported environment (supported envs: {SUPPORTED_ENVS})"
             )
 
@@ -50,9 +52,9 @@ class Config:
         }[env]
 
         self.kwargs = {
-            "svm": dict(index_col="index"), 
-            "hstcal": dict(index_col="ipst"),
-            "jwstcal": dict(index_col="Dataset")
+            "svm": {"index_col":"index"}, 
+            "hstcal": {"index_col":"ipst"},
+            "jwstcal": {"index_col":"Dataset"},
         }[env]
 
         self.decoder = {
@@ -341,32 +343,32 @@ def jwstcal_scrub_filepath():
 @fixture(scope="module")
 def jwst_cal_img_data(jwstcal_scrub_filepath):
     data = pd.read_csv(jwstcal_scrub_filepath.format('img'), index_col="Dataset")
-    data['PROGRAM'] = data['PROGRAM'].apply(lambda x: '{:0>5}'.format(x))
-    data['OBSERVTN'] = data['OBSERVTN'].apply(lambda x: '{:0>3}'.format(x))
+    data['PROGRAM'] = data['PROGRAM'].apply(lambda x: f'{x:0>5}')
+    data['OBSERVTN'] = data['OBSERVTN'].apply(lambda x: f'{x:0>3}')
     return data
 
 
 @fixture(scope="function")
 def jwst_cal_wfsc_data(jwstcal_scrub_filepath):
     data = pd.read_csv(jwstcal_scrub_filepath.format('wfsc'), index_col="Dataset")
-    data['PROGRAM'] = data['PROGRAM'].apply(lambda x: '{:0>5}'.format(x))
-    data['OBSERVTN'] = data['OBSERVTN'].apply(lambda x: '{:0>3}'.format(x))
+    data['PROGRAM'] = data['PROGRAM'].apply(lambda x: f'{x:0>5}')
+    data['OBSERVTN'] = data['OBSERVTN'].apply(lambda x: f'{x:0>3}')
     return data
 
 
 @fixture(scope="module")
 def jwst_cal_spec_data(jwstcal_scrub_filepath):
     data = pd.read_csv(jwstcal_scrub_filepath.format('spec'), index_col="Dataset")
-    data['PROGRAM'] = data['PROGRAM'].apply(lambda x: '{:0>5}'.format(x))
-    data['OBSERVTN'] = data['OBSERVTN'].apply(lambda x: '{:0>3}'.format(x))
+    data['PROGRAM'] = data['PROGRAM'].apply(lambda x: f'{x:0>5}')
+    data['OBSERVTN'] = data['OBSERVTN'].apply(lambda x: f'{x:0>3}')
     return data
 
 
 @fixture(scope="module")
 def jwst_cal_tac_data(jwstcal_scrub_filepath):
     data = pd.read_csv(jwstcal_scrub_filepath.format('tac'), index_col="Dataset")
-    data['PROGRAM'] = data['PROGRAM'].apply(lambda x: '{:0>5}'.format(x))
-    data['OBSERVTN'] = data['OBSERVTN'].apply(lambda x: '{:0>3}'.format(x))
+    data['PROGRAM'] = data['PROGRAM'].apply(lambda x: f'{x:0>5}')
+    data['OBSERVTN'] = data['OBSERVTN'].apply(lambda x: f'{x:0>3}')
     return data
 
 

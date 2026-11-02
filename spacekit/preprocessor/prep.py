@@ -1,7 +1,8 @@
-from spacekit.preprocessor.encode import encode_target_data
-from spacekit.preprocessor.transform import arrays_to_tensors, y_tensors, PowerX
 from sklearn.model_selection import train_test_split
+
 from spacekit.logger.log import Logger
+from spacekit.preprocessor.encode import encode_target_data
+from spacekit.preprocessor.transform import PowerX, arrays_to_tensors, y_tensors
 
 
 class Prep:
@@ -33,7 +34,7 @@ class Prep:
         self,
         data,
         y_target,
-        X_cols=[],
+        X_cols=None,
         tensors=True,
         normalize=True,
         random=None,
@@ -41,6 +42,8 @@ class Prep:
         encode_targets=True,
         norm_params=None,
     ):
+        if X_cols is None:
+            X_cols = []
         self.data = data
         self.y_target = y_target
         self.X_cols = self.check_input_cols(X_cols)
@@ -103,7 +106,7 @@ class Prep:
 
     def set_normalization_params(self):
         if self.norm_params is None:
-            self.norm_params = dict(T=PowerX, cols=[], ncols=[], rename=None, join=1, save_tx=True)
+            self.norm_params = {"T": PowerX, "cols": [], "ncols": [], "rename": None, "join": 1, "save_tx": True}
 
     def _prep_data(self, y_target, stratify=True):
         """main calling function"""
@@ -127,13 +130,17 @@ class Prep:
     def apply_normalization(
         self,
         T=PowerX,
-        cols=[],
-        ncols=[],
+        cols=None,
+        ncols=None,
         rename=None,
         join=1,
         save_tx=True,
         save_as="tx_data.json",
     ):
+        if ncols is None:
+            ncols = []
+        if cols is None:
+            cols = []
         if len(cols) == 0:
             cols = self.X_cols
         if len(ncols) == 0:
@@ -171,15 +178,21 @@ class HstCalPrep(Prep):
         self,
         data,
         y_target,
-        X_cols=[],
-        norm_cols=["n_files", "total_mb"],
-        rename_cols=["x_files", "x_size"],
+        X_cols=None,
+        norm_cols=None,
+        rename_cols=None,
         tensors=True,
         normalize=True,
         random=None,
         tsize=0.2,
         encode_targets=True,
     ):
+        if rename_cols is None:
+            rename_cols = ["x_files", "x_size"]
+        if norm_cols is None:
+            norm_cols = ["n_files", "total_mb"]
+        if X_cols is None:
+            X_cols = []
         self.set_X_cols(X_cols)
         super().__init__(
             data,
@@ -273,8 +286,8 @@ class JwstCalPrep(Prep):
         self,
         data,
         y_target="imgsize_gb",
-        X_cols=[],
-        norm_cols=[],
+        X_cols=None,
+        norm_cols=None,
         exp_mode="image",
         tensors=True,
         normalize=True,
@@ -283,6 +296,10 @@ class JwstCalPrep(Prep):
         encode_targets=False,
         **log_kws,
     ):
+        if norm_cols is None:
+            norm_cols = []
+        if X_cols is None:
+            X_cols = []
         self.exp_mode = exp_mode
         self.set_X_cols(X_cols)
         self.set_norm_cols(norm_cols=norm_cols)
@@ -306,8 +323,8 @@ class JwstCalPrep(Prep):
 
     def set_X_cols(self, X_cols):
         if len(X_cols) == 0:
-            self.X_cols = dict(
-                image=[
+            self.X_cols = {
+                "image": [
                     "instr",
                     "detector",
                     "visitype",
@@ -327,7 +344,7 @@ class JwstCalPrep(Prep):
                     "frac",
                     "targ_frac",
                 ],
-                spec=[
+                "spec": [
                     "instr",
                     "detector",
                     "visitype",
@@ -347,7 +364,7 @@ class JwstCalPrep(Prep):
                     "sigma1_mean",
                     "frac",
                 ],
-                fgs=[
+                "fgs": [
                     "instr",
                     "detector",
                     "visitype",
@@ -357,7 +374,7 @@ class JwstCalPrep(Prep):
                     "crowdfld",
                     "gs_mag",
                 ],
-                tac=[
+                "tac": [
                     "instr",
                     "detector",
                     "visitype",
@@ -377,14 +394,16 @@ class JwstCalPrep(Prep):
                     "sigma1_mean",
                     "frac",
                 ],
-            )[self.exp_mode]
+            }[self.exp_mode]
         else:
             self.X_cols = X_cols
 
-    def set_norm_cols(self, norm_cols=[]):
+    def set_norm_cols(self, norm_cols=None):
+        if norm_cols is None:
+            norm_cols = []
         if len(norm_cols) == 0:
-            norm_cols = dict(
-                image=[
+            norm_cols = {
+                "image": [
                     "offset",
                     "max_offset",
                     "mean_offset",
@@ -392,7 +411,7 @@ class JwstCalPrep(Prep):
                     "err_offset",
                     "sigma1_mean",
                 ],
-                spec=[
+                "spec": [
                     "targ_max_offset",
                     "offset",
                     "max_offset",
@@ -401,7 +420,7 @@ class JwstCalPrep(Prep):
                     "err_offset",
                     "sigma1_mean",
                 ],
-            )[self.exp_mode]
+            }[self.exp_mode]
         self.norm_cols = [c for c in norm_cols if c in self.X_cols]
 
     @property
@@ -458,7 +477,7 @@ class SvmPrep(Prep):
         self,
         data,
         y_target="label",
-        X_cols=[],
+        X_cols=None,
         tensors=True,
         normalize=False,
         random=None,
@@ -466,6 +485,8 @@ class SvmPrep(Prep):
         encode_targets=False,
         norm_params=None,
     ):
+        if X_cols is None:
+            X_cols = []
         self.set_X_cols(X_cols)
 
         super().__init(

@@ -13,17 +13,18 @@ using this script, it is saved to disk and can be loaded again later for use wit
 predict).
 """
 
-import os
 import argparse
 import datetime as dt
-from spacekit.extractor.load import load_datasets, SVMImageIO
+import os
+
+from spacekit.analyzer.compute import ComputeBinary
+from spacekit.builder.architect import BuilderEnsemble
+from spacekit.extractor.load import SVMImageIO, load_datasets
 from spacekit.generator.augment import training_data_aug, training_img_aug
 from spacekit.preprocessor.transform import (
     normalize_training_data,
     normalize_training_images,
 )
-from spacekit.builder.architect import BuilderEnsemble
-from spacekit.analyzer.compute import ComputeBinary
 
 DIM = 3
 CH = 3
@@ -193,15 +194,15 @@ def train_ensemble(
         Builder ensemble subclass model object trained on the inputs
     """
     if params is None:
-        params = dict(
-            batch_size=32,
-            epochs=60,
-            lr=1e-4,
-            decay=[100000, 0.96],
-            early_stopping=None,
-            verbose=1,
-            ensemble=True,
-        )
+        params = {
+            "batch_size": 32,
+            "epochs": 60,
+            "lr": 1e-4,
+            "decay": [100000, 0.96],
+            "early_stopping": None,
+            "verbose": 1,
+            "ensemble": True,
+        }
     ens = BuilderEnsemble(
         X_train=XTR,
         y_train=YTR,
@@ -245,13 +246,13 @@ def compute_results(ens, tv_idx, val_set=(), output_path=None):
     res_path = os.path.join(output_path, "results")
     # test set
     ens.test_idx = tv_idx[0]
-    com = ComputeBinary(builder=ens, res_path=f"{res_path}/test")
+    com = ComputeBinary(builder=ens, res_path=f"{res_path}/test", classes=["aligned", "misaligned"])
     com.calculate_results()
     _ = com.make_outputs()
     # validation set
     if len(val_set) == 2 and val_set[0][0].shape[0] > 2:  # temp (ignores test data)
         (ens.X_val, ens.y_val), ens.test_idx = val_set, tv_idx[1]
-        val = ComputeBinary(builder=ens, res_path=f"{res_path}/val", validation=True)
+        val = ComputeBinary(builder=ens, res_path=f"{res_path}/val", classes=["aligned", "misaligned"], validation=True)
         val.calculate_results()
         _ = val.make_outputs()
     else:
@@ -366,21 +367,21 @@ if __name__ == "__main__":
     else:
         v = 0
     model_name = args.model_name
-    timestamp = str(int(dt.datetime.now().timestamp()))
+    timestamp = str(int(dt.datetime.now(tz=dt.timezone.utc).timestamp()))
     if args.output_path is None:
         output_path = os.path.join(os.getcwd(), f"mml_{timestamp}")
     else:
         output_path = args.output_path
     # SET MODEL FIT PARAMS
-    params = dict(
-        batch_size=args.batchsize,
-        epochs=args.epochs,
-        lr=1e-4,
-        decay=[100000, 0.96],
-        early_stopping=args.early_stopping,
-        verbose=args.verbose,
-        ensemble=True,
-    )
+    params = {
+        "batch_size": args.batchsize,
+        "epochs": args.epochs,
+        "lr": 1e-4,
+        "decay": [100000, 0.96],
+        "early_stopping": args.early_stopping,
+        "verbose": int(args.verbose),
+        "ensemble": True,
+    }
     ens, com, val = run_training(
         args.data_file,
         args.img_path,

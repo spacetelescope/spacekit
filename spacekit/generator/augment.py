@@ -1,7 +1,6 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
 import tensorflow as tf
-
 
 # from tensorflow.python.ops.numpy_ops import np_config
 # np_config.enable_numpy_behavior()
@@ -100,7 +99,7 @@ def augment_random_integer(x):
     """
     n = np.random.randint(-1, 3)
     if x < 1:
-        x = np.abs((x + n))
+        x = np.abs(x + n)
     else:
         x += n
     return x

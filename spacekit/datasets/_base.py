@@ -2,14 +2,14 @@
 Base IO code for all datasets (borrowing concepts from sklearn.datasets and keras.utils.load_data)
 """
 
-from spacekit.extractor.scrape import WebScraper
 from spacekit.analyzer.scan import (
-    import_dataset,
     HstCalScanner,
     HstSvmScanner,
     JwstCalScanner,
+    import_dataset,
 )
 from spacekit.datasets.meta import spacekit_collections
+from spacekit.extractor.scrape import WebScraper
 
 
 def import_collection(name, date_key=None, data_home=None):
@@ -42,7 +42,7 @@ def download_single_archive(archives, date_key=None, data_home=None):
     data = archives["data"]
     if date_key is None:
         # default to most recent
-        date_key = sorted(list(data.keys()))[-1]
+        date_key = max(data.keys())
     # limit data download to single archive
     dataset = {date_key: data[date_key]}
     scraper = WebScraper(uri, dataset, cache_dir=data_home).scrape()

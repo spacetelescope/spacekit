@@ -15,15 +15,17 @@ unlabeled data.
 
 # from zipfile import ZipFile
 # import tensorflow as tf
-import numpy as np
-import pandas as pd
 import argparse
+import datetime as dt
 import os
 import sys
-import datetime as dt
-from spacekit.extractor.load import load_datasets, SVMImageIO
-from spacekit.preprocessor.transform import PowerX
+
+import numpy as np
+import pandas as pd
+
 from spacekit.builder.architect import BuilderEnsemble
+from spacekit.extractor.load import SVMImageIO, load_datasets
+from spacekit.preprocessor.transform import PowerX
 
 # from spacekit.builder.blueprints import Blueprint
 
@@ -105,7 +107,7 @@ def classification_report(df, output_path, group=None):
     C = df.loc[P == 1.0]
     cmp = C["det"].value_counts()
     separator = "---" * 7
-    date, time = dt.datetime.now().isoformat().split(".")[0].split("T")
+    date, time = dt.datetime.now(tz=dt.timezone.utc).isoformat().split(".")[0].split("T")
     if group is None:
         group = "SVM-DATA"
     out = sys.stdout

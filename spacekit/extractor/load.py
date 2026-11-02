@@ -1,22 +1,24 @@
+import glob
+import json
 import os
 import sys
-import glob
-import pandas as pd
-import numpy as np
-import json
+import time
+from tarfile import FilterError, TarFile
 
 # import pickle
 from zipfile import ZipFile
-import time
+
+import numpy as np
+import pandas as pd
 from sklearn.model_selection import train_test_split
+
 from spacekit.analyzer.track import stopwatch
 from spacekit.logger.log import Logger
-from tarfile import TarFile
 
 try:
-    from tensorflow.keras.utils import load_img, img_to_array  # tensorflow >= 2.9
+    from tensorflow.keras.utils import img_to_array, load_img  # tensorflow >= 2.9
 except ImportError:
-    from keras.preprocessing.image import load_img, img_to_array  # tensorflow < 2.9
+    from keras.preprocessing.image import img_to_array, load_img  # tensorflow < 2.9
 
 try:
     from tqdm import tqdm
@@ -178,7 +180,7 @@ def load_npz(npz_file="data/img_data.npz"):
         index = img_data["index"]
         img_data.close()
         return (index, X, y)
-    except Exception as e:
+    except (FileNotFoundError, IndexError, KeyError) as e:
         print(e)
         return None
 
@@ -270,7 +272,7 @@ class ImageIO:
         else:
             return format
 
-    def load_npz(self, npz_file=None, keys=["index", "images", "labels"]):
+    def load_npz(self, npz_file=None, keys=None):
         """_summary_
 
         Parameters
@@ -286,6 +288,8 @@ class ImageIO:
             If three keys are passed into the keyword arg ``keys``, a tuple of 3 arrays matching
             these keys is returned. If only 2 keys are passed, returns 2 arrays matching the 2 keys.
         """
+        if keys is None:
+            keys = ["index", "images", "labels"]
         if npz_file is None:
             npz_file = self.img_path
             try:
@@ -299,7 +303,7 @@ class ImageIO:
                 else:
                     img_data.close()
                     return index, X
-            except Exception as e:
+            except (FileNotFoundError, IndexError, KeyError) as e:
                 print(e)
                 return None
 
@@ -661,7 +665,7 @@ def save_dict(data_dict, df_key=None):
         with open(filename, "w") as f:
             try:
                 json.dump(data, f)
-            except Exception as e:
+            except (TypeError, ValueError) as e:
                 print(e)
                 f.writelines(data)
         keys.append(filename)
@@ -728,12 +732,12 @@ def safe_extract(tar, fpath, expath=".", members=None, *, numeric_owner=False):
     for member in tar.getmembers():
         member_path = os.path.join(directory, member.name)
         if not is_within_directory(directory, member_path):
-            raise Exception("WARNING: Attempted Path Traversal in Tar File")
+            raise FilterError("WARNING: Attempted Path Traversal in Tar File")
     tar.extractall(expath, members, numeric_owner=numeric_owner)
 
 
 def extract_file(fpath, dest="."):
-    if fpath.endswith("tgz") or fpath.endswith("tar.gz"):
+    if fpath.endswith(("tgz", "tar.gz")):
         kind = "tar"
         mode = "r:gz"
     elif fpath.endswith("tar"):
@@ -749,7 +753,7 @@ def extract_file(fpath, dest="."):
         with TarFile.open(fpath, mode) as tar:
             safe_extract(tar, fpath, expath=dest)
     else:
-        raise Exception(f"Could not extract file of type {kind}")
+        raise TypeError(f"Could not extract file of type {kind}")
 
 
 def save_multitype_data(data_dict, output_path, **npz_kwargs):
@@ -757,7 +761,7 @@ def save_multitype_data(data_dict, output_path, **npz_kwargs):
     for k, v in data_dict.items():
         if isinstance(v, np.ndarray):
             np.save(f"{output_path}/{k}.npy", v)
-        elif isinstance(v, list) or isinstance(v, float):
+        elif isinstance(v, (list, float)):
             v = np.asarray(v)
             np.save(f"{output_path}/{k}.npy", v)
         elif isinstance(v, pd.DataFrame):
@@ -771,7 +775,7 @@ def save_multitype_data(data_dict, output_path, **npz_kwargs):
         else:
             npzd = npz_kwargs.get(k, None)
             npzpath = f"{output_path}/{k}.npz"
-            nest_arr = {k: dict()}
+            nest_arr = {k: {}}
             nested_data = False
             if npzd == "arrays":
                 for i, j in v.items():
@@ -791,8 +795,10 @@ def save_multitype_data(data_dict, output_path, **npz_kwargs):
                 save_json(v, f"{output_path}/{k}.json")
 
 
-def load_multitype_data(input_path, index_names=["index", "ipst"]):
-    outputs = dict()
+def load_multitype_data(input_path, index_names=None):
+    if index_names is None:
+        index_names = ["index", "ipst"]
+    outputs = {}
     files = glob.glob(f"{input_path}/*")
     for f in files:
         key = str(os.path.basename(f)).split(".")[0]
@@ -818,9 +824,9 @@ def load_multitype_data(input_path, index_names=["index", "ipst"]):
             if nested_keys:
                 key, subkey = nested_keys
             if key not in outputs:
-                outputs[key] = dict()
+                outputs[key] = {}
             if subkey:
-                outputs[key][subkey] = dict()
+                outputs[key][subkey] = {}
                 npzd = np.load(f, allow_pickle=True)
                 nkeys = list(npzd.keys())
                 for k in nkeys:
@@ -846,12 +852,14 @@ def load_multitype_data(input_path, index_names=["index", "ipst"]):
 def overwrite_results(
     input_path,
     out=None,
-    subdirs=["memory", "wallclock", "mem_bin"],
+    subdirs=None,
     delete_existing=False,
     **npz_kwargs,
 ):
     import shutil
 
+    if subdirs is None:
+        subdirs = ["memory", "wallclock", "mem_bin"]
     for sub in subdirs:
         respath = os.path.join(input_path, sub)
         outputs = load_multitype_data(respath)

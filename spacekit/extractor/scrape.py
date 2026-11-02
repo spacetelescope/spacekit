@@ -1,29 +1,23 @@
+import collections
+import csv
+import glob
+import json
 import os
+import sys
+from decimal import Decimal
+from zipfile import ZipFile
+
 import boto3
 import numpy as np
 import pandas as pd
-import collections
-import glob
-import sys
-import json
-import csv
-from zipfile import ZipFile
-from astropy.io import fits, ascii
+from astropy.io import ascii, fits
 from astropy.table import Table
-from botocore.config import Config
-from decimal import Decimal
 from boto3.dynamodb.conditions import Attr
-
-try:
-    from keras.utils import get_file
-except ImportError:
-    try:
-        from keras.utils.data_utils import get_file
-    except ImportError:
-        get_file = None
+from botocore.config import Config
+from botocore.exceptions import ClientError
+from keras.utils import get_file
 
 from spacekit.logger.log import Logger
-
 
 retry_config = Config(retries={"max_attempts": 3})
 client = boto3.client("s3", config=retry_config)
@@ -61,7 +55,7 @@ def home_data_base(data_home=None):
         data_home = os.path.abspath(data_home)
     try:
         os.makedirs(data_home, exist_ok=True)
-    except Exception as e:
+    except (FileNotFoundError, OSError, PermissionError) as e:
         print(e)
     return data_home
 
@@ -144,7 +138,7 @@ class Scraper:
         else:
             return os.path.abspath(cache)
 
-    def extract_archives(self, name_keys=[]):
+    def extract_archives(self, name_keys=None):
         """Extract the contents of the compressed archive file(s).
 
         TODO: extract other archive types (.tar, .tgz)
@@ -154,6 +148,8 @@ class Scraper:
         list
             paths to downloaded and extracted dataset files
         """
+        if name_keys is None:
+            name_keys = []
         extracted_fpaths = []
         if not self.fpaths:
             return
@@ -192,7 +188,6 @@ class Scraper:
             for file in file_paths:
                 zip_ref.write(file)
                 self.log.info(file)
-        return
 
 
 class FileScraper(Scraper):
@@ -221,7 +216,7 @@ class FileScraper(Scraper):
     def __init__(
         self,
         search_path="",
-        search_patterns=["*.zip"],
+        search_patterns=None,
         cache_dir="~",
         cache_subdir="data",
         format="zip",
@@ -230,6 +225,8 @@ class FileScraper(Scraper):
         name="FileScraper",
         **log_kws,
     ):
+        if search_patterns is None:
+            search_patterns = ["*.zip"]
         super().__init__(
             cache_dir=cache_dir,
             cache_subdir=cache_subdir,
@@ -258,7 +255,7 @@ class FileScraper(Scraper):
                 for r in results:
                     self.fpaths.append(r)
         if self.extract is True:
-            super().extract_archives
+            self.extract_archives()
         return self.fpaths
 
 
@@ -325,7 +322,7 @@ class WebScraper(Scraper):
             paths to downloaded and extracted files
         """
         name_keys = []
-        for _, data in self.dataset.items():
+        for data in self.dataset.values():
             fname = data["fname"]
             origin = f"{self.uri}/{fname}"
             chksum = data["hash"]
@@ -396,22 +393,18 @@ class S3Scraper(Scraper):
         self.aws_kwargs = self.authorize_aws()
 
     def authorize_aws(self):
-        self.aws_kwargs = dict(
-            region_name=os.environ.get("AWS_REGION_NAME", "us-east-1"),
-            aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID", ""),
-            aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY", ""),
-            aws_session_token=os.environ.get("AWS_SESSION_TOKEN", ""),
-        )
+        self.aws_kwargs = {
+            "region_name": os.environ.get("AWS_REGION_NAME", "us-east-1"),
+            "aws_access_key_id": os.environ.get("AWS_ACCESS_KEY_ID", ""),
+            "aws_secret_access_key": os.environ.get("AWS_SECRET_ACCESS_KEY", ""),
+            "aws_session_token": os.environ.get("AWS_SESSION_TOKEN", ""),
+        }
         self.s3 = boto3.resource("s3", config=retry_config, **self.aws_kwargs)
         self.client = boto3.client("s3", config=retry_config, **self.aws_kwargs)
 
     def make_s3_keys(
         self,
-        fnames=[
-            "2022-02-14-1644848448.zip",
-            "2021-11-04-1636048291.zip",
-            "2021-10-28-1635457222.zip",
-        ],
+        fnames=None,
     ):
         """Generates a `dataset` dictionary attribute containing the filename-uriprefix key-value pairs.
 
@@ -428,6 +421,8 @@ class S3Scraper(Scraper):
         dict
             key-value pairs of dataset archive filenames and their parent folder prefix name
         """
+        if fnames is None:
+            fnames = ["2022-02-14-1644848448.zip", "2021-11-04-1636048291.zip", "2021-10-28-1635457222.zip"]
         self.dataset = {}
         for fname in fnames:
             key = fname.split(".")[0]
@@ -450,7 +445,7 @@ class S3Scraper(Scraper):
             paths to downloaded and extracted files
         """
         err = None
-        for _, d in self.dataset.items():
+        for d in self.dataset.values():
             fname = d["fname"]
             obj = f"{self.pfx}/{fname}"
             self.log.info(f"s3://{self.bucket}/{obj}")
@@ -458,14 +453,13 @@ class S3Scraper(Scraper):
             self.log.info(fpath)
             try:
                 self.scrape_s3_file(fpath, obj)
-            except Exception as e:
+            except ClientError as e:
                 err = e
                 continue
         if err is not None:
             self.log.error(err)
-        elif self.extract is True:
-            if self.format == "zip":
-                super().extract_archives()
+        elif self.extract is True and self.format == "zip":
+            super().extract_archives()
         return self.fpaths
 
     @staticmethod
@@ -477,7 +471,7 @@ class S3Scraper(Scraper):
                 with open(f"{key}", "rb") as f:
                     client.upload_fileobj(f, bucket_name, obj)
                     print(f"Uploaded: {obj}")
-            except Exception as e:
+            except ClientError as e:
                 err = e
                 continue
         if err is not None:
@@ -492,7 +486,7 @@ class S3Scraper(Scraper):
             try:
                 with open(f"{key}", "wb") as f:
                     client.download_fileobj(bucket_name, obj, f)
-            except Exception as e:
+            except ClientError as e:
                 err = e
                 continue
         if err is not None:
@@ -510,7 +504,7 @@ class S3Scraper(Scraper):
             for line in body:
                 k, v = str(line).strip("b'").split("=")
                 input_data[k] = v
-        except Exception as e:
+        except ClientError as e:
             self.log.error(e)
             sys.exit(3)
         self.log.debug("Input data scraped successfully.")
@@ -573,7 +567,7 @@ class DynamoDBScraper(Scraper):
         self.fpath = None
 
     def get_keys(self, items):
-        keys = set([])
+        keys = set()
         for item in items:
             keys = keys.union(set(item.keys()))
         return keys
@@ -639,10 +633,10 @@ class DynamoDBScraper(Scraper):
         if raw_data is None:
             return None
         items = raw_data["Items"]
-        fieldnames = set([]).union(self.get_keys(items))
+        fieldnames = set().union(self.get_keys(items))
 
         while raw_data.get("LastEvaluatedKey"):
-            print("Downloading ", end="")
+            self.log.info("Downloading ", end="")
             if attr:
                 raw_data = table.scan(ExclusiveStartKey=raw_data["LastEvaluatedKey"], **scan_kwargs)
             else:
@@ -650,7 +644,7 @@ class DynamoDBScraper(Scraper):
             items.extend(raw_data["Items"])
             fieldnames - fieldnames.union(self.get_keys(items))
 
-        print("\nTotal downloaded records: {}".format(len(items)))
+        print(f"\nTotal downloaded records: {len(items)}")
         for f in fieldnames:
             if f not in key_set:
                 key_set.append(f)
@@ -663,7 +657,7 @@ class DynamoDBScraper(Scraper):
             writer = csv.DictWriter(csvfile, delimiter=",", fieldnames=self.ddb_data["keys"], quotechar='"')
             writer.writeheader()
             writer.writerows(self.ddb_data["items"])
-        print(f"DDB data saved to: {self.fpath}")
+        self.log.info(f"DDB data saved to: {self.fpath}")
 
     def format_row_item(self, row):
         row = self.formatter(row)
@@ -672,33 +666,29 @@ class DynamoDBScraper(Scraper):
     def write_to_dynamo(self, rows):
         try:
             table = dynamodb.Table(self.table_name)
-        except Exception as e:
-            print("Error loading DynamoDB table. Check if table was created correctly and environment variable.")
-            print(e)
-        try:
             with table.batch_writer() as batch:
                 for i in range(len(rows)):
                     batch.put_item(Item=rows[i])
-        except Exception as e:
-            print("Error executing batch_writer")
-            print(e)
+        except ClientError as e:
+            error_code = e.response['Error']['Code']
+            error_msg = e.response['Error']['Message']
+            self.log.error(f"ClientError occurred: {error_code} - {error_msg}")
 
     def batch_ddb_writer(self, key):
-        input_file = csv.DictReader(open(key))
+        with csv.DictReader(open(key)) as input_file:
+            batch_size = 100
+            batch = []
 
-        batch_size = 100
-        batch = []
+            for row in input_file:
+                item = self.format_row_item(row)
 
-        for row in input_file:
-            item = self.format_row_item(row)
+                if len(batch) >= batch_size:
+                    self.write_to_dynamo(batch)
+                    batch.clear()
 
-            if len(batch) >= batch_size:
+                batch.append(item)
+            if batch:
                 self.write_to_dynamo(batch)
-                batch.clear()
-
-            batch.append(item)
-        if batch:
-            self.write_to_dynamo(batch)
         return {"statusCode": 200, "body": json.dumps("Uploaded to DynamoDB Table")}
 
 
@@ -719,7 +709,11 @@ class FitsScraper(FileScraper):
         logging name, by default "FitsScraper"
     """
 
-    def __init__(self, data, input_path, genkeys=[], scikeys=[], name="FitsScraper", **log_kws):
+    def __init__(self, data, input_path, genkeys=None, scikeys=None, name="FitsScraper", **log_kws):
+        if scikeys is None:
+            scikeys = []
+        if genkeys is None:
+            genkeys = []
         super().__init__(name=name, **log_kws)
         self.df = data.copy()
         self.input_path = input_path
@@ -771,16 +765,16 @@ class FitsScraper(FileScraper):
                 fname = str(os.path.basename(fpath))
                 sfx = fname.split("_")[-1]  # _uncal.fits
                 name = fname.replace(f"_{sfx}", "")
-                exp_headers[name] = dict()
+                exp_headers[name] = {}
                 if self.genkeys:
                     genhdr = fits.getheader(fpath, ext=0)
                     for g in self.genkeys:
-                        exp_headers[name][g] = genhdr[g] if g in genhdr else "NaN"
+                        exp_headers[name][g] = genhdr.get(g, "NaN")
                 if self.scikeys:
                     scihdr = fits.getheader(fpath, ext=1)
                     for s in self.scikeys:
-                        exp_headers[name][s] = scihdr[s] if s in scihdr else "NaN"
-            except Exception:
+                        exp_headers[name][s] = scihdr.get(s, "NaN")
+            except (FileNotFoundError, PermissionError, KeyError):
                 del exp_headers[name]
                 continue
         return exp_headers
@@ -792,14 +786,14 @@ class FitsScraper(FileScraper):
         for name in dnames:
             try:
                 data = self.df.loc[name]
-                exp_headers[name] = dict()
+                exp_headers[name] = {}
                 if self.genkeys:
                     for g in self.genkeys:
                         exp_headers[name][g] = data[g] if g in self.df.columns else "NaN"
                 if self.scikeys:
                     for s in self.scikeys:
                         exp_headers[name][s] = data[s] if s in self.df.columns else "NaN"
-            except Exception:
+            except (FileNotFoundError, PermissionError, KeyError):
                 del exp_headers[name]
                 continue
         return exp_headers
@@ -822,7 +816,7 @@ class FitsScraper(FileScraper):
             absolute paths to all SVM fits files located.
         """
         if not self.fpaths:
-            self.fpaths = dict()
+            self.fpaths = {}
         try:
             for idx, row in self.df.iterrows():
                 self.fpaths[idx] = ""
@@ -830,8 +824,8 @@ class FitsScraper(FileScraper):
                 drz = row[drzimg_col]
                 path = os.path.join(self.input_path, dname, drz)
                 self.fpaths[idx] = path
-        except Exception:
-            self.log.error("Unable to locate drizzle files from dataframe.")
+        except (IndexError, KeyError) as e:
+            self.log.error(f"Unable to locate drizzle files from dataframe: {e}")
         return self.fpaths
 
     def scrape_drizzle_fits(self):
@@ -997,8 +991,8 @@ class JsonScraper(FileScraper):
 
     Parameters
     ----------
-    search_path : _type_, optional
-        The full path of the directory that will be searched for json files to process, by default os.getcwd()
+    search_path : str or path, optional
+        The full path of the directory that will be searched for json files to process, by default None (defaults to current working directory)
     search_patterns : list, optional
         list of glob patterns to use for search, by default ["*_total_*_svm_*.json"]
     file_basename : str, optional
@@ -1018,8 +1012,8 @@ class JsonScraper(FileScraper):
 
     def __init__(
         self,
-        search_path=os.getcwd(),
-        search_patterns=["*_total_*_svm_*.json"],
+        search_path=None,
+        search_patterns=None,
         file_basename="svm_data",
         crpt=0,
         save_csv=False,
@@ -1028,6 +1022,9 @@ class JsonScraper(FileScraper):
         output_path=None,
         **log_kws,
     ):
+        search_path = os.getcwd() if search_path is None else search_path
+        if search_patterns is None:
+            search_patterns = ["*_total_*_svm_*.json"]
         super().__init__(
             search_path=search_path,
             search_patterns=search_patterns,
@@ -1117,7 +1114,7 @@ class JsonScraper(FileScraper):
             out_dict["header"] = json_data["header"]  # copy over the 'header' section directly.
             out_dict["general information"] = json_data["general information"]
             out_dict["data"] = collections.OrderedDict()  # set up blank data section
-            for datakey in json_data["data"].keys():
+            for datakey in json_data["data"]:
                 if json_data["data"][datakey]["original format"] == "<class 'numpy.ndarray'>":  # Extract numpy array
                     self.log.info(
                         "Converting dataset '{}' back to format '{}', dtype = {}".format(
@@ -1136,9 +1133,7 @@ class JsonScraper(FileScraper):
                     out_dict["data"][datakey] = json_data["data"][datakey]["data"]
 
         else:
-            errmsg = "json file {} not found!".format(json_filename)
-            self.log.error(errmsg)
-            raise Exception(errmsg)
+            raise FileNotFoundError(f"json file {json_filename} not found!")
         return out_dict
 
     def get_json_files(self):
@@ -1162,7 +1157,7 @@ class JsonScraper(FileScraper):
                 search_string = os.path.join(self.search_path, "*", search_pattern)
                 search_results = glob.glob(search_string)
 
-            self.log.info("{} files found: {}".format(search_pattern, len(search_results)))
+            self.log.info(f"{search_pattern} files found: {len(search_results)}")
             if len(search_results) > 0:
                 json_list += search_results
 
@@ -1178,7 +1173,7 @@ class JsonScraper(FileScraper):
                     idx = f"{dataframe_idx}_{mm}"
                 else:
                     idx = dataframe_idx
-                if idx in self.json_dict.keys():
+                if idx in self.json_dict:
                     self.json_dict[idx].append(json_filename)
                 else:
                     self.json_dict[idx] = [json_filename]
@@ -1186,9 +1181,7 @@ class JsonScraper(FileScraper):
 
         # Fail gracefully if no .json files were found
         else:
-            err_msg = "No .json files were found!"
-            self.log.error(err_msg)
-            raise Exception(err_msg)
+            raise FileNotFoundError("No .json files were found!")
         return self.json_dict
 
     def h5store(self, **kwargs):
@@ -1212,9 +1205,9 @@ class JsonScraper(FileScraper):
             store.put("mydata", self.data)
             store.get_storer("mydata").attrs.metadata = kwargs
             store.close()
-            self.log.info("Wrote dataframe and metadata to HDF5 file {}".format(self.h5_file))
+            self.log.info(f"Wrote dataframe and metadata to HDF5 file {self.h5_file}")
         else:
-            print("Data unavailable - run `json_scraper` to collect json data.")
+            self.log.error("Data unavailable - run `json_scraper` to collect json data.")
         return self.h5_file
 
     def load_h5_file(self):
@@ -1242,11 +1235,8 @@ class JsonScraper(FileScraper):
             with pd.HDFStore(self.h5_file) as store:
                 self.data = store["mydata"]
                 self.log.info(f"Dataframe created: {self.data.shape}")
-        except Exception as e:
-            print(e)
-            errmsg = "HDF5 file {} not found!".format(self.h5_file)
-            self.log.error(errmsg)
-            raise Exception(errmsg)
+        except FileNotFoundError:
+            self.log.error(f"HDF5 file {self.h5_file} not found!")
         return self.data
 
     def json_harvester(self):
@@ -1289,7 +1279,7 @@ class JsonScraper(FileScraper):
             self.log.warning("Overwriting existing CSV")
             os.remove(output_csv_filename)
         self.data.to_csv(output_csv_filename)
-        self.log.info("Wrote dataframe to csv file {}".format(output_csv_filename))
+        self.log.info(f"Wrote dataframe to csv file {output_csv_filename}")
 
     def make_dataframe_line(self, json_filename_list):
         """Extracts information from the json files specified by the input list *json_filename_list*. Main difference
@@ -1326,19 +1316,19 @@ class JsonScraper(FileScraper):
             # add information from "header" section to ingest_dict just once
             if not header_ingested:
                 # filter out ALL header keywords not included in 'keyword_shortlist'
-                for header_item in json_data["header"].keys():
+                for header_item in json_data["header"]:
                     if header_item in self.keyword_shortlist:
                         # if header_item in header_keywords_to_keep:
                         ingest_dict["data"]["header." + header_item] = json_data["header"][header_item]
                 header_ingested = True
             # add information from "general information" section to ingest_dict just once
             if not gen_info_ingested:
-                for gi_item in json_data["general information"].keys():
+                for gi_item in json_data["general information"]:
                     if gi_item in self.keyword_shortlist:
                         ingest_dict["data"]["gen_info." + gi_item] = json_data["general information"][gi_item]
                 gen_info_ingested = True
             flattened_data = self.flatten_dict(json_data["data"])
-            for fd_key in flattened_data.keys():
+            for fd_key in flattened_data:
                 json_data_item = flattened_data[fd_key]
                 ingest_key = fd_key.replace(" ", "_")
                 key_suffix = ingest_key.split(".")[-1]

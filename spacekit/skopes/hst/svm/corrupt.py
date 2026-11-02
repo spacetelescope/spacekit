@@ -8,24 +8,26 @@ a machine learning algorithm to be trained on an alternative (albeit more rare) 
 
 """
 
-import os
-import sys
 import argparse
-import shutil
 import glob
+import os
+import shutil
+import sys
+import time
+
 import numpy as np
 from astropy.io import fits
-import time
-from spacekit.generator.draw import DrawMosaics
+
 from spacekit.analyzer.track import stopwatch
+from spacekit.generator.draw import DrawMosaics
 
 try:
     from drizzlepac import runsinglehap
 except ImportError:
     raise ValueError("Running this script requires drizzlepac to be installed. Run `pip install drizzlepac` then try again.")
 try:
-    from tqdm import tqdm
     from progressbar import ProgressBar
+    from tqdm import tqdm
 except ImportError:
     raise ValueError("tqdm and/or progressbar is not installed. Use `pip install spacekit[x]`")
 
@@ -213,7 +215,7 @@ def multiple_permutations(dataset, outputs, cfg):
         drizzle_dct = {f: drizzle_dct[f]}
     elif cfg["palette"] == "rex":
         drz_files = pick_random_exposures(dataset)
-        drizzle_dct = dict(f999r=drz_files)
+        drizzle_dct = {"f999r": drz_files}
     filters = list(drizzle_dct.keys())
     expos, mode = cfg["expos"], cfg["mode"]
     separator = "---" * 5
@@ -267,14 +269,10 @@ def run_svm(visit, outputs):
                     runsinglehap.perform(drz_file[0], log_level="info")
                     with open("success.txt", "w") as f:
                         f.write("success")
-                except Exception as e:  # FileNotFoundError
+                except FileNotFoundError as e:
                     with open("error.txt", "w") as f:
                         f.write(str(e))
             os.chdir(home)
-            # cmd = ["runsinglehap", drz_file]
-            # err = subprocess.call(cmd)
-            # if err:
-            #     print(f"SVM failed to run for {m}")
 
 
 def generate_images(outputs, filters=False, pattern="*", visit=None):
@@ -356,7 +354,7 @@ def make_process_config(
     prc = C + R + D
     print(prc)
     # prc = dict(crpt=crpt, runsvm=runsvm, imagegen=imagegen)
-    cfg = dict(palette=palette, expos=expos, mode=mode, thresh=threshold)
+    cfg = {"palette": palette, "expos": expos, "mode": mode, "thresh": threshold}
     return prc, cfg
 
 
@@ -378,7 +376,7 @@ def run_svm_alignment(datasets, outputs):
     start = time.time()
     stopwatch(prcname, t0=start)
     # prevent repetitions on single dataset if pattern="*"
-    visits = list(set([d.split("/")[-1][:6] for d in datasets]))
+    visits = list({d.split("/")[-1][:6] for d in datasets})
     for visit in tqdm(visits):
         run_svm(visit, outputs)
     end = time.time()
@@ -424,7 +422,7 @@ def run_pipes(prc, cfg, pattern="*", srcpath=None, outputs="synthetic"):
             else:
                 multiple_permutations(dataset, outputs, cfg)
         if prc in [2, 3, 6, 7]:
-            visits = list(set([d.split("/")[-1][:6] for d in datasets]))
+            visits = list({d.split("/")[-1][:6] for d in datasets})
             for visit in tqdm(visits):
                 run_svm(visit, outputs)
         if prc in [1, 3, 5, 7]:

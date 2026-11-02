@@ -1,17 +1,17 @@
-from dash import html, dcc
+from argparse import ArgumentParser
+
+import numpy as np
+from dash import dcc, html
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
-from argparse import ArgumentParser
-from spacekit.dashboard.svm.app import app
-from spacekit.dashboard.svm import eda, eval, pred
-from spacekit.dashboard.svm.config import svm, hst, images  # NN
-import numpy as np
 
 from spacekit.analyzer.explore import SVMPreviews
-
+from spacekit.dashboard.svm import eda, eval, pred
+from spacekit.dashboard.svm.app import app
+from spacekit.dashboard.svm.config import hst, images, svm
 
 (idx, X, y) = images
-global imps
+
 imps = SVMPreviews(X, labels=y, names=idx)
 
 url_bar_and_content_div = html.Div([dcc.Location(id="url", refresh=False), html.Div(id="page-content")])

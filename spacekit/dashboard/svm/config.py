@@ -1,6 +1,6 @@
-from spacekit.builder.architect import Builder
 from spacekit.analyzer.explore import HstSvmPlots
 from spacekit.analyzer.scan import HstSvmScanner
+from spacekit.builder.architect import Builder
 from spacekit.extractor.load import ImageIO
 
 # Find available datasets and load most recent (default)

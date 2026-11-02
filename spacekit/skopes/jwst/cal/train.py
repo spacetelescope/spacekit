@@ -1,18 +1,20 @@
+import datetime as dt
+import json
 import os
 import re
-import json
 import shutil
 from argparse import ArgumentParser
-import datetime as dt
-import pandas as pd
-import numpy as np
 from collections import OrderedDict
 from pprint import pprint
+
+import numpy as np
+import pandas as pd
 from sklearn.model_selection import KFold
-from spacekit.preprocessor.prep import JwstCalPrep
-from spacekit.builder.architect import BuilderMLP
+
 from spacekit.analyzer.compute import ComputeRegressor
+from spacekit.builder.architect import BuilderMLP
 from spacekit.logger.log import SPACEKIT_LOG, Logger
+from spacekit.preprocessor.prep import JwstCalPrep
 
 
 class JwstCalTrain:
@@ -25,7 +27,7 @@ class JwstCalTrain:
         cross_val=0,
         early_stopping=None,
         threshold=100,
-        layer_kwargs={},
+        layer_kwargs=None,
         **log_kws,
     ):
         """Training can be run in 1 of 2 modes: default or kfold cross-validation.
@@ -58,10 +60,12 @@ class JwstCalTrain:
         layer_kwargs: dict, optional
             Add custom hyperparameters such as L2 regularization to specific model layers, by default {}
         """
+        if layer_kwargs is None:
+            layer_kwargs = {}
         self.training_data = training_data
         self.exp_mode = exp_mode.lower()
         self.set_outpath(out=out)
-        self.prep_kwargs = dict(exp_mode=self.exp_mode, normalize=norm)
+        self.prep_kwargs = {"exp_mode": self.exp_mode, "normalize": norm}
         self.cross_val = cross_val
         self.early_stopping = early_stopping
         self.threshold = threshold
@@ -80,12 +84,12 @@ class JwstCalTrain:
         self.initialize()
 
     def __str__(self):
-        attrs = dict(
-            output_path=self.output_path,
-            prep_kwargs=self.prep_kwargs,
-            threshold=self.threshold,
-            cross_val=self.cross_val,
-        )
+        attrs = {
+            "output_path": self.output_path,
+            "prep_kwargs": self.prep_kwargs,
+            "threshold": self.threshold,
+            "cross_val": self.cross_val,
+        }
         string = "JwstCalTrain attributes:\n\n"
         for k, v in attrs.items():
             string += f"\n\t{k}: {v}"
@@ -115,15 +119,15 @@ class JwstCalTrain:
         """
         base_out = "." if out is None else out
         if out:
-            date_timestamp_re = re.compile("^[0-9]{4}\-[0-9]{2}\-[0-9]{2}\_[0-9]{10}")
+            date_timestamp_re = re.compile(r"^[0-9]{4}\-[0-9]{2}\-[0-9]{2}\_[0-9]{10}")
             match_existing = date_timestamp_re.match(str(os.path.basename(out)))
             if match_existing:
                 self.output_path = os.path.join(base_out, self.exp_mode)
                 if not os.path.exists(self.output_path):
                     os.makedirs(self.output_path, exist_ok=True)
                 return
-        today = dt.date.today().isoformat()
-        timestamp = str(dt.datetime.now().timestamp()).split(".")[0]
+        today = dt.date.now(tz=dt.timezone.utc).date().isoformat()
+        timestamp = str(dt.datetime.now(tz=dt.timezone.utc).timestamp()).split(".")[0]
         self.output_path = f"{base_out}/{today}_{timestamp}/{self.exp_mode}"
         os.makedirs(self.output_path, exist_ok=True)
 
@@ -176,13 +180,11 @@ class JwstCalTrain:
         observations were used in training vs test when evaluating a model's performance.
         """
         kfold = KFold(n_splits=self.cross_val, shuffle=True)
-        itn = 0
-        for _, test_idx in kfold.split(np.zeros(self.data.shape[0]), pd.concat(self.jp.get_y_train_test("imgsize_gb"), axis=0)):
+        for itn, (_, test_idx) in enumerate(kfold.split(np.zeros(self.data.shape[0]), pd.concat(self.jp.get_y_train_test("imgsize_gb"), axis=0))):
             self.data["split"] = "train"
             self.data.loc[self.data.iloc[test_idx].index, "split"] = "test"
             self.data["Dataset"] = self.data.index
-            self.data.to_csv(f"{DATA}/{self.exp_mode}-tts_{str(itn)}.csv", index=False)
-            itn += 1
+            self.data.to_csv(f"{DATA}/{self.exp_mode}-tts_{itn!s}.csv", index=False)
 
     def run_cross_val(self, custom_arch=None):
         """Loops through k number of train/test splits to load data, run training, and record model performance metrics on each iteration. Requires attribute `cross_val` to be greater than 0 in order to run (standard practice is k=10)
@@ -193,7 +195,7 @@ class JwstCalTrain:
             nested dict with keys `build_params`, `fit_params` for tuning hyperparameters, by default None
         """
         for i in list(range(self.cross_val)):
-            save_diagram = True if i == 0 else False
+            save_diagram = i == 0
             self.data = None
             self.load_train_test(tts=str(i))
             self.run_training(save_diagram=save_diagram, custom_arch=custom_arch)
@@ -240,7 +242,7 @@ class JwstCalTrain:
 
     @property
     def architecture(self):
-        return dict(image="jwst_img3_reg", spec="jwst_spec3_reg")[self.exp_mode]
+        return {"image": "jwst_img3_reg", "spec": "jwst_spec3_reg"}[self.exp_mode]
 
     def build_model(self, custom_arch=None):
         """Build the functional model using standard blueprint. Optionally customize hyperparameters using `custom_arch`.
@@ -275,7 +277,7 @@ class JwstCalTrain:
                     fit_params = draft.fitting()
                     fit_params.update(fp)
                     self.builder.fit_params(**fit_params)
-            except Exception as e:
+            except (ValueError, TypeError) as e:
                 self.log.error(f"{e}")
         self.builder.model = self.builder.build(layer_kwargs=self.layer_kwargs)
 
@@ -302,7 +304,7 @@ class JwstCalTrain:
                 model_dir = os.path.dirname(self.builder.model_path)
                 cbdest = os.path.join(model_dir, os.path.basename(cbpath))
                 shutil.move(cbpath, cbdest)
-            except Exception as e:
+            except (AttributeError, FileNotFoundError) as e:
                 self.log.error(e)
 
     def compute_cache(self):
@@ -353,7 +355,7 @@ class JwstCalTrain:
     def record_metrics(self):
         """Generates a dataframe of model scores for each training iteration then saves it as a .csv file on local disk."""
         itr_metrics = self.itr_metrics.copy()
-        dd = dict(train=self.jp.data.loc[self.jp.data.split == "train"], test=self.jp.data.loc[self.jp.data.split == "test"])
+        dd = {"train": self.jp.data.loc[self.jp.data.split == "train"], "test": self.jp.data.loc[self.jp.data.split == "test"]}
         for s, g in dict(zip(["tr", "ts"], ["train", "test"])).items():
             itr_metrics[f"{s}_size"] = dd[g].shape[0]
             itr_metrics[f"{s}_lrg_ct"] = dd[g].loc[dd[g].imgsize_gb > self.threshold].shape[0]

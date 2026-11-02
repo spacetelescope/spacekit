@@ -1,17 +1,15 @@
 import os
 import re
 import warnings
+
 import numpy as np
 import pandas as pd
+from keras.preprocessing.image import array_to_img
 from scipy.stats import iqr
-from spacekit.preprocessor.transform import PowerX
+
 from spacekit.generator.augment import augment_image
 from spacekit.logger.log import Logger
-
-try:
-    from keras.preprocessing.image import array_to_img
-except ImportError:
-    from tensorflow.keras.utils import array_to_img
+from spacekit.preprocessor.transform import PowerX
 
 try:
     import matplotlib as mpl
@@ -31,11 +29,11 @@ except ImportError:
     plt = None
 
 try:
-    import plotly.graph_objects as go
-    from plotly import subplots
-    import plotly.offline as pyo
-    import plotly.figure_factory as ff
     import plotly.express as px
+    import plotly.figure_factory as ff
+    import plotly.graph_objects as go
+    import plotly.offline as pyo
+    from plotly import subplots
 except ImportError:
     go = None
     subplots = None
@@ -45,10 +43,10 @@ except ImportError:
 
 
 try:
-    from astropy.timeseries import TimeSeries, BoxLeastSquares, aggregate_downsample
     from astropy import units as u
-    from astropy.stats import sigma_clipped_stats
     from astropy.io import fits
+    from astropy.stats import sigma_clipped_stats
+    from astropy.timeseries import BoxLeastSquares, TimeSeries, aggregate_downsample
 except ImportError:
     TimeSeries = None
 
@@ -141,7 +139,7 @@ class SVMPreviews(ImagePreviews):
             try:
                 Xi = Xi.reshape(self.ndims, self.w, self.h, self.channels)
                 return Xi
-            except Exception as e:
+            except (ValueError, TypeError) as e:
                 print(e)
 
     def preview_image(self, Xi, dim=3, aug=False, show=False):
@@ -163,11 +161,11 @@ class SVMPreviews(ImagePreviews):
         )
 
         for i, frame in enumerate(frames):
-            fig.layout.annotations[i]["text"] = "%s" % frame
+            fig.layout.annotations[i]["text"] = frame # "%s" % frame
 
         fig.update_layout(
             title_text=f"{title} Image Slices",
-            margin=dict(t=100),
+            margin={"t":100},
             width=990,
             height=500,
             showlegend=False,
@@ -281,7 +279,7 @@ class DataPlots:
         self.save_html = save_html
         self.telescope = telescope
         self.target = None  # target (y) name e.g. "label", "memory", "wallclock"
-        self.labels = None  #
+        self.labels = None
         self.classes = None  # target classes e.g. [0,1] or [0,1,2,3]
         self.n_classes = None
         self.group = None  # e.g. "detector", "instr", "cat"
@@ -326,7 +324,7 @@ class DataPlots:
         elif self.group.startswith("cat"):
             return dict(enumerate(self.targ_class_keys()))
         else:
-            return dict(enumerate(sorted(list(self.df[self.group].unique()))))
+            return dict(enumerate(sorted(self.df[self.group].unique())))
 
     def instr_keys(self):
         """Generates a list of intruments based on self.telescope
@@ -338,7 +336,7 @@ class DataPlots:
         """
         if self.telescope not in ["hst", "jwst"]:
             return []
-        return dict(hst=["acs", "wfc3", "cos", "stis"], jwst=["fgs", "miri", "nircam", "niriss", "nirspec"])[
+        return {"hst":["acs", "wfc3", "cos", "stis"], "jwst":["fgs", "miri", "nircam", "niriss", "nirspec"]}[
             self.telescope.lower()
         ]
 
@@ -350,7 +348,7 @@ class DataPlots:
         list
             list of detector keys for the specified telescope
         """
-        keys = sorted(list(self.df[self.group].unique()))
+        keys = sorted(self.df[self.group].unique())
         if self.telescope.lower() == "hst":
             if len(keys) == 2:
                 return ["wfc-uvis", "other"]
@@ -390,7 +388,7 @@ class DataPlots:
         self.data_map = {}
         for key, name in self.gkeys.items():
             data = self.categories[name]
-            self.data_map[name] = dict(data=data, color=cmap[key])
+            self.data_map[name] = {"data":data, "color":cmap[key]}
 
     def feature_subset(self):
         """Create a set of groups from a categorical feature (dataframe column). Used for plotting multiple traces on a figure
@@ -470,7 +468,7 @@ class DataPlots:
 
         fig.update_layout(
             title_text=f"{name1} vs {name2}",
-            margin=dict(t=50, l=80),
+            margin={"t":50, "l":80},
             width=self.width,
             height=self.height,
             paper_bgcolor="#242a44",
@@ -492,7 +490,7 @@ class DataPlots:
         xaxis_name,
         yaxis_name,
         marker_size=15,
-        cmap=["cyan", "fuchsia"],
+        cmap=None,
         categories=None,
         target=None,
     ):
@@ -517,10 +515,9 @@ class DataPlots:
         list
             list of scatterplot figures for each category
         """
-        if categories is None:
-            categories = {"all": self.df}
-        if target is None:
-            target = self.target
+        categories = {"all": self.df} if categories is None else categories
+        target = self.target if target is None else target
+        cmap = ["cyan", "fuchsia"] if cmap is None else cmap
         scatter_figs = []
         for key, data in categories.items():
             target_groups = data.groupby(target)
@@ -631,10 +628,10 @@ class DataPlots:
         X,
         Y,
         feature,
-        y_err=[None, None],
+        y_err=None,
         width=700,
         height=500,
-        cmap=["dodgerblue", "fuchsia"],
+        cmap=None,
     ):
         """Draws a bar plot for a feature, grouped by the `group` attribute.
 
@@ -647,29 +644,31 @@ class DataPlots:
         feature : str
             Feature name
         y_err : list, optional
-            Y-axis error values, by default [None, None]
+            Y-axis error values, by default None
         width : int, optional
             Width of the plot, by default 700
         height : int, optional
             Height of the plot, by default 500
         cmap : list, optional
-            List of colors for the plot, by default ["dodgerblue", "fuchsia"]
+            List of colors for the plot, by default None
 
         Returns
         -------
         go.Figure
             Plotly Figure object representing the bar plot
         """
+        y_err = [None, None] if y_err is None else y_err
+        cmap = ["dodgerblue", "fuchsia"] if cmap is None else cmap
         traces = []
         for i in self.classes:
             i = int(i)
             trace = go.Bar(
                 x=X,
                 y=Y[i],
-                error_y=dict(type="data", array=y_err[i], color="white", thickness=0.5),
+                error_y={"type":"data", "array":y_err[i], "color":"white", "thickness":0.5},
                 name=self.labels[i],
-                text=sorted(list(self.group_keys().values())),
-                marker=dict(color=cmap[i]),
+                text=sorted(self.group_keys().values()),
+                marker={"color":cmap[i]},
             )
             traces.append(trace)
 
@@ -701,7 +700,7 @@ class DataPlots:
         binsize=0.2,  # [0.3, 0.2, 0.1]
         width=700,
         height=500,
-        cmap=["#F66095", "#2BCDC1"],
+        cmap=None,
     ):
         """Generates KDE plots for specified columns in the dataframe.
 
@@ -722,13 +721,14 @@ class DataPlots:
         height : int, optional
             Height of the plot, by default 500
         cmap : list, optional
-            List of colors for the plot, by default ["#F66095", "#2BCDC1"]
+            List of colors for the plot, by default None
 
         Returns
         -------
         go.Figure
             Plotly Figure object representing the KDE plot
         """
+        cmap = ["#F66095", "#2BCDC1"] if cmap is None else cmap
         if norm is True:
             df = PowerX(self.df, cols=cols, join_data=True).Xt
             cols = [c + "_scl" for c in cols]
@@ -807,7 +807,7 @@ class DataPlots:
                 z=group[z],
                 name=targ,
                 mode="markers",
-                marker=dict(size=7, color=targ, colorscale="Plasma", opacity=0.8),
+                marker={"size":7, "color":targ, "colorscale":"Plasma", "opacity":0.8},
             )
             traces.append(trace)
         layout = go.Layout(
@@ -818,7 +818,7 @@ class DataPlots:
             legend_title_text=target,
         )
         fig = go.Figure(data=traces, layout=layout)
-        fig.update_layout(scene=dict(xaxis_title=x, yaxis_title=y, zaxis_title=z))
+        fig.update_layout(scene={"xaxis_title":x, "yaxis_title":y, "zaxis_title":z})
         if self.save_html:
             pyo.plot(fig, filename=f"{self.save_html}/scatter3d.html")
         if self.show:
@@ -871,7 +871,7 @@ class DataPlots:
                 if outliers is False:
                     y_data = self.remove_outliers(y_data)
                     title_sfx = "- no outliers"
-                trace = go.Box(y=y_data, name=name, marker=dict(color=self.cmap[i]))
+                trace = go.Box(y=y_data, name=name, marker={"color":self.cmap[i]})
                 traces.append(trace)
 
             layout = go.Layout(
@@ -936,7 +936,7 @@ class DataPlots:
         traces = []
         for key, value in self.gkeys.items():
             dx = groups.get_group(key).value_counts()
-            trace = go.Bar(x=dx.index, y=dx, name=value.upper(), marker=dict(color=cmap[key]))
+            trace = go.Bar(x=dx.index, y=dx, name=value.upper(), marker={"color":cmap[key]})
             traces.append(trace)
         layout = go.Layout(title=f"{target.title()} by {self.group.title()}")
         fig = go.Figure(data=traces, layout=layout)
@@ -988,7 +988,7 @@ class HstSvmPlots(DataPlots):
 
     def alignment_bars(self):
         self.bar = {}
-        X = sorted(list(self.gkeys.keys()))
+        X = sorted(self.gkeys.keys())
         for f in self.continuous:
             means, errs = self.feature_stats_by_target(f)
             bar = self.bar_plots(X, means, f, y_err=errs)
@@ -1001,7 +1001,7 @@ class HstSvmPlots(DataPlots):
 
     def alignment_kde(self):
         cols = self.continuous
-        self.kde = dict(rms=self.kde_plots(["rms_ra", "rms_dec"]), targ={}, norm={})
+        self.kde = {"rms":self.kde_plots(["rms_ra", "rms_dec"]), "targ":{}, "norm":{}}
         targ = [self.kde_plots([c], targets=True) for c in cols]
         norm = [self.kde_plots([c], norm=True, targets=True) for c in cols]
         for i, c in enumerate(cols):
@@ -1062,7 +1062,7 @@ class HstCalPlots(DataPlots):
         for f in self.feature_list:
             memory_figs[f] = self.make_feature_scatter_figs(f, "memory")
             wallclock_figs[f] = self.make_feature_scatter_figs(f, "wallclock")
-        self.scatter = dict(memory=memory_figs, wallclock=wallclock_figs)
+        self.scatter = {"memory":memory_figs, "wallclock":wallclock_figs}
 
     def make_cal_scatter3d(self):
         x, y = "memory", "wallclock"
@@ -1079,8 +1079,8 @@ class SignalPlots:
         self,
         show=False,
         save_png=False,
-        target_cns={},
-        color_map={},
+        target_cns=None,
+        color_map=None,
         output_dir=None,
         name="SignalPlots",
         **log_kws,
@@ -1094,16 +1094,16 @@ class SignalPlots:
         save_png : str, optional
             save plot as PNG file, by default False
         target_cns : dict, optional
-            target label and string keypairs, by default {}
+            target label and string keypairs, by default None
         color_map : dict, optional
-            target label and color keypairs, by default {}
+            target label and color keypairs, by default None
         """
         self.__name__ = name
         self.log = Logger(self.__name__, **log_kws).spacekit_logger()
         self.show = show
         self.save_png = save_png
-        self.target_cns = target_cns
-        self.color_map = color_map
+        self.target_cns = {} if target_cns is None else target_cns
+        self.color_map = {} if color_map is None else color_map
         self.flux_col = "pdcsap_flux"
         self.extra_cols = ["lc_start", "lc_end", "maxpower", "transit", "mean", "median", "stddev"]
         self.output_dir = os.getcwd() if output_dir is None else output_dir
@@ -1178,7 +1178,7 @@ class SignalPlots:
         flux = np.asarray(ts[signal_col], dtype="float64")
         timestamps = ts.time.jd
         if offset is True:
-            bjd = dict(kepler=2454833.0, tess=2457000.0)[fmt.split(".")[0]]
+            bjd = {"kepler":2454833.0, "tess":2457000.0}[fmt.split(".")[0]]
             timestamps -= bjd  # convert to KBJD/TBJD
         if remove_nans is True:
             not_nan_mask = ~np.isnan(flux)
@@ -1365,7 +1365,7 @@ class SignalPlots:
     def flux_specs(
         self,
         signal,
-        units=["Wavelength (λ)", "Frequency (ν)"],
+        units=None,
         colorbar=True,
         save_for_ml=False,
         fname="specgram",
@@ -1379,7 +1379,7 @@ class SignalPlots:
         signal : ArrayLike
             1D array-like signal data
         units : list of strings, optional
-            x and y units respectively, by default N["Wavelength (λ)", "Frequency (ν)"]
+            x and y units respectively, by default None
         colorbar : bool, optional
             include colorbar in plot, by default True
         save_for_ml : bool, optional
@@ -1396,6 +1396,7 @@ class SignalPlots:
         tuple
             periodogram, freqs, t, m - see matplotlib.pyplot.specgram
         """
+        units = ["Wavelength (λ)", "Frequency (ν)"] if units is None or len(units) < 2 else units
         fpath = os.path.join(self.output_dir, fname)
         spec_kwargs = self.set_spec_kwargs(**kwargs)
         if save_for_ml is True:
@@ -1431,8 +1432,8 @@ class K2SignalPlots(SignalPlots):
         flux_col="pdcsap_flux",
         show=False,
         save_png=True,
-        target_cns={1: "No Planet", 2: "Planet"},
-        color_map={1: "red", 2: "blue"},
+        target_cns=None,
+        color_map=None,
         **log_kws,
     ):
         """_summary_
@@ -1444,10 +1445,12 @@ class K2SignalPlots(SignalPlots):
         save_png : bool, optional
             save plot as PNG file, by default True
         target_cns : dict, optional
-            target label and string keypairs, by default {1: "No Planet", 2: "Planet"}
+            target label and string keypairs, by default None
         color_map : dict, optional
-            target label and color keypairs, by default {1: "red", 2: "blue"}
+            target label and color keypairs, by default None
         """
+        target_cns = {1: "No Planet", 2: "Planet"} if target_cns is None else target_cns
+        color_map = {1: "red", 2: "blue"} if color_map is None else color_map
         super().__init__(
             show=show,
             save_png=save_png,

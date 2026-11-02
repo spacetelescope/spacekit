@@ -1,26 +1,28 @@
-import os
+import datetime as dt
 import glob
 import itertools
+import os
+
 import numpy as np
 import pandas as pd
-import datetime as dt
 from sklearn.metrics import (
     auc,
-    roc_curve,
-    roc_auc_score,
-    precision_recall_curve,
     average_precision_score,
     classification_report,
     confusion_matrix,
+    precision_recall_curve,
+    roc_auc_score,
+    roc_curve,
 )
 from tensorflow.python.ops.numpy_ops import np_config
+
+from spacekit.extractor.load import load_multitype_data, save_multitype_data
 from spacekit.logger.log import Logger
-from spacekit.extractor.load import save_multitype_data, load_multitype_data
 
 try:
-    import plotly.graph_objects as go
     import matplotlib as mpl
     import matplotlib.pyplot as plt
+    import plotly.graph_objects as go
 
     font_dict = {"family": "monospace", "size": 16}  # Titillium Web
     mpl.rc("font", **font_dict)
@@ -41,7 +43,7 @@ def check_viz_imports():
     return go is not None
 
 
-class Computer(object):
+class Computer:
     def __init__(
         self,
         algorithm,
@@ -150,7 +152,7 @@ class Computer(object):
                     self.y_test = builder.y_val
                     self.X_train = builder.X_test
                     self.y_train = builder.y_test
-                except Exception as e:
+                except AttributeError as e:
                     print(e)
                     print("Validation attributes not set.")
             else:
@@ -175,8 +177,8 @@ class Computer(object):
             Outputs created by their respective subclasses using the ``make_outputs`` method.
         """
         if self.res_path is None:
-            timestamp = int(dt.datetime.now().timestamp())
-            datestamp = dt.date.fromtimestamp(timestamp).isoformat()
+            timestamp = int(dt.datetime.now(tz=dt.timezone.utc).timestamp())
+            datestamp = dt.datetime.fromtimestamp(timestamp, tz=dt.timezone.utc).date().isoformat()
             prefix = str(datestamp) + "-" + str(timestamp)
             self.res_path = os.path.join(os.getcwd(), prefix, "results", self.algorithm)
         save_multitype_data(
@@ -202,7 +204,7 @@ class Computer(object):
         if self.res_path is None:
             try:
                 self.res_path = glob.glob(f"data/*/results/{self.algorithm}")[0]
-            except Exception as e:
+            except IndexError as e:
                 self.log.error(f"No results found @ {self.res_path} \n", e)
                 return outputs
         if os.path.exists(self.res_path):
@@ -280,7 +282,6 @@ class Computer(object):
         self.roc_fig = self.make_roc_curve()
         self.pr_fig = self.make_pr_curve()
         self.cm_fig, self.cmx_norm = self.fusion_matrix(self.cmx, self.classes)
-        return self
 
     # Matplotlib "static" alternative to interactive plotly version
     def roc_plots(self):
@@ -311,11 +312,11 @@ class Computer(object):
         ax = axes[0]
         ax.plot(thresholds, 1.0 - fpr)
         ax.plot(thresholds, tpr)
-        ax.set_title("Crossover at {0:.2f}, Specificity {1:.2f}".format(crossover_cutoff, crossover_specificity))
+        ax.set_title(f"Crossover at {crossover_cutoff:.2f}, Specificity {crossover_specificity:.2f}")
 
         ax = axes[1]
         ax.plot(fpr, tpr)
-        ax.set_title("ROC area under curve: {0:.2f}".format(roc_auc_score(y_true, y_hat)))
+        ax.set_title(f"ROC area under curve: {roc_auc_score(y_true, y_hat):.2f}")
         if self.show:
             fig.show()
 
@@ -330,7 +331,7 @@ class Computer(object):
             ROC-AUC interactive figure plot
         """
         fig = go.Figure()
-        fig.add_shape(type="line", line=dict(dash="dash"), x0=0, x1=1, y0=0, y1=1)
+        fig.add_shape(type="line", line={"dash":"dash"}, x0=0, x1=1, y0=0, y1=1)
 
         if regression is True:
             if self.y_pred_dummies is None:
@@ -354,8 +355,8 @@ class Computer(object):
             title_text=title,
             xaxis_title="False Positive Rate",
             yaxis_title="True Positive Rate",
-            yaxis=dict(scaleanchor="x", scaleratio=1),
-            xaxis=dict(constrain="domain"),
+            yaxis={"scaleanchor":"x", "scaleratio":1},
+            xaxis={"constrain":"domain"},
             width=800,
             height=500,
             paper_bgcolor="#242a44",
@@ -367,8 +368,27 @@ class Computer(object):
         return fig
 
     @staticmethod
-    def get_bin_estimate(y_val, n_classes=4, thresholds=[0, 12, 225, 950]):
+    def get_bin_estimate(y_val, n_classes=4, thresholds=None):
+        """_summary_
+
+        Parameters
+        ----------
+        y_val : int
+            predicted value
+        n_classes : int, optional
+            number of target classes, by default 4
+        thresholds : list, optional
+            target class threshold values (length of list much match n_classes), by default None
+
+        Returns
+        -------
+        int
+            target class bin estimate
+        """
+        thresholds = [0, 12, 225, 950] if thresholds is None else thresholds
         thresholds = sorted(thresholds, reverse=True)
+        if len(thresholds) != n_classes:
+            raise IndexError(f"n_classes = {n_classes} does not match length of thresholds list: {len(thresholds)}")
         for i in list(range(len(thresholds))):
             if y_val >= thresholds[i]:
                 return n_classes - i - 1
@@ -388,7 +408,7 @@ class Computer(object):
         self.classes = y_onehot.columns
 
     def regression_roc(self, fig):
-        fpr, tpr, self.roc_auc = dict(), dict(), dict()
+        fpr, tpr, self.roc_auc = {}, {}, {}
         for i in list(range(len(self.classes))):
             y_true = self.y_test_dummies[:, i]
             y_hat = self.y_pred_dummies.iloc[:, i]
@@ -399,7 +419,7 @@ class Computer(object):
         return fig
 
     def regression_recall(self, fig):
-        precision, recall, self.pr = dict(), dict(), dict()
+        precision, recall, self.pr = {}, {}, {}
         for i in list(range(len(self.classes))):
             y_true = self.y_test_dummies[:, i]
             y_hat = self.y_pred_dummies.iloc[:, i]
@@ -419,7 +439,7 @@ class Computer(object):
         """
 
         fig = go.Figure()
-        fig.add_shape(type="line", line=dict(dash="dash"), x0=0, x1=1, y0=1, y1=0)
+        fig.add_shape(type="line", line={"dash":"dash"}, x0=0, x1=1, y0=1, y1=0)
 
         if regression is True:
             if self.y_pred_dummies is None:
@@ -443,8 +463,8 @@ class Computer(object):
             title_text=title,
             xaxis_title="Recall",
             yaxis_title="Precision",
-            yaxis=dict(scaleanchor="x", scaleratio=1),
-            xaxis=dict(constrain="domain"),
+            yaxis={"scaleanchor":"x", "scaleratio":1},
+            xaxis={"constrain":"domain"},
             width=800,
             height=500,
             paper_bgcolor="#242a44",
@@ -472,13 +492,13 @@ class Computer(object):
                 x=n_epochs,
                 y=acc_train,
                 name=f"Training {keys[1].title()}",
-                marker=dict(color="#119dff"),
+                marker={"color":"#119dff"},
             ),
             go.Scatter(
                 x=n_epochs,
                 y=acc_test,
                 name=f"Test {keys[3].title()}",
-                marker=dict(color="#66c2a5"),
+                marker={"color":"#66c2a5"},
             ),
         ]
         layout = go.Layout(
@@ -523,13 +543,13 @@ class Computer(object):
                 x=n_epochs,
                 y=loss_train,
                 name=f"Training {keys[0].title()}",
-                marker=dict(color="#119dff"),
+                marker={"color":"#119dff"},
             ),
             go.Scatter(
                 x=n_epochs,
                 y=loss_test,
                 name=f"Test {keys[2].title()}",
-                marker=dict(color="#66c2a5"),
+                marker={"color":"#66c2a5"},
             ),
         ]
         layout = go.Layout(
@@ -571,7 +591,7 @@ class Computer(object):
         title = "Residual Error"
         if desc:
             title += f" - {desc}"
-        data = go.Scatter(x=y, y=p, name="y-y_hat", mode="markers", marker=dict(color="red"))
+        data = go.Scatter(x=y, y=p, name="y-y_hat", mode="markers", marker={"color":"red"})
         layout = go.Layout(
             title=title,
             xaxis={"title": "y (ground truth)"},
@@ -585,7 +605,7 @@ class Computer(object):
         fig = go.Figure(data=data, layout=layout)
         fig.add_shape(
             type="line",
-            line=dict(dash="dash"),
+            line={"dash":"dash"},
             x0=y.min(),
             y0=y.min(),
             x1=y.max(),
@@ -683,14 +703,24 @@ class ComputeClassifier(Computer):
 
     Parameters
     ----------
-    Computer : Class object
-        spacekit.analyzer.compute.Computer object
+    algorithm : str, optional
+        Algorithm used for classification such as 'clf', 'binary' or 'linreg', by default "clf"
+    classes : list or tuple, optional
+        String labels for the target classes, by default None
+    res_path : str, optional
+        Path to the directory where results will be saved, by default "results/mem_bin"
+    show : bool, optional
+        Whether to display plots, by default False
+    validation : bool, optional
+        Whether the compute object is for a validation set, by default False
+    name : str, optional
+        Name of the compute object, by default "ComputeClassifier"
     """
 
     def __init__(
         self,
         algorithm="clf",
-        classes=["2g", "8g", "16g", "64g"],
+        classes=None,
         res_path="results/mem_bin",
         show=False,
         validation=False,
@@ -705,7 +735,7 @@ class ComputeClassifier(Computer):
             name=name,
             **log_kws,
         )
-        self.classes = classes
+        self.classes = ["2g", "8g", "16g", "64g"] if classes is None else list(classes)
 
     def make_outputs(self, dl=True):
         """Store computed results into a dictionary, and optionally save to disk.
@@ -819,20 +849,38 @@ class ComputeBinary(ComputeClassifier):
 
     Parameters
     ----------
-    ComputeClassifier : Subclass object
-        spacekit.analyzer.compute.ComputeClassifier object
+    builder : ComputeClassifier object, optional
+        Existing ComputeClassifier object with instantiated attributes, by default None
+    algorithm : str, optional
+        Algorithm kind, by default "binary"
+    classes : list or tuple, optional
+        String labels for the target classes, by default None, by default None
+    res_path : str, optional
+        Path to store results, by default "results/svm"
+    show : bool, optional
+        Whether to display plots, by default False
+    validation : bool, optional
+        Whether to perform validation, by default False
+
+    Raises
+    ------
+    AttributeError
+        Raised when the `classes` parameter is not a list or tuple of exactly two strings.
     """
 
     def __init__(
         self,
         builder=None,
         algorithm="binary",
-        classes=["aligned", "misaligned"],
+        classes=None,
         res_path="results/svm",
         show=False,
         validation=False,
         **log_kws,
     ):
+        classes = ["aligned", "misaligned"] if classes is None else classes
+        if not isinstance(classes, (list, tuple)) or len(classes) != 2:
+            raise AttributeError("Binary classifier requires `classes` to be a list/tuple of exactly two strings to be used as target class names.")
         super().__init__(
             algorithm=algorithm,
             classes=classes,
@@ -881,15 +929,25 @@ class ComputeMulti(ComputeClassifier):
 
     Parameters
     ----------
-    ComputeClassifier : Subclass object
-        spacekit.analyzer.compute.ComputeClassifier object
+    builder : ComputeClassifier object, optional
+        Existing ComputeClassifier object with instantiated attributes, by default None
+    algorithm : str, optional
+        Algorithm kind, by default "multiclass"
+    classes : list or tuple, optional
+        String labels for the target classes, by default None
+    res_path : str, optional
+        Path to store results, by default "results/svm"
+    show : bool, optional
+        Whether to display plots, by default False
+    validation : bool, optional
+        Whether to perform validation, by default False
     """
 
     def __init__(
         self,
         builder=None,
         algorithm="multiclass",
-        classes=["2g", "8g", "16g", "64g"],
+        classes=None,
         res_path="results/mem_bin",
         show=False,
         validation=False,

@@ -1,8 +1,7 @@
 # TODO: comparative model analysis and evaluation
-from dash import dcc
-from dash import html
-from spacekit.dashboard.svm.config import svm
+from dash import dcc, html
 
+from spacekit.dashboard.svm.config import svm
 
 layout = html.Div(
     children=[

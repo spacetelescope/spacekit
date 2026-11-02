@@ -1,17 +1,19 @@
+import datetime as dt
+import os
+
+import numpy as np
+import pandas as pd
 from sklearn.model_selection import StratifiedKFold
-from spacekit.builder.architect import BuilderEnsemble
+
 from spacekit.analyzer.compute import ComputeBinary
-from spacekit.skopes.hst.svm.train import make_ensembles
+from spacekit.builder.architect import BuilderEnsemble
+from spacekit.extractor.load import SVMImageIO, load_datasets
 from spacekit.generator.augment import training_data_aug, training_img_aug
 from spacekit.preprocessor.transform import (
-    normalize_training_images,
     PowerX,
+    normalize_training_images,
 )
-from spacekit.extractor.load import load_datasets, SVMImageIO
-import pandas as pd
-import numpy as np
-import os
-import datetime as dt
+from spacekit.skopes.hst.svm.train import make_ensembles
 
 HOME = os.path.abspath(os.curdir)
 DATA = os.path.join(HOME, "data")
@@ -32,18 +34,18 @@ DEPTH = DIM * CH
 SHAPE = (DIM, WIDTH, HEIGHT, CH)
 TF_CPP_MIN_LOG_LEVEL = 2
 
-params = dict(
-    batch_size=32,
-    epochs=200,
-    lr=1e-4,
-    decay=[100000, 0.96],
-    early_stopping=None,
-    verbose=2,
-    ensemble=True,
-)
+params = {
+    "batch_size": 32,
+    "epochs": 200,
+    "lr": 1e-4,
+    "decay": [100000, 0.96],
+    "early_stopping": None,
+    "verbose": 2,
+    "ensemble": True,
+}
 
 
-timestring = dt.datetime.now().isoformat()[:-7]  # 2022-01-19T21:31:21
+timestring = dt.datetime.now(tz=dt.timezone.utc).isoformat()[:-7]  # 2022-01-19T21:31:21
 timestamp = int(dt.datetime.fromisoformat(timestring).timestamp())
 dtstring = timestring.split("T")[0] + "-" + str(timestamp)
 output_path = f"{DATA}/{dtstring}"  # 2022-02-14-1644850390
@@ -135,7 +137,7 @@ for train_idx, test_idx in kfold.split(X, y):
     ens.batch_fit()
     # evaluate
     ens.test_idx = tv_idx[0]
-    com = ComputeBinary(builder=ens, res_path=f"{split_out}/results/test")
+    com = ComputeBinary(builder=ens, res_path=f"{split_out}/results/test", classes=["aligned", "misaligned"])
     _ = com.calculate_results()
     _ = com.make_outputs()
     # com, _ = compute_results(ens, tv_idx, val_set=(), output_path=split_out)
@@ -179,7 +181,7 @@ T = len(y_test)
 # == Provide average scores ==
 print("--------" * 11)
 print("Score per fold")
-for i in range(0, len(acc_per_fold)):
+for i in range(len(acc_per_fold)):
     print("--------" * 11)
     print(
         f"> Fold {i + 1} - Loss: {loss_per_fold[i]} - Accuracy: {acc_per_fold[i]}% \
