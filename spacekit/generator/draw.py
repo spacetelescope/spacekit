@@ -1,15 +1,17 @@
+import argparse
+import glob
 import os
 import sys
-import glob
-import argparse
-import pandas as pd
-import numpy as np
-from astropy.wcs import WCS
-from astropy.io import fits, ascii
-from astropy.visualization import ImageNormalize, ZScaleInterval
 import time
+
+import numpy as np
+import pandas as pd
+from astropy.io import ascii, fits
+from astropy.visualization import ImageNormalize, ZScaleInterval
+from astropy.wcs import WCS
+
 from spacekit.analyzer.track import stopwatch
-from spacekit.logger.log import Logger, SPACEKIT_LOG
+from spacekit.logger.log import SPACEKIT_LOG, Logger
 
 try:
     import matplotlib.pyplot as plt
@@ -181,8 +183,8 @@ class DrawMosaics:
                 self.datasets.append(visit)
         if len(skip) > 0:
             self.status["skip"] = list(set(skip))
-            print("Skipping found images: ", len(self.status["skip"]))
-        print(f"\nFound {len(self.datasets)} new datasets.")
+            self.log.info(f"Skipping found images: {len(self.status['skip'])}")
+        self.log.info(f"\nFound {len(self.datasets)} new datasets.")
         return list(set(self.datasets))
 
     def local_search(self):
@@ -196,18 +198,17 @@ class DrawMosaics:
         search = self.pattern if self.pattern else self.rgx
         inputs = glob.glob(f"{self.input_path}/{search}")
         if len(inputs) == 0:  # try one more directory down
-            print("None found - Checking subdirectories")
+            self.log.info("None found - Checking subdirectories")
             inputs = glob.glob(f"{self.input_path}/*/{search}")
         if len(inputs) == 0:  # fall back to wildcard
-            print("None found - using fallback (wildcard)")
+            self.log.info("None found - using fallback (wildcard)")
             inputs = glob.glob(f"{self.input_path}/*{self.rgx}")
-        try:
+        if len(inputs) > 0:
             self.datasets = [i.split("/")[-1] for i in inputs]
-            print(f"\nFound {len(self.datasets)} datasets.")
+            self.log.info(f"\nFound {len(self.datasets)} datasets.")
             return self.datasets
-        except Exception as e:
-            print(e)
-            print("No datasets found. Exiting.")
+        else:
+            self.log.error("No datasets found. Exiting.")
             sys.exit(1)
 
     def point_flag_color(self, x):
@@ -336,7 +337,7 @@ class DrawMosaics:
         start = time.time()
         stopwatch("DRAWING IMAGES", t0=start, out=base, subset_name=self.subset_name)
         if self.datasets is None:
-            print("No datasets available. Exiting")
+            self.log.error("No datasets available. Exiting")
             sys.exit(1)
 
         print(f"Generating images for {len(self.datasets)} datasets.")
@@ -393,8 +394,8 @@ class DrawMosaics:
                     elif isinstance(self.manual, dict):
                         try:
                             norm = ImageNormalize(hdu.data, **self.manual)
-                        except Exception as e:
-                            print(e)
+                        except (TypeError, ValueError, KeyError) as e:
+                            self.log.error(f"Error applying manual normalization: {e}")
                     ax.imshow(hdu.data, origin="lower", norm=norm, cmap="gray")
 
                 if P:
@@ -435,18 +436,17 @@ class DrawMosaics:
                                     )
                 if G:
                     g_cat = glob.glob(f"{subdir}/*_{detector}_*G*_ref_cat.ecsv")
-                    if len(g_cat) > 0:
-                        if os.path.exists(g_cat[0]):
-                            gaia = ascii.read(g_cat[0]).to_pandas()
-                            ax.scatter(
-                                gaia["RA"],
-                                gaia["DEC"],
-                                edgecolor="cyan",
-                                facecolor="none",
-                                transform=ax.get_transform("fk5"),
-                                marker="o",
-                                s=15,
-                            )
+                    if len(g_cat) > 0 and os.path.exists(g_cat[0]):
+                        gaia = ascii.read(g_cat[0]).to_pandas()
+                        ax.scatter(
+                            gaia["RA"],
+                            gaia["DEC"],
+                            edgecolor="cyan",
+                            facecolor="none",
+                            transform=ax.get_transform("fk5"),
+                            marker="o",
+                            s=15,
+                        )
                 xlim, ylim = wcs.wcs_world2pix(radeclim, 1).T
                 ax.set_xlim(xlim)
                 ax.set_ylim(ylim)

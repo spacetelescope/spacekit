@@ -20,23 +20,25 @@ bcom2.load_results(bin_out)
 test_idx = bin_out["test_idx"]
 """
 
-from argparse import ArgumentParser
-import os
 import datetime as dt
+import os
+from argparse import ArgumentParser
+
 import numpy as np
 import pandas as pd
-from spacekit.datasets import load
-from spacekit.extractor.load import find_local_dataset
-from spacekit.extractor.scrape import DynamoDBScraper, S3Scraper
-from spacekit.preprocessor.prep import HstCalPrep
+
+from spacekit.analyzer.compute import ComputeMulti, ComputeRegressor
 from spacekit.builder.architect import (
     MemoryClassifier,
     MemoryRegressor,
     WallclockRegressor,
 )
-from spacekit.analyzer.compute import ComputeMulti, ComputeRegressor
-from spacekit.skopes.hst.cal.validate import run_kfold
+from spacekit.datasets import load
+from spacekit.extractor.load import find_local_dataset
+from spacekit.extractor.scrape import DynamoDBScraper, S3Scraper
+from spacekit.preprocessor.prep import HstCalPrep
 from spacekit.skopes.hst.cal.config import COLUMN_ORDER, NORM_COLS, RENAME_COLS, X_NORM
+from spacekit.skopes.hst.cal.validate import run_kfold
 
 __name__ = "HST CAL MODEL TRAINING"
 
@@ -77,7 +79,7 @@ class Train:
         self.data = None
         self.model_objs = {}
         self.save_csv = None
-        self.dict_preds = dict(mem_clf="bin_pred", mem_reg="mem_pred", wall_reg="wall_pred")
+        self.dict_preds = {"mem_clf": "bin_pred", "mem_reg": "mem_pred", "wall_reg": "wall_pred"}
 
     def main(self):
         # TODO error handling / log msg
@@ -91,7 +93,7 @@ class Train:
         self.load_prep(date_key=self.date_key, fpath=self.fpath)
 
         # TODO: kfold cross-validation
-        mods = dict(mem_bin=self.mem_clf, memory=self.mem_reg, wallclock=self.wall_reg)
+        mods = {"mem_bin": self.mem_clf, "memory": self.mem_reg, "wallclock": self.wall_reg}
         modelnames = [k for k, v in mods.items() if v == 1]
 
         if self.cross_val == "only":
@@ -357,23 +359,25 @@ class Train:
 
 def make_timestamp_path(timestamp):
     if timestamp == "now":
-        train_time = dt.datetime.now()
+        train_time = dt.datetime.now(tz=dt.timezone.utc)
     elif isinstance(timestamp, str):
         if len(timestamp) <= 14:
-            train_time = dt.datetime.fromtimestamp(int(timestamp))
+            train_time = dt.datetime.fromtimestamp(int(timestamp), tz=dt.timezone.utc)
         else:
             train_time = dt.datetime.fromisoformat(timestamp)
-    elif isinstance(timestamp, int) or isinstance(timestamp, float):
-        train_time = dt.datetime.fromtimestamp(timestamp)
+    elif isinstance(timestamp, (int, float)):
+        train_time = dt.datetime.fromtimestamp(timestamp, tz=dt.timezone.utc)
     else:
         print(f"Timestamp type must be a string (datetime, isoformat) or int/float (timestamp). You passed {type(timestamp)}.")
         raise ValueError
     t0 = train_time.timestamp()
-    data_path = f"{dt.date.fromtimestamp(t0).isoformat()}-{str(int(t0))}"
+    data_path = f"{dt.datetime.fromtimestamp(t0, tz=dt.timezone.utc).date()}-{int(t0)!s}"
     return data_path
 
 
-def scrape_dynamodb(table_name, timestamp="now", fname=None, attr={}):
+def scrape_dynamodb(table_name, timestamp="now", fname=None, attr=None):
+    if attr is None:
+        attr = {}
     fname = "batch.csv" if fname is None else fname
     data_path = os.path.join(make_timestamp_path(timestamp), "data")
     os.makedirs(os.path.join(os.path.expanduser("~"), data_path), exist_ok=True)
@@ -406,12 +410,12 @@ def parse_user_args(args):
     # TODO: if args.src == "s3":
 
     if args.src == "ddb":
-        attr = dict(
-            name=args.attrname,
-            method=args.attrmethod,
-            type=args.attrtype,
-            value=args.attrvalue,
-        )
+        attr = {
+            "name": args.attrname,
+            "method": args.attrmethod,
+            "type": args.attrtype,
+            "value": args.attrvalue,
+        }
         fpath = scrape_dynamodb(args.tablename, timestamp=args.timestamp, fname=args.fname, attr=attr)
         train_path = os.path.dirname(os.path.dirname(fpath))
         model_path = train_path  # "models" subdir will be saved here automatically
@@ -427,20 +431,20 @@ def parse_user_args(args):
             os.makedirs(os.path.join(os.path.expanduser("~"), data_path), exist_ok=True)
             train_path = os.path.dirname(os.path.dirname(data_path))
 
-    return dict(
-        date_key=date_key,
-        fpath=fpath,
-        train_path=train_path,
-        model_path=model_path,
-        res_path=res_path,
-        mem_clf=args.mem_clf,
-        mem_reg=args.mem_reg,
-        wall_reg=args.wall_reg,
-        cross_val=args.cross_val,
-        njobs=args.njobs,
-        ddb_table=ddb_table,
-        s3_bucket=s3_bucket,
-    )
+    return {
+        "date_key": date_key,
+        "fpath": fpath,
+        "train_path": train_path,
+        "model_path": model_path,
+        "res_path": res_path,
+        "mem_clf": args.mem_clf,
+        "mem_reg": args.mem_reg,
+        "wall_reg": args.wall_reg,
+        "cross_val": args.cross_val,
+        "njobs": args.njobs,
+        "ddb_table": ddb_table,
+        "s3_bucket": s3_bucket,
+    }
 
 
 if __name__ == "__main__":
@@ -516,7 +520,7 @@ if __name__ == "__main__":
         choices=["only", "skip", "None", None],
         default=os.environ.get("KFOLD", None),
     )
-    parser.add_argument("--njobs", "-j", default=int(os.environ.get("NJOBS", -2)))
+    parser.add_argument("--njobs", "-j", type=int, default=int(os.environ.get("NJOBS", "-2")))
     parser.add_argument(
         "--overwrite",
         action="store_true",
@@ -524,7 +528,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--save_ddb", action="store_true")
     parser.add_argument("--save_s3", action="store_true")
-    parser.add_argument("--verbose", type=int, choices=[0, 1, 2], default=os.environ.get("VERBOSE", 0))
+    parser.add_argument("--verbose", type=int, choices=[0, 1, 2], default=int(os.environ.get("VERBOSE", "0")))
     parser.add_argument(
         "--config",
         "-c",

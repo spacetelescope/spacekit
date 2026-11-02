@@ -1,11 +1,13 @@
 import os
+
 from pytest import mark
+
 from conftest import check_skope
 from spacekit.builder.architect import BuilderEnsemble
 from spacekit.skopes.hst.svm.predict import (
-    predict_alignment,
-    load_mixed_inputs,
     classify_alignments,
+    load_mixed_inputs,
+    predict_alignment,
 )
 
 

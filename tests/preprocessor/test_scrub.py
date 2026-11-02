@@ -1,9 +1,11 @@
+import os
+
+import numpy as np
+import pandas as pd
 from pytest import mark
+
 from spacekit.preprocessor.scrub import HstSvmScrubber, JwstCalScrubber
 from spacekit.skopes.jwst.cal.config import KEYPAIR_DATA
-import os
-import pandas as pd
-import numpy as np
 
 SVM_SCRUBBED_COLS = [
     "detector",
@@ -156,8 +158,8 @@ def test_jwst_cal_scrubber_l3_imgname_fltr_only_or_none(jwst_cal_img_df):
         [n.split('_')[-1] for n in list(no_pupil.index)], 
         [f.lower() for f in no_pupil['FILTER'].values]
     ))
-    assert list(set([o == f for o, f in optelems_filters])) == [True]
-    assert np_exp == sorted(list(no_pupil['name'].values))
+    assert list({o == f for o, f in optelems_filters}) == [True]
+    assert np_exp == sorted(no_pupil['name'].values)
 
 
 @mark.jwst
@@ -178,9 +180,9 @@ def test_jwst_cal_scrubber_l3_imgname_pupil_first(jwst_cal_img_df):
         [p.lower() for p in pupil_first['PUPIL'].values],
         [f.lower() for f in pupil_first['FILTER'].values]
     ))
-    assert list(set([o.split('-')[0] == p for o, p, _ in optelems_pfs])) == [True]
-    assert list(set([o.split('-')[1] == f for o, _, f in optelems_pfs])) == [True]
-    assert pf_exp == sorted(list(pupil_first['name'].values))
+    assert list({o.split('-')[0] == p for o, p, _ in optelems_pfs}) == [True]
+    assert list({o.split('-')[1] == f for o, _, f in optelems_pfs}) == [True]
+    assert pf_exp == sorted(pupil_first['name'].values)
 
 
 @mark.jwst
@@ -195,9 +197,9 @@ def test_jwst_cal_scrubber_l3_imgname_fltr_first(jwst_cal_img_df):
         [f.lower() for f in filter_first['FILTER'].values],
         [p.lower() for p in filter_first['PUPIL'].values]
     ))
-    assert list(set([o.split('-')[0] == f for o, f, _ in optelems_ffs])) == [True]
-    assert list(set([o.split('-')[1] == p for o, _, p in optelems_ffs])) == [True]
-    assert ff_exp == sorted(list(filter_first['name'].values))
+    assert list({o.split('-')[0] == f for o, f, _ in optelems_ffs}) == [True]
+    assert list({o.split('-')[1] == p for o, _, p in optelems_ffs}) == [True]
+    assert ff_exp == sorted(filter_first['name'].values)
 
 
 @mark.jwst
@@ -210,8 +212,8 @@ def test_jwst_cal_scrubber_l3_imgname_subarrays(jwst_cal_img_df):
         [n.split('_')[-1] for n in list(subarrays.index)],
         [s.lower() for s in subarrays['SUBARRAY'].values],
     ))
-    assert list(set([o.split('-')[-1] == s for o, s in optelems_sbs])) == [True]
-    assert sb_exp == sorted(list(subarrays['name'].values))
+    assert list({o.split('-')[-1] == s for o, s in optelems_sbs}) == [True]
+    assert sb_exp == sorted(subarrays['name'].values)
 
 @mark.jwst
 @mark.preprocessor
@@ -226,7 +228,7 @@ def test_jwst_cal_scrubber_l3_wfsc_img(jwst_cal_wfsc_data):
     # 'jw04509-o102_t1_nircam_f212n-wlm8-nrca1'
     df = pd.DataFrame.from_dict(scrubber.imgpix, orient='index')
     assert len(df) == 1
-    name = list(df.index)[0]
+    name = next(iter(df.index))
     optelem = '-'.join([df.iloc[0]['FILTER'].lower(), df.iloc[0]['PUPIL'].lower()])
     assert optelem == '-'.join(name.split('_')[-1].split('-')[:-1])
     assert name.split('-')[-1] == df.iloc[0]['DETECTOR'].lower()
@@ -251,9 +253,9 @@ def test_jwst_cal_scrubber_l3_specname_fltr_first(jwst_cal_spec_df):
         [f.lower() for f in fp['FILTER'].values],
         [p.lower() for p in fp['PUPIL'].values]
     ))
-    assert list(set([o.split('-')[0] == f for o, f, _ in optelems_fp])) == [True]
-    assert list(set([o.split('-')[1] == p for o, _, p in optelems_fp])) == [True]
-    assert fp_exp == sorted(list(fp['name'].values))
+    assert list({o.split('-')[0] == f for o, f, _ in optelems_fp}) == [True]
+    assert list({o.split('-')[1] == p for o, _, p in optelems_fp}) == [True]
+    assert fp_exp == sorted(fp['name'].values)
 
     # optelem = f"{fltr}-{grating}"
     fg = jwst_cal_spec_df.loc[
@@ -274,9 +276,9 @@ def test_jwst_cal_scrubber_l3_specname_fltr_first(jwst_cal_spec_df):
         [f.lower() for f in fg['FILTER'].values],
         [g.lower() for g in fg['GRATING'].values]
     ))
-    assert list(set([o.split('-')[0] == f for o, f, _ in optelems_fg])) == [True]
-    assert list(set([o.split('-')[1] == g for o, _, g in optelems_fg])) == [True]
-    assert fg_exp == sorted(list(fg['name'].values))
+    assert list({o.split('-')[0] == f for o, f, _ in optelems_fg}) == [True]
+    assert list({o.split('-')[1] == g for o, _, g in optelems_fg}) == [True]
+    assert fg_exp == sorted(fg['name'].values)
 
 
 @mark.jwst
@@ -298,9 +300,9 @@ def test_jwst_cal_scrubber_l3_specname_pupil_first(jwst_cal_spec_df):
         [p.lower() for p in pf['PUPIL'].values],
         [f.lower() for f in pf['FILTER'].values]
     ))
-    assert list(set([o.split('-')[0] == p for o, p, _ in optelems_pf])) == [True]
-    assert list(set([o.split('-')[1] == f for o, _, f in optelems_pf])) == [True]
-    assert pf_exp == sorted(list(pf['name'].values))
+    assert list({o.split('-')[0] == p for o, p, _ in optelems_pf}) == [True]
+    assert list({o.split('-')[1] == f for o, _, f in optelems_pf}) == [True]
+    assert pf_exp == sorted(pf['name'].values)
 
 
 @mark.jwst
@@ -321,9 +323,9 @@ def test_jwst_cal_scrubber_l3_specname_grating_first(jwst_cal_spec_df):
         [g.lower() for g in gf['GRATING'].values],
         [f.lower() for f in gf['FILTER'].values]
     ))
-    assert list(set([o.split('-')[0] == g for o, g, _ in optelems_gf])) == [True]
-    assert list(set([o.split('-')[1] == f for o, _, f in optelems_gf])) == [True]
-    assert gf_exp == sorted(list(gf['name'].values))
+    assert list({o.split('-')[0] == g for o, g, _ in optelems_gf}) == [True]
+    assert list({o.split('-')[1] == f for o, _, f in optelems_gf}) == [True]
+    assert gf_exp == sorted(gf['name'].values)
 
 
 @mark.jwst
@@ -332,8 +334,8 @@ def test_jwst_cal_scrubber_l3_specname_grating_first(jwst_cal_spec_df):
 def test_jwst_cal_scrubber_l3_specname_fltr_only_or_none(jwst_cal_spec_df):
     no_opt = jwst_cal_spec_df.loc[jwst_cal_spec_df['FILTER'] == "NONE"]
     no_exp = ['jw01023-o013_miri_ch1-short', 'jw01023-o013_miri_ch3-short'] # mir_mrs
-    assert list(set([n.split('_')[-1] in ["ch1-short", "ch3-short"] for n in list(no_opt.index)])) == [True]
-    assert no_exp == sorted(list(no_opt['name'].values))
+    assert list({n.split('_')[-1] in ["ch1-short", "ch3-short"] for n in list(no_opt.index)}) == [True]
+    assert no_exp == sorted(no_opt['name'].values)
 
     fo_exp = ['jw01029-o007_miri_p750l']
     fo = jwst_cal_spec_df.loc[
@@ -349,8 +351,8 @@ def test_jwst_cal_scrubber_l3_specname_fltr_only_or_none(jwst_cal_spec_df):
         [n.split('_')[-1] for n in list(fo.index)],
         [f.lower() for f in fo['FILTER'].values]
     ))
-    assert list(set([o.split('-')[0] == f for o, f in optelems_fo])) == [True]
-    assert fo_exp == sorted(list(fo['name'].values))
+    assert list({o.split('-')[0] == f for o, f in optelems_fo}) == [True]
+    assert fo_exp == sorted(fo['name'].values)
 
 
 @mark.jwst
@@ -370,8 +372,8 @@ def test_jwst_cal_scrubber_l3_specname_slit_subarr(jwst_cal_spec_df):
         [n.split('_')[-1] for n in list(sb.index)],
         [s.lower() for s in sb['SUBARRAY'].values],
     ))
-    assert list(set([o.split('-')[-1] == s for o, s in optelems_sbs])) == [True]
-    assert sb_exp == sorted(list(sb['name'].values))
+    assert list({o.split('-')[-1] == s for o, s in optelems_sbs}) == [True]
+    assert sb_exp == sorted(sb['name'].values)
 
     ss_exp = ['jw01118-o002_nirspec_f100lp-g140h-s200a2-allslits', 'jw04498-o121_nirspec_clear-prism-s1600a1-sub512']
     ss = jwst_cal_spec_df.loc[
@@ -386,9 +388,9 @@ def test_jwst_cal_scrubber_l3_specname_slit_subarr(jwst_cal_spec_df):
         [slit.lower() for slit in ss['FXD_SLIT'].values],
         [sub.lower() for sub in ss['SUBARRAY'].values],
     ))
-    assert list(set([o.split('-')[-2] == slit for o, slit, _ in slit_subs])) == [True]
-    assert list(set([o.split('-')[-1] == sub for o, _, sub in slit_subs])) == [True]
-    assert ss_exp == sorted(list(ss['name'].values))
+    assert list({o.split('-')[-2] == slit for o, slit, _ in slit_subs}) == [True]
+    assert list({o.split('-')[-1] == sub for o, _, sub in slit_subs}) == [True]
+    assert ss_exp == sorted(ss['name'].values)
 
 
 @mark.jwst
@@ -418,8 +420,8 @@ def test_jwst_cal_scrubber_l3_tac_name(jwst_cal_tac_df):
         [n.split('_')[-1] for n in list(fo.index)],
         [f.lower() for f in fo['FILTER'].values]
     ))
-    assert list(set([o.split('-')[0] == f for o, f in optelems_fo])) == [True]
-    assert fo_exp == sorted(list(fo['name'].values))
+    assert list({o.split('-')[0] == f for o, f in optelems_fo}) == [True]
+    assert fo_exp == sorted(fo['name'].values)
 
     # optelem = f"{fltr}-{pupil}" NIS_SOSS, NRC_TSGRISM, NRC_TSIMAGE
     # NRC_TSIMAGE only TAC exp_type that follows IMAGE rules
@@ -440,9 +442,9 @@ def test_jwst_cal_scrubber_l3_tac_name(jwst_cal_tac_df):
         [f.lower() for f in fp['FILTER'].values],
         [p.lower() for p in fp['PUPIL'].values]
     ))
-    assert list(set([o.split('-')[0] == f for o, f, _ in optelems_fp])) == [True]
-    assert list(set([o.split('-')[1] == p for o, _, p in optelems_fp])) == [True]
-    assert fp_exp == sorted(list(fp['name'].values))
+    assert list({o.split('-')[0] == f for o, f, _ in optelems_fp}) == [True]
+    assert list({o.split('-')[1] == p for o, _, p in optelems_fp}) == [True]
+    assert fp_exp == sorted(fp['name'].values)
 
     pf = jwst_cal_tac_df.loc[
         (
@@ -457,9 +459,9 @@ def test_jwst_cal_scrubber_l3_tac_name(jwst_cal_tac_df):
         [p.lower() for p in pf['PUPIL'].values],
         [f.lower() for f in pf['FILTER'].values]
     ))
-    assert list(set([o.split('-')[0] == p for o, p, _ in optelems_pf])) == [True]
-    assert list(set([o.split('-')[1] == f for o, _, f in optelems_pf])) == [True]
-    assert pf_exp == sorted(list(pf['name'].values))
+    assert list({o.split('-')[0] == p for o, p, _ in optelems_pf}) == [True]
+    assert list({o.split('-')[1] == f for o, _, f in optelems_pf}) == [True]
+    assert pf_exp == sorted(pf['name'].values)
 
     # NRS_BRIGHTOBJ
     slits = jwst_cal_tac_df.loc[jwst_cal_tac_df['FXD_SLIT'] != "NONE"]
@@ -486,8 +488,8 @@ def test_jwst_cal_scrubber_l3_tac_name(jwst_cal_tac_df):
         [n.split('_')[-1] for n in list(sb.index)],
         [s.lower() for s in sb['SUBARRAY'].values],
     ))
-    assert list(set([o.split('-')[-1] == s for o, s in optelems_sbs])) == [True]
-    assert sb_exp == sorted(list(sb['name'].values))
+    assert list({o.split('-')[-1] == s for o, s in optelems_sbs}) == [True]
+    assert sb_exp == sorted(sb['name'].values)
 
 
 @mark.jwst
@@ -513,7 +515,7 @@ def test_target_id_grouping(jwst_cal_img_data, jwst_cal_spec_data, jwst_cal_tac_
     src_based = df.loc[df['EXP_TYPE'].isin(scrubber.source_based)]
     source_names = list(src_based.index)
     assert len(source_names) == 7
-    assert list(set([s.split('_')[1] == 's000000001' for s in source_names])) == [True]
+    assert list({s.split('_')[1] == 's000000001' for s in source_names}) == [True]
     df.drop(source_names, axis=0, inplace=True)
     df['dname'] = df.index
     df['tid'] = df['dname'].apply(lambda x: x.split('_')[1])
@@ -546,5 +548,5 @@ def test_jwst_cal_scrub_miri_ifu_names(jwst_cal_spec_data):
         mode='df',
         encoding_pairs=KEYPAIR_DATA,
     )
-    names = sorted(list(scrubber.specpix.keys()))
+    names = sorted(scrubber.specpix.keys())
     assert [n.split('_')[-1] for n in names] == ['ch1-long', 'ch1-medium', 'ch1-short', 'ch3-long', 'ch3-medium', 'ch3-short']

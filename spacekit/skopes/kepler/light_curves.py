@@ -1,18 +1,19 @@
 import os
-from spacekit.preprocessor.transform import (
-    hypersonic_pliers,
-    thermo_fusion_chisel,
-    babel_fish_dispenser,
-)
+
 from spacekit.builder.architect import BuilderCNN2D
 from spacekit.datasets.meta import k2 as k2meta
 from spacekit.extractor.scrape import WebScraper
+from spacekit.preprocessor.transform import (
+    babel_fish_dispenser,
+    hypersonic_pliers,
+    thermo_fusion_chisel,
+)
 
 
 def downloads_exist(scraper, k2_meta):
     base_path = os.path.join(scraper.cache_dir, scraper.cache_subdir)
     filepaths = []
-    for k, v in k2_meta.items():
+    for v in k2_meta.values():
         fpath = os.path.join(base_path, v["key"])
         filepaths.append(fpath)
     for fp in filepaths:

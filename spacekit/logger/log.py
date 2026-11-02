@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 # -------------------------------------------------------------------------------
 #                                                                               -
 #  Python dual-logging setup (console and log file),                            -
@@ -13,15 +10,16 @@
 #                                                                               -
 # -------------------------------------------------------------------------------
 
-# Imports
+import logging
 import os
 import sys
-import logging
+from typing import ClassVar
 
 
 # Logging formatter supporting colorized output
 class LogFormatter(logging.Formatter):
-    COLOR_CODES = {
+    
+    COLOR_CODES : ClassVar[dict[int, str]] = {
         logging.CRITICAL: "\033[1;35m",  # bright/bold magenta
         logging.ERROR: "\033[1;31m",  # bright/bold red
         logging.WARNING: "\033[1;33m",  # bright/bold yellow
@@ -29,10 +27,10 @@ class LogFormatter(logging.Formatter):
         logging.DEBUG: "\033[1;30m",  # bright/bold black / dark gray
     }
 
-    RESET_CODE = "\033[0m"
+    RESET_CODE : ClassVar[str]= "\033[0m"
 
     def __init__(self, color, *args, **kwargs):
-        super(LogFormatter, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.color = color
 
     def format(self, record, *args, **kwargs):
@@ -42,7 +40,7 @@ class LogFormatter(logging.Formatter):
         else:
             record.color_on = ""
             record.color_off = ""
-        return super(LogFormatter, self).format(record, *args, **kwargs)
+        return super().format(record, *args, **kwargs)
 
 
 class Logger:
@@ -112,32 +110,15 @@ class Logger:
         elif self.console_log_output == "stderr":
             self.console_log_output = sys.stderr
         else:
-            print("Failed to set console output: invalid output: '%s'" % self.console_log_output)
+            print(f"Failed to set console output: invalid output: '{self.console_log_output}'")
             return False
         self.console_handler = logging.StreamHandler(self.console_log_output)
-
-        # Set console log level
-        try:
-            self.console_handler.setLevel(self.console_log_level)
-        except Exception:
-            print("Failed to set console log level: invalid level: '%s'" % self.console_log_level)
-            return False
-
-        # Create and set formatter, add console handler to logger
+        self.console_handler.setLevel(self.console_log_level)
         self.console_handler.setFormatter(self.console_formatter)
 
     def add_file_handler(self):
-        try:
-            self.logfile_handler = logging.FileHandler(self.logfile_file)
-        except Exception as e:
-            print("Failed to set up log file: %s" % str(e))
-            return False
-        # Set log file log level
-        try:
-            self.logfile_handler.setLevel(self.logfile_log_level)
-        except Exception:
-            print("Failed to set log file log level: invalid level: '%s'" % self.logfile_log_level)
-            return False
+        self.logfile_handler = logging.FileHandler(self.logfile_file)
+        self.logfile_handler.setLevel(self.logfile_log_level)
         # Create and set formatter, add log file handler to logger
         self.logfile_handler.setFormatter(self.logfile_formatter)
 
@@ -155,16 +136,13 @@ class Logger:
         return logger
 
     def update_handlers(self, logger):
-        try:
-            for handler in logger.handlers:
-                if isinstance(handler, logging.FileHandler):
-                    handler.setLevel(self.logfile_log_level)
-                    handler.setFormatter(self.logfile_formatter)
-                elif isinstance(handler, logging.StreamHandler):
-                    handler.setLevel(self.console_log_level)
-                    handler.setFormatter(self.console_formatter)
-        except Exception:
-            print("Failed to modify handlers.")
+        for handler in logger.handlers:
+            if isinstance(handler, logging.FileHandler):
+                handler.setLevel(self.logfile_log_level)
+                handler.setFormatter(self.logfile_formatter)
+            elif isinstance(handler, logging.StreamHandler):
+                handler.setLevel(self.console_log_level)
+                handler.setFormatter(self.console_formatter)
         return logger
 
     def setup_logger(self, logger=None):
@@ -199,7 +177,7 @@ class Logger:
         return logger
 
 
-global SPACEKIT_LOG
+
 SPACEKIT_LOG = Logger("spacekit").setup_logger()
 
 

@@ -21,6 +21,7 @@ exclude = [
 [tool.ruff.lint]
 ignore = [
     'E741', # ambiguous variable name
+    'UP017', # Use `datetime.UTC` alias
 ]
 
 [tool.ruff.lint.per-file-ignores]

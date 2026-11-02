@@ -1,6 +1,6 @@
 from pytest import mark
-from spacekit.skopes.jwst.cal.predict import JwstCalPredict, predict_handler
 
+from spacekit.skopes.jwst.cal.predict import JwstCalPredict, predict_handler
 
 EXPECTED = {
     "jw01018-o006_niriss": {'gbSize': 2.05},

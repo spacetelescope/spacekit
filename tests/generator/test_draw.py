@@ -1,6 +1,8 @@
-from pytest import mark
-from spacekit.generator.draw import DrawMosaics
 import os
+
+from pytest import mark
+
+from spacekit.generator.draw import DrawMosaics
 
 
 @mark.svm

@@ -1,10 +1,9 @@
-from dash import dcc
-from dash import html
 import dash_cytoscape as cyto
 import dash_daq as daq
+from dash import dcc, html
+
 from spacekit.dashboard.cal import nodegraph
 from spacekit.dashboard.cal.config import ipsts
-
 
 stylesheet = nodegraph.make_stylesheet()
 styles = nodegraph.make_styles()

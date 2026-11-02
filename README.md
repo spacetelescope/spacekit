@@ -127,7 +127,7 @@ ens.batch_fit()
 
 # Save Training Metrics
 outputs = f"data/{date_timestamp}"
-com = ComputeBinary(builder=ens, res_path=f"{outputs}/results/test")
+com = ComputeBinary(builder=ens, res_path=f"{outputs}/results/test", classes=["aligned", "misaligned"])
 com.calculate_results()
 ```
 # Load and plot metrics to evaluate and compare model performance

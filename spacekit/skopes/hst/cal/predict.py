@@ -35,15 +35,16 @@ MEMORY REGRESSION: A third regression model is used to estimate the actual value
 the purpose of logging/future analysis and is not currently being used for allocating memory in calcloud jobs.
 """
 
-import os
 import argparse
+import os
+
 import numpy as np
+
+from spacekit.builder.architect import Builder
 from spacekit.extractor.scrape import S3Scraper
+from spacekit.logger.log import SPACEKIT_LOG, Logger
 from spacekit.preprocessor.scrub import HstCalScrubber
 from spacekit.preprocessor.transform import PowerX, array_to_tensor
-from spacekit.builder.architect import Builder
-from spacekit.logger.log import SPACEKIT_LOG, Logger
-
 
 # build from local filepath
 # MODEL_PATH = os.environ.get("MODEL_PATH", "./models") #"data/2022-02-14-1644848448/models"
@@ -63,12 +64,16 @@ class Predict:
         bucket_name=None,
         key=None,
         model_path=None,
-        models={},
+        models=None,
         tx_file=None,
         norm=1,
-        norm_cols=[0, 1],
+        norm_cols=None,
         **log_kws,
     ):
+        if norm_cols is None:
+            norm_cols = [0, 1]
+        if models is None:
+            models = {}
         self.dataset = dataset
         self.bucket_name = bucket_name
         self.key = "control" if key is None else key
@@ -124,7 +129,9 @@ class Predict:
         self.log.info(f"dataset: {self.dataset} features: {self.inputs}")
         self.normalize_inputs()
 
-    def load_models(self, models={}):
+    def load_models(self, models=None):
+        if models is None:
+            models = {}
         self.mem_clf = models.get(
             "mem_clf",
             load_pretrained_model(model_path=self.model_path, name="mem_clf", **self.log_kws),
@@ -155,7 +162,9 @@ class Predict:
         X = array_to_tensor(data)
         return model.predict(X).item()
 
-    def run_inference(self, models={}):
+    def run_inference(self, models=None):
+        if models is None:
+            models = {}
         if self.X is None:
             self.preprocess()
         membin, pred_proba = self.classifier(self.mem_clf.model, self.X)
@@ -185,7 +194,7 @@ def lambda_handler(event, context):
     mem_clf = load_pretrained_model(model_path=MODEL_PATH, name="mem_clf")
     wall_reg = load_pretrained_model(model_path=MODEL_PATH, name="wall_reg")
     mem_reg = load_pretrained_model(model_path=MODEL_PATH, name="mem_reg")
-    models = dict(mem_clf=mem_clf, wall_reg=wall_reg, mem_reg=mem_reg)
+    models = {"mem_clf": mem_clf, "wall_reg": wall_reg, "mem_reg": mem_reg}
     # import and prep data: control/dataset/dataset_MemModelFeatures.txt
     pred = Predict(
         event["Dataset"],

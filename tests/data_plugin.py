@@ -1,10 +1,12 @@
-import requests
 import hashlib
 import os
 import shutil
+
+import requests
 from pytest import TempPathFactory
-from spacekit.extractor.load import extract_file
+
 from spacekit.datasets.meta import ZID
+from spacekit.extractor.load import extract_file
 
 RETENTION_COUNT=1
 RETENTION_POLICY='none'
@@ -40,7 +42,7 @@ def pytest_configure(config):
                 trace=config.trace.get("tmpdir"),
                 _ispytest=True
             )
-        except Exception: # pytest >= 7.3
+        except AttributeError: # pytest >= 7.3
             tmp_path_factory = TempPathFactory(
                 config.option.basetemp, trace=config.trace.get("tmpdir"), _ispytest=True
             )

@@ -1,7 +1,9 @@
 import itertools
+
 import numpy as np
-from spacekit.preprocessor.transform import PowerX
+
 from spacekit.dashboard.cal.config import NN
+from spacekit.preprocessor.transform import PowerX
 
 clf = NN["mem_clf"]
 mem_reg = NN["mem_reg"]
@@ -178,11 +180,12 @@ def make_weights():
         h5_weights,
         h6_weights,
     ]
-    weights = []
-    for group in weight_groups:
-        for arr in group.values():
-            for w in arr:
-                weights.append(w)
+    weights = [
+        w 
+        for group in weight_groups 
+        for arr in group.values() 
+        for w in arr
+    ]
     return weights
 
 
@@ -419,9 +422,7 @@ def update_edge_pairs(inactive, edge_pairs):
     # determine weight classes: 'deadRelu' if n==0, else ''
     edge_pairs_updated = []
     for source, target, weight in edge_pairs:
-        if source in inactive:
-            classes = "inactiveRelu"
-        elif target in inactive:
+        if source in inactive or target in inactive:
             classes = "inactiveRelu"
         else:
             classes = ""

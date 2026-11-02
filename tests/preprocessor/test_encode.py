@@ -1,7 +1,8 @@
-from pytest import mark
-from spacekit.preprocessor.encode import PairEncoder, HstSvmEncoder
 import pandas as pd
 from numpy import asarray
+from pytest import mark
+
+from spacekit.preprocessor.encode import HstSvmEncoder, PairEncoder
 
 ENCODED_COL_EXPECTED = [
     "detector",
@@ -77,10 +78,8 @@ def test_pair_encoder_unspecified_column(scraped_mast_file):
     enc = PairEncoder()
     enc.fit(data, keypairs)
     assert enc.arr is None
-    try:
-        enc.keypairs
-    except AttributeError:
-        assert True
+    assert not hasattr(enc, "keypairs")
+
 
 
 @mark.svm
@@ -155,10 +154,7 @@ def test_pair_encoder_array_2d_unspecified_axis():
     )
     enc = PairEncoder()
     enc.fit(arr2d, keypairs)
-    try:
-        enc.classes_
-    except AttributeError:
-        assert True
+    assert not hasattr(enc, "classes_")
 
 
 @mark.svm

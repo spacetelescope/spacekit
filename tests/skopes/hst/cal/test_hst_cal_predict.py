@@ -1,9 +1,10 @@
 import os
-from pytest import mark
-from moto import mock_aws
-from spacekit.skopes.hst.cal.predict import local_handler, lambda_handler
-import boto3
 
+import boto3
+from moto import mock_aws
+from pytest import mark
+
+from spacekit.skopes.hst.cal.predict import lambda_handler, local_handler
 
 EXPECTED_PREDS = {
     "asn": {
@@ -73,7 +74,7 @@ def test_lambda_handler(hst_cal_predict_visits, pipeline):
     put_moto_s3_object(dataset, bucketname)
     os.environ["MODEL_PATH"] = "models/hst_cal"
     key = f"control/{dataset}/{dataset}_MemModelFeatures.txt"
-    event = dict(Dataset=dataset, Bucket=bucketname, Key=key)
+    event = {"Dataset": dataset, "Bucket": bucketname, "Key": key}
     preds = lambda_handler(event, None)
     for k, v in preds.items():
         assert v == EXPECTED_PREDS[pipeline][dataset][k]

@@ -14,9 +14,10 @@ df = run_preprocessing("home/syntheticdata", fname="synth2", crpt=1, draw=0)
 
 import argparse
 import os
+
 from spacekit.extractor.scrape import JsonScraper
-from spacekit.preprocessor.scrub import HstSvmScrubber
 from spacekit.generator.draw import DrawMosaics
+from spacekit.preprocessor.scrub import HstSvmScrubber
 
 
 def run_preprocessing(

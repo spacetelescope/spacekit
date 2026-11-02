@@ -9,16 +9,18 @@ but can easily be repurposed for other use-cases (analyzing model performance
 in Jupyter notebooks/Google Colab, for example).
 """
 
-import os
-import pandas as pd
 import glob
+import os
+
+import pandas as pd
+
 from spacekit.analyzer.compute import ComputeBinary, ComputeMulti, ComputeRegressor
 from spacekit.logger.log import Logger
 from spacekit.skopes.jwst.cal.config import KEYPAIR_DATA
 
 try:
-    import plotly.graph_objects as go
     import plotly.figure_factory as ff
+    import plotly.graph_objects as go
     from plotly import subplots
 except ImportError:
     go = None
@@ -52,7 +54,7 @@ def decode_categorical(df, decoder_key):
     return df
 
 
-def import_dataset(filename=None, kwargs=dict(index_col="ipst"), decoder_key=None):
+def import_dataset(filename=None, kwargs=None, decoder_key=None):
     """Imports and loads dataset from csv file. Optionally decodes an encoded feature back into strings.
 
     Parameters
@@ -69,6 +71,8 @@ def import_dataset(filename=None, kwargs=dict(index_col="ipst"), decoder_key=Non
     Pandas DataFrame
         dataframe loaded from csv file
     """
+    if kwargs is None:
+        kwargs = {"index_col": "ipst"}
     if not os.path.exists(filename):
         print("File could not be found")
     # load dataset
@@ -96,7 +100,7 @@ class MegaScanner:
         self.__name__ = name
         self.log = Logger(self.__name__, **log_kws).spacekit_logger()
         self.perimeter = perimeter
-        self.datapaths = sorted(list(glob.glob(perimeter)))
+        self.datapaths = sorted(glob.glob(perimeter))
         self.datasets = [d.split("/")[-1] for d in self.datapaths]
         self.timestamps = [int(t.split("-")[-1]) for t in self.datasets]  # [1636048291, 1635457222, 1629663047]
         self.dates = [str(v)[:10] for v in self.datasets]  # ["2021-11-04", "2021-10-28", "2021-08-22"]
@@ -169,7 +173,7 @@ class MegaScanner:
         versions = []
         for i, (d, t) in enumerate(zip(self.dates, self.timestamps)):
             if self.versions is None:
-                v = f"v{str(i)}"
+                v = f"v{i!s}"
                 versions.append(v)
             else:
                 v = self.versions[i]
@@ -211,11 +215,11 @@ class MegaScanner:
         if alg == "clf":
             try:  # initialize Compute figure attrs
                 com.draw_plots()
-            except Exception as e:
+            except (ValueError, AttributeError) as e:
                 self.log.error(e)
         return com
 
-    def _scan_results(self, coms=[ComputeBinary], algs=["clf"], names=["test"]):
+    def _scan_results(self, coms=None, algs=None, names=None):
         """Scans local disk for Computer object-generated results files of model training iterations.
 
         Returns
@@ -223,6 +227,9 @@ class MegaScanner:
         MegaScanner.mega dictionary attribute
             dictionary of model training results for each iteration found.
         """
+        names = ["test"] if names is None else names
+        algs = ["clf"] if algs is None else algs
+        coms = [ComputeBinary] if coms is None else coms
         objects = list(zip(coms, algs, names))
         self.mega = self.make_mega()
         for i, d in enumerate(self.datapaths):
@@ -307,14 +314,14 @@ class MegaScanner:
                 hovertext=xvals,
                 y=acc_train,
                 name="Training Accuracy",
-                marker=dict(color="dodgerblue"),
+                marker={"color": "dodgerblue"},
             ),
             go.Bar(
                 x=list(range(len(acc_test))),
                 hovertext=xvals,
                 y=acc_test,
                 name="Test Accuracy",
-                marker=dict(color="#66c2a5"),
+                marker={"color": "#66c2a5"},
             ),
         ]
         layout = go.Layout(
@@ -345,14 +352,14 @@ class MegaScanner:
                 y=loss_train,
                 hovertext=xvals,
                 name="Training Loss",
-                marker=dict(color="salmon"),
+                marker={"color": "salmon"},
             ),
             go.Bar(
                 x=list(range(len(loss_test))),
                 y=loss_test,
                 hovertext=xvals,
                 name="Test Loss",
-                marker=dict(color="peachpuff"),
+                marker={"color": "peachpuff"},
             ),
         ]
         layout = go.Layout(
@@ -391,7 +398,7 @@ class MegaScanner:
         self.acc_loss_fig.add_trace(self.loss_fig.data[1], 1, 2)
         self.acc_loss_fig.update_layout(
             title_text="Accuracy vs. Loss",
-            margin=dict(t=50, l=200),
+            margin={"t": 50, "l": 200},
             paper_bgcolor="#242a44",
             plot_bgcolor="#242a44",
             font={
@@ -526,8 +533,8 @@ class MegaScanner:
             annot = list(cmx_fig.layout.annotations)
 
             for k in range(len(annot)):
-                annot[k]["xref"] = f"x{str(col)}"
-                annot[k]["yref"] = f"y{str(col)}"
+                annot[k]["xref"] = f"x{col!s}"
+                annot[k]["yref"] = f"y{col!s}"
             annos.append(annot)
         new_annotations = []
         for a in annos:
@@ -553,11 +560,11 @@ class HstCalScanner(MegaScanner):
         super().__init__(perimeter=perimeter, primary=primary, name="HstCalScanner", **log_kws)
         self.labels = ["2g", "8g", "16g", "64g"]
         self.classes = [0, 1, 2, 3]
-        self.res_keys = dict(mem_bin=None, memory=None, wallclock=None)
-        self.target = list(self.res_keys.keys())[0]
+        self.res_keys = {"mem_bin": None, "memory": None, "wallclock": None}
+        self.target = next(iter(self.res_keys.keys()))
         self.data = self.select_dataset()
         self.mega = self.make_mega()
-        self.kwargs = dict(index_col="ipst")
+        self.kwargs = {"index_col": "ipst"}
         self.decoder = {"instr": {0: "acs", 1: "cos", 2: "stis", 3: "wfc3"}}
 
     def scan_results(self):
@@ -578,7 +585,7 @@ class HstCalScanner(MegaScanner):
         for i in list(range(len(self.versions))):
             v = self.versions[i]
             b, m, w = com_objects[i]
-            self.mega[v]["res"] = dict(mem_bin=b, memory=m, wallclock=w)
+            self.mega[v]["res"] = {"mem_bin": b, "memory": m, "wallclock": w}
             del b, m, w
         return self.mega
 
@@ -615,10 +622,10 @@ class HstSvmScanner(MegaScanner):
         self.labels = ["aligned", "misaligned"]
         self.classes = [0, 1]
         self.res_keys = {"test": {}, "val": {}}
-        self.target = list(self.res_keys.keys())[0]
+        self.target = next(iter(self.res_keys.keys()))
         self.data = self.select_dataset()
         self.mega = self.make_mega()
-        self.kwargs = dict(index_col="index")
+        self.kwargs = {"index_col": "index"}
         self.decoder = {"det": {0: "hrc", 1: "ir", 2: "sbc", 3: "uvis", 4: "wfc"}}
 
     def scan_results(self):
@@ -639,7 +646,7 @@ class HstSvmScanner(MegaScanner):
         for i in list(range(len(self.versions))):
             v = self.versions[i]
             tcom, vcom = com_objects[i]
-            self.mega[v]["res"] = dict(test=tcom, val=vcom)
+            self.mega[v]["res"] = {"test": tcom, "val": vcom}
             del tcom, vcom
         # return self.mega
 
@@ -671,11 +678,11 @@ class JwstCalScanner(MegaScanner):
         super().__init__(perimeter=perimeter, primary=primary, name="JwstCalScanner", **log_kws)
         self.labels = []
         self.classes = []
-        self.res_keys = dict(img3_reg=None)
-        self.target = list(self.res_keys.keys())[0]
+        self.res_keys = {"img3_reg": None}
+        self.target = next(iter(self.res_keys.keys()))
         self.data = self.select_dataset()
         self.mega = self.make_mega()
-        self.kwargs = dict(index_col="img_name")
+        self.kwargs = {"index_col": "img_name"}
         self.decoder = KEYPAIR_DATA
 
     def scan_results(self):
@@ -696,7 +703,7 @@ class JwstCalScanner(MegaScanner):
         for i in list(range(len(self.versions))):
             v = self.versions[i]
             (im3) = com_objects[i]
-            self.mega[v]["res"] = dict(img3_reg=im3)
+            self.mega[v]["res"] = {"img3_reg": im3}
             del im3
         return self.mega
 

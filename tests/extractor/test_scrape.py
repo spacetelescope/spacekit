@@ -1,6 +1,8 @@
-from pytest import mark
-from spacekit.extractor.scrape import JsonScraper, SvmFitsScraper, JwstFitsScraper
 import os
+
+from pytest import mark
+
+from spacekit.extractor.scrape import JsonScraper, JwstFitsScraper, SvmFitsScraper
 
 JSON_COL_EXPECTED = [
     "header.TARGNAME",
@@ -31,8 +33,8 @@ SVM_FITS_COL_EXPECTED = [
     "wcstype",
 ]
 
-JWST_CAL_EXPECTED_HEADERS = dict(
-    jw02732001005_02103_00005_nrcb1 = {
+JWST_CAL_EXPECTED_HEADERS = {
+    "jw02732001005_02103_00005_nrcb1": {
         'PROGRAM': '02732',
         'OBSERVTN': '001',
         'NEXPOSUR': 4,
@@ -63,7 +65,7 @@ JWST_CAL_EXPECTED_HEADERS = dict(
         'CRVAL1': 339.04331382287,
         'CRVAL2': 33.933384524872
     },
-    jw02732005001_02105_00001_mirimage = {
+    "jw02732005001_02105_00001_mirimage": {
         'PROGRAM': '02732',
         'OBSERVTN': '005',
         'NEXPOSUR': 2,
@@ -94,7 +96,7 @@ JWST_CAL_EXPECTED_HEADERS = dict(
         'CRVAL1': 339.03931377347,
         'CRVAL2': 34.014195549057
     },
-    jw01018006001_02101_00001_nis = {
+    "jw01018006001_02101_00001_nis": {
         'PROGRAM': '01018',
         'OBSERVTN': '006',
         'NEXPOSUR': 4,
@@ -125,7 +127,7 @@ JWST_CAL_EXPECTED_HEADERS = dict(
         'CRVAL1': 80.650493681119,
         'CRVAL2': -69.459995044253
     }
-)
+}
 
 @mark.extractor
 @mark.scrape
@@ -185,7 +187,7 @@ def test_jwst_cal_scraper(jwstcal_input_path):
     assert len(scraper.fpaths) == 26
     exp_headers = scraper.scrape_fits()
     assert len(exp_headers) == 26
-    assert sorted(list(exp_headers.keys())) == [
+    assert sorted(exp_headers.keys()) == [
         'jw01018006001_02101_00001_nis',
         'jw01018006001_02101_00002_nis',
         'jw01018006001_02101_00003_nis',

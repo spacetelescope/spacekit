@@ -1,17 +1,19 @@
-import os
 import glob
+import os
 import time
-import pandas as pd
+
 import numpy as np
+import pandas as pd
+
 from spacekit.extractor.scrape import (
-    SvmFitsScraper,
     JwstFitsScraper,
+    SvmFitsScraper,
     scrape_catalogs,
 )
-from spacekit.preprocessor import TRUEVALS, NANVALS, FALSEVALS, SUBNAN
-from spacekit.preprocessor.transform import SkyTransformer
-from spacekit.preprocessor.encode import HstSvmEncoder, JwstEncoder, encode_booleans
 from spacekit.logger.log import Logger
+from spacekit.preprocessor import FALSEVALS, NANVALS, SUBNAN, TRUEVALS
+from spacekit.preprocessor.encode import HstSvmEncoder, JwstEncoder, encode_booleans
+from spacekit.preprocessor.transform import SkyTransformer
 
 
 class Scrubber:
@@ -100,7 +102,9 @@ class Scrubber:
                 self.log.info("Dropping NaNs")
             self.df.dropna(axis=0, inplace=True)
 
-    def drop_and_set_cols(self, label_cols=["label"]):
+    def drop_and_set_cols(self, label_cols=None):
+        if label_cols is None:
+            label_cols = ["label"]
         if self.col_order is None:
             self.log.info("col_order attribute not set - skipping.")
             return self.df
@@ -112,15 +116,16 @@ class Scrubber:
         self.df = self.df.drop(drops, axis=1)
         self.df = self.df[self.col_order]
 
-    def uppercase_vals(self, column_list, exceptions=["channel", "asn_rule", "exptype"]):
+    def uppercase_vals(self, column_list, exceptions=None):
         # set consistent case for categorical column values with a few exceptions
+        if exceptions is None:
+            exceptions = ["channel", "asn_rule", "exptype"]
         for col in column_list:
             if col in self.df.columns and col not in exceptions:
                 try:
                     self.df[col] = self.df[col].apply(lambda x: x.upper())
-                except Exception as e:
-                    print(col)
-                    print(e)
+                except (ValueError, TypeError) as e:
+                    self.log.error(f"Error processing column: {col} - {e}")
         return self.df
 
     def save_csv_file(self, df=None, pfx="", index_col="index"):
@@ -218,10 +223,12 @@ class HstSvmScrubber(Scrubber):
             try:
                 self.df = self.radio(self.df).scrape_mast()
                 n_retries = 0
-            except Exception as e:
+            except ValueError as e:
                 self.log.warning(e)
                 time.sleep(5)
                 n_retries -= 1
+            except Exception:
+                raise
         # STAGE 3 final encoding
         enc = HstSvmEncoder(self.df)
         self.df = enc.encode_features()
@@ -285,11 +292,11 @@ class HstSvmScrubber(Scrubber):
         # fname = 'single_visit_mosaics_2021-10-06.csv'
         fpath = glob.glob(os.path.join(self.input_path, csvfile))
         if len(fpath) == 0:
-            return None
+            return
         data = pd.read_csv(fpath[0], index_col=idx)
         index = {}
         for i, row in data.iterrows():
-            index[i] = dict(index=None, detector=None)
+            index[i] = {"index": None, "detector": None}
             prop = row["proposal"]
             visit = row["visit"]
             num = visit[-2:]
@@ -331,7 +338,7 @@ class HstSvmScrubber(Scrubber):
                 self.df["number_of_gaia_sources.number_of_gaia_sources"] = np.zeros(shape=shape, dtype=int)
                 split_cols.append("number_of_gaia_sources")
             else:
-                raise Exception(f"Dataframe is missing some data:\n {missing}")
+                raise ValueError(f"Dataframe is missing some data:\n {missing}")
 
         super().rename_cols(new=split_cols)
         super().extract_matching_columns(self.new_cols)
@@ -517,7 +524,7 @@ class HstCalScrubber(Scrubber):
         # dtype (asn or singleton)
         dtype = 1 if i[-1] == "0" else 0
         # instr encoding cols
-        instr_key = dict(j=0, l=1, o=2, i=3)
+        instr_key = {"j": 0, "l": 1, "o": 2, "i": 3}
         for k, v in instr_key.items():
             if i[0] == k:
                 instr = v
@@ -537,10 +544,10 @@ class HstCalScrubber(Scrubber):
 
     def image_pixel_scales(self):
         # calculate sky separation / reference pixel offset statistics
-        return dict(
-            ACS=dict(WFC=0.05),
-            WFC3=dict(UVIS=0.04, IR=0.13),
-        )
+        return {
+            "ACS": {"WFC": 0.05},
+            "WFC3": {"UVIS": 0.04, "IR": 0.13},
+        }
 
 
 class JwstCalScrubber(Scrubber):
@@ -582,11 +589,11 @@ class JwstCalScrubber(Scrubber):
     ):
         self.input_path = input_path
         self.exp_headers = None
-        self.products = dict()
-        self.img_products = dict()
-        self.spec_products = dict()
-        self.tac_products = dict()
-        self.fgs_products = dict()
+        self.products = {}
+        self.img_products = {}
+        self.spec_products = {}
+        self.tac_products = {}
+        self.fgs_products = {}
         self.imgpix = None
         self.specpix = None
         self.tacpix = None
@@ -703,7 +710,7 @@ class JwstCalScrubber(Scrubber):
         return self._expdata()
 
     def _expdata(self):
-        return dict(IMAGE=self.img_products, SPEC=self.spec_products, TAC=self.tac_products, FGS=self.fgs_products)
+        return {"IMAGE": self.img_products, "SPEC": self.spec_products, "TAC": self.tac_products, "FGS": self.fgs_products}
 
     def scrape_inputs(self):
         """Scrape input exposure header metadata from fits files on local disk located at `self.input_path`."""
@@ -867,40 +874,40 @@ class JwstCalScrubber(Scrubber):
         """
         targ_exptypes = [t for t in self.level3_types if t not in self.source_based]
         targra = list(
-            set(
-                [
+            {
+                
                     np.round(v["TARG_RA"], 6)
                     for v in self.exp_headers.values()
                     if v["EXP_TYPE"] in targ_exptypes and v["VISITYPE"] == "PRIME_TARGETED_FIXED"
-                ]
-            )
+                
+            }
         )
         rnums = [f"t{i + 1}" for i, _ in enumerate(targra)]
         rn = dict(zip(targra, rnums))
 
         targetnames = list(
-            set(
-                [
+            {
+                
                     v["TARGNAME"]
                     for v in self.exp_headers.values()
                     if v["EXP_TYPE"] in targ_exptypes and v["TARGNAME"] not in NANVALS and v["VISITYPE"] != "PRIME_TARGETED_FIXED"
-                ]
-            )
+                
+            }
         )
         tnums = [f"t{i + 1}" for i, _ in enumerate(targetnames)]
         tn = dict(zip(targetnames, tnums))
 
         gstargs = list(
-            set(
-                [
+            {
+                
                     v["GS_MAG"]
                     for v in self.exp_headers.values()
                     if v["GS_MAG"] not in NANVALS
                     and v["EXP_TYPE"] in targ_exptypes
                     and v["TARGNAME"] not in targetnames
                     and v["VISITYPE"] not in ["PRIME_TARGETED_FIXED", "PARALLEL_PURE"]
-                ]
-            )
+                
+            }
         )
         gnums = [f"t{i + 1}" for i, _ in enumerate(gstargs)]
         gn = dict(zip(gstargs, gnums))
@@ -933,15 +940,15 @@ class JwstCalScrubber(Scrubber):
         visit types where TARGNAME != NaN. If multiple unique TARG_RA/DEC values (rounded to 6 digits)
         are identified within the group of exposures, we can assume each TARG grouping is a unique L3 product.
         """
-        revised = dict()
+        revised = {}
         for expmode, data in self.expdata.items():
             multitra = [
                 k
                 for k, v in data.items()
                 if np.unique([np.round(j["TARG_RA"], 6) for j in v.values()]).size > 1
                 and np.unique([np.round(j["TARG_DEC"], 6) for j in v.values()]).size > 1
-                and list(v.values())[0]["VISITYPE"] == "PRIME_TARGETED_FIXED"
-                and list(v.values())[0]["TARGNAME"] in self.targetnames
+                and next(iter(v.values()))["VISITYPE"] == "PRIME_TARGETED_FIXED"
+                and next(iter(v.values()))["TARGNAME"] in self.targetnames
             ]
             if multitra:
                 revised[expmode] = multitra
@@ -949,9 +956,9 @@ class JwstCalScrubber(Scrubber):
         tgroups = {k: {} for k in list(revised.keys())}
         for expmode, products in revised.items():
             for k in products:
-                tgroups[expmode][k] = dict()
+                tgroups[expmode][k] = {}
                 v = self.expdata[expmode][k]
-                tname = list(v.values())[0]["TARGNAME"]
+                tname = next(iter(v.values()))["TARGNAME"]
                 targras = np.unique([np.round(j["TARG_RA"], 6) for j in v.values()])
                 tnum = self.tn.get(tname)
                 for i, t in enumerate(targras):
@@ -959,22 +966,21 @@ class JwstCalScrubber(Scrubber):
                     k2 = k.replace(tnum, tnum + f"x{i}")
                     tgroups[expmode][k][k2] = {e: v[e] for e in exposures}
 
-        for expmode in tgroups.keys():
+        for expmode, value in tgroups.items():
             expdata = self.expdata[expmode]
-            ks = list(tgroups[expmode].keys())
-            for k in ks:
-                for k2, grp in tgroups[expmode][k].items():
+            for k in list(value.keys()):
+                for k2, grp in value[k].items():
                     expdata.update({k2: grp})
                 del expdata[k]
 
     def update_fgs(self):
-        self.fgspix = dict()
+        self.fgspix = {}
         if len(self.fgs_products) == 0:
             return
         for product, exp_data in self.fgs_products.items():
-            first_key = list(exp_data.keys())[0]
+            first_key = next(iter(exp_data.keys()))
             self.fgspix[product] = exp_data[first_key]
-            self.fgspix[product].update(dict(NEXPOSUR=len(list(exp_data.keys()))))
+            self.fgspix[product].update({"NEXPOSUR": len(list(exp_data.keys()))})
             if product not in self.products:
                 self.products[product] = exp_data
 
@@ -986,12 +992,12 @@ class JwstCalScrubber(Scrubber):
         dict
             input data grouped by exp_type (IMAGE, SPEC, FGS, TAC)
         """
-        return dict(
-            IMAGE=self.imgpix,
-            SPEC=self.specpix,
-            TAC=self.tacpix,
-            FGS=self.fgspix,
-        )
+        return {
+            "IMAGE": self.imgpix,
+            "SPEC": self.specpix,
+            "TAC": self.tacpix,
+            "FGS": self.fgspix,
+        }
 
     def scrub_inputs(self, exp_type="IMAGE"):
         """Main calling function for preprocessing input exposures of a given exposure type.
@@ -1060,8 +1066,8 @@ class JwstCalScrubber(Scrubber):
         dict
             key-value pairs of data type and exposure header / column name
         """
-        return dict(
-            continuous=[
+        return {
+            "continuous": [
                 "nexposur",
                 "numdthpt",
                 "targ_max_offset",
@@ -1075,8 +1081,8 @@ class JwstCalScrubber(Scrubber):
                 "targ_frac",
                 "gs_mag",
             ],
-            boolean=["bkgdtarg", "tsovisit", "is_imprt", "crowdfld"],
-            categorical=[
+            "boolean": ["bkgdtarg", "tsovisit", "is_imprt", "crowdfld"],
+            "categorical": [
                 "instr",
                 "detector",
                 "filter",
@@ -1088,7 +1094,7 @@ class JwstCalScrubber(Scrubber):
                 "subarray",
                 "visitype",
             ],
-        )
+        }
 
 
 class NaNdler:
@@ -1141,7 +1147,7 @@ class NaNdler:
                 df_cat.loc[df_cat[col].isin(["N/A", "NaN", "NAN", "nan"]), col] = np.nan
                 if df_cat[col].isna().sum() > 0:
                     truevals = list(df_cat[col].value_counts().index)
-                    df_cat[col] = df_cat[col].apply(lambda x: self.nandle_cats(x, truevals))
+                    df_cat[col] = df_cat[col].where(df_cat[col].isin(truevals), "NONE")
             self.df[cols] = df_cat[cols]
 
     def boolean_nandler(self, replace=True):

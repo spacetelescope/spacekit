@@ -26,6 +26,4 @@ mem_reg = Builder(blueprint="memory_regression", model_path=model_path, name="me
 
 wall_reg = Builder(blueprint="wallclock_regression", model_path=model_path, name="wall_reg").load_saved_model()
 
-
-global NN
 NN = {"mem_clf": clf, "mem_reg": mem_reg, "wall_reg": wall_reg}

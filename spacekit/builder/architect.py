@@ -1,30 +1,32 @@
+import datetime as dt
+import importlib.resources
 import os
 import sys
-import importlib.resources
-from zipfile import ZipFile
-import numpy as np
 import time
-import datetime as dt
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.models import Sequential, Model, load_model
-from tensorflow.keras import optimizers, callbacks
+from zipfile import ZipFile
+
+import numpy as np
+from tensorflow.keras import callbacks, optimizers
 from tensorflow.keras.layers import (
-    Dense,
-    Input,
-    concatenate,
+    BatchNormalization,
     Conv1D,
-    MaxPool1D,
+    Conv3D,
+    Dense,
     Dropout,
     Flatten,
-    BatchNormalization,
-    Conv3D,
-    MaxPool3D,
     GlobalAveragePooling3D,
+    Input,
+    MaxPool1D,
+    MaxPool3D,
+    concatenate,
 )
 from tensorflow.keras.metrics import RootMeanSquaredError as RMSE
-from spacekit.generator.augment import augment_data, augment_image
+from tensorflow.keras.models import Model, Sequential, load_model
+from tensorflow.keras.optimizers import Adam
+
 from spacekit.analyzer.track import stopwatch, xtimer
 from spacekit.builder.blueprints import Blueprint
+from spacekit.generator.augment import augment_data, augment_image
 from spacekit.logger.log import Logger
 
 TF_CPP_MIN_LOG_LEVEL = 2
@@ -81,7 +83,7 @@ class Builder:
         self,
         arch=None,
         compile_params=None,
-        custom_obj={},
+        custom_obj=None,
         extract_to="models",
         keras_archive=True,
     ):
@@ -109,6 +111,8 @@ class Builder:
         Keras functional Model object
             pre-trained (and/or compiled) functional Keras model.
         """
+        if custom_obj is None:
+            custom_obj = {}
         if self.model_path is None:
             self.load_pretrained_network(arch=arch)
         if str(self.model_path).split(".")[-1] == "zip":
@@ -126,13 +130,13 @@ class Builder:
                         if d == self.name:
                             self.model_path = os.path.join(root, d)
 
-        self.log.debug(f"Loading saved model from {str(self.model_path)}")
+        self.log.debug(f"Loading saved model from {self.model_path!s}")
         try:
             self.model = load_model(self.model_path, custom_objects=custom_obj)
             if compile_params:
                 self.model = Model(inputs=self.model.inputs, outputs=self.model.outputs)
                 self.model.compile(**compile_params)
-        except Exception as e:
+        except (ValueError, TypeError) as e:
             self.log.error(e)
         return self.model
 
@@ -265,30 +269,30 @@ class Builder:
         dict
             dictionary of key-val pairs for initialized model's build parameters
         """
-        return dict(
-            input_shape=self.input_shape,
-            output_shape=self.output_shape,
-            layers=self.layers,
-            kernel_size=self.kernel_size,
-            activation=self.activation,
-            cost_function=self.cost_function,
-            strides=self.strides,
-            optimizer=self.optimizer,
-            lr_sched=self.lr_sched,
-            loss=self.loss,
-            metrics=self.metrics,
-            input_name=self.input_name,
-            output_name=self.output_name,
-            name=self.name,
-            algorithm=self.algorithm,
-        )
+        return {
+            "input_shape": self.input_shape,
+            "output_shape": self.output_shape,
+            "layers": self.layers,
+            "kernel_size": self.kernel_size,
+            "activation": self.activation,
+            "cost_function": self.cost_function,
+            "strides": self.strides,
+            "optimizer": self.optimizer,
+            "lr_sched": self.lr_sched,
+            "loss": self.loss,
+            "metrics": self.metrics,
+            "input_name": self.input_name,
+            "output_name": self.output_name,
+            "name": self.name,
+            "algorithm": self.algorithm,
+        }
 
     def fit_params(
         self,
         batch_size=32,
         epochs=60,
         lr=1e-4,
-        decay=[100000, 0.96],
+        decay=None,
         early_stopping=None,
         verbose=2,
         ensemble=False,
@@ -317,6 +321,8 @@ class Builder:
         self
             spacekit.builder.architect.Builder class object with updated fitting parameters.
         """
+        if decay is None:
+            decay = [100000, 0.96]
         self.batch_size = batch_size
         self.epochs = epochs
         self.lr = lr
@@ -334,15 +340,15 @@ class Builder:
         dict
             key-val pairs of model fitting hyperparameters
         """
-        return dict(
-            batch_size=self.batch_size,
-            epochs=self.epochs,
-            lr=self.lr,
-            decay=self.decay,
-            early_stopping=self.early_stopping,
-            verbose=self.verbose,
-            ensemble=self.ensemble,
-        )
+        return {
+            "batch_size": self.batch_size,
+            "epochs": self.epochs,
+            "lr": self.lr,
+            "decay": self.decay,
+            "early_stopping": self.early_stopping,
+            "verbose": self.verbose,
+            "ensemble": self.ensemble,
+        }
 
     def get_blueprint(self, architecture, fitting=True):
         draft = Blueprint(architecture=architecture)
@@ -417,7 +423,7 @@ class Builder:
         """
         if self.name is None:
             self.name = str(self.model.name)
-            datestamp = dt.datetime.now().isoformat().split("T")[0]
+            datestamp = dt.datetime.now(tz=dt.timezone.utc).isoformat().split("T")[0]
             model_name = f"{self.name}_{datestamp}"
         else:
             model_name = self.name
@@ -436,7 +442,7 @@ class Builder:
                 self.model.save_weights(weights_path)
             for root, _, files in os.walk(model_path):
                 indent = "    " * root.count(os.sep)
-                print("{}{}/".format(indent, os.path.basename(root)))
+                print(f"{indent}{os.path.basename(root)}/")
                 for filename in files:
                     print("{}{}".format(indent + "    ", filename))
             self.model_path = model_path
@@ -593,7 +599,7 @@ class BuilderMLP(Builder):
         self.steps_per_epoch = self.step_size // self.batch_size
         self.batch_maker = self.batch
 
-    def build(self, layer_kwargs={}):
+    def build(self, layer_kwargs=None):
         """Build and compile an MLP network
 
         Returns
@@ -602,6 +608,8 @@ class BuilderMLP(Builder):
             compiled model object
         """
         # visible layer
+        if layer_kwargs is None:
+            layer_kwargs = {}
         inputs = Input(shape=(self.input_shape,), name=self.input_name)
         # hidden layers
         x = Dense(self.layers[0], activation=self.activation, name=f"1_dense{self.layers[0]}")(inputs)

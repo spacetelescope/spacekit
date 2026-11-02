@@ -1,3 +1,11 @@
+1.1.5 (unreleased)
+==================
+
+testing
+-------
+- Style formatting fixes for updated Ruff lint checks in CICD [#160]
+
+
 1.1.4 (2026-02-09)
 ==================
 

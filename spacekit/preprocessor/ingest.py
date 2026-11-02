@@ -1,17 +1,19 @@
-import os
-import sys
 import glob
+import os
 import shutil
-import pandas as pd
-import numpy as np
+import sys
 from argparse import ArgumentParser
-from spacekit.logger.log import Logger
+
+import numpy as np
+import pandas as pd
+
+from spacekit.analyzer.track import record_metrics, timer, xtimer
 from spacekit.extractor.scrape import JsonScraper
+from spacekit.generator.draw import DrawMosaics
+from spacekit.logger.log import Logger
 from spacekit.preprocessor import FALSEVALS
 from spacekit.preprocessor.scrub import HstSvmScrubber, JwstCalScrubber
-from spacekit.generator.draw import DrawMosaics
 from spacekit.skopes.jwst.cal.config import KEYPAIR_DATA, L3_TYPES
-from spacekit.analyzer.track import timer, record_metrics, xtimer
 
 
 class SvmAlignmentIngest:
@@ -53,20 +55,17 @@ class SvmAlignmentIngest:
         drz_file = glob.glob(f"{visit_path}/*total*.fits")
         if len(drz_file) > 0:
             dets = [drz.split("/")[-1].split("_")[4] for drz in drz_file]
-            try:
-                input_path = os.path.dirname(visit_path)
-                for det in dets:
-                    _, _ = self.run_preprocessing(
-                        input_path,
-                        fname=f"{visit}_{det.lower()}_data",
-                        output_path=self.batch_out,
-                        visit=visit,
-                    )
-                if self.clean is True:
-                    shutil.rmtree(visit_path)
-            except Exception as e:
-                print(e)
-                sys.exit(1)
+            input_path = os.path.dirname(visit_path)
+            for det in dets:
+                _, _ = self.run_preprocessing(
+                    input_path,
+                    fname=f"{visit}_{det.lower()}_data",
+                    output_path=self.batch_out,
+                    visit=visit,
+                )
+            if self.clean is True:
+                shutil.rmtree(visit_path)
+
 
     def run_preprocessing(
         self,
@@ -334,7 +333,7 @@ class JwstCalIngest:
         pandas.DataFrame
             dataframe with only L1 and L3 datasets
         """
-        alldags = sorted(list(df[self.dag].value_counts().index))
+        alldags = sorted(df[self.dag].value_counts().index)
         l1_dags = [d for d in alldags if "1" in d]
         l3_dags = [d for d in alldags if "3" in d and "MEMORY" not in d]
         dags_l1_l3 = l1_dags + l3_dags
@@ -426,7 +425,7 @@ class JwstCalIngest:
             recasted dataframe
         """
         df["OBSERVTN"] = df["OBSERVTN"].apply(lambda x: self.validate_obs(x))
-        df["PROGRAM"] = df["PROGRAM"].apply(lambda x: "{:0>5}".format(x))
+        df["PROGRAM"] = df["PROGRAM"].apply(lambda x: f"{x:0>5}")
         for col in self.float_cols:
             df[col] = df[col].apply(lambda x: self.convert_to_float(x))
         df["year"] = df["year"].astype("int64")
@@ -454,8 +453,8 @@ class JwstCalIngest:
             self.log.info(f"Prior data loaded successfully: {len(ds)} exposures added.")
             try:
                 self.df = pd.concat([self.df, ds], axis=0)
-            except Exception as e:
-                self.log.error(str(e))
+            except ValueError as e:
+                self.log.error(e)
             self.update_dags()
             self.df = self.df.sort_values(by="date").drop_duplicates(subset="dname", keep="last")
             di.drop(ds.index, axis=0, inplace=True)
@@ -466,7 +465,7 @@ class JwstCalIngest:
         """Update the lists of l1 and l3 dag values once a collection of datasets from multiple files are ingested
         (including priors loaded from ingest.csv).
         """
-        alldags = sorted(list(self.df[self.dag].value_counts().index))
+        alldags = sorted(self.df[self.dag].value_counts().index)
         self.l1_dags = [d for d in alldags if "1" in d]
         self.l3_dags = [d for d in alldags if "3" in d and "MEMORY" not in d]
 
@@ -480,20 +479,18 @@ class JwstCalIngest:
         wfsc = self.df.loc[self.df["VISITYPE"].isin(wftypes)].copy()
         self.df.drop(wfsc.index, axis=0, inplace=True)
         if len(self.df) > 0:
-            params = list(
-                map(lambda x: "-".join([str(y) for y in x if str(y) not in FALSEVALS]), self.df[self.param_cols].values)
-            )
+            params = ["-".join([str(y) for y in x if str(y) not in FALSEVALS]) for x in self.df[self.param_cols].values]
             self.df["params"] = pd.DataFrame(params, index=self.df.index)
         if len(wfsc) > 0:
-            wfparams = list(map(lambda x: "-".join([str(y) for y in x if str(y) not in FALSEVALS]), wfsc[wfcols].values))
+            wfparams = ["-".join([str(y) for y in x if str(y) not in FALSEVALS]) for x in wfsc[wfcols].values]
             wfsc["params"] = pd.DataFrame(wfparams, index=wfsc.index)
             self.df = pd.concat([self.df, wfsc], axis=0)
 
     @staticmethod
     def save_kwargs(path):
         if not os.path.exists(path):
-            return dict(index=False)
-        return dict(mode="a", index=False, header=False)
+            return {"index": False}
+        return {"mode": "a", "index": False, "header": False}
 
     @staticmethod
     def strip_file_suffix(x):
@@ -512,7 +509,7 @@ class JwstCalIngest:
 
     @staticmethod
     def validate_obs(x):
-        return "{:0>3}".format(x)
+        return f"{x:0>3}"
 
     @staticmethod
     def convert_to_float(x):
@@ -535,11 +532,7 @@ class JwstCalIngest:
         bool
             True if the dataset name is a mosiac otherwise False
         """
-        if len(x.split("-")) < 2:
-            return False
-        elif x.split("-")[1][0] != "c":
-            return False
-        return True
+        return not (len(x.split("-")) < 2 or x.split("-")[1][0] != "c")
 
     def drop_mosaics(self):
         """Separate mosaic L3 products and save to `mosaics.csv` on local disk."""
@@ -577,11 +570,11 @@ class JwstCalIngest:
             Dictionary of each exp_type's dataframe of raw (unencoded) L3 products generated based on groups of L1 input exposures run through the JWST Scubber.
         """
         data = [self.scrb.imgpix, self.scrb.specpix, self.scrb.tacpix, self.scrb.fgspix]
-        return map(lambda x: pd.DataFrame.from_dict(x, orient="index"), data)
+        return (pd.DataFrame.from_dict(x, orient="index") for x in data)
 
     def extrapolate(self):
         """Match each group of L1 input exposures to a single L3 product, then separate unmatched exposures from the dataframe and convert imagesize to gigabytes. If any L3 products remain unmatched, the preliminary assumption is that these datasets were reprocessed and an attempt is made to update the relevant features for this product within the existing training file stored on local disk at `training.csv` if it exists. Warnings are reported by the log if multiple L3 products match a particular group of L1 inputs and/or L3 products remain that could not be matched with any input exposures or a previous L3 product in the existing training set. In both cases, these products are stored as a list in the `self.l3` attribute for further analysis and debugging since either occurrence indicates an error in the way data is being ingested (often as a result of unexpected changes made within the JWST pipeline after a given release)."""
-        for exp in self.data.keys():
+        for exp in self.data:
             self.match_product_groups(exp)
             if len(self.exmatches[exp]) > 0:
                 self.log.warning(f"Multiple matches in {exp}: {len(self.exmatches[exp])}")
@@ -657,7 +650,7 @@ class JwstCalIngest:
                     if len(l3) > 1:  # FALLBACK
                         # check if miri ifu (l3 products identical for each band)
                         self.log.warning(f"MULTI MATCH ELIMINATION: {k}")
-                        pnames = sorted(list(l3.index))
+                        pnames = sorted(l3.index)
                         self.exmatches[exp_type][info["params"]] = pnames
                         self.df.loc[self.df.dname.isin(pnames), "expmode"] = exp_type
                         l3 = l3.loc[l3["dname"] == pnames[0]]
@@ -732,10 +725,10 @@ class JwstCalIngest:
             try:
                 expmode = dp.loc[pname]["expmode"]
                 if expmode not in updates:
-                    updates[expmode] = dict()
-                updates[expmode][pname] = dict(
-                    imagesize=l3.loc[pname].imagesize, doy=l3.loc[pname].doy, date=l3.loc[pname].date, year=l3.loc[pname].year
-                )
+                    updates[expmode] = {}
+                updates[expmode][pname] = {
+                    "imagesize": l3.loc[pname].imagesize, "doy": l3.loc[pname].doy, "date": l3.loc[pname].date, "year": l3.loc[pname].year
+                }
             except KeyError:
                 notrepro.append(pname)
                 continue
@@ -765,7 +758,7 @@ class JwstCalIngest:
         Any remaining L1 inputs that did not have a matching L3 product are saved to `rem-{exp-type}.csv` primarily for debugging purposes.
         """
         for exp in self.exp_types:
-            if exp in self.data.keys() and len(self.data[exp]) > 0:
+            if exp in self.data and len(self.data[exp]) > 0:
                 fpath = self.trainpath.format(exp.lower())
                 self.data[exp][self.idxcol] = self.data[exp]["pname"]
                 self.data[exp].to_csv(fpath, **self.save_kwargs(fpath))
@@ -773,7 +766,7 @@ class JwstCalIngest:
                 wpath = self.rawpath.format(exp.lower())
                 self.raw[exp][self.idxcol] = self.raw[exp]["pname"]
                 self.raw[exp].to_csv(wpath, **self.save_kwargs(wpath))
-            if exp in self.rem.keys() and len(self.rem[exp]) > 0:
+            if exp in self.rem and len(self.rem[exp]) > 0:
                 rpath = self.rempath.format(exp.lower())
                 self.rem[exp][self.idxcol] = self.rem[exp].index
                 self.rem[exp].to_csv(rpath, index=False)

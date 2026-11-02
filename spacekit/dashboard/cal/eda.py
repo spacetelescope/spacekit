@@ -1,5 +1,5 @@
-from dash import dcc
-from dash import html
+from dash import dcc, html
+
 from spacekit.dashboard.cal.config import hst
 
 layout = html.Div(

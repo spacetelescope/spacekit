@@ -1,7 +1,5 @@
 # from . import home
-from . import eda
-from . import eval
-from . import pred
+from . import eda, eval, pred
 
 __all__ = [
     # "home",

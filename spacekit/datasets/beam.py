@@ -24,11 +24,12 @@ archive: json filepath containing metadata structured similar to dictionaries in
 """
 
 import argparse
-import sys
-import os
 import json
+import os
+import sys
+
 from spacekit.datasets.meta import spacekit_collections
-from spacekit.extractor.scrape import WebScraper, S3Scraper, FileScraper
+from spacekit.extractor.scrape import FileScraper, S3Scraper, WebScraper
 from spacekit.logger.log import SPACEKIT_LOG
 
 S3PREFIX = os.environ.get("PFX", "archive")
@@ -57,7 +58,7 @@ def download(scrape="file:data", datasets="2022-02-14,2021-11-04,2021-10-28", de
                     cache_dir=cache_dir,
                     cache_subdir=cache_subdir,
                 )
-        elif archive in spacekit_collections.keys():
+        elif archive in spacekit_collections:
             SPACEKIT_LOG.info(f"Scraping spacekit collection {archive.upper()}")
             cc = spacekit_collections[archive]  # "calcloud", "svm"
             dd = {}
@@ -84,7 +85,7 @@ def download(scrape="file:data", datasets="2022-02-14,2021-11-04,2021-10-28", de
             if scraper.fpaths:
                 SPACEKIT_LOG.info(f"Datasets: {scraper.fpaths}")
                 return scraper.fpaths
-        except Exception as e:
+        except FileNotFoundError as e:
             SPACEKIT_LOG.error(f"Could not locate datasets {e}")
             sys.exit(1)
     elif fpaths:

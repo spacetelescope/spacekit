@@ -1,15 +1,18 @@
-import os
-import shutil
 import glob
+import os
 import re
+import shutil
+
 import numpy as np
 import pandas as pd
+
 from spacekit.logger.log import Logger
 
 try:
+    from astroquery.exceptions import ResolverError
     from astroquery.mast import Observations
 except ImportError:
-    Observations = None
+    Observations = None 
 
 try:
     import boto3
@@ -35,12 +38,7 @@ def check_progressbar():
 
 
 def check_imports():
-    if not check_progressbar():
-        return False
-    elif not check_astroquery():
-        return False
-    else:
-        return True
+    return not (not check_progressbar() or not check_astroquery())
 
 
 class Radio:
@@ -84,6 +82,7 @@ class Radio:
                 "radio module to work. \n\nInstall all extra deps via "
                 "`pip install spacekit[x]`"
             )
+        
         self.configure_aws()
 
     def configure_aws(self):
@@ -111,7 +110,7 @@ class Radio:
         proposal_id, filters, obsid
         target, radius, s_ra, s_dec
         """
-        query_params = dict()
+        query_params = {}
         for k, v in kwargs.items():
             if v is not None:
                 query_params[k] = v
@@ -201,7 +200,7 @@ class Radio:
                 self.s3_uris.append(uri)
                 if uri in self.errors:
                     self.errors.remove(uri)
-            except Exception:  # ResolverError:
+            except ResolverError:
                 self.log.error(f"Could not resolve {target} to a sky position.")
                 self.errors.append(target)
                 continue
@@ -422,9 +421,9 @@ class HstSvmRadio(Radio):
         return obs_id, prop_id
 
     def prop_radec_dict(self):
-        params = dict()
+        params = {}
         for idx, row in self.targ_any.iterrows():
-            params[idx] = dict()
+            params[idx] = {}
             obs_id, prop_id = self.extract_params_from_index(idx)
             params[idx]["obs_id"] = obs_id
             params[idx]["proposal_id"] = prop_id
@@ -437,8 +436,8 @@ class HstSvmRadio(Radio):
 class JwstCalRadio(Radio):
     def __init__(self, **log_kws):
         super().__init__(name="JwstCalRadio", **log_kws)
-        self.product_matches = dict()
-        self.asn_kwargs = dict(productSubGroupDescription=["ASN"], productGroupDescription=["Minimum Recommended Products"])
+        self.product_matches = {}
+        self.asn_kwargs = {"productSubGroupDescription": ["ASN"], "productGroupDescription": ["Minimum Recommended Products"]}
         self.errs = {}
         self.verbose = False
 
@@ -448,10 +447,10 @@ class JwstCalRadio(Radio):
                 continue
             products = list(input_data[exptype].index)
             self.log.info(f"Querying MAST for {len(products)} L3 {exptype} products")
-            self.product_matches[exptype] = dict()
-            self.errs[exptype] = dict()
-            spec = True if exptype == "SPEC" else False
-            query_params = dict(wildcard=True, limit=1) if spec is True else {}
+            self.product_matches[exptype] = {}
+            self.errs[exptype] = {}
+            spec = exptype == "SPEC"
+            query_params = {"wildcard": True, "limit": 1} if spec is True else {}
             for k in products:
                 try:
                     obsid = self.get_obsid(k, spec=spec)
@@ -463,7 +462,7 @@ class JwstCalRadio(Radio):
                             self.log.info(f"{k} = {match['pname']} = {match['asn']}")
                     else:
                         self.log_error(k, exptype)
-                except Exception as e:
+                except ResolverError as e:
                     self.errs[exptype][k] = str(e)
             nresults = len(self.product_matches[exptype])
             self.log.info(f"{nresults} of {len(products)} matched for {exptype}.")
@@ -509,7 +508,7 @@ class JwstCalRadio(Radio):
         if len(obs) > 0:
             try:
                 targname = obs["target_name"][0]
-            except Exception:
+            except IndexError:
                 targname = None
             data_prod = Observations.get_product_list(obs["obsid"])
             filt_prod = Observations.filter_products(data_prod, **self.asn_kwargs)
@@ -534,7 +533,7 @@ class JwstCalRadio(Radio):
         product = filt_prod["obs_id"][0]
         asn_file = filt_prod["productFilename"][0]
         asn_name = asn_file.replace("_asn.json", "")
-        match = dict(pname=product, asn=asn_name, TARGNAME=targname)
+        match = {"pname": product, "asn": asn_name, "TARGNAME": targname}
         return match
 
     def match_image_asn(self, input_data):
@@ -542,8 +541,8 @@ class JwstCalRadio(Radio):
             return
         image_products = list(input_data["IMAGE"].index)
         self.log.info(f"Querying MAST for {len(image_products)} L3 image products")
-        self.product_matches["IMAGE"] = dict()
-        self.errs["IMAGE"] = dict()
+        self.product_matches["IMAGE"] = {}
+        self.errs["IMAGE"] = {}
         for k in image_products:
             try:
                 obsid = self.get_obsid(k)
@@ -555,7 +554,7 @@ class JwstCalRadio(Radio):
                         self.log.info(f"{k} = {match['pname']} = {match['asn']}")
                 else:
                     self.log_error(k, "IMAGE")
-            except Exception as e:
+            except ResolverError as e:
                 self.errs["IMAGE"][k] = str(e)
         nresults = len(self.product_matches["IMAGE"])
         self.log.info(f"{nresults} of {len(image_products)} matched.")
@@ -565,8 +564,8 @@ class JwstCalRadio(Radio):
             return
         spec_products = list(input_data["SPEC"].index)
         self.log.info(f"Querying MAST for {len(spec_products)} L3 spec products")
-        self.product_matches["SPEC"] = dict()
-        self.errs["SPEC"] = dict()
+        self.product_matches["SPEC"] = {}
+        self.errs["SPEC"] = {}
         for k in spec_products:
             try:
                 obsid = self.get_obsid(k, spec=True)
@@ -578,7 +577,7 @@ class JwstCalRadio(Radio):
                         self.log.info(f"{k} = {match['pname']} = {match['asn']}")
                 else:
                     self.log_error(k, "SPEC")
-            except Exception as e:
+            except ResolverError as e:
                 self.errs["SPEC"][k] = str(e)
         nresults = len(self.product_matches["SPEC"])
         self.log.info(f"{nresults} of {len(spec_products)} matched.")
@@ -588,8 +587,8 @@ class JwstCalRadio(Radio):
             return
         tac_products = list(input_data["TAC"].index)
         self.log.info(f"Querying MAST for {len(tac_products)} L3 tac products")
-        self.product_matches["TAC"] = dict()
-        self.errs["TAC"] = dict()
+        self.product_matches["TAC"] = {}
+        self.errs["TAC"] = {}
         for k in tac_products:
             try:
                 obsid = self.get_obsid(k)
@@ -601,7 +600,7 @@ class JwstCalRadio(Radio):
                         self.log.info(f"{k} = {match['pname']} = {match['asn']}")
                 else:
                     self.log_error(k, "TAC")
-            except Exception as e:
+            except ResolverError as e:
                 self.errs["TAC"][k] = str(e)
         nresults = len(self.product_matches["TAC"])
         self.log.info(f"{nresults} of {len(tac_products)} matched.")
