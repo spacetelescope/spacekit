@@ -3,11 +3,12 @@
 # This file only contains a selection of the most common options. For a full
 # list see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
-import os
-import sys
 import datetime
 import importlib
+import os
+import sys
 from configparser import ConfigParser
+
 
 # -- Path setup --------------------------------------------------------------
 def setup(app):
@@ -27,7 +28,7 @@ sys.path.insert(0, os.path.abspath('../'))
 
 
 # -- General configuration ------------------------------------------------
-conf.read([os.path.join(os.path.dirname((os.path.dirname(__file__))), '..', 'setup.cfg')])
+conf.read([os.path.join(os.path.dirname(os.path.dirname(__file__)), '..', 'setup.cfg')])
 setup_cfg = dict(conf.items('metadata'))
 
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
@@ -83,7 +84,7 @@ master_doc = "index"
 # General information about the project
 project = setup_cfg['name']
 author = setup_cfg['author']
-copyright = '{0}, {1}'.format(datetime.datetime.now().year, author)
+copyright = f'{datetime.datetime.now().year}, {author}'
 
 
 # The version info for the project you're documenting, acts as replacement for
@@ -325,7 +326,7 @@ texinfo_show_urls = "inline"
 epub_title = f"{project}"
 epub_author = f"{author}"
 epub_publisher = f"{author}"
-epub_copyright = '{0}, {1}'.format(datetime.datetime.now().year, author)
+epub_copyright = f'{datetime.datetime.now().year}, {author}'
 
 # The basename for the epub file. It defaults to the project name.
 # epub_basename = u'wfc3tools'
