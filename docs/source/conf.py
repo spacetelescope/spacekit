@@ -12,9 +12,9 @@ from configparser import ConfigParser
 # -- Path setup --------------------------------------------------------------
 def setup(app):
     try:
-        app.add_css_file("stsci.css")
+        app.add_css_file("custom.css")
     except AttributeError:
-        app.add_stylesheet("stsci.css")
+        app.add_stylesheet("custom.css")
 
 conf = ConfigParser()
 
