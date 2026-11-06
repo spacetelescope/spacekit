@@ -33,7 +33,7 @@ jobs:
     steps:
 
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           token: ${{ secrets.SPACEKIT_RELEASE_TOKEN }}
           ref: ${{ github.event.inputs.ref }}
@@ -42,10 +42,11 @@ jobs:
       - name: Changelog Entry
         id: changelog
         run: |
-          CHANGELOG="$(scripts/get_changelog)"
-          echo "CHANGELOG<<EOF" >> "${GITHUB_OUTPUT}"
-          echo "$CHANGELOG" >> "${GITHUB_OUTPUT}"
-          echo "EOF" >> "${GITHUB_OUTPUT}"
+          {
+            echo 'CHANGELOG<<EOF'
+            scripts/get_changelog
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
 
       - name: Configure git
         run: |

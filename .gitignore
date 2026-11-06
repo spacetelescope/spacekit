@@ -41,6 +41,7 @@ distribute-*.tar.gz
 
 # env
 *-venv/
+*-env/
 *.python-version
 
 # Other
