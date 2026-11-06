@@ -34,7 +34,7 @@ jobs:
         fetch-depth: 0
 
     - name: Install Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v7
       with:
         python-version: '3.13'
 
@@ -70,10 +70,10 @@ jobs:
     steps:
       - uses: actions/download-artifact@v7
         with:
-          name: artifact
+          name: python-package-distributions
           path: dist
 
-      - name: Publish package distributions to PyPI
+      - name: Publish package distributions to TestPyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: ${{ env.url }}
@@ -93,7 +93,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v7
         with:
-          name: artifact
+          name: python-package-distributions
           path: dist
 
       - name: Publish package distributions to PyPI
