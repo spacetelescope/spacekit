@@ -11,4 +11,5 @@ updates:
     target-branch: "develop"
     labels:
       - "no-changelog-entry-needed"
-
+    reviewers:
+      - "alphasentaurii"
