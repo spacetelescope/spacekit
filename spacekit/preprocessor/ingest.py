@@ -191,7 +191,7 @@ class JwstCalIngest:
     dataframes will be "ingested" into any pre-existing training sets located in `outpath`.
     This outpath acts as the primary database containing several "tables" (dataframes stored
     in .csv files). This class is designed to run on single or multiple files at a time
-    (limit specificity using 'pfx`).
+    (limit specificity using `pfx`).
 
     Input file naming convention: YYYY-MM-DD_%d.csv (%d = day of year) ex: 2024-02-21_052.csv
     Alternate formats currently not supported because filenames are used to store date info.
@@ -375,7 +375,7 @@ class JwstCalIngest:
         NOTE: The memory footprint for each L3 product is the same regardless of channel or subchannel ('band'),
         so the inclusion of L3 products from both channels 1 and 3 is likely to be redundant for ML training purposes.
         The resulting metadata features will show some variability between ch1/2 and 3/4 L3 products because the input exposures
-        are distinct. Further analysis is needed to determine if such variability simply adds noise to the training set, and a decision should be made at training time whether or not to include both channels. Adjustments to inference preprocessing may need to be made so that the model simply ignores channel/subchannel altogether and treats the entire group of inputs as pertaining to a single L3 product (jw_PID_OBS_TRG_miri_). The memory footprint estimates for each individual channel/subchannel combination can be inferred from a single inference output and applied to all relevant 'subproducts'.
+        are distinct. Further analysis is needed to determine if such variability simply adds noise to the training set, and a decision should be made at training time whether or not to include both channels. Adjustments to inference preprocessing may need to be made so that the model simply ignores channel/subchannel altogether and treats the entire group of inputs as pertaining to a single L3 product, e.g. `jw_PID_OBS_TRG_miri_`. The memory footprint estimates for each individual channel/subchannel combination can be inferred from a single inference output and applied to all relevant 'subproducts'.
         """
         for d, c in dict(zip(["MIRIFUSHORT", "MIRIFULONG"], ["-12", "-34"])).items():
             self.df.loc[self.df["DETECTOR"] == d, "params"] = self.df.loc[self.df["DETECTOR"] == d].params.values + c
