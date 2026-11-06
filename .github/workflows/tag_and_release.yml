@@ -33,7 +33,7 @@ jobs:
     steps:
 
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           token: ${{ secrets.SPACEKIT_RELEASE_TOKEN }}
           ref: ${{ github.event.inputs.ref }}
