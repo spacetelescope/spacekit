@@ -7,7 +7,6 @@ import datetime
 import importlib
 import os
 import sys
-from configparser import ConfigParser
 
 
 # -- Path setup --------------------------------------------------------------
@@ -17,7 +16,11 @@ def setup(app):
     except AttributeError:
         app.add_stylesheet("custom.css")
 
-conf = ConfigParser()
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib
 
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -28,8 +31,13 @@ sys.path.insert(0, os.path.abspath('../'))
 
 
 # -- General configuration ------------------------------------------------
-conf.read([os.path.join(os.path.dirname(os.path.dirname(__file__)), '..', 'setup.cfg')])
-setup_cfg = dict(conf.items('metadata'))
+# Resolve path to pyproject.toml
+pyproject_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '..', 'pyproject.toml')
+with open(pyproject_path, 'rb') as f:
+    pyproject = tomllib.load(f)
+
+project_meta = pyproject.get('project', {})
+
 
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 
@@ -82,16 +90,15 @@ master_doc = "index"
 
 # -- Project information -----------------------------------------------------
 # General information about the project
-project = setup_cfg['name']
-author = setup_cfg['author']
+project = project_meta.get('name', 'spacekit')
+
+authors = project_meta.get('authors', [])
+author = authors[0].get('name', 'Ru Keïn') if authors else 'Ru Keïn'
 copyright = f'{datetime.datetime.now().year}, {author}'
 
 
-# The version info for the project you're documenting, acts as replacement for
-# |version| and |release|, also used in various other places throughout the
-# build documents.
 # The full version, including alpha/beta/rc tags.
-package = importlib.import_module(setup_cfg['name'])
+package = importlib.import_module(project)
 try:
     version = package.__version__.split('-', 1)[0]
     # The full version, including alpha/beta/rc tags.
