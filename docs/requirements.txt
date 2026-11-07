@@ -15,5 +15,5 @@ plotly==7.1.0
 progressbar==2.5
 scikit-learn==1.7.2
 scikeras==0.13.0
-tables==3.10.1
+tables==3.11.1
 tqdm==4.70.1
