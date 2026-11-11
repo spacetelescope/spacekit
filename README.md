@@ -1,3 +1,7 @@
+<a href="https://stsci.edu">
+  <img src="docs/source/_static/images/stsci_pri_combo_mark_horizonal_white_bkgd.png" alt="Space Telescope Science Institute" width="83%" style="margin-left: auto;"/>
+</a>
+
 # spacekit
 
 ![GitHub license](https://img.shields.io/github/license/spacetelescope/spacekit?color=black)

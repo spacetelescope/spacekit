@@ -1,3 +1,7 @@
+.. image:: _static/images/stsci_pri_combo_mark_horizonal_white_bkgd.png
+   :width: 83%
+   :target: https://stsci.edu
+
 **********************
 spacekit documentation
 **********************
