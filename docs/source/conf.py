@@ -178,6 +178,12 @@ pygments_style = "monokai"
 # html_theme = 'stsci_rtd_theme'
 # html_theme_path = [stsci_rtd_theme.get_html_theme_path()]
 html_theme = "furo"
+html_static_path = ["_static"]
+
+html_theme_options = {
+    "light_logo": "images/stsci_pri_combo_mark_light_bkgd.png",
+    "dark_logo": "images/stsci_pri_combo_mark_dark_bkgd.png",
+}
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
